@@ -41,7 +41,7 @@ struct ConnectingView: View {
             Button("Cancel") {
                 model.disconnect()
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(TS3BorderedButtonStyle())
         }
         .padding()
     }
@@ -102,7 +102,7 @@ struct ChannelListView: View {
                 Button("Disconnect") {
                     model.disconnect()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(TS3BorderedButtonStyle())
             }
             .padding(.horizontal)
 
@@ -155,7 +155,7 @@ struct ChannelRow: View {
                 Button("Join") {
                     model.joinChannel(channel)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(TS3BorderedButtonStyle())
             }
         }
     }
@@ -175,8 +175,30 @@ struct TalkControlBar: View {
                 Text(model.isTalking ? "Stop Talking" : "Push To Talk")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
         }
         .padding()
+    }
+}
+
+struct TS3BorderedButtonStyle: ButtonStyle {
+    var isProminent = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        let accent = Color.accentColor
+        let fill = isProminent ? accent : .clear
+        let text = isProminent ? Color.white : accent
+        return configuration.label
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 36)
+            .background(fill.opacity(configuration.isPressed ? 0.7 : 1.0))
+            .foregroundColor(text)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(accent, lineWidth: isProminent ? 0 : 1)
+            )
+            .cornerRadius(8)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
     }
 }
