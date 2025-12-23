@@ -30,8 +30,7 @@ let package = Package(
         .executableTarget(
             name: "TS3iOSApp",
             dependencies: ["TS3Kit"],
-            path: "Sources/TS3iOSApp",
-            resources: [.process("Resources")]
+            path: "Sources/TS3iOSApp"
         )
     ]
 )
