@@ -340,12 +340,19 @@ private extension TS3Client {
         switch body.step {
         case let step as TS3Init1Step1:
             log(.info, "init1 step1 received")
+            log(.info, "  a0reversed: \(step.a0reversed.map { String(format: "%02x", $0) }.joined())")
+            log(.info, "  serverStuff: \(step.serverStuff.prefix(8).map { String(format: "%02x", $0) }.joined())...")
+            log(.info, "  randomBytes sent: \(randomBytes.map { String(format: "%02x", $0) }.joined())")
             let reply = TS3Init1Step2(serverStuff: step.serverStuff, a0reversed: step.a0reversed)
             let packet = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: reply)
             try sendPacket(body: packet)
+            log(.info, "init1 step2 sent")
 
         case let step as TS3Init1Step3:
             log(.info, "init1 step3 received, level \(step.level)")
+            log(.info, "  x[0..8]: \(step.x.prefix(8).map { String(format: "%02x", $0) }.joined())")
+            log(.info, "  n[0..8]: \(step.n.prefix(8).map { String(format: "%02x", $0) }.joined())")
+            log(.info, "  serverStuff[0..8]: \(step.serverStuff.prefix(8).map { String(format: "%02x", $0) }.joined())")
             guard step.level >= 0 && step.level <= 1_000_000 else {
                 throw TS3Error.invalidInitStep
             }
@@ -353,21 +360,28 @@ private extension TS3Client {
             let start = Date()
             let x = BigUInt(Data(step.x))
             let n = BigUInt(Data(step.n))
+            log(.info, "  BigUInt x bitWidth: \(x.bitWidth)")
+            log(.info, "  BigUInt n bitWidth: \(n.bitWidth)")
             var y = x
             for _ in 0..<step.level {
                 y = (y * y) % n
             }
 
             var yBytes = [UInt8](y.serialize())
+            log(.info, "  y.serialize() len: \(yBytes.count)")
             if yBytes.count < 64 {
                 let pad = [UInt8](repeating: 0, count: 64 - yBytes.count)
                 yBytes = pad + yBytes
             } else if yBytes.count > 64 {
                 yBytes = Array(yBytes.suffix(64))
             }
+            log(.info, "  y[0..8]: \(yBytes.prefix(8).map { String(format: "%02x", $0) }.joined())")
+            log(.info, "  y[56..64]: \(yBytes.suffix(8).map { String(format: "%02x", $0) }.joined())")
+            
             let initiv = try createInitIv()
             let duration = Int(Date().timeIntervalSince(start) * 1000)
             log(.info, "init1 step3 solved in \(duration)ms, initiv len \(initiv.count)")
+            log(.info, "  initiv: \(initiv)")
 
             let reply = TS3Init1Step4(
                 x: step.x,
@@ -377,6 +391,7 @@ private extension TS3Client {
                 y: yBytes,
                 clientIVCommand: [UInt8](initiv.utf8)
             )
+            log(.info, "  step4 size: \(reply.size)")
             let packet = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: reply)
             try sendPacket(body: packet)
             log(.info, "init1 step4 sent")
@@ -829,6 +844,9 @@ private extension TS3Client {
             }
             let next = counter.next()
             header.packetId = next.0
+        case .init1:
+            header.packetId = 101
+            header.generation = 0
         default:
             let next = counter.next()
             header.packetId = next.0
