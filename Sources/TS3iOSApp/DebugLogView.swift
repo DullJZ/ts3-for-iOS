@@ -32,6 +32,11 @@ struct DebugLogView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("复制全部") {
+                        copyAllLogs()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("清空") {
                         model.clearLogs()
                     }
@@ -49,5 +54,12 @@ struct DebugLogView: View {
         case .error:
             return .red
         }
+    }
+
+    private func copyAllLogs() {
+        let text = model.logs.map { entry in
+            "\(timeFormatter.string(from: entry.timestamp)) [\(entry.level.rawValue)] \(entry.message)"
+        }.joined(separator: "\n")
+        UIPasteboard.general.string = text
     }
 }
