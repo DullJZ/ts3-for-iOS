@@ -19,15 +19,15 @@ enum TS3Crypto {
     ]
 
     static func hash128(_ data: [UInt8]) -> [UInt8] {
-        SHA1().calculate(for: data)
+        Array(Insecure.SHA1.hash(data: Data(data)))
     }
 
     static func hash256(_ data: [UInt8]) -> [UInt8] {
-        SHA256().calculate(for: data)
+        Array(SHA256.hash(data: Data(data)))
     }
 
     static func hash512(_ data: [UInt8]) -> [UInt8] {
-        SHA512().calculate(for: data)
+        Array(SHA512.hash(data: Data(data)))
     }
 
     static func xor(_ a: [UInt8], aOffset: Int, _ b: [UInt8], bOffset: Int, length: Int) -> [UInt8] {
