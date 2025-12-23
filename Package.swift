@@ -13,7 +13,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.0"),
         .package(url: "https://github.com/jedisct1/swift-sodium.git", from: "0.9.2"),
-        .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0")
+        .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
+        .package(url: "https://github.com/alta/swift-opus.git", from: "0.0.2")
     ],
     targets: [
         .target(
@@ -21,7 +22,8 @@ let package = Package(
             dependencies: [
                 .product(name: "CryptoSwift", package: "CryptoSwift"),
                 .product(name: "Sodium", package: "swift-sodium"),
-                .product(name: "BigInt", package: "BigInt")
+                .product(name: "BigInt", package: "BigInt"),
+                .product(name: "Opus", package: "swift-opus")
             ],
             path: "Sources/TS3Kit"
         ),
