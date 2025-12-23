@@ -1,0 +1,23 @@
+name: TS3iOSApp
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "13.0"
+packages:
+  TS3iOS:
+    path: .
+targets:
+  TS3iOSApp:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/TS3iOSApp
+    dependencies:
+      - package: TS3iOS
+        product: TS3Kit
+    info:
+      path: TS3iOSApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.ts3ios
+        SWIFT_VERSION: 5.9
