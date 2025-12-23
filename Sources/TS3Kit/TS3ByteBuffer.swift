@@ -1,16 +1,16 @@
 import Foundation
 
 final class TS3ByteBuffer {
-    private var storage: Data
+    private var storage: [UInt8]
     private(set) var readerIndex: Int
 
     init(data: Data = Data()) {
-        self.storage = data
+        self.storage = [UInt8](data)
         self.readerIndex = 0
     }
 
     var data: Data {
-        storage
+        Data(storage)
     }
 
     var remaining: Int {
@@ -22,7 +22,7 @@ final class TS3ByteBuffer {
     }
 
     func readUInt8() -> UInt8 {
-        guard readerIndex < storage.count else {
+        guard readerIndex >= 0, readerIndex < storage.count else {
             readerIndex = storage.count
             return 0
         }
@@ -58,24 +58,24 @@ final class TS3ByteBuffer {
     }
 
     func readBytes(count: Int) -> Data {
-        guard count > 0, readerIndex < storage.count else {
+        guard count > 0, readerIndex >= 0, readerIndex < storage.count else {
             readerIndex = storage.count
             return Data()
         }
         let end = min(storage.count, readerIndex + count)
         let slice = storage[readerIndex..<end]
         readerIndex = end
-        return slice
+        return Data(slice)
     }
 
     func readString(encoding: String.Encoding = .utf8) -> String {
-        guard readerIndex < storage.count else {
+        guard readerIndex >= 0, readerIndex < storage.count else {
             readerIndex = storage.count
             return ""
         }
         let slice = storage[readerIndex..<storage.count]
         readerIndex = storage.count
-        return String(data: slice, encoding: encoding) ?? ""
+        return String(data: Data(slice), encoding: encoding) ?? ""
     }
 
     func writeUInt8(_ value: UInt8) {
@@ -106,7 +106,7 @@ final class TS3ByteBuffer {
     }
 
     func writeBytes(_ bytes: Data) {
-        storage.append(bytes)
+        storage.append(contentsOf: bytes)
     }
 
     func writeBytes(_ bytes: [UInt8]) {
