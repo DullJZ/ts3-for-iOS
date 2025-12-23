@@ -41,6 +41,18 @@ final class TS3ByteBuffer {
         return (b0 << 24) | (b1 << 16) | (b2 << 8) | b3
     }
 
+    func readUInt64() -> UInt64 {
+        let b0 = UInt64(readUInt8())
+        let b1 = UInt64(readUInt8())
+        let b2 = UInt64(readUInt8())
+        let b3 = UInt64(readUInt8())
+        let b4 = UInt64(readUInt8())
+        let b5 = UInt64(readUInt8())
+        let b6 = UInt64(readUInt8())
+        let b7 = UInt64(readUInt8())
+        return (b0 << 56) | (b1 << 48) | (b2 << 40) | (b3 << 32) | (b4 << 24) | (b5 << 16) | (b6 << 8) | b7
+    }
+
     func readBytes(count: Int) -> Data {
         let end = readerIndex + count
         let slice = storage[readerIndex..<end]
@@ -64,6 +76,17 @@ final class TS3ByteBuffer {
     }
 
     func writeUInt32(_ value: UInt32) {
+        storage.append(UInt8((value >> 24) & 0xFF))
+        storage.append(UInt8((value >> 16) & 0xFF))
+        storage.append(UInt8((value >> 8) & 0xFF))
+        storage.append(UInt8(value & 0xFF))
+    }
+
+    func writeUInt64(_ value: UInt64) {
+        storage.append(UInt8((value >> 56) & 0xFF))
+        storage.append(UInt8((value >> 48) & 0xFF))
+        storage.append(UInt8((value >> 40) & 0xFF))
+        storage.append(UInt8((value >> 32) & 0xFF))
         storage.append(UInt8((value >> 24) & 0xFF))
         storage.append(UInt8((value >> 16) & 0xFF))
         storage.append(UInt8((value >> 8) & 0xFF))

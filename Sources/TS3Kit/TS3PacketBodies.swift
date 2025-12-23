@@ -167,6 +167,78 @@ struct TS3PacketBodyVoice: TS3PacketBody {
     }
 }
 
+struct TS3PacketBodyVoiceWhisper: TS3PacketBody {
+    let type: TS3PacketBodyType = .voiceWhisper
+    let role: TS3ProtocolRole
+    var packetId: UInt16
+    var clientId: UInt16?
+    var codecType: UInt8
+    var target: TS3WhisperTarget
+    var codecData: Data
+    var serverFlag0: UInt8?
+
+    var size: Int {
+        switch role {
+        case .client:
+            return 2 + 1 + target.size + codecData.count + (serverFlag0 != nil ? 1 : 0)
+        case .server:
+            return 2 + 2 + 1 + codecData.count + (serverFlag0 != nil ? 1 : 0)
+        }
+    }
+
+    mutating func read(from buffer: inout TS3ByteBuffer, header: TS3PacketHeader) throws {
+        var padding = 0
+        if header.flags.contains(.compressed) {
+            padding += 1
+        }
+
+        packetId = buffer.readUInt16()
+        if role == .server {
+            clientId = buffer.readUInt16()
+        }
+        codecType = buffer.readUInt8()
+
+        if role == .client {
+            target = TS3WhisperTarget.read(from: &buffer, role: role, newProtocol: header.flags.contains(.newProtocol))
+        } else {
+            target = .serverToClient
+        }
+
+        let dataLen = max(0, buffer.remaining - padding)
+        codecData = buffer.readBytes(count: dataLen)
+
+        if padding > 0 {
+            serverFlag0 = buffer.readUInt8()
+        }
+    }
+
+    func write(to buffer: inout TS3ByteBuffer, header: TS3PacketHeader) throws {
+        buffer.writeUInt16(packetId)
+        if role == .server, let clientId {
+            buffer.writeUInt16(clientId)
+        }
+        buffer.writeUInt8(codecType)
+        if role == .client {
+            target.write(to: &buffer)
+        }
+        buffer.writeBytes(codecData)
+        if let serverFlag0 {
+            buffer.writeUInt8(serverFlag0)
+        }
+    }
+
+    func applyHeaderFlags(to header: inout TS3PacketHeader) {
+        if case .group = target {
+            header.flags.insert(.newProtocol)
+        } else {
+            header.flags.remove(.newProtocol)
+        }
+        if serverFlag0 != nil {
+            header.flags.insert(.compressed)
+        }
+    }
+}
+
 struct TS3PacketBodyCompressed: TS3PacketBody {
     let type: TS3PacketBodyType
     let role: TS3ProtocolRole
