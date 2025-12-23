@@ -6,8 +6,7 @@ enum TS3EAX {
         let nonceTag = try omac(key: key, prefix: 0x00, data: nonce)
         let headerTag = try omac(key: key, prefix: 0x01, data: header)
 
-        let cipher = try AES(key: key, blockMode: CTR(iv: nonceTag), padding: .noPadding)
-        let ciphertext = try cipher.encrypt(plaintext)
+        let ciphertext = try ctrCrypt(key: key, iv: nonceTag, data: plaintext)
 
         let messageTag = try omac(key: key, prefix: 0x02, data: ciphertext)
         let tagFull = xor3(nonceTag, headerTag, messageTag)
@@ -23,8 +22,7 @@ enum TS3EAX {
             throw TS3Error.invalidMac
         }
 
-        let cipher = try AES(key: key, blockMode: CTR(iv: nonceTag), padding: .noPadding)
-        return try cipher.decrypt(ciphertext)
+        return try ctrCrypt(key: key, iv: nonceTag, data: ciphertext)
     }
 
     private static func omac(key: [UInt8], prefix: UInt8, data: [UInt8]) throws -> [UInt8] {
@@ -65,6 +63,38 @@ enum TS3EAX {
             X = try aes.encrypt(xor(X, block.padded(to: blockSize)))
         }
         return X
+    }
+
+    private static func ctrCrypt(key: [UInt8], iv: [UInt8], data: [UInt8]) throws -> [UInt8] {
+        let aes = try AES(key: key, blockMode: ECB(), padding: .noPadding)
+        var counter = iv
+        var output: [UInt8] = []
+        output.reserveCapacity(data.count)
+
+        var offset = 0
+        while offset < data.count {
+            let blockLen = min(16, data.count - offset)
+            let keystream = try aes.encrypt(counter)
+            for i in 0..<blockLen {
+                output.append(data[offset + i] ^ keystream[i])
+            }
+            offset += blockLen
+            incrementCounter(&counter)
+        }
+
+        return output
+    }
+
+    private static func incrementCounter(_ counter: inout [UInt8]) {
+        guard !counter.isEmpty else { return }
+        for index in stride(from: counter.count - 1, through: 0, by: -1) {
+            if counter[index] == 0xFF {
+                counter[index] = 0x00
+            } else {
+                counter[index] &+= 1
+                break
+            }
+        }
     }
 
     private static func subkey(from input: [UInt8]) -> [UInt8] {
