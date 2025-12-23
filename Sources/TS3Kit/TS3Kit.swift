@@ -53,3 +53,22 @@ public enum TS3Error: Error {
     case compressionUnsupported
     case decompressionTooLarge
 }
+
+public enum TS3LogLevel: String {
+    case info
+    case warning
+    case error
+}
+
+public struct TS3LogEntry: Identifiable {
+    public let id = UUID()
+    public let timestamp: Date
+    public let level: TS3LogLevel
+    public let message: String
+
+    public init(timestamp: Date, level: TS3LogLevel, message: String) {
+        self.timestamp = timestamp
+        self.level = level
+        self.message = message
+    }
+}

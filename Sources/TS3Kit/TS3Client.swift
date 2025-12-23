@@ -6,6 +6,7 @@ import BigInt
 public final class TS3Client {
     public weak var delegate: TS3ClientDelegate?
     public private(set) var currentChannelId: Int?
+    public var logHandler: ((TS3LogEntry) -> Void)?
 
     private let config: TS3ClientConfig
     private let connectionQueue = DispatchQueue(label: "ts3.connection")
@@ -57,6 +58,7 @@ public final class TS3Client {
         state = .connecting
         channelCache.removeAll()
         identity = try await loadIdentity()
+        log(.info, "connecting to \(config.host):\(config.port)")
         if audioEngine == nil {
             audioEngine = try? TS3AudioEngine(config: .voice)
             audioEngine?.onEncodedPacket = { [weak self] data in
@@ -191,12 +193,14 @@ public final class TS3Client {
         whisperTarget = target
         isWhispering = true
         whisperFlaggedPackets = 5
+        log(.info, "whisper enabled")
     }
 
     public func stopWhisper() {
         isWhispering = false
         whisperTarget = nil
         whisperFlaggedPackets = 5
+        log(.info, "whisper disabled")
     }
 
     public func startWhisperToChannel(_ channelId: Int) {
@@ -302,6 +306,11 @@ private extension TS3Client {
         pingQueue.removeAll()
         pendingCommands.removeAll()
         channelCache.removeAll()
+        if let error {
+            log(.error, "disconnected: \(error.localizedDescription)")
+        } else {
+            log(.warning, "disconnected")
+        }
         connectContinuation?.resume(throwing: error ?? TS3Error.disconnected)
         connectContinuation = nil
 
@@ -330,11 +339,13 @@ private extension TS3Client {
     func handleInit1(_ body: TS3PacketBodyInit1) throws {
         switch body.step {
         case let step as TS3Init1Step1:
+            log(.info, "init1 step1 received")
             let reply = TS3Init1Step2(serverStuff: step.serverStuff, a0reversed: step.a0reversed)
             let packet = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: reply)
             try sendPacket(body: packet)
 
         case let step as TS3Init1Step3:
+            log(.info, "init1 step3 received, level \(step.level)")
             guard step.level >= 0 && step.level <= 1_000_000 else {
                 throw TS3Error.invalidInitStep
             }
@@ -367,6 +378,7 @@ private extension TS3Client {
             try sendPacket(body: packet)
 
         case _ as TS3Init1Step127:
+            log(.warning, "init1 retry requested")
             try sendInit1Step0()
         default:
             throw TS3Error.invalidInitStep
@@ -399,6 +411,7 @@ private extension TS3Client {
         }
 
         if command.name == "initivexpand" {
+            log(.info, "initivexpand received")
             guard let alpha = command.get("alpha")?.value,
                   let beta = command.get("beta")?.value,
                   let omega = command.get("omega")?.value else {
@@ -414,8 +427,10 @@ private extension TS3Client {
 
             try sendClientInit()
             state = .retrieving
+            log(.info, "clientinit sent")
 
         } else if command.name == "initivexpand2" {
+            log(.info, "initivexpand2 received")
             guard let license = command.get("l")?.value,
                   let beta = command.get("beta")?.value,
                   let omega = command.get("omega")?.value,
@@ -454,7 +469,9 @@ private extension TS3Client {
 
             try sendClientInit()
             state = .retrieving
+            log(.info, "clientinit sent")
         } else if command.name == "error" {
+            log(.error, "init error: \(command.get(\"msg\")?.value ?? \"unknown\")")
             throw TS3Error.serverError(message: command.get("msg")?.value ?? "unknown")
         } else {
             throw TS3Error.invalidCommand
@@ -605,6 +622,7 @@ private extension TS3Client {
 private extension TS3Client {
     func sendCommand(_ command: TS3SingleCommand) throws {
         var body = TS3PacketBodyCommand(role: .client, text: command.build())
+        log(.info, "send cmd: \(command.name)")
         try sendPacket(body: body)
     }
 
@@ -630,6 +648,7 @@ private extension TS3Client {
     func handleCommandText(_ text: String) {
         do {
             let multi = try TS3MultiCommand.parse(text)
+            log(.info, "recv cmd: \(multi.name)")
             for command in multi.simplify() {
                 handleCommand(command)
             }
@@ -670,6 +689,7 @@ private extension TS3Client {
             state = .connected
             connectContinuation?.resume()
             connectContinuation = nil
+            log(.info, "channel list completed")
             let channels = channelCache.values.sorted { $0.id < $1.id }
             DispatchQueue.main.async {
                 self.delegate?.ts3Client(self, didUpdateChannels: channels)
@@ -837,6 +857,12 @@ private extension TS3Client {
         let identity = try TS3Identity.generate(securityLevel: 8)
         try Data(identity.privateKeyBytes).write(to: fileURL, options: .atomic)
         return identity
+    }
+}
+
+private extension TS3Client {
+    func log(_ level: TS3LogLevel, _ message: String) {
+        logHandler?(TS3LogEntry(timestamp: Date(), level: level, message: message))
     }
 }
 

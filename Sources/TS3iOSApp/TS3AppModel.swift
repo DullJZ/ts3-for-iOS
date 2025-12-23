@@ -19,6 +19,8 @@ final class TS3AppModel: ObservableObject {
     @Published var state: UIConnectionState = .disconnected
     @Published var channels: [TS3ChannelSummary] = []
     @Published var isTalking = false
+    @Published var logs: [TS3LogEntry] = []
+    @Published var isShowingDebug = false
     @Published var lastError: String?
 
     @Published var serverHost = ""
@@ -57,6 +59,11 @@ final class TS3AppModel: ObservableObject {
 
         let newClient = TS3Client(config: config)
         newClient.delegate = self
+        newClient.logHandler = { [weak self] entry in
+            DispatchQueue.main.async {
+                self?.appendLog(entry)
+            }
+        }
         client = newClient
 
         Task {
@@ -113,6 +120,17 @@ final class TS3AppModel: ObservableObject {
         } else {
             client?.stopMicrophone()
         }
+    }
+
+    func appendLog(_ entry: TS3LogEntry) {
+        logs.append(entry)
+        if logs.count > 500 {
+            logs.removeFirst(logs.count - 500)
+        }
+    }
+
+    func clearLogs() {
+        logs.removeAll()
     }
 }
 
