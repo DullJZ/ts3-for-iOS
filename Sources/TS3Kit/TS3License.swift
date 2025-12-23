@@ -8,7 +8,7 @@ enum TS3LicenseUseType: UInt8 {
 
 protocol TS3LicenseUse {
     var useType: TS3LicenseUseType { get }
-    func read(from buffer: inout TS3ByteBuffer)
+    mutating func read(from buffer: inout TS3ByteBuffer)
 }
 
 struct TS3ServerLicenseUse: TS3LicenseUse {
