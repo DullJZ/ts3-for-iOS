@@ -1,13 +1,13 @@
 import Foundation
 
-enum TS3GroupWhisperType: UInt8 {
+public enum TS3GroupWhisperType: UInt8 {
     case serverGroup = 0
     case channelGroup = 1
     case channelCommander = 2
     case allClients = 3
 }
 
-enum TS3GroupWhisperTarget: UInt8 {
+public enum TS3GroupWhisperTarget: UInt8 {
     case allChannels = 0
     case currentChannel = 1
     case parentChannel = 2
@@ -17,7 +17,7 @@ enum TS3GroupWhisperTarget: UInt8 {
     case subchannels = 6
 }
 
-enum TS3WhisperTarget {
+public enum TS3WhisperTarget {
     case serverToClient
     case multiple(channelIds: [UInt64], clientIds: [UInt16])
     case group(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: UInt64)
@@ -80,15 +80,15 @@ enum TS3WhisperTarget {
         return .multiple(channelIds: channelIds, clientIds: clientIds)
     }
 
-    static func channel(_ channelId: Int) -> TS3WhisperTarget {
+    public static func channel(_ channelId: Int) -> TS3WhisperTarget {
         .multiple(channelIds: [UInt64(channelId)], clientIds: [])
     }
 
-    static func client(_ clientId: Int) -> TS3WhisperTarget {
+    public static func client(_ clientId: Int) -> TS3WhisperTarget {
         .multiple(channelIds: [], clientIds: [UInt16(clientId)])
     }
 
-    static func server() -> TS3WhisperTarget {
+    public static func server() -> TS3WhisperTarget {
         .group(type: .allClients, target: .allChannels, targetId: 0)
     }
 }
