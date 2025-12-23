@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "TS3iOS",
     platforms: [
-        .iOS(.v13)
+        .iOS(.v14)
     ],
     products: [
         .library(name: "TS3Kit", targets: ["TS3Kit"]),
