@@ -332,7 +332,7 @@ private extension TS3Client {
         tsBytes[3] = UInt8(timestamp & 0xFF)
 
         let step = TS3Init1Step0(timestamp: tsBytes, random: randomBytes)
-        let body = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: step)
+        let body = TS3PacketBodyInit1(role: .client, version: [0x5D, 0x6C, 0xEC, 0xA0], step: step)
         try sendPacket(body: body)
     }
 
@@ -344,7 +344,7 @@ private extension TS3Client {
             log(.info, "  serverStuff: \(step.serverStuff.prefix(8).map { String(format: "%02x", $0) }.joined())...")
             log(.info, "  randomBytes sent: \(randomBytes.map { String(format: "%02x", $0) }.joined())")
             let reply = TS3Init1Step2(serverStuff: step.serverStuff, a0reversed: step.a0reversed)
-            let packet = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: reply)
+            let packet = TS3PacketBodyInit1(role: .client, version: [0x5D, 0x6C, 0xEC, 0xA0], step: reply)
             try sendPacket(body: packet)
             log(.info, "init1 step2 sent")
 
@@ -369,19 +369,28 @@ private extension TS3Client {
 
             var yBytes = [UInt8](y.serialize())
             log(.info, "  y.serialize() len: \(yBytes.count)")
+            log(.info, "  y raw (before padding): \(yBytes.prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
             if yBytes.count < 64 {
                 let pad = [UInt8](repeating: 0, count: 64 - yBytes.count)
                 yBytes = pad + yBytes
+                log(.info, "  y padded with \(64 - yBytes.count + pad.count) zeros")
             } else if yBytes.count > 64 {
                 yBytes = Array(yBytes.suffix(64))
+                log(.info, "  y truncated to 64 bytes")
             }
             log(.info, "  y[0..8]: \(yBytes.prefix(8).map { String(format: "%02x", $0) }.joined())")
             log(.info, "  y[56..64]: \(yBytes.suffix(8).map { String(format: "%02x", $0) }.joined())")
+            log(.info, "  y full: \(yBytes.map { String(format: "%02x", $0) }.joined(separator: " "))")
             
             let initiv = try createInitIv()
             let duration = Int(Date().timeIntervalSince(start) * 1000)
             log(.info, "init1 step3 solved in \(duration)ms, initiv len \(initiv.count)")
             log(.info, "  initiv: \(initiv)")
+            
+            // 打印step4各字段详细信息
+            let levelBytes = withUnsafeBytes(of: UInt32(step.level).bigEndian) { Array($0) }
+            log(.info, "  level as bytes: \(levelBytes.map { String(format: "%02x", $0) }.joined(separator: " "))")
+            log(.info, "  x len: \(step.x.count), n len: \(step.n.count), serverStuff len: \(step.serverStuff.count)")
 
             let reply = TS3Init1Step4(
                 x: step.x,
@@ -392,7 +401,8 @@ private extension TS3Client {
                 clientIVCommand: [UInt8](initiv.utf8)
             )
             log(.info, "  step4 size: \(reply.size)")
-            let packet = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: reply)
+            log(.info, "  clientIVCommand len: \(reply.clientIVCommand.count)")
+            let packet = TS3PacketBodyInit1(role: .client, version: [0x5D, 0x6C, 0xEC, 0xA0], step: reply)
             try sendPacket(body: packet)
             log(.info, "init1 step4 sent")
 
@@ -410,15 +420,13 @@ private extension TS3Client {
             throw TS3Error.invalidIdentity
         }
 
-        var params: [TS3CommandParameter] = [
+        // 注意：ip参数必须是空字符串，参考TS3AudioBot实现
+        let params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "alpha", value: Data(alphaBytes ?? []).base64EncodedString()),
             TS3CommandSingleParameter(name: "omega", value: identity.publicKeyString),
-            TS3CommandSingleParameter(name: "ot", value: "1")
+            TS3CommandSingleParameter(name: "ot", value: "1"),
+            TS3CommandSingleParameter(name: "ip", value: "")
         ]
-
-        if let ipValue = resolveInitIvIp() {
-            params.append(TS3CommandSingleParameter(name: "ip", value: ipValue))
-        }
 
         let command = TS3SingleCommand(name: "clientinitiv", parameters: params)
         return command.build()
@@ -845,6 +853,7 @@ private extension TS3Client {
             let next = counter.next()
             header.packetId = next.0
         case .init1:
+            let next = counter.next()
             header.packetId = 101
             header.generation = 0
         default:
@@ -875,6 +884,12 @@ private extension TS3Client {
             try body.write(to: &bodyBuffer, header: header)
             buffer.writeBytes(bodyBuffer.data)
             data = buffer.data
+        }
+        
+        if header.type == .init1 {
+            log(.info, "  sending init1 packet, data size: \(data.count), packetId: \(header.packetId)")
+            let hexDump = data.prefix(50).map { String(format: "%02x", $0) }.joined(separator: " ")
+            log(.info, "  packet hex[0..50]: \(hexDump)")
         }
 
         let response = TS3PacketResponse(datagram: data, sentAt: Date())
