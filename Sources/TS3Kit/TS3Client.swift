@@ -15,9 +15,21 @@ public final class TS3Client {
     private var identity: TS3Identity?
     private var transformation: TS3PacketTransformation = TS3InitPacketTransformation()
 
-    private var state: TS3ConnectionState = .disconnected
+    private var _state: TS3ConnectionState = .disconnected
+    private var state: TS3ConnectionState {
+        get { _state }
+        set {
+            log(.debug, "State changing: \(_state.description)")
+            _state = newValue
+            log(.debug, "State changed: \(newValue.description)")
+        }
+    }
     private var clientId: UInt16 = 0
     private var serverId: Int?
+
+    private var serverAddress: String {
+        "/\(config.host):\(config.port)"
+    }
 
     private var randomBytes: [UInt8] = []
     private var alphaBytes: [UInt8]?
@@ -58,7 +70,7 @@ public final class TS3Client {
         state = .connecting
         channelCache.removeAll()
         identity = try await loadIdentity()
-        log(.info, "connecting to \(config.host):\(config.port)")
+        log(.debug, "Connecting to \(serverAddress)...")
         if audioEngine == nil {
             audioEngine = try? TS3AudioEngine(config: .voice)
             audioEngine?.onEncodedPacket = { [weak self] data in
@@ -339,58 +351,37 @@ private extension TS3Client {
     func handleInit1(_ body: TS3PacketBodyInit1) throws {
         switch body.step {
         case let step as TS3Init1Step1:
-            log(.info, "init1 step1 received")
-            log(.info, "  a0reversed: \(step.a0reversed.map { String(format: "%02x", $0) }.joined())")
-            log(.info, "  serverStuff: \(step.serverStuff.prefix(8).map { String(format: "%02x", $0) }.joined())...")
-            log(.info, "  randomBytes sent: \(randomBytes.map { String(format: "%02x", $0) }.joined())")
+            log(.debug, "Handle Init1 step 1")
+            let serverStuffHex = step.serverStuff.map { String(format: "%02X", $0) }.joined()
+            log(.debug, "Init1 Step1 serverStuff=\(serverStuffHex)")
             let reply = TS3Init1Step2(serverStuff: step.serverStuff, a0reversed: step.a0reversed)
             let packet = TS3PacketBodyInit1(role: .client, version: [0x5D, 0x6C, 0xEC, 0xA0], step: reply)
             try sendPacket(body: packet)
-            log(.info, "init1 step2 sent")
 
         case let step as TS3Init1Step3:
-            log(.info, "init1 step3 received, level \(step.level)")
-            log(.info, "  x[0..8]: \(step.x.prefix(8).map { String(format: "%02x", $0) }.joined())")
-            log(.info, "  n[0..8]: \(step.n.prefix(8).map { String(format: "%02x", $0) }.joined())")
-            log(.info, "  serverStuff[0..8]: \(step.serverStuff.prefix(8).map { String(format: "%02x", $0) }.joined())")
+            log(.debug, "Handle Init1 step 3")
+            let serverStuffHex = step.serverStuff.map { String(format: "%02X", $0) }.joined()
+            log(.debug, "Init1 Step3 serverStuff=\(serverStuffHex)")
             guard step.level >= 0 && step.level <= 1_000_000 else {
                 throw TS3Error.invalidInitStep
             }
 
-            let start = Date()
             let x = BigUInt(Data(step.x))
             let n = BigUInt(Data(step.n))
-            log(.info, "  BigUInt x bitWidth: \(x.bitWidth)")
-            log(.info, "  BigUInt n bitWidth: \(n.bitWidth)")
             var y = x
             for _ in 0..<step.level {
                 y = (y * y) % n
             }
 
             var yBytes = [UInt8](y.serialize())
-            log(.info, "  y.serialize() len: \(yBytes.count)")
-            log(.info, "  y raw (before padding): \(yBytes.prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
             if yBytes.count < 64 {
                 let pad = [UInt8](repeating: 0, count: 64 - yBytes.count)
                 yBytes = pad + yBytes
-                log(.info, "  y padded with \(64 - yBytes.count + pad.count) zeros")
             } else if yBytes.count > 64 {
                 yBytes = Array(yBytes.suffix(64))
-                log(.info, "  y truncated to 64 bytes")
             }
-            log(.info, "  y[0..8]: \(yBytes.prefix(8).map { String(format: "%02x", $0) }.joined())")
-            log(.info, "  y[56..64]: \(yBytes.suffix(8).map { String(format: "%02x", $0) }.joined())")
-            log(.info, "  y full: \(yBytes.map { String(format: "%02x", $0) }.joined(separator: " "))")
             
             let initiv = try createInitIv()
-            let duration = Int(Date().timeIntervalSince(start) * 1000)
-            log(.info, "init1 step3 solved in \(duration)ms, initiv len \(initiv.count)")
-            log(.info, "  initiv: \(initiv)")
-            
-            // 打印step4各字段详细信息
-            let levelBytes = withUnsafeBytes(of: UInt32(step.level).bigEndian) { Array($0) }
-            log(.info, "  level as bytes: \(levelBytes.map { String(format: "%02x", $0) }.joined(separator: " "))")
-            log(.info, "  x len: \(step.x.count), n len: \(step.n.count), serverStuff len: \(step.serverStuff.count)")
 
             let reply = TS3Init1Step4(
                 x: step.x,
@@ -400,11 +391,8 @@ private extension TS3Client {
                 y: yBytes,
                 clientIVCommand: [UInt8](initiv.utf8)
             )
-            log(.info, "  step4 size: \(reply.size)")
-            log(.info, "  clientIVCommand len: \(reply.clientIVCommand.count)")
             let packet = TS3PacketBodyInit1(role: .client, version: [0x5D, 0x6C, 0xEC, 0xA0], step: reply)
             try sendPacket(body: packet)
-            log(.info, "init1 step4 sent")
 
         case _ as TS3Init1Step127:
             log(.warning, "init1 retry requested")
@@ -477,7 +465,14 @@ private extension TS3Client {
             log(.info, "clientinit sent")
 
         } else if command.name == "initivexpand2" {
-            log(.info, "initivexpand2 received")
+            // Log command details similar to ts3j format
+            let l = command.get("l")?.value ?? ""
+            let beta = command.get("beta")?.value ?? ""
+            let omega = command.get("omega")?.value ?? ""
+            let ot = command.get("ot")?.value ?? ""
+            let proof = command.get("proof")?.value ?? ""
+            let time = Int(Date().timeIntervalSince1970)
+            log(.debug, "initivexpand2 l=\(l) beta=\(beta) omega=\(omega) ot=\(ot) proof=\(proof)  time=\(time)")
             guard let license = command.get("l")?.value,
                   let beta = command.get("beta")?.value,
                   let omega = command.get("omega")?.value,
@@ -518,8 +513,9 @@ private extension TS3Client {
             state = .retrieving
             log(.info, "clientinit sent")
         } else if command.name == "error" {
+            let id = command.get("id")?.value ?? "0"
             let message = command.get("msg")?.value ?? "unknown"
-            log(.error, "init error: \(message)")
+            log(.debug, "[COMMAND] error id=\(id) msg=\(message)")
             throw TS3Error.serverError(message: message)
         } else {
             throw TS3Error.invalidCommand
@@ -547,6 +543,7 @@ private extension TS3Client {
         }
 
         let command = TS3SingleCommand(name: "clientinit", parameters: params)
+        log(.debug, "clientinit \(command.build())")
         try sendCommand(command)
     }
 }
@@ -563,11 +560,16 @@ private extension TS3Client {
                 header.generation = counter.generation(for: header.packetId)
             }
 
+            let typeName = String(describing: header.type).uppercased()
+            log(.debug, "[NETWORK] READ \(typeName) id=\(header.packetId) len=\(data.count) from \(serverAddress)")
+
             let packet = try readPacket(header: header, buffer: data)
             if packet.header.type.isSplittable,
                let reassembly = reassemblyQueues[packet.header.type] {
                 reassembly.put(packet)
                 if let reassembled = try reassembly.next() {
+                    let bodyTypeName = String(describing: type(of: reassembled.body))
+                    log(.debug, "[PROTOCOL] REASSEMBLE \(typeName) id=\(reassembled.header.packetId) len=\(reassembled.body.size) bodyType=\(bodyTypeName)")
                     handlePacket(reassembled)
                 }
             } else {
@@ -576,17 +578,20 @@ private extension TS3Client {
 
             lastResponse = Date()
         } catch {
-            // swallow parse errors for now
+            log(.debug, "[ERROR] Packet handling failed: \(error)")
         }
     }
 
     func readPacket(header: TS3PacketHeader, buffer: Data) throws -> TS3Packet {
         var payload: Data
+        let typeName = String(describing: header.type).uppercased()
         if !header.flags.contains(.unencrypted) {
+            log(.debug, "[PROTOCOL] DECRYPT \(typeName) generation=\(header.generation)")
             payload = try transformation.decrypt(header: header, buffer: buffer)
         } else {
             payload = buffer.dropFirst(header.size)
         }
+        log(.debug, "[PROTOCOL] READ \(typeName)")
 
         var bodyBuffer = TS3ByteBuffer(data: payload)
         if header.type.isSplittable {
@@ -869,8 +874,10 @@ private extension TS3Client {
         }
 
         let outgoing = TS3Packet(header: header, body: body)
+        let typeName = String(describing: header.type).uppercased()
         let data: Data
         if !header.flags.contains(.unencrypted) {
+            log(.debug, "[PROTOCOL] ENCRYPT \(typeName) generation=\(header.generation)")
             data = try transformation.encrypt(packet: outgoing)
         } else {
             if header.type == .init1 {
@@ -885,12 +892,8 @@ private extension TS3Client {
             buffer.writeBytes(bodyBuffer.data)
             data = buffer.data
         }
-        
-        if header.type == .init1 {
-            log(.info, "  sending init1 packet, data size: \(data.count), packetId: \(header.packetId)")
-            let hexDump = data.prefix(50).map { String(format: "%02x", $0) }.joined(separator: " ")
-            log(.info, "  packet hex[0..50]: \(hexDump)")
-        }
+        log(.debug, "[PROTOCOL] WRITE \(typeName)")
+        log(.debug, "[NETWORK] WRITE \(typeName) id=\(header.packetId) len=\(data.count) to \(serverAddress)")
 
         let response = TS3PacketResponse(datagram: data, sentAt: Date())
         if header.type.acknowledgedBy != nil {
@@ -917,12 +920,29 @@ private extension TS3Client {
         try FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
         let fileURL = baseURL.appendingPathComponent("ts3-identity.key")
 
-        if let data = try? Data(contentsOf: fileURL), data.count == 32 {
-            return try TS3Identity(privateKeyBytes: [UInt8](data))
+        if let data = try? Data(contentsOf: fileURL), data.count >= 32 {
+            let privateKeyBytes = [UInt8](data.prefix(32))
+            var keyOffset = 0
+            // New format: 32 bytes key + 4 bytes keyOffset (big-endian)
+            if data.count >= 36 {
+                let offsetBytes = data.subdata(in: 32..<36)
+                keyOffset = Int(UInt32(bigEndian: offsetBytes.withUnsafeBytes { $0.load(as: UInt32.self) }))
+            }
+            let identity = try TS3Identity(privateKeyBytes: privateKeyBytes, keyOffset: keyOffset)
+            let level = identity.securityLevel()
+            log(.debug, "Loaded existing identity, security level: \(level), keyOffset: \(identity.keyOffset)")
+            return identity
         }
 
-        let identity = try TS3Identity.generate(securityLevel: 8)
-        try Data(identity.privateKeyBytes).write(to: fileURL, options: .atomic)
+        log(.info, "正在生成身份标识...")
+        let identity = try TS3Identity.generate(securityLevel: 8) { [weak self] oldLevel, newLevel, offset in
+            self?.log(.debug, "Improved identity security level: from \(oldLevel) to \(newLevel) (\(offset))")
+        }
+        // Save: 32 bytes private key + 4 bytes keyOffset (big-endian)
+        var saveData = Data(identity.privateKeyBytes)
+        var offset = UInt32(identity.keyOffset).bigEndian
+        saveData.append(Data(bytes: &offset, count: 4))
+        try saveData.write(to: fileURL, options: .atomic)
         return identity
     }
 }
@@ -934,11 +954,20 @@ private extension TS3Client {
 }
 
 // MARK: - Supporting Types
-private enum TS3ConnectionState {
+private enum TS3ConnectionState: CustomStringConvertible {
     case disconnected
     case connecting
     case retrieving
     case connected
+
+    var description: String {
+        switch self {
+        case .disconnected: return "DISCONNECTED"
+        case .connecting: return "CONNECTING"
+        case .retrieving: return "RETRIEVING_DATA"
+        case .connected: return "CONNECTED"
+        }
+    }
 }
 
 private struct PendingCommand {

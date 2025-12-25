@@ -55,6 +55,7 @@ public enum TS3Error: Error {
 }
 
 public enum TS3LogLevel: String {
+    case debug
     case info
     case warning
     case error
