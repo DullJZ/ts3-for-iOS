@@ -77,9 +77,15 @@ struct ConnectView: View {
             }
 
             Section {
-                Button("Connect") {
+                Button(action: {
                     model.connect()
+                }) {
+                    Text("Connect")
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(model.serverHost.isEmpty || model.nickname.isEmpty ? .gray : .accentColor)
                 }
+                .buttonStyle(.borderless)
+                .contentShape(Rectangle())
                 .disabled(model.serverHost.isEmpty || model.nickname.isEmpty)
             }
         }

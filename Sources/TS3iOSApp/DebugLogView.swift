@@ -53,6 +53,8 @@ struct DebugLogView: View {
             return .orange
         case .error:
             return .red
+        case .debug:
+            return .blue
         }
     }
 
