@@ -4,7 +4,8 @@ import PackageDescription
 let package = Package(
     name: "TS3iOS",
     platforms: [
-        .iOS(.v14)
+        .iOS(.v14),
+        .macOS(.v10_15)
     ],
     products: [
         .library(name: "TS3Kit", targets: ["TS3Kit"]),
@@ -31,6 +32,11 @@ let package = Package(
             name: "TS3iOSApp",
             dependencies: ["TS3Kit"],
             path: "Sources/TS3iOSApp"
+        ),
+        .executableTarget(
+            name: "TS3CLI",
+            dependencies: ["TS3Kit"],
+            path: "Sources/TS3CLI"
         )
     ]
 )
