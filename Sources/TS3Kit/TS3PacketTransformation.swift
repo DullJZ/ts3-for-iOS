@@ -59,14 +59,6 @@ class TS3PacketTransformation {
         let mac = [UInt8](buffer.prefix(8))
         let ciphertext = [UInt8](buffer.dropFirst(header.size))
 
-        // Debug logging
-        print("[DECRYPT DEBUG] packetId=\(header.packetId) type=\(header.type) generation=\(header.generation)")
-        print("[DECRYPT DEBUG] key=\(params.key.map { String(format: "%02X", $0) }.joined())")
-        print("[DECRYPT DEBUG] nonce=\(params.nonce.map { String(format: "%02X", $0) }.joined())")
-        print("[DECRYPT DEBUG] mac=\(mac.map { String(format: "%02X", $0) }.joined())")
-        print("[DECRYPT DEBUG] headerWithoutMac=\(headerWithoutMac.map { String(format: "%02X", $0) }.joined())")
-        print("[DECRYPT DEBUG] ciphertext.len=\(ciphertext.count)")
-
         let plaintext = try TS3EAX.decrypt(
             key: params.key,
             nonce: params.nonce,

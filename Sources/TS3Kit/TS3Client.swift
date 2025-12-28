@@ -506,10 +506,13 @@ private extension TS3Client {
 
             let alpha = alphaBytes ?? []
             let params = try TS3Crypto.cryptoInit2(license: licenseBytes, alpha: alpha, beta: betaBytes, privateKey: ekPrivate)
-            transformation = TS3PacketTransformation(ivStruct: params.ivStruct, fakeMac: params.fakeMac)
             self.alphaBytes = nil
 
             try sendClientInit()
+            
+            // Switch to new transformation AFTER sending clientinit
+            // TODO: Maybe we should wait for server's response before switching?
+            // transformation = TS3PacketTransformation(ivStruct: params.ivStruct, fakeMac: params.fakeMac)
             state = .retrieving
             log(.info, "clientinit sent")
         } else if command.name == "error" {
@@ -613,18 +616,23 @@ private extension TS3Client {
 
     func handlePacket(_ packet: TS3Packet) {
         if let ackType = packet.header.type.acknowledgedBy {
-            switch ackType {
-            case .ack:
-                let ack = TS3PacketBodyAck(role: .client, packetId: packet.header.packetId)
-                try? sendPacket(body: ack)
-            case .ackLow:
-                let ack = TS3PacketBodyAckLow(role: .client, packetId: packet.header.packetId)
-                try? sendPacket(body: ack)
-            case .pong:
-                let pong = TS3PacketBodyPong(role: .client, packetId: packet.header.packetId)
-                try? sendPacket(body: pong)
-            default:
-                break
+            log(.debug, "[ACK] Sending ACK for packet id=\(packet.header.packetId) gen=\(packet.header.generation) type=\(packet.header.type)")
+            do {
+                switch ackType {
+                case .ack:
+                    let ack = TS3PacketBodyAck(role: .client, packetId: packet.header.packetId)
+                    try sendPacket(body: ack, generation: packet.header.generation)
+                case .ackLow:
+                    let ack = TS3PacketBodyAckLow(role: .client, packetId: packet.header.packetId)
+                    try sendPacket(body: ack, generation: packet.header.generation)
+                case .pong:
+                    let pong = TS3PacketBodyPong(role: .client, packetId: packet.header.packetId)
+                    try sendPacket(body: pong, generation: packet.header.generation)
+                default:
+                    break
+                }
+            } catch {
+                log(.error, "[ACK] Failed to send ACK: \(error)")
             }
         }
 
@@ -817,6 +825,25 @@ private extension TS3Client {
         let packet = TS3Packet(header: header, body: body)
         try sendPacket(packet)
     }
+    
+    func sendPacket(body: any TS3PacketBody, generation: Int) throws {
+        var header = TS3PacketHeader(role: .client, type: body.type)
+        header.clientId = clientId
+        header.generation = generation  // Use provided generation
+        body.applyHeaderFlags(to: &header)
+
+        switch body.type {
+        case .init1, .ping, .pong:
+            header.flags.insert(.unencrypted)
+        case .command, .commandLow:
+            header.flags.insert(.newProtocol)
+        default:
+            break
+        }
+
+        let packet = TS3Packet(header: header, body: body)
+        try sendPacket(packet)
+    }
 
     func sendPacket(_ packet: TS3Packet) throws {
         if packet.header.type.isSplittable {
@@ -842,21 +869,18 @@ private extension TS3Client {
         case .ack:
             if let ack = packet.body as? TS3PacketBodyAck, let remote = remoteCounters[.ack] {
                 header.generation = remote.generation(for: ack.packetId)
+                header.packetId = ack.packetId  // Use the acknowledged packet's ID
             }
-            let next = counter.next()
-            header.packetId = next.0
         case .ackLow:
             if let ack = packet.body as? TS3PacketBodyAckLow, let remote = remoteCounters[.ackLow] {
                 header.generation = remote.generation(for: ack.packetId)
+                header.packetId = ack.packetId  // Use the acknowledged packet's ID
             }
-            let next = counter.next()
-            header.packetId = next.0
         case .pong:
             if let pong = packet.body as? TS3PacketBodyPong, let remote = remoteCounters[.pong] {
                 header.generation = remote.generation(for: pong.packetId)
+                header.packetId = pong.packetId  // Use the acknowledged packet's ID
             }
-            let next = counter.next()
-            header.packetId = next.0
         case .init1:
             let next = counter.next()
             header.packetId = 101
@@ -875,9 +899,10 @@ private extension TS3Client {
 
         let outgoing = TS3Packet(header: header, body: body)
         let typeName = String(describing: header.type).uppercased()
+        let transformType = String(describing: type(of: transformation))
         let data: Data
         if !header.flags.contains(.unencrypted) {
-            log(.debug, "[PROTOCOL] ENCRYPT \(typeName) generation=\(header.generation)")
+            log(.debug, "[PROTOCOL] ENCRYPT \(typeName) generation=\(header.generation) using=\(transformType)")
             data = try transformation.encrypt(packet: outgoing)
         } else {
             if header.type == .init1 {

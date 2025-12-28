@@ -19,13 +19,6 @@ enum TS3EAX {
         let messageTag = try omac(key: key, prefix: 0x02, data: ciphertext)
         let tagFull = xor3(nonceTag, headerTag, messageTag)
         
-        // Debug output
-        print("[EAX DEBUG] nonceTag=\(nonceTag.map { String(format: "%02X", $0) }.joined())")
-        print("[EAX DEBUG] headerTag=\(headerTag.map { String(format: "%02X", $0) }.joined())")
-        print("[EAX DEBUG] messageTag=\(messageTag.map { String(format: "%02X", $0) }.joined())")
-        print("[EAX DEBUG] computedTag=\(tagFull.prefix(8).map { String(format: "%02X", $0) }.joined())")
-        print("[EAX DEBUG] expectedTag=\(tag.map { String(format: "%02X", $0) }.joined())")
-        
         guard tagFull.prefix(tag.count).elementsEqual(tag) else {
             throw TS3Error.invalidMac
         }
