@@ -163,6 +163,7 @@ public final class TS3Client {
         let command = TS3SingleCommand(name: "clientmove", parameters: params)
         _ = try await execute(command)
         currentChannelId = channelId
+        publishChannels()
     }
 
     public func createChannel(name: String, password: String?) async throws -> Int {
@@ -827,10 +828,7 @@ private extension TS3Client {
             connectContinuation?.resume()
             connectContinuation = nil
             log(.info, "channel list completed")
-            let channels = channelCache.values.sorted { $0.id < $1.id }
-            DispatchQueue.main.async {
-                self.delegate?.ts3Client(self, didUpdateChannels: channels)
-            }
+            publishChannels()
             DispatchQueue.main.async {
                 self.delegate?.ts3ClientDidConnect(self)
             }
@@ -843,6 +841,7 @@ private extension TS3Client {
                let cidValue = command.get("cid")?.value,
                let cid = Int(cidValue) {
                 currentChannelId = cid
+                publishChannels()
             }
             return
         }
@@ -1070,6 +1069,13 @@ private extension TS3Client {
 }
 
 private extension TS3Client {
+    func publishChannels() {
+        let channels = channelCache.values.sorted { $0.id < $1.id }
+        DispatchQueue.main.async {
+            self.delegate?.ts3Client(self, didUpdateChannels: channels)
+        }
+    }
+
     func sendAcknowledgementIfNeeded(for packet: TS3Packet) {
         guard let ackType = packet.header.type.acknowledgedBy else {
             return
