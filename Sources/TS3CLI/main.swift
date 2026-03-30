@@ -6,9 +6,13 @@ var keepRunning = true
 
 // Simple logger implementation
 struct CLILogger {
-    static let logHandler: (TS3LogEntry) -> Void = { entry in
+    private static let formatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter
+    }()
+
+    static let logHandler: (TS3LogEntry) -> Void = { entry in
         let time = formatter.string(from: entry.timestamp)
         let level = String(describing: entry.level).uppercased()
         
