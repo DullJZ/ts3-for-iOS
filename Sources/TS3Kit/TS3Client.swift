@@ -54,6 +54,7 @@ public final class TS3Client {
 
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var channelCache: [Int: TS3Channel] = [:]
+    private var clientCache: [UInt16: TS3ServerClient] = [:]
     private var defaultChannelId: Int?
     private var audioEngine: TS3AudioEngine?
     private var isSendingAudio = false
@@ -80,6 +81,7 @@ public final class TS3Client {
         clientId = 0
         serverId = nil
         currentChannelId = nil
+        clientCache.removeAll()
         defaultChannelId = nil
         nextCommandCode = 1
 
@@ -165,6 +167,8 @@ public final class TS3Client {
         let command = TS3SingleCommand(name: "clientmove", parameters: params)
         _ = try await execute(command)
         currentChannelId = channelId
+        updateClientChannel(clientId: Int(clientId), channelId: channelId)
+        publishClients()
         publishChannels()
     }
 
@@ -338,6 +342,7 @@ private extension TS3Client {
         pingQueue.removeAll()
         pendingCommands.removeAll()
         channelCache.removeAll()
+        clientCache.removeAll()
         defaultChannelId = nil
         transformation = initTransformation
         allowInitFallbackDecrypt = true
@@ -848,11 +853,46 @@ private extension TS3Client {
             return
         }
 
-        if command.name == "notifycliententerview" || command.name == "notifyclientmoved" {
+        if command.name == "notifycliententerview" {
+            if let serverClient = clientFromEnterViewCommand(command) {
+                clientCache[UInt16(serverClient.id)] = serverClient
+                publishClients()
+            }
             if let cid = ownClientChannelId(from: command) {
                 currentChannelId = cid
                 log(.debug, "[CHANNEL] current channel updated from \(command.name) cid=\(cid)")
                 publishChannels()
+            }
+            return
+        }
+
+        if command.name == "notifyclientmoved" {
+            if let clidValue = command.get("clid")?.value,
+               let clid = Int(clidValue),
+               let cid = targetChannelId(from: command) {
+                updateClientChannel(clientId: clid, channelId: cid)
+                publishClients()
+            }
+            if let cid = ownClientChannelId(from: command) {
+                currentChannelId = cid
+                log(.debug, "[CHANNEL] current channel updated from \(command.name) cid=\(cid)")
+                publishChannels()
+            }
+            return
+        }
+
+        if command.name == "notifyclientleftview" {
+            if let clidValue = command.get("clid")?.value,
+               let clid = UInt16(clidValue) {
+                clientCache.removeValue(forKey: clid)
+                publishClients()
+            }
+            return
+        }
+
+        if command.name == "notifyclientupdated" {
+            if mergeClientUpdate(from: command) != nil {
+                publishClients()
             }
             return
         }
@@ -1080,12 +1120,40 @@ private extension TS3Client {
 }
 
 private extension TS3Client {
-    func ownClientChannelId(from command: TS3SingleCommand) -> Int? {
-        guard let clid = command.get("clid")?.value,
-              UInt16(clid) == clientId else {
+    func clientFromEnterViewCommand(_ command: TS3SingleCommand) -> TS3ServerClient? {
+        guard let clidValue = command.get("clid")?.value,
+              let clid = Int(clidValue),
+              let channelId = targetChannelId(from: command) else {
             return nil
         }
 
+        let nickname = command.get("client_nickname")?.value ?? "Client \(clid)"
+        return TS3ServerClient(
+            id: clid,
+            channelId: channelId,
+            nickname: nickname,
+            isCurrentUser: UInt16(clid) == clientId
+        )
+    }
+
+    func mergeClientUpdate(from command: TS3SingleCommand) -> TS3ServerClient? {
+        guard let clidValue = command.get("clid")?.value,
+              let clid = UInt16(clidValue),
+              var existing = clientCache[clid] else {
+            return nil
+        }
+
+        existing = TS3ServerClient(
+            id: existing.id,
+            channelId: targetChannelId(from: command) ?? existing.channelId,
+            nickname: command.get("client_nickname")?.value ?? existing.nickname,
+            isCurrentUser: existing.isCurrentUser
+        )
+        clientCache[clid] = existing
+        return existing
+    }
+
+    func targetChannelId(from command: TS3SingleCommand) -> Int? {
         if let ctidValue = command.get("ctid")?.value,
            let ctid = Int(ctidValue) {
             return ctid
@@ -1097,6 +1165,45 @@ private extension TS3Client {
         }
 
         return nil
+    }
+
+    func ownClientChannelId(from command: TS3SingleCommand) -> Int? {
+        guard let clid = command.get("clid")?.value,
+              UInt16(clid) == clientId else {
+            return nil
+        }
+
+        return targetChannelId(from: command)
+    }
+
+    func updateClientChannel(clientId: Int, channelId: Int) {
+        let key = UInt16(clientId)
+        if let existing = clientCache[key] {
+            clientCache[key] = TS3ServerClient(
+                id: existing.id,
+                channelId: channelId,
+                nickname: existing.nickname,
+                isCurrentUser: existing.isCurrentUser
+            )
+        } else {
+            clientCache[key] = TS3ServerClient(
+                id: clientId,
+                channelId: channelId,
+                nickname: clientId == Int(self.clientId) ? config.nickname : "Client \(clientId)",
+                isCurrentUser: clientId == Int(self.clientId)
+            )
+        }
+    }
+
+    func publishClients() {
+        let clients = clientCache.values.sorted {
+            if $0.channelId != $1.channelId { return $0.channelId < $1.channelId }
+            if $0.isCurrentUser != $1.isCurrentUser { return $0.isCurrentUser && !$1.isCurrentUser }
+            return $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending
+        }
+        DispatchQueue.main.async {
+            self.delegate?.ts3Client(self, didUpdateClients: clients)
+        }
     }
 
     func publishChannels() {

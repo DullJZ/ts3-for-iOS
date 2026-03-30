@@ -14,10 +14,18 @@ struct TS3ChannelSummary: Identifiable {
     var isCurrent: Bool
 }
 
+struct TS3UserSummary: Identifiable {
+    let id: Int
+    let channelId: Int
+    let nickname: String
+    let isCurrentUser: Bool
+}
+
 @MainActor
 final class TS3AppModel: ObservableObject {
     @Published var state: UIConnectionState = .disconnected
     @Published var channels: [TS3ChannelSummary] = []
+    @Published var clients: [TS3UserSummary] = []
     @Published var isTalking = false
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
@@ -47,6 +55,15 @@ final class TS3AppModel: ObservableObject {
 
     var currentChannel: TS3ChannelSummary? {
         channels.first { $0.isCurrent }
+    }
+
+    func members(in channelId: Int) -> [TS3UserSummary] {
+        clients
+            .filter { $0.channelId == channelId }
+            .sorted {
+                if $0.isCurrentUser != $1.isCurrentUser { return $0.isCurrentUser && !$1.isCurrentUser }
+                return $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending
+            }
     }
 
     private func setCurrentChannel(id: Int, name: String? = nil, topic: String? = nil) {
@@ -107,6 +124,7 @@ final class TS3AppModel: ObservableObject {
         client = nil
         state = .disconnected
         channels = []
+        clients = []
         isTalking = false
     }
 
@@ -179,6 +197,17 @@ extension TS3AppModel: TS3ClientDelegate {
                 name: channel.name,
                 topic: channel.topic,
                 isCurrent: channel.id == client.currentChannelId
+            )
+        }
+    }
+
+    func ts3Client(_ client: TS3Client, didUpdateClients clients: [TS3ServerClient]) {
+        self.clients = clients.map { client in
+            TS3UserSummary(
+                id: client.id,
+                channelId: client.channelId,
+                nickname: client.nickname,
+                isCurrentUser: client.isCurrentUser
             )
         }
     }

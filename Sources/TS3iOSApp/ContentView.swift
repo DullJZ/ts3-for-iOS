@@ -118,7 +118,7 @@ struct ChannelListView: View {
             List {
                 Section(header: Text("Channels")) {
                     ForEach(model.channels) { channel in
-                        ChannelRow(channel: channel)
+                        ChannelRow(channel: channel, members: model.members(in: channel.id))
                             .listRowBackground(channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
                     }
                 }
@@ -191,41 +191,85 @@ struct CurrentChannelCard: View {
 struct ChannelRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
+    let members: [TS3UserSummary]
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(channel.name)
-                        .fontWeight(channel.isCurrent ? .semibold : .regular)
-                    if channel.isCurrent {
-                        Text("Current")
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.accentColor)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.accentColor.opacity(0.12))
-                            .clipShape(Capsule())
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(channel.name)
+                            .fontWeight(channel.isCurrent ? .semibold : .regular)
+                        if channel.isCurrent {
+                            Text("Current")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.accentColor)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.accentColor.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        Text("\(members.count) user\(members.count == 1 ? "" : "s")")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if let topic = channel.topic, !topic.isEmpty {
+                        Text(topic)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
                     }
                 }
-                if let topic = channel.topic, !topic.isEmpty {
-                    Text(topic)
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
+                Spacer()
+                if channel.isCurrent {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.accentColor)
+                } else {
+                    Button("Join") {
+                        model.joinChannel(channel)
+                    }
+                    .buttonStyle(TS3BorderedButtonStyle())
                 }
             }
-            Spacer()
-            if channel.isCurrent {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.accentColor)
+
+            if members.isEmpty {
+                Text("No users in this channel")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             } else {
-                Button("Join") {
-                    model.joinChannel(channel)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(members) { member in
+                        ChannelMemberRow(member: member)
+                    }
                 }
-                .buttonStyle(TS3BorderedButtonStyle())
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct ChannelMemberRow: View {
+    let member: TS3UserSummary
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: member.isCurrentUser ? "person.crop.circle.fill" : "person.fill")
+                .foregroundColor(member.isCurrentUser ? .accentColor : .secondary)
+            Text(member.nickname)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+            if member.isCurrentUser {
+                Text("You")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.accentColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+            Spacer()
+        }
     }
 }
 
