@@ -22,6 +22,10 @@ enum TS3Crypto {
         Array(Insecure.SHA1.hash(data: Data(data)))
     }
 
+    static func hashPassword(_ password: String) -> String {
+        Data(hash128(Array(password.utf8))).base64EncodedString()
+    }
+
     static func hash256(_ data: [UInt8]) -> [UInt8] {
         Array(SHA256.hash(data: Data(data)))
     }
