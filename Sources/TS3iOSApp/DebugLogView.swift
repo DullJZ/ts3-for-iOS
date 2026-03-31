@@ -26,17 +26,17 @@ struct DebugLogView: View {
             }
             .navigationTitle("调试日志")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("关闭") {
                         model.isShowingDebug = false
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("复制全部") {
                         copyAllLogs()
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("清空") {
                         model.clearLogs()
                     }
@@ -62,6 +62,6 @@ struct DebugLogView: View {
         let text = model.logs.map { entry in
             "\(timeFormatter.string(from: entry.timestamp)) [\(entry.level.rawValue)] \(entry.message)"
         }.joined(separator: "\n")
-        UIPasteboard.general.string = text
+        TS3PlatformSupport.copyToPasteboard(text)
     }
 }

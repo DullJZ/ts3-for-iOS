@@ -38,7 +38,7 @@ final class TS3AppModel: ObservableObject {
     @Published var serverHost = ""
     @Published var serverPort = "9987"
     @Published var serverPassword = ""
-    @Published var nickname = "iOS" 
+    @Published var nickname = TS3PlatformSupport.defaultNickname
 
     private var client: TS3Client?
 
@@ -226,6 +226,21 @@ final class TS3AppModel: ObservableObject {
         @unknown default:
             return false
         }
+        #elseif os(macOS)
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return true
+        case .denied, .restricted:
+            return false
+        case .notDetermined:
+            return await withCheckedContinuation { continuation in
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        @unknown default:
+            return false
+        }
         #else
         return true
         #endif
@@ -243,39 +258,46 @@ final class TS3AppModel: ObservableObject {
     }
 }
 
-@MainActor
 extension TS3AppModel: TS3ClientDelegate {
-    func ts3ClientDidConnect(_ client: TS3Client) {
-        state = .connected
-    }
-
-    func ts3Client(_ client: TS3Client, didDisconnectWith error: Error?) {
-        if let error {
-            lastError = error.localizedDescription
-        }
-        isTalking = false
-        state = .disconnected
-    }
-
-    func ts3Client(_ client: TS3Client, didUpdateChannels channels: [TS3Channel]) {
-        self.channels = channels.map { channel in
-            TS3ChannelSummary(
-                id: channel.id,
-                name: channel.name,
-                topic: channel.topic,
-                isCurrent: channel.id == client.currentChannelId
-            )
+    nonisolated func ts3ClientDidConnect(_ client: TS3Client) {
+        Task { @MainActor in
+            self.state = .connected
         }
     }
 
-    func ts3Client(_ client: TS3Client, didUpdateClients clients: [TS3ServerClient]) {
-        self.clients = clients.map { client in
-            TS3UserSummary(
-                id: client.id,
-                channelId: client.channelId,
-                nickname: client.nickname,
-                isCurrentUser: client.isCurrentUser
-            )
+    nonisolated func ts3Client(_ client: TS3Client, didDisconnectWith error: Error?) {
+        Task { @MainActor in
+            if let error {
+                self.lastError = error.localizedDescription
+            }
+            self.isTalking = false
+            self.state = .disconnected
+        }
+    }
+
+    nonisolated func ts3Client(_ client: TS3Client, didUpdateChannels channels: [TS3Channel]) {
+        Task { @MainActor in
+            self.channels = channels.map { channel in
+                TS3ChannelSummary(
+                    id: channel.id,
+                    name: channel.name,
+                    topic: channel.topic,
+                    isCurrent: channel.id == client.currentChannelId
+                )
+            }
+        }
+    }
+
+    nonisolated func ts3Client(_ client: TS3Client, didUpdateClients clients: [TS3ServerClient]) {
+        Task { @MainActor in
+            self.clients = clients.map { client in
+                TS3UserSummary(
+                    id: client.id,
+                    channelId: client.channelId,
+                    nickname: client.nickname,
+                    isCurrentUser: client.isCurrentUser
+                )
+            }
         }
     }
 }
