@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		038FDA793A9CCAE9467E2291 /* TS3iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29CF3DB7F420C07AD05C0EFE /* TS3iOSApp.swift */; };
+		196E2D8A7E04C945AD5E87D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C6B8B0A46D377E409D526844 /* Assets.xcassets */; };
 		33B040A01282760B040FEBA6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64086B313104EDF5F066D05B /* ContentView.swift */; };
 		87F5E0F52FAB0B8DE59502F4 /* TS3AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 899BA39C842C303A1444437B /* TS3AppModel.swift */; };
 		95AF7E7AF85AC3B101069AB3 /* TS3Kit in Frameworks */ = {isa = PBXBuildFile; productRef = 1F08198664E7959A6E468809 /* TS3Kit */; };
@@ -20,6 +21,7 @@
 		64086B313104EDF5F066D05B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6C340D6D1A97AA53E67178B0 /* DebugLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogView.swift; sourceTree = "<group>"; };
 		899BA39C842C303A1444437B /* TS3AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TS3AppModel.swift; sourceTree = "<group>"; };
+		C6B8B0A46D377E409D526844 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = TS3iOSApp/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		EAF2AADD4ECEA00BBAAE4B74 /* TS3iOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TS3iOSApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -55,6 +57,7 @@
 		ACEF159F6476B3AB8EAE2A77 /* TS3iOSApp */ = {
 			isa = PBXGroup;
 			children = (
+				C6B8B0A46D377E409D526844 /* Assets.xcassets */,
 				64086B313104EDF5F066D05B /* ContentView.swift */,
 				6C340D6D1A97AA53E67178B0 /* DebugLogView.swift */,
 				899BA39C842C303A1444437B /* TS3AppModel.swift */,
@@ -79,6 +82,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6D22CCFE15676FE282885F61 /* Build configuration list for PBXNativeTarget "TS3iOSApp" */;
 			buildPhases = (
+				401214AA4F38ED5B3283F540 /* Resources */,
 				DCED5269094BEA5E842E5B0E /* Sources */,
 				43DEA625E77D75C013DC8258 /* Frameworks */,
 			);
@@ -123,6 +127,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		401214AA4F38ED5B3283F540 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				196E2D8A7E04C945AD5E87D6 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		DCED5269094BEA5E842E5B0E /* Sources */ = {
