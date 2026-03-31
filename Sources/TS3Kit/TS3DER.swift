@@ -84,11 +84,15 @@ enum TS3DER {
     }
 
     static func encodeInteger(_ bytes: [UInt8]) -> [UInt8] {
-        var content = bytes
-        if let first = content.first, first & 0x80 != 0 {
-            content.insert(0x00, at: 0)
+        var content = bytes.drop { $0 == 0x00 }
+        if content.isEmpty {
+            content = [0x00][...]
         }
-        return [Tag.integer.rawValue] + encodeLength(content.count) + content
+        var encoded = Array(content)
+        if let first = encoded.first, first & 0x80 != 0 {
+            encoded.insert(0x00, at: 0)
+        }
+        return [Tag.integer.rawValue] + encodeLength(encoded.count) + encoded
     }
 
     static func encodeBitString(unusedBits: UInt8, bytes: [UInt8]) -> [UInt8] {
