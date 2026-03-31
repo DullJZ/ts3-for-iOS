@@ -105,6 +105,9 @@ public final class TS3Client {
                         self?.handleEncodedAudioPacket(data)
                     }
                 }
+                engine.onLog = { [weak self] level, message in
+                    self?.log(level, "[AUDIO] \(message)")
+                }
                 audioEngine = engine
             } catch {
                 log(.warning, "audio engine unavailable: \(error.localizedDescription)")
