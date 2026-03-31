@@ -85,6 +85,7 @@ final class TS3AudioEngine {
     func startCapture() throws {
         guard !isCaptureRunning else { return }
         let shouldResumePlayback = !playbackStates.isEmpty
+        log(.debug, "starting capture; existing playback sources=\(playbackStates.count)")
         if engine.isRunning {
             engine.stop()
         }
@@ -95,7 +96,9 @@ final class TS3AudioEngine {
             try startEngineIfNeeded()
             isPlaybackRunning = true
             isCaptureRunning = true
+            log(.info, "capture started")
         } catch {
+            log(.warning, "capture start failed: \(error.localizedDescription)")
             engine.inputNode.removeTap(onBus: 0)
             converter = nil
             captureBuffer.removeAll()
@@ -167,12 +170,16 @@ final class TS3AudioEngine {
     }
 
     private func configureSession(needsInput: Bool) throws {
-        #if os(iOS)
+        #if targetEnvironment(macCatalyst)
+        _ = needsInput
+        #elseif os(iOS)
         let session = AVAudioSession.sharedInstance()
         let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .defaultToSpeaker]
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: options)
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
+        #else
+        _ = needsInput
         #endif
     }
 
@@ -181,15 +188,19 @@ final class TS3AudioEngine {
         guard let outputFormat else { return }
         let inputNode = engine.inputNode
         let inputFormat = inputNode.inputFormat(forBus: 0)
+        log(.debug, "input format sampleRate=\(inputFormat.sampleRate) channels=\(inputFormat.channelCount)")
         if inputFormat.sampleRate != config.sampleRate || inputFormat.channelCount != config.channels {
             converter = AVAudioConverter(from: inputFormat, to: outputFormat)
+            log(.debug, "input converter enabled to sampleRate=\(config.sampleRate) channels=\(config.channels)")
         } else {
             converter = nil
+            log(.debug, "input converter not needed")
         }
 
         inputNode.installTap(onBus: 0, bufferSize: config.frameSize, format: inputFormat) { [weak self] buffer, _ in
             self?.processInput(buffer: buffer, inputFormat: inputFormat, targetFormat: outputFormat)
         }
+        log(.debug, "input tap installed")
     }
 
     private func processInput(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat, targetFormat: AVAudioFormat) {
@@ -303,6 +314,7 @@ final class TS3AudioEngine {
         engine.prepare()
         if !engine.isRunning {
             try engine.start()
+            log(.debug, "audio engine started")
         }
     }
 

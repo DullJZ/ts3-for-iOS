@@ -283,6 +283,12 @@ struct TalkControlBar: View {
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
             }
+            if let error = model.lastError {
+                Text(error)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.footnote)
+                    .foregroundColor(.red)
+            }
             Button(action: {
                 model.toggleTalking()
             }) {
