@@ -65,7 +65,7 @@ final class TS3AudioEngine {
     }
 
     private struct PlaybackState {
-        let playerNode: AVAudioPlayerNode
+        var playerNode: AVAudioPlayerNode
         var decoder: TS3OpusDecoder
         var sessionMarker: UInt8?
     }
@@ -81,22 +81,52 @@ final class TS3AudioEngine {
     }
 
     func startCapture() throws {
-        try configureSession(needsInput: true)
-        installInputTapIfNeeded()
-        engine.prepare()
-        if !engine.isRunning {
-            try engine.start()
+        guard !isCaptureRunning else { return }
+        let shouldResumePlayback = !playbackStates.isEmpty
+        if engine.isRunning {
+            engine.stop()
         }
-        isPlaybackRunning = true
-        isCaptureRunning = true
+        do {
+            try configureSession(needsInput: true)
+            installInputTapIfNeeded()
+            rebuildPlaybackGraph()
+            try startEngineIfNeeded()
+            isPlaybackRunning = true
+            isCaptureRunning = true
+        } catch {
+            engine.inputNode.removeTap(onBus: 0)
+            converter = nil
+            captureBuffer.removeAll()
+            isCaptureRunning = false
+            if shouldResumePlayback {
+                try? configureSession(needsInput: false)
+                rebuildPlaybackGraph()
+                try? startEngineIfNeeded()
+                isPlaybackRunning = engine.isRunning
+            } else {
+                isPlaybackRunning = false
+            }
+            throw error
+        }
     }
 
     func stopCapture() {
         guard isCaptureRunning else { return }
+        let shouldResumePlayback = !playbackStates.isEmpty
+        if engine.isRunning {
+            engine.stop()
+        }
         engine.inputNode.removeTap(onBus: 0)
         converter = nil
         captureBuffer.removeAll()
         isCaptureRunning = false
+        if shouldResumePlayback {
+            try? configureSession(needsInput: false)
+            rebuildPlaybackGraph()
+            try? startEngineIfNeeded()
+            isPlaybackRunning = engine.isRunning
+            return
+        }
         stopEngineIfIdle()
     }
 
@@ -104,9 +134,7 @@ final class TS3AudioEngine {
         stopCapture()
         guard isPlaybackRunning || engine.isRunning else { return }
         for state in playbackStates.values {
-            state.playerNode.stop()
-            state.playerNode.reset()
-            engine.detach(state.playerNode)
+            detachPlayerNodeIfNeeded(state.playerNode)
         }
         playbackStates.removeAll()
         engine.stop()
@@ -197,6 +225,10 @@ final class TS3AudioEngine {
     }
 
     private func playbackState(for source: PlaybackSource, sessionMarker: UInt8?) throws -> PlaybackState {
+        guard let outputFormat else {
+            throw TS3Error.notImplemented
+        }
+
         if var state = playbackStates[source] {
             if shouldResetDecoder(current: state.sessionMarker, incoming: sessionMarker) {
                 state.decoder = try makeDecoder()
@@ -204,29 +236,23 @@ final class TS3AudioEngine {
             if let sessionMarker {
                 state.sessionMarker = sessionMarker
             }
-            if !state.playerNode.isPlaying {
-                state.playerNode.play()
+            if !isPlayerNodeConnected(state.playerNode) {
+                try updatePlaybackGraph {
+                    detachPlayerNodeIfNeeded(state.playerNode)
+                    state.playerNode = makePlayerNode(format: outputFormat)
+                }
             }
             return state
-        }
-
-        guard let outputFormat else {
-            throw TS3Error.notImplemented
         }
 
         if !isPlaybackRunning {
             try preparePlayback()
         }
 
-        let playerNode = AVAudioPlayerNode()
-        engine.attach(playerNode)
-        engine.connect(playerNode, to: engine.mainMixerNode, format: outputFormat)
-        if !engine.isRunning {
-            engine.prepare()
-            try engine.start()
+        let playerNode = try updatePlaybackGraph {
+            makePlayerNode(format: outputFormat)
         }
         isPlaybackRunning = true
-        playerNode.play()
 
         return PlaybackState(
             playerNode: playerNode,
@@ -237,9 +263,7 @@ final class TS3AudioEngine {
 
     private func endPlayback(for source: PlaybackSource) {
         guard let state = playbackStates.removeValue(forKey: source) else { return }
-        state.playerNode.stop()
-        state.playerNode.reset()
-        engine.detach(state.playerNode)
+        detachPlayerNodeIfNeeded(state.playerNode)
         stopEngineIfIdle()
     }
 
@@ -255,6 +279,57 @@ final class TS3AudioEngine {
     private func shouldResetDecoder(current: UInt8?, incoming: UInt8?) -> Bool {
         guard let current, let incoming else { return false }
         return current != incoming
+    }
+
+    private func rebuildPlaybackGraph() {
+        guard let outputFormat else { return }
+        var rebuiltStates: [PlaybackSource: PlaybackState] = [:]
+        rebuiltStates.reserveCapacity(playbackStates.count)
+
+        for (source, var state) in playbackStates {
+            detachPlayerNodeIfNeeded(state.playerNode)
+            state.playerNode = makePlayerNode(format: outputFormat)
+            rebuiltStates[source] = state
+        }
+
+        playbackStates = rebuiltStates
+    }
+
+    private func startEngineIfNeeded() throws {
+        engine.prepare()
+        if !engine.isRunning {
+            try engine.start()
+        }
+    }
+
+    private func updatePlaybackGraph<T>(_ change: () throws -> T) throws -> T {
+        if engine.isRunning {
+            engine.stop()
+        }
+        let result = try change()
+        try startEngineIfNeeded()
+        return result
+    }
+
+    private func makePlayerNode(format: AVAudioFormat) -> AVAudioPlayerNode {
+        let playerNode = AVAudioPlayerNode()
+        engine.attach(playerNode)
+        engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+        return playerNode
+    }
+
+    private func isPlayerNodeConnected(_ playerNode: AVAudioPlayerNode) -> Bool {
+        let attached = engine.attachedNodes.contains { $0 === playerNode }
+        guard attached else { return false }
+        return !engine.outputConnectionPoints(for: playerNode, outputBus: 0).isEmpty
+    }
+
+    private func detachPlayerNodeIfNeeded(_ playerNode: AVAudioPlayerNode) {
+        playerNode.stop()
+        playerNode.reset()
+        if engine.attachedNodes.contains(where: { $0 === playerNode }) {
+            engine.detach(playerNode)
+        }
     }
 
     private func makeDecoder() throws -> TS3OpusDecoder {
@@ -273,10 +348,12 @@ final class TS3AudioEngine {
                 channel[i] = samples[i]
             }
         }
+        guard engine.isRunning else { return }
+        guard isPlayerNodeConnected(playerNode) else { return }
+        playerNode.scheduleBuffer(buffer, completionHandler: nil)
         if !playerNode.isPlaying {
             playerNode.play()
         }
-        playerNode.scheduleBuffer(buffer, completionHandler: nil)
     }
 }
 
