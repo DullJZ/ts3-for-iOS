@@ -48,6 +48,7 @@ final class TS3AudioEngine {
 
     private let encoder: TS3OpusEncoder
     private var playbackStates: [PlaybackSource: PlaybackState] = [:]
+    private var playbackVolume: Float = 1.0
 
     var onEncodedPacket: ((Data) -> Void)?
     var onLog: ((TS3LogLevel, String) -> Void)?
@@ -141,6 +142,10 @@ final class TS3AudioEngine {
         engine.stop()
         captureBuffer.removeAll()
         isPlaybackRunning = false
+    }
+
+    func setPlaybackVolume(_ volume: Float) {
+        playbackVolume = min(max(volume, 0), 4)
     }
 
     func handleIncoming(packet: Data, from clientId: UInt16, isWhisper: Bool, sessionMarker: UInt8?) {
@@ -348,7 +353,8 @@ final class TS3AudioEngine {
         if let channelData = buffer.floatChannelData {
             let channel = channelData[0]
             for i in 0..<samples.count {
-                channel[i] = samples[i]
+                let scaled = samples[i] * playbackVolume
+                channel[i] = min(max(scaled, -1), 1)
             }
         }
         guard engine.isRunning else { return }

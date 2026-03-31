@@ -275,12 +275,22 @@ struct ChannelMemberRow: View {
 
 struct TalkControlBar: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isShowingPlaybackVolume = false
 
     var body: some View {
         VStack(spacing: 8) {
-            Text(model.talkStatus)
-                .font(.footnote)
-                .foregroundColor(.secondary)
+            HStack(spacing: 12) {
+                Text(model.talkStatus)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button {
+                    isShowingPlaybackVolume = true
+                } label: {
+                    Label(model.playbackVolumePercentText, systemImage: "speaker.wave.2.fill")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+            }
             Button(action: {
                 model.toggleTalking()
             }) {
@@ -290,6 +300,66 @@ struct TalkControlBar: View {
             .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
         }
         .padding()
+        .sheet(isPresented: $isShowingPlaybackVolume) {
+            PlaybackVolumeSheet()
+                .environmentObject(model)
+        }
+    }
+}
+
+struct PlaybackVolumeSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    private var volumeBinding: Binding<Double> {
+        Binding(
+            get: { model.playbackVolume },
+            set: { model.updatePlaybackVolume($0) }
+        )
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Received Audio")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Playback Volume")
+                            Spacer()
+                            Text(model.playbackVolumePercentText)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Slider(value: volumeBinding, in: 0...4, step: 0.05)
+
+                        HStack {
+                            Button("0%") {
+                                model.updatePlaybackVolume(0)
+                            }
+                            Spacer()
+                            Button("100%") {
+                                model.updatePlaybackVolume(1)
+                            }
+                            Spacer()
+                            Button("400%") {
+                                model.updatePlaybackVolume(4)
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .navigationTitle("Audio Volume")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

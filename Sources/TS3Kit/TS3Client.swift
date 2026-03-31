@@ -264,6 +264,14 @@ public final class TS3Client {
         log(.info, "microphone capture stopped")
     }
 
+    public func setPlaybackVolume(_ volume: Float) {
+        let clamped = min(max(volume, 0), 4)
+        withAudioQueueSync {
+            audioEngine?.setPlaybackVolume(clamped)
+        }
+        log(.info, "playback volume set to \(Int((clamped * 100).rounded()))%")
+    }
+
     public func startWhisper(target: TS3WhisperTarget) {
         whisperTarget = target
         isWhispering = true
