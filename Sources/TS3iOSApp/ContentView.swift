@@ -95,8 +95,6 @@ struct ConnectView: View {
 
 struct ChannelListView: View {
     @EnvironmentObject private var model: TS3AppModel
-    @State private var newChannelName = ""
-    @State private var newChannelPassword = ""
 
     var body: some View {
         VStack(spacing: 12) {
@@ -121,17 +119,6 @@ struct ChannelListView: View {
                         ChannelRow(channel: channel, members: model.members(in: channel.id))
                             .listRowBackground(channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
                     }
-                }
-
-                Section(header: Text("Create Channel")) {
-                    TextField("Channel name", text: $newChannelName)
-                    SecureField("Password (optional)", text: $newChannelPassword)
-                    Button("Create") {
-                        model.createChannel(name: newChannelName, password: newChannelPassword)
-                        newChannelName = ""
-                        newChannelPassword = ""
-                    }
-                    .disabled(newChannelName.isEmpty)
                 }
             }
             .listStyle(.insetGrouped)
