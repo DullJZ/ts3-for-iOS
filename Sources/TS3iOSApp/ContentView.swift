@@ -23,15 +23,13 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                if TS3PlatformSupport.showsInlineDebugButton {
-                    HStack {
-                        Spacer()
-                        debugButton
-                            .buttonStyle(TS3BorderedButtonStyle())
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                HStack {
+                    Spacer()
+                    debugButton
+                        .buttonStyle(TS3BorderedButtonStyle())
                 }
+                .padding(.horizontal)
+                .padding(.top, 8)
 
                 Group {
                     switch model.state {
@@ -50,9 +48,6 @@ struct ContentView: View {
             }
         }
         .ts3InlineNavigationTitle()
-        .ts3DebugToolbar {
-            debugButton
-        }
     }
 }
 
@@ -442,20 +437,6 @@ enum TS3PlatformSupport {
         #endif
     }
 
-    static var showsInlineDebugButton: Bool {
-        #if targetEnvironment(macCatalyst)
-        return true
-        #elseif os(macOS)
-        return true
-        #else
-        return false
-        #endif
-    }
-
-    static var showsToolbarDebugButton: Bool {
-        !showsInlineDebugButton
-    }
-
     static func copyToPasteboard(_ string: String) {
         #if os(macOS)
         let pasteboard = NSPasteboard.general
@@ -531,21 +512,6 @@ extension View {
         self.listStyle(.inset)
         #else
         self.listStyle(.insetGrouped)
-        #endif
-    }
-
-    @ViewBuilder
-    func ts3DebugToolbar<Content: View>(@ViewBuilder button: () -> Content) -> some View {
-        #if targetEnvironment(macCatalyst)
-        self
-        #elseif os(macOS)
-        self
-        #else
-        self.toolbar {
-            ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                button()
-            }
-        }
         #endif
     }
 }
