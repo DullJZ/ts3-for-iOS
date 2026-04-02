@@ -3,4 +3,7 @@
 .swiftpm/
 Packages/
 DerivedData/
+build/
+ts3j/
 vendor/
+.ace-tool/
