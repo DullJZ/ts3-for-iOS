@@ -174,7 +174,13 @@ final class TS3AudioEngine {
         _ = needsInput
         #elseif os(iOS)
         let session = AVAudioSession.sharedInstance()
-        let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .defaultToSpeaker]
+        let options: AVAudioSession.CategoryOptions
+        #if compiler(>=6.3)
+        options = [.allowBluetoothHFP, .defaultToSpeaker]
+        #else
+        // Older Xcode SDKs do not expose `allowBluetoothHFP`.
+        options = [.allowBluetooth, .defaultToSpeaker]
+        #endif
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: options)
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
