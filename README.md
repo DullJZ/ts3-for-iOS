@@ -42,13 +42,14 @@
 │   ├── TS3Kit/         # 核心协议与音频逻辑
 │   ├── TS3iOSApp/      # SwiftUI 图形界面
 │   └── TS3CLI/         # CLI 调试入口
-├── vendor/             # 本地第三方依赖
-├── ts3j/               # Java 参考实现
+├── ts3j/               # 可选的 Java 参考实现目录（本地对照用）
 ├── Package.swift
 └── TS3iOSApp.xcodeproj
 ```
 
 ## 本地构建
+
+Swift Package 依赖会在构建时从 GitHub 自动拉取，不需要仓库内置 `vendor/` 目录。
 
 ### 1. Swift Package Manager
 
