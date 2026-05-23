@@ -17,6 +17,17 @@ struct ContentView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("调试") {
+                        model.isShowingDebug = true
+                    }
+                }
+            }
+            .sheet(isPresented: $model.isShowingDebug) {
+                DebugLogView()
+                    .environmentObject(model)
+            }
         }
     }
 }
