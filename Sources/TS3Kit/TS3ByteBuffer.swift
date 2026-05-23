@@ -22,6 +22,10 @@ final class TS3ByteBuffer {
     }
 
     func readUInt8() -> UInt8 {
+        guard readerIndex < storage.count else {
+            readerIndex = storage.count
+            return 0
+        }
         let value = storage[readerIndex]
         readerIndex += 1
         return value
@@ -54,13 +58,21 @@ final class TS3ByteBuffer {
     }
 
     func readBytes(count: Int) -> Data {
-        let end = readerIndex + count
+        guard count > 0, readerIndex < storage.count else {
+            readerIndex = storage.count
+            return Data()
+        }
+        let end = min(storage.count, readerIndex + count)
         let slice = storage[readerIndex..<end]
         readerIndex = end
         return slice
     }
 
     func readString(encoding: String.Encoding = .utf8) -> String {
+        guard readerIndex < storage.count else {
+            readerIndex = storage.count
+            return ""
+        }
         let slice = storage[readerIndex..<storage.count]
         readerIndex = storage.count
         return String(data: slice, encoding: encoding) ?? ""
