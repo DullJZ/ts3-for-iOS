@@ -818,6 +818,11 @@ private extension TS3Client {
         if !header.flags.contains(.unencrypted) {
             data = try transformation.encrypt(packet: outgoing)
         } else {
+            if header.type == .init1 {
+                header.mac = [0x54, 0x53, 0x33, 0x49, 0x4E, 0x49, 0x54, 0x31]
+            } else {
+                header.mac = transformation.fakeSignature()
+            }
             var buffer = TS3ByteBuffer()
             buffer.writeBytes(header.write())
             var bodyBuffer = TS3ByteBuffer()
