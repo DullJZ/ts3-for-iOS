@@ -45,15 +45,15 @@ struct TS3Identity {
         self.lastCheckedKeyOffset = keyOffset
     }
 
-    static func generate(securityLevel: Int) throws -> TS3Identity {
+    static func generate(securityLevel: Int, onImproved: ((Int, Int, Int) -> Void)? = nil) throws -> TS3Identity {
         var privateKey = [UInt8](repeating: 0, count: 32)
         _ = SecRandomCopyBytes(kSecRandomDefault, privateKey.count, &privateKey)
         var identity = try TS3Identity(privateKeyBytes: privateKey)
-        identity.improveSecurity(target: securityLevel)
+        identity.improveSecurity(target: securityLevel, onImproved: onImproved)
         return identity
     }
 
-    mutating func improveSecurity(target: Int) {
+    mutating func improveSecurity(target: Int, onImproved: ((Int, Int, Int) -> Void)? = nil) {
         let pubKeyBytes = [UInt8](publicKeyString.utf8)
         var hashBuffer = [UInt8](repeating: 0, count: pubKeyBytes.count + 20)
         hashBuffer.replaceSubrange(0..<pubKeyBytes.count, with: pubKeyBytes)
@@ -65,6 +65,7 @@ struct TS3Identity {
             if best >= target { return }
             let current = Self.securityLevel(hashBuffer: &hashBuffer, pubKeyLen: pubKeyBytes.count, offset: lastCheckedKeyOffset)
             if current > best {
+                onImproved?(best, current, lastCheckedKeyOffset)
                 keyOffset = lastCheckedKeyOffset
                 best = current
             }
