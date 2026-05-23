@@ -350,6 +350,7 @@ private extension TS3Client {
                 throw TS3Error.invalidInitStep
             }
 
+            let start = Date()
             let x = BigUInt(Data(step.x))
             let n = BigUInt(Data(step.n))
             var y = x
@@ -365,6 +366,8 @@ private extension TS3Client {
                 yBytes = Array(yBytes.suffix(64))
             }
             let initiv = try createInitIv()
+            let duration = Int(Date().timeIntervalSince(start) * 1000)
+            log(.info, "init1 step3 solved in \(duration)ms, initiv len \(initiv.count)")
 
             let reply = TS3Init1Step4(
                 x: step.x,
@@ -376,6 +379,7 @@ private extension TS3Client {
             )
             let packet = TS3PacketBodyInit1(role: .client, version: [0x0C, 0xFF, 0xD2, 0xFE], step: reply)
             try sendPacket(body: packet)
+            log(.info, "init1 step4 sent")
 
         case _ as TS3Init1Step127:
             log(.warning, "init1 retry requested")
@@ -397,12 +401,32 @@ private extension TS3Client {
             TS3CommandSingleParameter(name: "ot", value: "1")
         ]
 
-        if let endpoint = connection?.endpoint, case .hostPort(let host, _) = endpoint {
-            params.append(TS3CommandSingleParameter(name: "ip", value: host.debugDescription))
+        if let ipValue = resolveInitIvIp() {
+            params.append(TS3CommandSingleParameter(name: "ip", value: ipValue))
         }
 
         let command = TS3SingleCommand(name: "clientinitiv", parameters: params)
         return command.build()
+    }
+
+    func resolveInitIvIp() -> String? {
+        if let endpoint = connection?.endpoint, case .hostPort(let host, _) = endpoint {
+            let hostString = String(describing: host)
+            if isIpLiteral(hostString) {
+                return hostString
+            }
+        }
+        if isIpLiteral(config.host) {
+            return config.host
+        }
+        return nil
+    }
+
+    func isIpLiteral(_ value: String) -> Bool {
+        if value.range(of: #"^[0-9.]+$"#, options: .regularExpression) != nil {
+            return true
+        }
+        return value.contains(":")
     }
 
     func handleInitCommand(_ command: TS3SingleCommand) throws {
@@ -591,7 +615,11 @@ private extension TS3Client {
             }
         case .init1:
             if var init1 = packet.body as? TS3PacketBodyInit1 {
-                try? handleInit1(init1)
+                do {
+                    try handleInit1(init1)
+                } catch {
+                    log(.error, "init1 handling failed: \(error.localizedDescription)")
+                }
             }
         case .command:
             if let command = packet.body as? TS3PacketBodyCommand {
