@@ -471,8 +471,9 @@ private extension TS3Client {
             state = .retrieving
             log(.info, "clientinit sent")
         } else if command.name == "error" {
-            log(.error, "init error: \(command.get(\"msg\")?.value ?? \"unknown\")")
-            throw TS3Error.serverError(message: command.get("msg")?.value ?? "unknown")
+            let message = command.get("msg")?.value ?? "unknown"
+            log(.error, "init error: \(message)")
+            throw TS3Error.serverError(message: message)
         } else {
             throw TS3Error.invalidCommand
         }
