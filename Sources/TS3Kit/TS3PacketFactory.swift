@@ -18,7 +18,7 @@ enum TS3PacketFactory {
         case .voice:
             return TS3PacketBodyVoice(role: role, packetId: 0, clientId: nil, codecType: 0, codecData: Data(), serverFlag0: nil)
         case .voiceWhisper:
-            throw TS3Error.notImplemented
+            return TS3PacketBodyVoiceWhisper(role: role, packetId: 0, clientId: nil, codecType: 0, target: .serverToClient, codecData: Data(), serverFlag0: nil)
         case .init1:
             return TS3PacketBodyInit1(role: role, version: [0, 0, 0, 0], step: TS3Init1Step0(timestamp: [UInt8](repeating: 0, count: 4), random: [UInt8](repeating: 0, count: 4)))
         }
