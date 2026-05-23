@@ -350,8 +350,8 @@ private extension TS3Client {
                 throw TS3Error.invalidInitStep
             }
 
-            let x = BigUInt(step.x)
-            let n = BigUInt(step.n)
+            let x = BigUInt(Data(step.x))
+            let n = BigUInt(Data(step.n))
             var y = x
             for _ in 0..<step.level {
                 y = (y * y) % n
