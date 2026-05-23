@@ -292,7 +292,7 @@ struct TS3PacketBodyInit1: TS3PacketBody {
             version = Array(buffer.readBytes(count: 4))
         }
         let stepNumber = buffer.readUInt8()
-        guard let parsed = TS3Init1Step.decode(stepNumber: stepNumber, role: role, buffer: &buffer) else {
+        guard let parsed = TS3Init1StepFactory.decode(stepNumber: stepNumber, role: role, buffer: &buffer) else {
             throw TS3Error.invalidInitStep
         }
         step = parsed
@@ -312,7 +312,6 @@ protocol TS3Init1Step {
     var role: TS3ProtocolRole { get }
     var size: Int { get }
     func write(to buffer: inout TS3ByteBuffer)
-    static func decode(stepNumber: UInt8, role: TS3ProtocolRole, buffer: inout TS3ByteBuffer) -> TS3Init1Step?
 }
 
 struct TS3Init1Step0: TS3Init1Step {
@@ -454,7 +453,7 @@ struct TS3Init1Step127: TS3Init1Step {
     }
 }
 
-extension TS3Init1Step {
+enum TS3Init1StepFactory {
     static func decode(stepNumber: UInt8, role: TS3ProtocolRole, buffer: inout TS3ByteBuffer) -> TS3Init1Step? {
         switch stepNumber {
         case 0: return TS3Init1Step0.decode(stepNumber: stepNumber, role: role, buffer: &buffer)
