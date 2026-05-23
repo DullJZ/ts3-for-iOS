@@ -17,6 +17,16 @@ targets:
         product: TS3Kit
     info:
       path: TS3iOSApp/Info.plist
+      properties:
+        CFBundleDisplayName: TS3iOS
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+        NSMicrophoneUsageDescription: Allow microphone access for voice chat.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.ts3ios
