@@ -19,9 +19,9 @@ struct TS3CommandSingleParameter: TS3CommandParameter {
 
     func build() -> String {
         if let value {
-            return "\(name)=\(TS3String.escape(value))"
+            return "\(name)=\(TS3String.escape(value.trimmingCharacters(in: .whitespacesAndNewlines)))"
         }
-        return name
+        return ""
     }
 }
 
@@ -45,7 +45,7 @@ struct TS3SingleCommand: TS3Command {
         if !name.isEmpty {
             parts.append(name)
         }
-        parts.append(contentsOf: parameters.map { $0.build() })
+        parts.append(contentsOf: parameters.map { $0.build() }.filter { !$0.isEmpty })
         return parts.joined(separator: " ").trimmingCharacters(in: .whitespaces)
     }
 
@@ -89,7 +89,7 @@ struct TS3MultiCommand: TS3Command {
         }
 
         let parts = commands.enumerated().map { index, cmd -> String in
-            let combined = cmd.parameters.map { $0.build() }.joined(separator: " ")
+            let combined = cmd.parameters.map { $0.build() }.filter { !$0.isEmpty }.joined(separator: " ")
             if index == 0 {
                 return combined
             }
