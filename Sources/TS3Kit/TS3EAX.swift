@@ -18,6 +18,14 @@ enum TS3EAX {
         let headerTag = try omac(key: key, prefix: 0x01, data: header)
         let messageTag = try omac(key: key, prefix: 0x02, data: ciphertext)
         let tagFull = xor3(nonceTag, headerTag, messageTag)
+        
+        // Debug output
+        print("[EAX DEBUG] nonceTag=\(nonceTag.map { String(format: "%02X", $0) }.joined())")
+        print("[EAX DEBUG] headerTag=\(headerTag.map { String(format: "%02X", $0) }.joined())")
+        print("[EAX DEBUG] messageTag=\(messageTag.map { String(format: "%02X", $0) }.joined())")
+        print("[EAX DEBUG] computedTag=\(tagFull.prefix(8).map { String(format: "%02X", $0) }.joined())")
+        print("[EAX DEBUG] expectedTag=\(tag.map { String(format: "%02X", $0) }.joined())")
+        
         guard tagFull.prefix(tag.count).elementsEqual(tag) else {
             throw TS3Error.invalidMac
         }
@@ -26,7 +34,10 @@ enum TS3EAX {
     }
 
     private static func omac(key: [UInt8], prefix: UInt8, data: [UInt8]) throws -> [UInt8] {
-        let message = [prefix] + data
+        // EAX spec: prefix is a full 16-byte block with 15 zeros followed by the prefix byte
+        var prefixBlock = [UInt8](repeating: 0, count: 16)
+        prefixBlock[15] = prefix
+        let message = prefixBlock + data
         return try cmac(key: key, data: message)
     }
 
