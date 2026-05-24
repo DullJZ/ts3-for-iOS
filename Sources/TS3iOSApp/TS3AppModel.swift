@@ -3,6 +3,9 @@ import TS3Kit
 #if canImport(AVFoundation)
 import AVFoundation
 #endif
+#if canImport(AVFAudio)
+import AVFAudio
+#endif
 
 enum UIConnectionState {
     case disconnected
@@ -170,10 +173,10 @@ final class TS3AppModel: ObservableObject {
         }
 
         Task {
-            let granted = await requestMicrophoneAccessIfNeeded()
-            guard granted else {
+            let result = await requestMicrophoneAccessIfNeeded()
+            guard result.granted else {
                 await MainActor.run {
-                    self.lastError = "Microphone access is required for Push To Talk."
+                    self.lastError = result.failureMessage ?? "Microphone access is required for Push To Talk."
                     self.isTalking = false
                 }
                 return
@@ -209,40 +212,91 @@ final class TS3AppModel: ObservableObject {
         return error.localizedDescription
     }
 
-    private func requestMicrophoneAccessIfNeeded() async -> Bool {
-        #if os(iOS)
-        let session = AVAudioSession.sharedInstance()
-        switch session.recordPermission {
-        case .granted:
-            return true
-        case .denied:
-            return false
-        case .undetermined:
+    private func requestMicrophoneAccessIfNeeded() async -> MicrophoneAccessResult {
+        #if targetEnvironment(macCatalyst)
+        if #available(iOS 17.0, macOS 14.0, *) {
+            let permission = AVAudioApplication.shared.recordPermission
+            switch permission {
+            case .granted:
+                appendAudioPermissionLog("AVAudioApplication", status: "granted")
+                return .granted
+            case .denied:
+                appendAudioPermissionLog("AVAudioApplication", status: "denied")
+                return .denied
+            case .undetermined:
+                appendAudioPermissionLog("AVAudioApplication", status: "undetermined")
+                let granted = await withCheckedContinuation { continuation in
+                    AVAudioApplication.requestRecordPermission { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+                appendAudioPermissionLog("AVAudioApplication request", status: granted ? "granted" : "denied")
+                return granted ? .granted : .denied
+            @unknown default:
+                appendAudioPermissionLog("AVAudioApplication", status: "unknown")
+                return .denied
+            }
+        }
+
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            appendAudioPermissionLog("AVCaptureDevice", status: "authorized")
+            return .granted
+        case .denied, .restricted:
+            appendAudioPermissionLog("AVCaptureDevice", status: "denied/restricted")
+            return .denied
+        case .notDetermined:
+            appendAudioPermissionLog("AVCaptureDevice", status: "notDetermined")
             return await withCheckedContinuation { continuation in
-                session.requestRecordPermission { granted in
-                    continuation.resume(returning: granted)
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    continuation.resume(returning: granted ? .granted : .denied)
                 }
             }
         @unknown default:
-            return false
+            appendAudioPermissionLog("AVCaptureDevice", status: "unknown")
+            return .denied
+        }
+        #elseif os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        switch session.recordPermission {
+        case .granted:
+            appendAudioPermissionLog("AVAudioSession", status: "granted")
+            return .granted
+        case .denied:
+            appendAudioPermissionLog("AVAudioSession", status: "denied")
+            return .denied
+        case .undetermined:
+            appendAudioPermissionLog("AVAudioSession", status: "undetermined")
+            return await withCheckedContinuation { continuation in
+                session.requestRecordPermission { granted in
+                    continuation.resume(returning: granted ? .granted : .denied)
+                }
+            }
+        @unknown default:
+            appendAudioPermissionLog("AVAudioSession", status: "unknown")
+            return .denied
         }
         #elseif os(macOS)
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
-            return true
+            appendAudioPermissionLog("AVCaptureDevice", status: "authorized")
+            return .granted
         case .denied, .restricted:
-            return false
+            appendAudioPermissionLog("AVCaptureDevice", status: "denied/restricted")
+            return .denied
         case .notDetermined:
+            appendAudioPermissionLog("AVCaptureDevice", status: "notDetermined")
             return await withCheckedContinuation { continuation in
                 AVCaptureDevice.requestAccess(for: .audio) { granted in
-                    continuation.resume(returning: granted)
+                    continuation.resume(returning: granted ? .granted : .denied)
                 }
             }
         @unknown default:
-            return false
+            appendAudioPermissionLog("AVCaptureDevice", status: "unknown")
+            return .denied
         }
         #else
-        return true
+        return .granted
         #endif
     }
 
@@ -256,6 +310,27 @@ final class TS3AppModel: ObservableObject {
     func clearLogs() {
         logs.removeAll()
     }
+
+    private func appendAudioPermissionLog(_ source: String, status: String) {
+        appendLog(
+            TS3LogEntry(
+                timestamp: Date(),
+                level: .debug,
+                message: "[AUDIO] microphone permission via \(source): \(status)"
+            )
+        )
+    }
+}
+
+private struct MicrophoneAccessResult {
+    let granted: Bool
+    let failureMessage: String?
+
+    static let granted = MicrophoneAccessResult(granted: true, failureMessage: nil)
+    static let denied = MicrophoneAccessResult(
+        granted: false,
+        failureMessage: "Microphone access is denied. Enable it in System Settings > Privacy & Security > Microphone."
+    )
 }
 
 extension TS3AppModel: TS3ClientDelegate {
