@@ -39,72 +39,125 @@ final class TS3AudioEngine {
 
     private let config: Config
     private let engine = AVAudioEngine()
-    private let playerNode = AVAudioPlayerNode()
     private var converter: AVAudioConverter?
     private var captureBuffer: [Float] = []
+    private lazy var outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                                  sampleRate: config.sampleRate,
+                                                  channels: config.channels,
+                                                  interleaved: false)
 
     private let encoder: TS3OpusEncoder
-    private let decoder: TS3OpusDecoder
+    private var playbackStates: [PlaybackSource: PlaybackState] = [:]
 
     var onEncodedPacket: ((Data) -> Void)?
 
-    private var isRunning = false
+    private var isPlaybackRunning = false
+    private var isCaptureRunning = false
+
+    private struct PlaybackSource: Hashable {
+        let clientId: UInt16
+        let kind: Kind
+
+        enum Kind: Hashable {
+            case channel
+            case whisper
+        }
+    }
+
+    private struct PlaybackState {
+        let playerNode: AVAudioPlayerNode
+        var decoder: TS3OpusDecoder
+        var sessionMarker: UInt8?
+    }
 
     init(config: Config) throws {
         self.config = config
         self.encoder = try TS3OpusFactory.makeEncoder(sampleRate: Int32(config.sampleRate), channels: Int32(config.channels), application: config.opusApplication)
-        self.decoder = try TS3OpusFactory.makeDecoder(sampleRate: Int32(config.sampleRate), channels: Int32(config.channels))
     }
 
-    func start() throws {
-        if isRunning { return }
-        try configureSession()
-        setupEngine()
+    func startPlayback() throws {
+        if isPlaybackRunning { return }
+        try configureSession(needsInput: isCaptureRunning)
         engine.prepare()
-        try engine.start()
-        playerNode.play()
-        isRunning = true
+        if !engine.isRunning {
+            try engine.start()
+        }
+        isPlaybackRunning = true
+    }
+
+    func startCapture() throws {
+        try configureSession(needsInput: true)
+        installInputTapIfNeeded()
+        engine.prepare()
+        if !engine.isRunning {
+            try engine.start()
+        }
+        isPlaybackRunning = true
+        isCaptureRunning = true
+    }
+
+    func stopCapture() {
+        guard isCaptureRunning else { return }
+        engine.inputNode.removeTap(onBus: 0)
+        converter = nil
+        captureBuffer.removeAll()
+        isCaptureRunning = false
+        stopEngineIfIdle()
     }
 
     func stop() {
-        guard isRunning else { return }
-        engine.inputNode.removeTap(onBus: 0)
-        playerNode.stop()
+        stopCapture()
+        guard isPlaybackRunning || engine.isRunning else { return }
+        for state in playbackStates.values {
+            state.playerNode.stop()
+            state.playerNode.reset()
+            engine.detach(state.playerNode)
+        }
+        playbackStates.removeAll()
         engine.stop()
-        isRunning = false
+        captureBuffer.removeAll()
+        isPlaybackRunning = false
     }
 
-    func handleIncoming(packet: Data) {
-        guard !packet.isEmpty else { return }
+    func handleIncoming(packet: Data, from clientId: UInt16, isWhisper: Bool, sessionMarker: UInt8?) {
+        let source = PlaybackSource(clientId: clientId, kind: isWhisper ? .whisper : .channel)
+        if packet.isEmpty {
+            endPlayback(for: source)
+            return
+        }
+
         do {
-            let samples = try decoder.decode(packet: packet)
-            play(samples: samples)
+            let state = try playbackState(for: source, sessionMarker: sessionMarker)
+            let samples = try state.decoder.decode(packet: packet)
+            playbackStates[source] = state
+            play(samples: samples, on: state.playerNode)
         } catch {
             // ignore
         }
     }
 
-    private func configureSession() throws {
+    private func configureSession(needsInput: Bool) throws {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .defaultToSpeaker])
+        if needsInput {
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .defaultToSpeaker])
+        } else {
+            try session.setCategory(.playback, mode: .voiceChat, options: [])
+        }
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
         #endif
     }
 
-    private func setupEngine() {
-        engine.attach(playerNode)
-        let outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                         sampleRate: config.sampleRate,
-                                         channels: config.channels,
-                                         interleaved: false)!
-        engine.connect(playerNode, to: engine.mainMixerNode, format: outputFormat)
-
+    private func installInputTapIfNeeded() {
+        guard !isCaptureRunning else { return }
+        guard let outputFormat else { return }
         let inputNode = engine.inputNode
         let inputFormat = inputNode.inputFormat(forBus: 0)
         if inputFormat.sampleRate != config.sampleRate || inputFormat.channelCount != config.channels {
             converter = AVAudioConverter(from: inputFormat, to: outputFormat)
+        } else {
+            converter = nil
         }
 
         inputNode.installTap(onBus: 0, bufferSize: config.frameSize, format: inputFormat) { [weak self] buffer, _ in
@@ -148,12 +201,73 @@ final class TS3AudioEngine {
         }
     }
 
-    private func play(samples: [Float]) {
-        guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                         sampleRate: config.sampleRate,
-                                         channels: config.channels,
-                                         interleaved: false) else { return }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
+    private func playbackState(for source: PlaybackSource, sessionMarker: UInt8?) throws -> PlaybackState {
+        if var state = playbackStates[source] {
+            if shouldResetDecoder(current: state.sessionMarker, incoming: sessionMarker) {
+                state.decoder = try makeDecoder()
+            }
+            if let sessionMarker {
+                state.sessionMarker = sessionMarker
+            }
+            if !state.playerNode.isPlaying {
+                state.playerNode.play()
+            }
+            return state
+        }
+
+        guard let outputFormat else {
+            throw TS3Error.notImplemented
+        }
+
+        if !isPlaybackRunning {
+            try startPlayback()
+        }
+
+        let playerNode = AVAudioPlayerNode()
+        engine.attach(playerNode)
+        engine.connect(playerNode, to: engine.mainMixerNode, format: outputFormat)
+        if !engine.isRunning {
+            engine.prepare()
+            try engine.start()
+        }
+        playerNode.play()
+
+        return PlaybackState(
+            playerNode: playerNode,
+            decoder: try makeDecoder(),
+            sessionMarker: sessionMarker
+        )
+    }
+
+    private func endPlayback(for source: PlaybackSource) {
+        guard let state = playbackStates.removeValue(forKey: source) else { return }
+        state.playerNode.stop()
+        state.playerNode.reset()
+        engine.detach(state.playerNode)
+        stopEngineIfIdle()
+    }
+
+    private func stopEngineIfIdle() {
+        guard !isCaptureRunning else { return }
+        guard playbackStates.isEmpty else { return }
+        if engine.isRunning {
+            engine.stop()
+        }
+        isPlaybackRunning = false
+    }
+
+    private func shouldResetDecoder(current: UInt8?, incoming: UInt8?) -> Bool {
+        guard let current, let incoming else { return false }
+        return current != incoming
+    }
+
+    private func makeDecoder() throws -> TS3OpusDecoder {
+        try TS3OpusFactory.makeDecoder(sampleRate: Int32(config.sampleRate), channels: Int32(config.channels))
+    }
+
+    private func play(samples: [Float], on playerNode: AVAudioPlayerNode) {
+        guard let outputFormat else { return }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: AVAudioFrameCount(samples.count)) else {
             return
         }
         buffer.frameLength = AVAudioFrameCount(samples.count)
@@ -162,6 +276,9 @@ final class TS3AudioEngine {
             for i in 0..<samples.count {
                 channel[i] = samples[i]
             }
+        }
+        if !playerNode.isPlaying {
+            playerNode.play()
         }
         playerNode.scheduleBuffer(buffer, completionHandler: nil)
     }

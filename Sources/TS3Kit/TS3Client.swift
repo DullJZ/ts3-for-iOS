@@ -9,6 +9,7 @@ public final class TS3Client {
     public var logHandler: ((TS3LogEntry) -> Void)?
 
     private let config: TS3ClientConfig
+    private let audioQueue = DispatchQueue(label: "ts3.audio")
     private let connectionQueue = DispatchQueue(label: "ts3.connection")
     private var connection: NWConnection?
 
@@ -90,44 +91,48 @@ public final class TS3Client {
         identity = try await loadIdentity()
         log(.debug, "Connecting to \(serverAddress)...")
         if audioEngine == nil {
-            audioEngine = try? TS3AudioEngine(config: .voice)
-            audioEngine?.onEncodedPacket = { [weak self] data in
-                guard let self else { return }
-                guard self.state == .connected else { return }
-                guard self.isSendingAudio else { return }
-                if self.isWhispering, let target = self.whisperTarget {
-                    let flag: UInt8? = self.whisperFlaggedPackets > 0 ? self.whisperSessionId : nil
-                    if self.whisperFlaggedPackets > 0 {
-                        self.whisperFlaggedPackets -= 1
+            do {
+                let engine = try TS3AudioEngine(config: .voice)
+                engine.onEncodedPacket = { [weak self] data in
+                    guard let self else { return }
+                    guard self.state == .connected else { return }
+                    guard self.isSendingAudio else { return }
+                    if self.isWhispering, let target = self.whisperTarget {
+                        let flag: UInt8? = self.whisperFlaggedPackets > 0 ? self.whisperSessionId : nil
+                        if self.whisperFlaggedPackets > 0 {
+                            self.whisperFlaggedPackets -= 1
+                        }
+                        let whisper = TS3PacketBodyVoiceWhisper(
+                            role: .client,
+                            packetId: 0,
+                            clientId: nil,
+                            codecType: 4,
+                            target: target,
+                            codecData: data,
+                            serverFlag0: flag
+                        )
+                        try? self.sendPacket(body: whisper)
+                    } else {
+                        let flag: UInt8? = self.voiceFlaggedPackets > 0 ? self.voiceSessionId : nil
+                        if self.voiceFlaggedPackets > 0 {
+                            self.voiceFlaggedPackets -= 1
+                        }
+                        let voice = TS3PacketBodyVoice(
+                            role: .client,
+                            packetId: 0,
+                            clientId: nil,
+                            codecType: 4,
+                            codecData: data,
+                            serverFlag0: flag
+                        )
+                        try? self.sendPacket(body: voice)
                     }
-                    let whisper = TS3PacketBodyVoiceWhisper(
-                        role: .client,
-                        packetId: 0,
-                        clientId: nil,
-                        codecType: 4,
-                        target: target,
-                        codecData: data,
-                        serverFlag0: flag
-                    )
-                    try? self.sendPacket(body: whisper)
-                } else {
-                    let flag: UInt8? = self.voiceFlaggedPackets > 0 ? self.voiceSessionId : nil
-                    if self.voiceFlaggedPackets > 0 {
-                        self.voiceFlaggedPackets -= 1
-                    }
-                    let voice = TS3PacketBodyVoice(
-                        role: .client,
-                        packetId: 0,
-                        clientId: nil,
-                        codecType: 4,
-                        codecData: data,
-                        serverFlag0: flag
-                    )
-                    try? self.sendPacket(body: voice)
                 }
+                audioEngine = engine
+            } catch {
+                log(.warning, "audio engine unavailable: \(error.localizedDescription)")
             }
         }
-
         let host = NWEndpoint.Host(config.host)
         let port = NWEndpoint.Port(integerLiteral: UInt16(config.port))
         let connection = NWConnection(host: host, port: port, using: .udp)
@@ -188,7 +193,7 @@ public final class TS3Client {
     public func startMicrophone() {
         voiceFlaggedPackets = 5
         isSendingAudio = true
-        try? audioEngine?.start()
+        try? audioEngine?.startCapture()
     }
 
     public func stopMicrophone() {
@@ -219,7 +224,7 @@ public final class TS3Client {
             voiceFlaggedPackets = 5
             voiceSessionId = voiceSessionId == 7 ? 1 : voiceSessionId + 1
         }
-        audioEngine?.stop()
+        audioEngine?.stopCapture()
     }
 
     public func startWhisper(target: TS3WhisperTarget) {
@@ -743,12 +748,28 @@ private extension TS3Client {
         case .voice:
             if let voice = packet.body as? TS3PacketBodyVoice,
                voice.codecType == 4 || voice.codecType == 5 {
-                audioEngine?.handleIncoming(packet: voice.codecData)
+                let codecData = voice.codecData
+                let speakerId = voice.clientId ?? 0
+                let sessionMarker = voice.serverFlag0
+                audioQueue.async { [weak self] in
+                    self?.audioEngine?.handleIncoming(packet: codecData,
+                                                      from: speakerId,
+                                                      isWhisper: false,
+                                                      sessionMarker: sessionMarker)
+                }
             }
         case .voiceWhisper:
             if let whisper = packet.body as? TS3PacketBodyVoiceWhisper,
                whisper.codecType == 4 || whisper.codecType == 5 {
-                audioEngine?.handleIncoming(packet: whisper.codecData)
+                let codecData = whisper.codecData
+                let speakerId = whisper.clientId ?? 0
+                let sessionMarker = whisper.serverFlag0
+                audioQueue.async { [weak self] in
+                    self?.audioEngine?.handleIncoming(packet: codecData,
+                                                      from: speakerId,
+                                                      isWhisper: true,
+                                                      sessionMarker: sessionMarker)
+                }
             }
         default:
             break
