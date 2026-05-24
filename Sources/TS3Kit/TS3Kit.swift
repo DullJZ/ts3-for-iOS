@@ -26,10 +26,25 @@ public struct TS3Channel: Identifiable {
     }
 }
 
+public struct TS3ServerClient: Identifiable {
+    public let id: Int
+    public let channelId: Int
+    public let nickname: String
+    public let isCurrentUser: Bool
+
+    public init(id: Int, channelId: Int, nickname: String, isCurrentUser: Bool) {
+        self.id = id
+        self.channelId = channelId
+        self.nickname = nickname
+        self.isCurrentUser = isCurrentUser
+    }
+}
+
 public protocol TS3ClientDelegate: AnyObject {
     func ts3ClientDidConnect(_ client: TS3Client)
     func ts3Client(_ client: TS3Client, didDisconnectWith error: Error?)
     func ts3Client(_ client: TS3Client, didUpdateChannels channels: [TS3Channel])
+    func ts3Client(_ client: TS3Client, didUpdateClients clients: [TS3ServerClient])
 }
 
 public enum TS3Error: Error {
