@@ -14,6 +14,7 @@ public final class TS3Client {
 
     private var identity: TS3Identity?
     private var transformation: TS3PacketTransformation = TS3InitPacketTransformation()
+    private var oldTransformation: TS3PacketTransformation? = nil  // For fallback during key transition
 
     private var _state: TS3ConnectionState = .disconnected
     private var state: TS3ConnectionState {
@@ -507,12 +508,12 @@ private extension TS3Client {
             let alpha = alphaBytes ?? []
             let params = try TS3Crypto.cryptoInit2(license: licenseBytes, alpha: alpha, beta: betaBytes, privateKey: ekPrivate)
             self.alphaBytes = nil
+            
+            // Save old transformation for fallback, then switch to new transformation
+            oldTransformation = transformation
+            transformation = TS3PacketTransformation(ivStruct: params.ivStruct, fakeMac: params.fakeMac)
 
             try sendClientInit()
-            
-            // Switch to new transformation AFTER sending clientinit
-            // TODO: Maybe we should wait for server's response before switching?
-            // transformation = TS3PacketTransformation(ivStruct: params.ivStruct, fakeMac: params.fakeMac)
             state = .retrieving
             log(.info, "clientinit sent")
         } else if command.name == "error" {
@@ -567,16 +568,29 @@ private extension TS3Client {
             log(.debug, "[NETWORK] READ \(typeName) id=\(header.packetId) len=\(data.count) from \(serverAddress)")
 
             let packet = try readPacket(header: header, buffer: data)
-            if packet.header.type.isSplittable,
-               let reassembly = reassemblyQueues[packet.header.type] {
-                reassembly.put(packet)
-                if let reassembled = try reassembly.next() {
-                    let bodyTypeName = String(describing: type(of: reassembled.body))
-                    log(.debug, "[PROTOCOL] REASSEMBLE \(typeName) id=\(reassembled.header.packetId) len=\(reassembled.body.size) bodyType=\(bodyTypeName)")
-                    handlePacket(reassembled)
+            
+            // Check if packet should be processed (duplicate detection)
+            var shouldProcess = true
+            if packet.header.type.canResend, packet.header.type != .init1,
+               let counter = remoteCounters[packet.header.type] {
+                shouldProcess = counter.put(packet.header.packetId)
+                if !shouldProcess {
+                    log(.debug, "[PROTOCOL] DUPLICATE \(typeName) id=\(packet.header.packetId) - ignoring")
                 }
-            } else {
-                handlePacket(packet)
+            }
+            
+            if shouldProcess {
+                if packet.header.type.isSplittable,
+                   let reassembly = reassemblyQueues[packet.header.type] {
+                    reassembly.put(packet)
+                    if let reassembled = try reassembly.next() {
+                        let bodyTypeName = String(describing: type(of: reassembled.body))
+                        log(.debug, "[PROTOCOL] REASSEMBLE \(typeName) id=\(reassembled.header.packetId) len=\(reassembled.body.size) bodyType=\(bodyTypeName)")
+                        handlePacket(reassembled)
+                    }
+                } else {
+                    handlePacket(packet)
+                }
             }
 
             lastResponse = Date()
@@ -590,7 +604,20 @@ private extension TS3Client {
         let typeName = String(describing: header.type).uppercased()
         if !header.flags.contains(.unencrypted) {
             log(.debug, "[PROTOCOL] DECRYPT \(typeName) generation=\(header.generation)")
-            payload = try transformation.decrypt(header: header, buffer: buffer)
+            
+            // Try new transformation first
+            do {
+                payload = try transformation.decrypt(header: header, buffer: buffer)
+            } catch {
+                // If decryption fails and we have an old transformation, try it as fallback
+                if let oldTransformation = oldTransformation {
+                    log(.debug, "[PROTOCOL] DECRYPT failed with new key, trying old key...")
+                    payload = try oldTransformation.decrypt(header: header, buffer: buffer)
+                    log(.debug, "[PROTOCOL] DECRYPT succeeded with old key")
+                } else {
+                    throw error
+                }
+            }
         } else {
             payload = buffer.dropFirst(header.size)
         }
@@ -639,6 +666,7 @@ private extension TS3Client {
         switch packet.header.type {
         case .ack:
             if let ack = packet.body as? TS3PacketBodyAck {
+                log(.debug, "[ACK] Received ACK for packet id=\(ack.packetId)")
                 sendQueue.removeValue(forKey: ack.packetId)
             }
         case .ackLow:
