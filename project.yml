@@ -12,6 +12,7 @@ targets:
     platform: iOS
     sources:
       - Sources/TS3iOSApp
+      - TS3iOSApp/Assets.xcassets
     dependencies:
       - package: TS3iOS
         product: TS3Kit
