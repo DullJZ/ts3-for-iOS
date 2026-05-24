@@ -12,16 +12,36 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
 
+    private var debugButton: some View {
+        Button {
+            model.isShowingDebug = true
+        } label: {
+            Label("调试", systemImage: "ladybug")
+        }
+    }
+
     var body: some View {
         NavigationView {
-            Group {
-                switch model.state {
-                case .disconnected:
-                    ConnectView()
-                case .connecting:
-                    ConnectingView()
-                case .connected:
-                    ChannelListView()
+            VStack(spacing: 0) {
+                if TS3PlatformSupport.showsInlineDebugButton {
+                    HStack {
+                        Spacer()
+                        debugButton
+                            .buttonStyle(TS3BorderedButtonStyle())
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+
+                Group {
+                    switch model.state {
+                    case .disconnected:
+                        ConnectView()
+                    case .connecting:
+                        ConnectingView()
+                    case .connected:
+                        ChannelListView()
+                    }
                 }
             }
             .sheet(isPresented: $model.isShowingDebug) {
@@ -30,12 +50,8 @@ struct ContentView: View {
             }
         }
         .ts3InlineNavigationTitle()
-        .toolbar {
-            ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                Button("调试") {
-                    model.isShowingDebug = true
-                }
-            }
+        .ts3DebugToolbar {
+            debugButton
         }
     }
 }
@@ -302,6 +318,18 @@ struct TalkControlBar: View {
             PlaybackVolumeSheet()
                 .environmentObject(model)
         }
+        .alert(item: $model.microphonePermissionPrompt) { prompt in
+            Alert(
+                title: Text(prompt.title),
+                message: Text(prompt.message),
+                primaryButton: .default(Text(prompt.confirmTitle)) {
+                    model.confirmMicrophonePermissionPrompt(prompt)
+                },
+                secondaryButton: .cancel {
+                    model.dismissMicrophonePermissionPrompt()
+                }
+            )
+        }
     }
 }
 
@@ -395,7 +423,9 @@ enum TS3PlatformSupport {
     }
 
     static var toolbarLeadingPlacement: ToolbarItemPlacement {
-        #if os(macOS)
+        #if targetEnvironment(macCatalyst)
+        return .automatic
+        #elseif os(macOS)
         return .automatic
         #else
         return .navigationBarLeading
@@ -403,11 +433,27 @@ enum TS3PlatformSupport {
     }
 
     static var toolbarTrailingPlacement: ToolbarItemPlacement {
-        #if os(macOS)
+        #if targetEnvironment(macCatalyst)
+        return .automatic
+        #elseif os(macOS)
         return .automatic
         #else
         return .navigationBarTrailing
         #endif
+    }
+
+    static var showsInlineDebugButton: Bool {
+        #if targetEnvironment(macCatalyst)
+        return true
+        #elseif os(macOS)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    static var showsToolbarDebugButton: Bool {
+        !showsInlineDebugButton
     }
 
     static func copyToPasteboard(_ string: String) {
@@ -417,6 +463,22 @@ enum TS3PlatformSupport {
         pasteboard.setString(string, forType: .string)
         #elseif canImport(UIKit)
         UIPasteboard.general.string = string
+        #endif
+    }
+
+    static func openMicrophoneSettings() {
+        #if targetEnvironment(macCatalyst)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            UIApplication.shared.open(url)
+        }
+        #elseif os(macOS)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
+        }
+        #elseif canImport(UIKit)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
         #endif
     }
 }
@@ -469,6 +531,21 @@ extension View {
         self.listStyle(.inset)
         #else
         self.listStyle(.insetGrouped)
+        #endif
+    }
+
+    @ViewBuilder
+    func ts3DebugToolbar<Content: View>(@ViewBuilder button: () -> Content) -> some View {
+        #if targetEnvironment(macCatalyst)
+        self
+        #elseif os(macOS)
+        self
+        #else
+        self.toolbar {
+            ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                button()
+            }
+        }
         #endif
     }
 }

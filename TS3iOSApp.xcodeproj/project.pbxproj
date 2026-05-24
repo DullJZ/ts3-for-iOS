@@ -159,6 +159,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = TS3iOSApp/TS3iOSApp.entitlements;
 				DEVELOPMENT_TEAM = APHJST33GX;
 				INFOPLIST_FILE = TS3iOSApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -180,6 +181,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = TS3iOSApp/TS3iOSApp.entitlements;
 				DEVELOPMENT_TEAM = APHJST33GX;
 				INFOPLIST_FILE = TS3iOSApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
