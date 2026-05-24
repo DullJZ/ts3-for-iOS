@@ -50,6 +50,7 @@ final class TS3AudioEngine {
     private var playbackStates: [PlaybackSource: PlaybackState] = [:]
 
     var onEncodedPacket: ((Data) -> Void)?
+    var onLog: ((TS3LogLevel, String) -> Void)?
 
     private var isPlaybackRunning = false
     private var isCaptureRunning = false
@@ -155,18 +156,16 @@ final class TS3AudioEngine {
             playbackStates[source] = state
             play(samples: samples, on: state.playerNode)
         } catch {
-            // ignore
+            let route = isWhisper ? "whisper" : "channel"
+            log(.warning, "playback failed for \(route) source \(clientId): \(error.localizedDescription)")
         }
     }
 
     private func configureSession(needsInput: Bool) throws {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        if needsInput {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .defaultToSpeaker])
-        } else {
-            try session.setCategory(.playback, mode: .voiceChat, options: [])
-        }
+        let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP, .defaultToSpeaker]
+        try session.setCategory(.playAndRecord, mode: .voiceChat, options: options)
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
         #endif
@@ -334,6 +333,10 @@ final class TS3AudioEngine {
 
     private func makeDecoder() throws -> TS3OpusDecoder {
         try TS3OpusFactory.makeDecoder(sampleRate: Int32(config.sampleRate), channels: Int32(config.channels))
+    }
+
+    private func log(_ level: TS3LogLevel, _ message: String) {
+        onLog?(level, message)
     }
 
     private func play(samples: [Float], on playerNode: AVAudioPlayerNode) {
