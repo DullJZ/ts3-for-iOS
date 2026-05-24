@@ -33,6 +33,7 @@ final class TS3AppModel: ObservableObject {
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
     @Published var lastError: String?
+    @Published var playbackVolume: Double = 1.0
 
     @Published var serverHost = ""
     @Published var serverPort = "9987"
@@ -54,6 +55,10 @@ final class TS3AppModel: ObservableObject {
 
     var talkStatus: String {
         isTalking ? "Sending microphone audio" : "Mic idle"
+    }
+
+    var playbackVolumePercentText: String {
+        "\(Int((playbackVolume * 100).rounded()))%"
     }
 
     var currentChannel: TS3ChannelSummary? {
@@ -108,6 +113,7 @@ final class TS3AppModel: ObservableObject {
                 self?.appendLog(entry)
             }
         }
+        newClient.setPlaybackVolume(Float(playbackVolume))
         client = newClient
 
         Task {
@@ -130,6 +136,12 @@ final class TS3AppModel: ObservableObject {
         channels = []
         clients = []
         isTalking = false
+    }
+
+    func updatePlaybackVolume(_ volume: Double) {
+        let clamped = min(max(volume, 0), 4)
+        playbackVolume = clamped
+        client?.setPlaybackVolume(Float(clamped))
     }
 
     func joinChannel(_ channel: TS3ChannelSummary) {
