@@ -112,10 +112,14 @@ struct ChannelListView: View {
             }
             .padding(.horizontal)
 
+            CurrentChannelCard()
+                .padding(.horizontal)
+
             List {
                 Section(header: Text("Channels")) {
                     ForEach(model.channels) { channel in
                         ChannelRow(channel: channel)
+                            .listRowBackground(channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
                     }
                 }
 
@@ -138,14 +142,72 @@ struct ChannelListView: View {
     }
 }
 
+struct CurrentChannelCard: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Current Channel")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            if let channel = model.currentChannel {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.accentColor)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(channel.name)
+                            .font(.headline)
+                        if let topic = channel.topic, !topic.isEmpty {
+                            Text(topic)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Spacer()
+                }
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundColor(.secondary)
+                    Text("Current channel not available yet.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor.opacity(0.10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 struct ChannelRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(channel.name)
+                HStack(spacing: 8) {
+                    Text(channel.name)
+                        .fontWeight(channel.isCurrent ? .semibold : .regular)
+                    if channel.isCurrent {
+                        Text("Current")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.accentColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                }
                 if let topic = channel.topic, !topic.isEmpty {
                     Text(topic)
                         .font(.footnote)
@@ -154,9 +216,8 @@ struct ChannelRow: View {
             }
             Spacer()
             if channel.isCurrent {
-                Text("Joined")
-                    .font(.footnote)
-                    .foregroundColor(.green)
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.accentColor)
             } else {
                 Button("Join") {
                     model.joinChannel(channel)
@@ -164,6 +225,7 @@ struct ChannelRow: View {
                 .buttonStyle(TS3BorderedButtonStyle())
             }
         }
+        .padding(.vertical, 4)
     }
 }
 

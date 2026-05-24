@@ -9,8 +9,8 @@ enum UIConnectionState {
 
 struct TS3ChannelSummary: Identifiable {
     let id: Int
-    let name: String
-    let topic: String?
+    var name: String
+    var topic: String?
     var isCurrent: Bool
 }
 
@@ -43,6 +43,30 @@ final class TS3AppModel: ObservableObject {
 
     var talkStatus: String {
         isTalking ? "Sending microphone audio" : "Mic idle"
+    }
+
+    var currentChannel: TS3ChannelSummary? {
+        channels.first { $0.isCurrent }
+    }
+
+    private func setCurrentChannel(id: Int, name: String? = nil, topic: String? = nil) {
+        var didFindChannel = false
+        channels = channels.map { summary in
+            var updated = summary
+            let isCurrent = summary.id == id
+            if isCurrent {
+                didFindChannel = true
+                updated.name = name ?? summary.name
+                updated.topic = topic ?? summary.topic
+            }
+            updated.isCurrent = isCurrent
+            return updated
+        }
+
+        if !didFindChannel, let name {
+            channels.append(TS3ChannelSummary(id: id, name: name, topic: topic, isCurrent: true))
+            channels.sort { $0.id < $1.id }
+        }
     }
 
     func connect() {
@@ -90,6 +114,7 @@ final class TS3AppModel: ObservableObject {
         Task {
             do {
                 try await client?.joinChannel(channelId: channel.id, password: nil)
+                setCurrentChannel(id: channel.id, name: channel.name, topic: channel.topic)
             } catch {
                 await MainActor.run {
                     self.lastError = error.localizedDescription
@@ -104,6 +129,7 @@ final class TS3AppModel: ObservableObject {
                 let channelId = try await client?.createChannel(name: name, password: password.isEmpty ? nil : password)
                 if let channelId {
                     try await client?.joinChannel(channelId: channelId, password: password.isEmpty ? nil : password)
+                    setCurrentChannel(id: channelId, name: name)
                 }
             } catch {
                 await MainActor.run {
