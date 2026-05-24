@@ -75,14 +75,9 @@ final class TS3AudioEngine {
         self.encoder = try TS3OpusFactory.makeEncoder(sampleRate: Int32(config.sampleRate), channels: Int32(config.channels), application: config.opusApplication)
     }
 
-    func startPlayback() throws {
+    func preparePlayback() throws {
         if isPlaybackRunning { return }
         try configureSession(needsInput: isCaptureRunning)
-        engine.prepare()
-        if !engine.isRunning {
-            try engine.start()
-        }
-        isPlaybackRunning = true
     }
 
     func startCapture() throws {
@@ -220,7 +215,7 @@ final class TS3AudioEngine {
         }
 
         if !isPlaybackRunning {
-            try startPlayback()
+            try preparePlayback()
         }
 
         let playerNode = AVAudioPlayerNode()
@@ -230,6 +225,7 @@ final class TS3AudioEngine {
             engine.prepare()
             try engine.start()
         }
+        isPlaybackRunning = true
         playerNode.play()
 
         return PlaybackState(
