@@ -9,6 +9,7 @@ public final class TS3Client {
     public var logHandler: ((TS3LogEntry) -> Void)?
 
     private let config: TS3ClientConfig
+    private let audioQueueKey = DispatchSpecificKey<Void>()
     private let audioQueue = DispatchQueue(label: "ts3.audio")
     private let connectionQueue = DispatchQueue(label: "ts3.connection")
     private var connection: NWConnection?
@@ -68,6 +69,7 @@ public final class TS3Client {
 
     public init(config: TS3ClientConfig) {
         self.config = config
+        audioQueue.setSpecific(key: audioQueueKey, value: ())
         setupCounters()
     }
 
@@ -94,38 +96,8 @@ public final class TS3Client {
             do {
                 let engine = try TS3AudioEngine(config: .voice)
                 engine.onEncodedPacket = { [weak self] data in
-                    guard let self else { return }
-                    guard self.state == .connected else { return }
-                    guard self.isSendingAudio else { return }
-                    if self.isWhispering, let target = self.whisperTarget {
-                        let flag: UInt8? = self.whisperFlaggedPackets > 0 ? self.whisperSessionId : nil
-                        if self.whisperFlaggedPackets > 0 {
-                            self.whisperFlaggedPackets -= 1
-                        }
-                        let whisper = TS3PacketBodyVoiceWhisper(
-                            role: .client,
-                            packetId: 0,
-                            clientId: nil,
-                            codecType: 4,
-                            target: target,
-                            codecData: data,
-                            serverFlag0: flag
-                        )
-                        try? self.sendPacket(body: whisper)
-                    } else {
-                        let flag: UInt8? = self.voiceFlaggedPackets > 0 ? self.voiceSessionId : nil
-                        if self.voiceFlaggedPackets > 0 {
-                            self.voiceFlaggedPackets -= 1
-                        }
-                        let voice = TS3PacketBodyVoice(
-                            role: .client,
-                            packetId: 0,
-                            clientId: nil,
-                            codecType: 4,
-                            codecData: data,
-                            serverFlag0: flag
-                        )
-                        try? self.sendPacket(body: voice)
+                    self?.audioQueue.async { [weak self] in
+                        self?.handleEncodedAudioPacket(data)
                     }
                 }
                 audioEngine = engine
@@ -190,13 +162,35 @@ public final class TS3Client {
         return Int(cid) ?? 0
     }
 
-    public func startMicrophone() {
+    public func startMicrophone() throws {
+        guard state == .connected else {
+            throw TS3Error.invalidState
+        }
+        guard audioEngine != nil else {
+            throw TS3Error.notImplemented
+        }
+
         voiceFlaggedPackets = 5
         isSendingAudio = true
-        try? audioEngine?.startCapture()
+        do {
+            try withAudioQueueSync {
+                try audioEngine?.startCapture()
+            }
+            log(.info, "microphone capture started")
+        } catch {
+            isSendingAudio = false
+            throw error
+        }
     }
 
     public func stopMicrophone() {
+        guard isSendingAudio else {
+            withAudioQueueSync {
+                audioEngine?.stopCapture()
+            }
+            return
+        }
+
         isSendingAudio = false
         if isWhispering, let target = whisperTarget {
             let whisper = TS3PacketBodyVoiceWhisper(
@@ -208,7 +202,7 @@ public final class TS3Client {
                 codecData: Data(),
                 serverFlag0: nil
             )
-            try? sendPacket(body: whisper)
+            _ = try? sendPacket(body: whisper)
             whisperFlaggedPackets = 5
             whisperSessionId = whisperSessionId == 7 ? 1 : whisperSessionId + 1
         } else {
@@ -220,11 +214,14 @@ public final class TS3Client {
                 codecData: Data(),
                 serverFlag0: nil
             )
-            try? sendPacket(body: voice)
+            _ = try? sendPacket(body: voice)
             voiceFlaggedPackets = 5
             voiceSessionId = voiceSessionId == 7 ? 1 : voiceSessionId + 1
         }
-        audioEngine?.stopCapture()
+        withAudioQueueSync {
+            audioEngine?.stopCapture()
+        }
+        log(.info, "microphone capture stopped")
     }
 
     public func startWhisper(target: TS3WhisperTarget) {
@@ -256,6 +253,50 @@ public final class TS3Client {
 
 // MARK: - Connection
 private extension TS3Client {
+    func withAudioQueueSync<T>(_ work: () throws -> T) rethrows -> T {
+        if DispatchQueue.getSpecific(key: audioQueueKey) != nil {
+            return try work()
+        }
+
+        return try audioQueue.sync(execute: work)
+    }
+
+    func handleEncodedAudioPacket(_ data: Data) {
+        guard state == .connected else { return }
+        guard isSendingAudio else { return }
+
+        if isWhispering, let target = whisperTarget {
+            let flag: UInt8? = whisperFlaggedPackets > 0 ? whisperSessionId : nil
+            if whisperFlaggedPackets > 0 {
+                whisperFlaggedPackets -= 1
+            }
+            let whisper = TS3PacketBodyVoiceWhisper(
+                role: .client,
+                packetId: 0,
+                clientId: nil,
+                codecType: 4,
+                target: target,
+                codecData: data,
+                serverFlag0: flag
+            )
+            _ = try? sendPacket(body: whisper)
+        } else {
+            let flag: UInt8? = voiceFlaggedPackets > 0 ? voiceSessionId : nil
+            if voiceFlaggedPackets > 0 {
+                voiceFlaggedPackets -= 1
+            }
+            let voice = TS3PacketBodyVoice(
+                role: .client,
+                packetId: 0,
+                clientId: nil,
+                codecType: 4,
+                codecData: data,
+                serverFlag0: flag
+            )
+            _ = try? sendPacket(body: voice)
+        }
+    }
+
     func setupCounters() {
         TS3PacketBodyType.allCases.forEach { type in
             if type == .init1 {

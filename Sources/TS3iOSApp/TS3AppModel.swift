@@ -1,5 +1,8 @@
 import Foundation
 import TS3Kit
+#if canImport(AVFoundation)
+import AVFoundation
+#endif
 
 enum UIConnectionState {
     case disconnected
@@ -158,12 +161,77 @@ final class TS3AppModel: ObservableObject {
     }
 
     func toggleTalking() {
-        isTalking.toggle()
         if isTalking {
-            client?.startMicrophone()
-        } else {
             client?.stopMicrophone()
+            isTalking = false
+            return
         }
+
+        guard let client else {
+            lastError = "Connect to a server before using Push To Talk."
+            return
+        }
+
+        Task {
+            let granted = await requestMicrophoneAccessIfNeeded()
+            guard granted else {
+                await MainActor.run {
+                    self.lastError = "Microphone access is required for Push To Talk."
+                    self.isTalking = false
+                }
+                return
+            }
+
+            do {
+                try client.startMicrophone()
+                await MainActor.run {
+                    self.lastError = nil
+                    self.isTalking = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.lastError = message(for: error)
+                    self.isTalking = false
+                }
+            }
+        }
+    }
+
+    private func message(for error: Error) -> String {
+        if let error = error as? TS3Error {
+            switch error {
+            case .invalidState:
+                return "Connect to the server before starting microphone capture."
+            case .notImplemented:
+                return "Microphone capture is not available on this device."
+            default:
+                return error.localizedDescription
+            }
+        }
+
+        return error.localizedDescription
+    }
+
+    private func requestMicrophoneAccessIfNeeded() async -> Bool {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        switch session.recordPermission {
+        case .granted:
+            return true
+        case .denied:
+            return false
+        case .undetermined:
+            return await withCheckedContinuation { continuation in
+                session.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        @unknown default:
+            return false
+        }
+        #else
+        return true
+        #endif
     }
 
     func appendLog(_ entry: TS3LogEntry) {
@@ -178,6 +246,7 @@ final class TS3AppModel: ObservableObject {
     }
 }
 
+@MainActor
 extension TS3AppModel: TS3ClientDelegate {
     func ts3ClientDidConnect(_ client: TS3Client) {
         state = .connected
@@ -187,6 +256,7 @@ extension TS3AppModel: TS3ClientDelegate {
         if let error {
             lastError = error.localizedDescription
         }
+        isTalking = false
         state = .disconnected
     }
 
