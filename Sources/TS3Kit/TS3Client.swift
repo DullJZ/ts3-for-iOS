@@ -34,7 +34,9 @@ public final class TS3Client {
     }
 
     private var randomBytes: [UInt8] = []
-    private var alphaBytes: [UInt8]?
+    private var pendingInitIvAlpha: [UInt8]?
+    private var pendingInitIvCommand: String?
+    private var logSequence: UInt64 = 0
 
     private var localCounters: [TS3PacketBodyType: TS3LocalCounter] = [:]
     private var remoteCounters: [TS3PacketBodyType: TS3RemoteCounter] = [:]
@@ -49,7 +51,6 @@ public final class TS3Client {
 
     private var pendingCommands: [Int: PendingCommand] = [:]
     private var nextCommandCode: Int = 1
-    private var pendingClientEkHandshake: PendingClientEkHandshake?
 
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var channelCache: [Int: TS3Channel] = [:]
@@ -70,11 +71,11 @@ public final class TS3Client {
     public func connect() async throws {
         if state != .disconnected { return }
 
+        logSequence = 0
         transformation = initTransformation
         allowInitFallbackDecrypt = true
-        alphaBytes = nil
+        clearPendingInitIv(reason: "connect-start")
         randomBytes = []
-        pendingClientEkHandshake = nil
         clientId = 0
         serverId = nil
         currentChannelId = nil
@@ -286,18 +287,21 @@ private extension TS3Client {
         let now = Date()
         for id in sendQueue.keys {
             guard var response = sendQueue[id], response.shouldResend(now: now) else { continue }
+            log(.debug, "[RESEND] COMMAND id=\(id) retry=\(response.retries + 1)")
             sendRaw(data: response.datagram)
             response.didResend()
             sendQueue[id] = response
         }
         for id in sendQueueLow.keys {
             guard var response = sendQueueLow[id], response.shouldResend(now: now) else { continue }
+            log(.debug, "[RESEND] COMMAND_LOW id=\(id) retry=\(response.retries + 1)")
             sendRaw(data: response.datagram)
             response.didResend()
             sendQueueLow[id] = response
         }
         for id in pingQueue.keys {
             guard var response = pingQueue[id], response.shouldResend(now: now) else { continue }
+            log(.debug, "[RESEND] PING id=\(id) retry=\(response.retries + 1)")
             sendRaw(data: response.datagram)
             response.didResend()
             pingQueue[id] = response
@@ -333,9 +337,8 @@ private extension TS3Client {
         channelCache.removeAll()
         transformation = initTransformation
         allowInitFallbackDecrypt = true
-        alphaBytes = nil
+        clearPendingInitIv(reason: "disconnect")
         randomBytes = []
-        pendingClientEkHandshake = nil
         if let error {
             log(.error, "disconnected: \(error.localizedDescription)")
         } else {
@@ -386,6 +389,7 @@ private extension TS3Client {
             log(.debug, "Handle Init1 step 3")
             let serverStuffHex = step.serverStuff.map { String(format: "%02X", $0) }.joined()
             log(.debug, "Init1 Step3 serverStuff=\(serverStuffHex)")
+            log(.debug, "[HANDSHAKE] step3 pendingInitIv hasAlpha=\(pendingInitIvAlpha != nil) hasCommand=\(pendingInitIvCommand != nil)")
 
             guard step.level >= 0 && step.level <= 1_000_000 else {
                 throw TS3Error.invalidInitStep
@@ -404,6 +408,9 @@ private extension TS3Client {
             }
 
             let initiv = try createInitIv()
+            log(.debug, "[HANDSHAKE] step4 yLen=\(yBytes.count) y=\(hexString(yBytes))")
+            log(.debug, "[HANDSHAKE] step4 clientinitiv len=\(initiv.utf8.count) text=\(initiv)")
+            log(.debug, "[HANDSHAKE] step4 clientinitiv hex=\(hexString([UInt8](initiv.utf8), maxBytes: 160))")
 
             let reply = TS3Init1Step4(
                 x: step.x,
@@ -418,6 +425,7 @@ private extension TS3Client {
 
         case _ as TS3Init1Step127:
             log(.warning, "init1 retry requested")
+            clearPendingInitIv(reason: "init1-step127")
             try sendInit1Step0()
 
         default:
@@ -426,23 +434,40 @@ private extension TS3Client {
     }
 
     func createInitIv() throws -> String {
-        alphaBytes = (0..<10).map { _ in UInt8.random(in: 0...255) }
+        if let pendingInitIvCommand, let pendingInitIvAlpha {
+            log(.debug, "[HANDSHAKE] createInitIv reusing pending alpha for repeated step3")
+            log(.debug, "[HANDSHAKE] createInitIv alpha=\(base64String(pendingInitIvAlpha)) alphaHex=\(hexString(pendingInitIvAlpha)) ip=\(resolveInitIvIp() ?? "<nil>")")
+            log(.debug, "[HANDSHAKE] createInitIv command len=\(pendingInitIvCommand.utf8.count) text=\(pendingInitIvCommand)")
+            log(.debug, "[HANDSHAKE] createInitIv command hex=\(hexString([UInt8](pendingInitIvCommand.utf8), maxBytes: 160))")
+            return pendingInitIvCommand
+        }
         guard let identity else {
             throw TS3Error.invalidIdentity
         }
+        let alpha = (0..<10).map { _ in UInt8.random(in: 0...255) }
+        let ip = resolveInitIvIp()
 
         var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "alpha", value: Data(alphaBytes ?? []).base64EncodedString()),
+            TS3CommandSingleParameter(name: "alpha", value: Data(alpha).base64EncodedString()),
             TS3CommandSingleParameter(name: "omega", value: identity.publicKeyString),
             TS3CommandSingleParameter(name: "ot", value: "1")
         ]
 
-        if let ip = resolveInitIvIp() {
+        if let ip {
             params.append(TS3CommandSingleParameter(name: "ip", value: ip))
         }
 
         let command = TS3SingleCommand(name: "clientinitiv", parameters: params)
-        return command.build()
+        let built = command.build()
+        pendingInitIvAlpha = alpha
+        pendingInitIvCommand = built
+        log(.debug, "[HANDSHAKE] createInitIv stored pending alpha len=\(alpha.count) commandLen=\(built.utf8.count)")
+        let omegaBytes = [UInt8](Data(base64Encoded: identity.publicKeyString) ?? Data())
+        log(.debug, "[HANDSHAKE] createInitIv alpha=\(base64String(alpha)) alphaHex=\(hexString(alpha)) ip=\(ip ?? "<nil>")")
+        log(.debug, "[HANDSHAKE] createInitIv identity uid=\(identity.uid.toBase64()) pubkeyBase64Len=\(identity.publicKeyString.count) pubkeyDerLen=\(omegaBytes.count)")
+        log(.debug, "[HANDSHAKE] createInitIv command len=\(built.utf8.count) text=\(built)")
+        log(.debug, "[HANDSHAKE] createInitIv command hex=\(hexString([UInt8](built.utf8), maxBytes: 160))")
+        return built
     }
 
     func resolveInitIvIp() -> String? {
@@ -517,11 +542,22 @@ private extension TS3Client {
                 throw TS3Error.cryptoFailed
             }
 
+            let alpha = pendingInitIvAlpha ?? []
+            log(.debug, "[HANDSHAKE] initivexpand2 pendingInitIv hasAlpha=\(pendingInitIvAlpha != nil) hasCommand=\(pendingInitIvCommand != nil)")
+            log(.debug, "[HANDSHAKE] initivexpand2 alpha=\(base64String(alpha)) licenseLen=\(licenseBytes.count) betaLen=\(betaBytes.count) omegaLen=\(omegaBytes.count) proofLen=\(proofBytes.count)")
+
             var ekPrivate = (0..<32).map { _ in UInt8.random(in: 0...255) }
             TS3Ed25519.clamp(&ekPrivate)
             let ekPublic = try TS3Ed25519.scalarMultBase(privateKey: ekPrivate)
 
             let signature = try TS3Crypto.generateClientEkProof(key: ekPublic, beta: betaBytes, identity: identity)
+            let identityPublicKey = [UInt8](Data(base64Encoded: identity.publicKeyString) ?? Data())
+            let localProofValid = try TS3Crypto.verifyClientEkProof(
+                key: ekPublic,
+                beta: betaBytes,
+                signature: signature,
+                publicKey: identityPublicKey
+            )
 
             let ekCommand = TS3SingleCommand(
                 name: "clientek",
@@ -530,14 +566,16 @@ private extension TS3Client {
                     TS3CommandSingleParameter(name: "proof", value: Data(signature).base64EncodedString())
                 ]
             )
-            let alpha = alphaBytes ?? []
             let params = try TS3Crypto.cryptoInit2(license: licenseBytes, alpha: alpha, beta: betaBytes, privateKey: ekPrivate)
-            let ekPacketId = try sendCommandReturningPacketId(ekCommand)
-            pendingClientEkHandshake = PendingClientEkHandshake(
-                packetId: ekPacketId,
-                transformation: TS3PacketTransformation(ivStruct: params.ivStruct, fakeMac: params.fakeMac)
-            )
-            alphaBytes = nil
+            log(.debug, "[HANDSHAKE] clientek ek=\(base64String(ekPublic)) proof=\(base64String(signature)) localProofValid=\(localProofValid)")
+            log(.debug, "[HANDSHAKE] cryptoInit2 ivStruct=\(hexString(params.ivStruct)) fakeMac=\(hexString(params.fakeMac))")
+            let secureTransformation = TS3PacketTransformation(ivStruct: params.ivStruct, fakeMac: params.fakeMac)
+            _ = try sendCommandReturningPacketId(ekCommand)
+            transformation = secureTransformation
+
+            try sendClientInit()
+            state = .retrieving
+            log(.info, "clientinit sent")
 
         } else if command.name == "error" {
             let message = command.get("msg")?.value ?? "unknown"
@@ -578,25 +616,6 @@ private extension TS3Client {
 
 // MARK: - Packet Handling
 private extension TS3Client {
-    func completePendingClientEkHandshakeIfNeeded(acknowledgedPacketId: UInt16) {
-        guard let pendingClientEkHandshake,
-              pendingClientEkHandshake.packetId == acknowledgedPacketId else {
-            return
-        }
-
-        self.pendingClientEkHandshake = nil
-        transformation = pendingClientEkHandshake.transformation
-
-        do {
-            try sendClientInit()
-            state = .retrieving
-            log(.info, "clientinit sent")
-        } catch {
-            log(.error, "failed to send clientinit after clientek ACK: \(error.localizedDescription)")
-            disconnectInternal(error: error)
-        }
-    }
-
     func handleDatagram(_ data: Data) {
         var buffer = TS3ByteBuffer(data: data)
         var header = TS3PacketHeader(role: .server, type: .command)
@@ -611,6 +630,7 @@ private extension TS3Client {
             log(.debug, "[NETWORK] READ \(typeName) id=\(header.packetId) len=\(data.count) from \(serverAddress)")
 
             let packet = try readPacket(header: header, buffer: data)
+            sendAcknowledgementIfNeeded(for: packet)
 
             var shouldProcess = true
             if packet.header.type.canResend, packet.header.type != .init1,
@@ -681,33 +701,11 @@ private extension TS3Client {
     }
 
     func handlePacket(_ packet: TS3Packet) {
-        if let ackType = packet.header.type.acknowledgedBy {
-            log(.debug, "[ACK] Sending ACK for packet id=\(packet.header.packetId) gen=\(packet.header.generation) type=\(packet.header.type)")
-            do {
-                switch ackType {
-                case .ack:
-                    let ack = TS3PacketBodyAck(role: .client, packetId: packet.header.packetId)
-                    try sendPacket(body: ack, generation: packet.header.generation)
-                case .ackLow:
-                    let ack = TS3PacketBodyAckLow(role: .client, packetId: packet.header.packetId)
-                    try sendPacket(body: ack, generation: packet.header.generation)
-                case .pong:
-                    let pong = TS3PacketBodyPong(role: .client, packetId: packet.header.packetId)
-                    try sendPacket(body: pong, generation: packet.header.generation)
-                default:
-                    break
-                }
-            } catch {
-                log(.error, "[ACK] Failed to send ACK: \(error)")
-            }
-        }
-
         switch packet.header.type {
         case .ack:
             if let ack = packet.body as? TS3PacketBodyAck {
                 log(.debug, "[ACK] Received ACK for packet id=\(ack.packetId)")
                 sendQueue.removeValue(forKey: ack.packetId)
-                completePendingClientEkHandshakeIfNeeded(acknowledgedPacketId: ack.packetId)
             }
         case .ackLow:
             if let ack = packet.body as? TS3PacketBodyAckLow {
@@ -806,6 +804,7 @@ private extension TS3Client {
 
         if command.name == "initserver" {
             allowInitFallbackDecrypt = false
+            clearPendingInitIv(reason: "initserver")
 
             if let id = command.get("aclid")?.value {
                 clientId = UInt16(id) ?? 0
@@ -985,7 +984,20 @@ private extension TS3Client {
         let data: Data
         if !header.flags.contains(.unencrypted) {
             log(.debug, "[PROTOCOL] ENCRYPT \(typeName) generation=\(header.generation) using=\(transformType)")
+            if let label = handshakeCommandLabel(for: body) {
+                var plaintextBuffer = TS3ByteBuffer()
+                try body.write(to: &plaintextBuffer, header: header)
+                let plaintext = [UInt8](plaintextBuffer.data)
+                let headerWithoutMac = Array(header.write(includeMac: false).dropFirst(8))
+                let params = transformation.computeParameters(header: header)
+                log(.debug, "[HANDSHAKE] encrypt \(label) packetId=\(header.packetId) gen=\(header.generation) key=\(hexString(params.key)) nonce=\(hexString(params.nonce)) header=\(hexString(headerWithoutMac)) plaintextLen=\(plaintext.count) plaintextPreview=\(hexString(plaintext, maxBytes: 64))")
+            }
             data = try transformation.encrypt(packet: outgoing)
+            if let label = handshakeCommandLabel(for: body) {
+                let mac = [UInt8](data.prefix(8))
+                let ciphertext = [UInt8](data.dropFirst(header.size))
+                log(.debug, "[HANDSHAKE] encrypted \(label) mac=\(hexString(mac)) ciphertextLen=\(ciphertext.count) ciphertextPreview=\(hexString(ciphertext, maxBytes: 64)) packetPreview=\(hexString([UInt8](data), maxBytes: 96))")
+            }
         } else {
             if header.type == .init1 {
                 header.mac = [0x54, 0x53, 0x33, 0x49, 0x4E, 0x49, 0x54, 0x31]
@@ -998,6 +1010,10 @@ private extension TS3Client {
             try body.write(to: &bodyBuffer, header: header)
             buffer.writeBytes(bodyBuffer.data)
             data = buffer.data
+            if let label = handshakeInitLabel(for: body) {
+                log(.debug, "[HANDSHAKE] \(label) header=\(hexString([UInt8](header.write()))) bodyLen=\(bodyBuffer.data.count) bodyPreview=\(hexString([UInt8](bodyBuffer.data), maxBytes: 192))")
+                log(.debug, "[HANDSHAKE] \(label) packetPreview=\(hexString([UInt8](data), maxBytes: 224))")
+            }
         }
         log(.debug, "[PROTOCOL] WRITE \(typeName)")
         log(.debug, "[NETWORK] WRITE \(typeName) id=\(header.packetId) len=\(data.count) to \(serverAddress)")
@@ -1054,8 +1070,91 @@ private extension TS3Client {
 }
 
 private extension TS3Client {
+    func sendAcknowledgementIfNeeded(for packet: TS3Packet) {
+        guard let ackType = packet.header.type.acknowledgedBy else {
+            return
+        }
+
+        log(.debug, "[ACK] Sending ACK for packet id=\(packet.header.packetId) gen=\(packet.header.generation) type=\(packet.header.type)")
+        do {
+            switch ackType {
+            case .ack:
+                let ack = TS3PacketBodyAck(role: .client, packetId: packet.header.packetId)
+                try sendPacket(body: ack, generation: packet.header.generation)
+            case .ackLow:
+                let ack = TS3PacketBodyAckLow(role: .client, packetId: packet.header.packetId)
+                try sendPacket(body: ack, generation: packet.header.generation)
+            case .pong:
+                let pong = TS3PacketBodyPong(role: .client, packetId: packet.header.packetId)
+                try sendPacket(body: pong, generation: packet.header.generation)
+            default:
+                break
+            }
+        } catch {
+            log(.error, "[ACK] Failed to send ACK: \(error)")
+        }
+    }
+
     func log(_ level: TS3LogLevel, _ message: String) {
-        logHandler?(TS3LogEntry(timestamp: Date(), level: level, message: message))
+        logSequence += 1
+        logHandler?(TS3LogEntry(timestamp: Date(), level: level, message: "#\(logSequence) \(message)"))
+    }
+
+    func clearPendingInitIv(reason: String) {
+        let hadAlpha = pendingInitIvAlpha != nil
+        let hadCommand = pendingInitIvCommand != nil
+        pendingInitIvAlpha = nil
+        pendingInitIvCommand = nil
+        log(.debug, "[HANDSHAKE] clear pending initiv reason=\(reason) hadAlpha=\(hadAlpha) hadCommand=\(hadCommand)")
+    }
+
+    func handshakeCommandLabel(for body: any TS3PacketBody) -> String? {
+        let text: String?
+        if let command = body as? TS3PacketBodyCommand {
+            text = command.text
+        } else if let command = body as? TS3PacketBodyCommandLow {
+            text = command.text
+        } else {
+            text = nil
+        }
+
+        guard let text,
+              let commandName = text.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true).first else {
+            return nil
+        }
+
+        switch commandName {
+        case "clientek", "clientinit":
+            return String(commandName)
+        default:
+            return nil
+        }
+    }
+
+    func handshakeInitLabel(for body: any TS3PacketBody) -> String? {
+        guard let init1 = body as? TS3PacketBodyInit1 else {
+            return nil
+        }
+
+        switch init1.step {
+        case _ as TS3Init1Step4:
+            return "init1-step4"
+        default:
+            return nil
+        }
+    }
+
+    func hexString(_ bytes: [UInt8], maxBytes: Int? = nil) -> String {
+        let slice = maxBytes.map { Array(bytes.prefix($0)) } ?? bytes
+        let hex = slice.map { String(format: "%02X", $0) }.joined()
+        if let maxBytes, bytes.count > maxBytes {
+            return "\(hex)...(\(bytes.count) bytes)"
+        }
+        return hex
+    }
+
+    func base64String(_ bytes: [UInt8]) -> String {
+        Data(bytes).base64EncodedString()
     }
 }
 
@@ -1080,11 +1179,6 @@ private struct PendingCommand {
     let code: Int
     var continuation: CheckedContinuation<[TS3SingleCommand], Error>
     var responses: [TS3SingleCommand]
-}
-
-private struct PendingClientEkHandshake {
-    let packetId: UInt16
-    let transformation: TS3PacketTransformation
 }
 
 private struct TS3PacketResponse {
