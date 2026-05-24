@@ -85,10 +85,12 @@ final class TS3AudioEngine {
     }
 
     private func configureSession() throws {
+        #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .defaultToSpeaker])
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
+        #endif
     }
 
     private func setupEngine() {
