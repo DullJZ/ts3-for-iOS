@@ -31,4 +31,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.ts3ios
+        PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]: com.example.ts3ios.maccatalyst
+        SUPPORTS_MACCATALYST: YES
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         SWIFT_VERSION: 5.9

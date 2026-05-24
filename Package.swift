@@ -5,7 +5,7 @@ let package = Package(
     name: "TS3iOS",
     platforms: [
         .iOS(.v14),
-        .macOS(.v10_15)
+        .macOS(.v11)
     ],
     products: [
         .library(name: "TS3Kit", targets: ["TS3Kit"]),

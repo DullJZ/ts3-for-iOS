@@ -1,6 +1,14 @@
 import SwiftUI
 import TS3Kit
 
+#if os(macOS)
+import AppKit
+#endif
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
 
@@ -16,17 +24,17 @@ struct ContentView: View {
                     ChannelListView()
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("调试") {
-                        model.isShowingDebug = true
-                    }
-                }
-            }
             .sheet(isPresented: $model.isShowingDebug) {
                 DebugLogView()
                     .environmentObject(model)
+            }
+        }
+        .ts3InlineNavigationTitle()
+        .toolbar {
+            ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                Button("调试") {
+                    model.isShowingDebug = true
+                }
             }
         }
     }
@@ -54,18 +62,15 @@ struct ConnectView: View {
         Form {
             Section(header: Text("Server")) {
                 TextField("Host (e.g. ts.example.com)", text: $model.serverHost)
-                    .textContentType(.URL)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
+                    .ts3URLTextField()
                 TextField("Port", text: $model.serverPort)
-                    .keyboardType(.numberPad)
+                    .ts3NumericKeyboard()
                 SecureField("Server Password (optional)", text: $model.serverPassword)
             }
 
             Section(header: Text("Profile")) {
                 TextField("Nickname", text: $model.nickname)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
+                    .ts3PlainTextField()
             }
 
             if let error = model.lastError {
@@ -121,7 +126,7 @@ struct ChannelListView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
+            .ts3ChannelListStyle()
 
             TalkControlBar()
         }
@@ -338,9 +343,9 @@ struct PlaybackVolumeSheet: View {
                 }
             }
             .navigationTitle("Audio Volume")
-            .navigationBarTitleDisplayMode(.inline)
+            .ts3InlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -369,5 +374,95 @@ struct TS3BorderedButtonStyle: ButtonStyle {
             )
             .cornerRadius(8)
             .opacity(configuration.isPressed ? 0.85 : 1.0)
+    }
+}
+
+enum TS3PlatformSupport {
+    static var defaultNickname: String {
+        #if targetEnvironment(macCatalyst)
+        return "Mac"
+        #elseif os(macOS)
+        return Host.current().localizedName ?? "Mac"
+        #else
+        return "iOS"
+        #endif
+    }
+
+    static var toolbarLeadingPlacement: ToolbarItemPlacement {
+        #if os(macOS)
+        return .automatic
+        #else
+        return .navigationBarLeading
+        #endif
+    }
+
+    static var toolbarTrailingPlacement: ToolbarItemPlacement {
+        #if os(macOS)
+        return .automatic
+        #else
+        return .navigationBarTrailing
+        #endif
+    }
+
+    static func copyToPasteboard(_ string: String) {
+        #if os(macOS)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(string, forType: .string)
+        #elseif canImport(UIKit)
+        UIPasteboard.general.string = string
+        #endif
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func ts3InlineNavigationTitle() -> some View {
+        #if os(macOS)
+        self
+        #else
+        self.navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+
+    @ViewBuilder
+    func ts3URLTextField() -> some View {
+        #if os(iOS)
+        self
+            .textContentType(.URL)
+            .autocapitalization(.none)
+            .disableAutocorrection(true)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func ts3PlainTextField() -> some View {
+        #if os(iOS)
+        self
+            .autocapitalization(.none)
+            .disableAutocorrection(true)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func ts3NumericKeyboard() -> some View {
+        #if os(iOS)
+        self.keyboardType(.numberPad)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func ts3ChannelListStyle() -> some View {
+        #if os(macOS)
+        self.listStyle(.inset)
+        #else
+        self.listStyle(.insetGrouped)
+        #endif
     }
 }
