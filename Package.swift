@@ -12,10 +12,10 @@ let package = Package(
         .executable(name: "TS3iOSApp", targets: ["TS3iOSApp"])
     ],
     dependencies: [
-        .package(path: "vendor/CryptoSwift"),
-        .package(path: "vendor/swift-sodium"),
-        .package(path: "vendor/BigInt"),
-        .package(path: "vendor/swift-opus")
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", exact: "1.9.0"),
+        .package(url: "https://github.com/jedisct1/swift-sodium.git", exact: "0.10.0"),
+        .package(url: "https://github.com/attaswift/BigInt.git", exact: "5.7.0"),
+        .package(url: "https://github.com/alta/swift-opus.git", exact: "0.0.2")
     ],
     targets: [
         .target(
