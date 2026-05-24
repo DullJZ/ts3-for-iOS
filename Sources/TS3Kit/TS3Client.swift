@@ -54,6 +54,7 @@ public final class TS3Client {
 
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var channelCache: [Int: TS3Channel] = [:]
+    private var defaultChannelId: Int?
     private var audioEngine: TS3AudioEngine?
     private var isSendingAudio = false
     private var voiceSessionId: UInt8 = 1
@@ -79,6 +80,7 @@ public final class TS3Client {
         clientId = 0
         serverId = nil
         currentChannelId = nil
+        defaultChannelId = nil
         nextCommandCode = 1
 
         state = .connecting
@@ -336,6 +338,7 @@ private extension TS3Client {
         pingQueue.removeAll()
         pendingCommands.removeAll()
         channelCache.removeAll()
+        defaultChannelId = nil
         transformation = initTransformation
         allowInitFallbackDecrypt = true
         clearPendingInitIv(reason: "disconnect")
@@ -817,6 +820,12 @@ private extension TS3Client {
         }
 
         if command.name == "channellist" {
+            if let cidValue = command.get("cid")?.value,
+               let cid = Int(cidValue),
+               command.get("channel_flag_default")?.value == "1" {
+                defaultChannelId = cid
+                log(.debug, "[CHANNEL] default channel advertised by server cid=\(cid)")
+            }
             if let channel = channelFromCommand(command) {
                 channelCache[channel.id] = channel
             }
@@ -824,6 +833,10 @@ private extension TS3Client {
         }
 
         if command.name == "channellistfinished" {
+            if currentChannelId == nil, let defaultChannelId {
+                currentChannelId = defaultChannelId
+                log(.debug, "[CHANNEL] using default channel as initial current channel cid=\(defaultChannelId)")
+            }
             state = .connected
             connectContinuation?.resume()
             connectContinuation = nil
@@ -835,12 +848,10 @@ private extension TS3Client {
             return
         }
 
-        if command.name == "notifyclientmoved" {
-            if let clid = command.get("clid")?.value,
-               UInt16(clid) == clientId,
-               let cidValue = command.get("cid")?.value,
-               let cid = Int(cidValue) {
+        if command.name == "notifycliententerview" || command.name == "notifyclientmoved" {
+            if let cid = ownClientChannelId(from: command) {
                 currentChannelId = cid
+                log(.debug, "[CHANNEL] current channel updated from \(command.name) cid=\(cid)")
                 publishChannels()
             }
             return
@@ -1069,6 +1080,25 @@ private extension TS3Client {
 }
 
 private extension TS3Client {
+    func ownClientChannelId(from command: TS3SingleCommand) -> Int? {
+        guard let clid = command.get("clid")?.value,
+              UInt16(clid) == clientId else {
+            return nil
+        }
+
+        if let ctidValue = command.get("ctid")?.value,
+           let ctid = Int(ctidValue) {
+            return ctid
+        }
+
+        if let cidValue = command.get("cid")?.value,
+           let cid = Int(cidValue) {
+            return cid
+        }
+
+        return nil
+    }
+
     func publishChannels() {
         let channels = channelCache.values.sorted { $0.id < $1.id }
         DispatchQueue.main.async {
