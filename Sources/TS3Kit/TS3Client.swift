@@ -189,19 +189,6 @@ public final class TS3Client {
         publishChannels()
     }
 
-    public func createChannel(name: String, password: String?) async throws -> Int {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "channel_name", value: name)
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "channel_password", value: password))
-        }
-        let command = TS3SingleCommand(name: "channelcreate", parameters: params)
-        let responses = try await execute(command)
-        let cid = responses.first?.get("cid")?.value ?? "0"
-        return Int(cid) ?? 0
-    }
-
     public func startMicrophone() throws {
         guard state == .connected else {
             throw TS3Error.invalidState

@@ -157,22 +157,6 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func createChannel(name: String, password: String) {
-        Task {
-            do {
-                let channelId = try await client?.createChannel(name: name, password: password.isEmpty ? nil : password)
-                if let channelId {
-                    try await client?.joinChannel(channelId: channelId, password: password.isEmpty ? nil : password)
-                    setCurrentChannel(id: channelId, name: name)
-                }
-            } catch {
-                await MainActor.run {
-                    self.lastError = error.localizedDescription
-                }
-            }
-        }
-    }
-
     func toggleTalking() {
         if isTalking {
             client?.stopMicrophone()
