@@ -73,11 +73,7 @@ enum TS3Crypto {
         var privateCopy = privateKey
         TS3Ed25519.clamp(&privateCopy)
         let shared = try TS3Ed25519.scalarMult(privateKey: privateCopy, publicKey: publicKey)
-        var sharedTmp = shared
-        if sharedTmp.count >= 32 {
-            sharedTmp[31] ^= 0x80
-        }
-        return hash512(sharedTmp)
+        return hash512(shared)
     }
 
     static func generateClientEkProof(key: [UInt8], beta: [UInt8], identity: TS3Identity) throws -> [UInt8] {
