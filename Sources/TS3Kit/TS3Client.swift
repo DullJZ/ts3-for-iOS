@@ -47,6 +47,8 @@ public final class TS3Client {
     private var sendQueue: [UInt16: TS3PacketResponse] = [:]
     private var sendQueueLow: [UInt16: TS3PacketResponse] = [:]
     private var pingQueue: [UInt16: TS3PacketResponse] = [:]
+    private var disconnectTimeoutWorkItem: DispatchWorkItem?
+    private var isDisconnecting = false
 
     private var lastResponse: Date = Date()
     private var lastPing: Date = Date()
@@ -87,6 +89,9 @@ public final class TS3Client {
         clientCache.removeAll()
         defaultChannelId = nil
         nextCommandCode = 1
+        isDisconnecting = false
+        disconnectTimeoutWorkItem?.cancel()
+        disconnectTimeoutWorkItem = nil
 
         state = .connecting
         channelCache.removeAll()
@@ -129,6 +134,38 @@ public final class TS3Client {
     }
 
     public func disconnect(reason: String) {
+        guard state != .disconnected else { return }
+        guard !isDisconnecting else { return }
+
+        if state == .connected {
+            isDisconnecting = true
+            pingQueue.removeAll()
+            stopMicrophone()
+
+            let command: TS3SingleCommand
+            if reason.isEmpty {
+                command = TS3SingleCommand(name: "clientdisconnect")
+            } else {
+                command = TS3SingleCommand(
+                    name: "clientdisconnect",
+                    parameters: [
+                        TS3CommandSingleParameter(name: "reasonid", value: "8"),
+                        TS3CommandSingleParameter(name: "reasonmsg", value: reason)
+                    ]
+                )
+            }
+
+            do {
+                try sendCommand(command)
+                log(.info, "disconnect requested")
+                scheduleDisconnectFallback()
+            } catch {
+                log(.warning, "clientdisconnect send failed: \(error.localizedDescription)")
+                disconnectInternal(error: nil)
+            }
+            return
+        }
+
         disconnectInternal(error: nil)
     }
 
@@ -352,6 +389,7 @@ private extension TS3Client {
             response.didResend()
             sendQueueLow[id] = response
         }
+        guard !isDisconnecting else { return }
         for id in pingQueue.keys {
             guard var response = pingQueue[id], response.shouldResend(now: now) else { continue }
             log(.debug, "[RESEND] PING id=\(id) retry=\(response.retries + 1)")
@@ -362,7 +400,7 @@ private extension TS3Client {
     }
 
     func sendPingIfNeeded() {
-        guard state == .connected else { return }
+        guard state == .connected, !isDisconnecting else { return }
         if Date().timeIntervalSince(lastResponse) > 30 {
             disconnectInternal(error: TS3Error.timeout)
             return
@@ -378,7 +416,22 @@ private extension TS3Client {
         connection?.send(content: data, completion: .contentProcessed { _ in })
     }
 
+    func scheduleDisconnectFallback() {
+        disconnectTimeoutWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [self] in
+            if self.state != .disconnected {
+                self.log(.warning, "disconnect fallback fired")
+                self.disconnectInternal(error: nil)
+            }
+        }
+        disconnectTimeoutWorkItem = workItem
+        connectionQueue.asyncAfter(deadline: .now() + 1.5, execute: workItem)
+    }
+
     func disconnectInternal(error: Error?) {
+        disconnectTimeoutWorkItem?.cancel()
+        disconnectTimeoutWorkItem = nil
+        isDisconnecting = false
         connection?.cancel()
         connection = nil
         audioEngine?.stop()
@@ -946,6 +999,11 @@ private extension TS3Client {
         if command.name == "notifyclientleftview" {
             if let clidValue = command.get("clid")?.value,
                let clid = UInt16(clidValue) {
+                if clid == clientId {
+                    log(.info, "server acknowledged disconnect")
+                    disconnectInternal(error: nil)
+                    return
+                }
                 clientCache.removeValue(forKey: clid)
                 publishClients()
             }

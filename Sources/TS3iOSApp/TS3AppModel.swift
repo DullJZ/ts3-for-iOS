@@ -123,6 +123,7 @@ final class TS3AppModel: ObservableObject {
     }
 
     func disconnect() {
+        client?.delegate = nil
         client?.disconnect(reason: "ui-disconnect")
         client = nil
         state = .disconnected
