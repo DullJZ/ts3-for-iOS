@@ -138,7 +138,7 @@ public final class TS3Client {
             TS3CommandSingleParameter(name: "cid", value: String(channelId))
         ]
         if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: password))
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
         }
 
         let command = TS3SingleCommand(name: "clientmove", parameters: params)
@@ -655,7 +655,7 @@ private extension TS3Client {
             TS3CommandSingleParameter(name: "client_output_hardware", value: "1"),
             TS3CommandSingleParameter(name: "client_default_channel", value: nil),
             TS3CommandSingleParameter(name: "client_default_channel_password", value: nil),
-            TS3CommandSingleParameter(name: "client_server_password", value: config.serverPassword),
+            TS3CommandSingleParameter(name: "client_server_password", value: config.serverPassword.map(TS3Crypto.hashPassword)),
             TS3CommandSingleParameter(name: "client_nickname_phonetic", value: nil),
             TS3CommandSingleParameter(name: "client_meta_data", value: ""),
             TS3CommandSingleParameter(name: "client_default_token", value: nil),

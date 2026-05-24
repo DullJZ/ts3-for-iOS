@@ -38,18 +38,26 @@ struct TS3CLI {
         let args = Array(CommandLine.arguments.dropFirst())
 
         guard args.count >= 2 else {
-            print("Usage: ts3-cli <host> <port> [nickname] [--mic-seconds <seconds>]")
-            print("Example: ts3-cli 120.24.89.226 9987 MyTS3Bot --mic-seconds 2")
+            print("Usage: ts3-cli <host> <port> [nickname] [--server-password <password>] [--mic-seconds <seconds>]")
+            print("Example: ts3-cli 120.24.89.226 9987 MyTS3Bot --server-password secret --mic-seconds 2")
             exit(1)
         }
 
         var positional: [String] = []
         var microphoneSeconds: Double?
+        var serverPassword: String?
         var index = 0
 
         while index < args.count {
             let argument = args[index]
             switch argument {
+            case "--server-password", "--password":
+                guard index + 1 < args.count else {
+                    print("Error: --server-password expects a value")
+                    exit(1)
+                }
+                serverPassword = args[index + 1]
+                index += 2
             case "--mic-seconds":
                 guard index + 1 < args.count,
                       let value = Double(args[index + 1]),
@@ -66,7 +74,7 @@ struct TS3CLI {
         }
 
         guard positional.count >= 2 else {
-            print("Usage: ts3-cli <host> <port> [nickname] [--mic-seconds <seconds>]")
+            print("Usage: ts3-cli <host> <port> [nickname] [--server-password <password>] [--mic-seconds <seconds>]")
             exit(1)
         }
 
@@ -82,11 +90,14 @@ struct TS3CLI {
         print("Host: \(host)")
         print("Port: \(port)")
         print("Nickname: \(nickname)")
+        if serverPassword != nil {
+            print("Server password: provided")
+        }
         if let microphoneSeconds {
             print("Microphone test: \(microphoneSeconds)s")
         }
 
-        let config = TS3ClientConfig(host: host, port: Int(port), nickname: nickname, serverPassword: nil)
+        let config = TS3ClientConfig(host: host, port: Int(port), nickname: nickname, serverPassword: serverPassword)
         let client = TS3Client(config: config)
 
         client.logHandler = CLILogger.logHandler
