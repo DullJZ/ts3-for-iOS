@@ -1709,15 +1709,23 @@ final class TS3AppModel: ObservableObject {
     func toggleAway() {
         let newValue = !isAway
         let message = awayMessage
+        setAway(newValue, message: message)
+    }
+
+    func setAway(_ value: Bool, message: String) {
         runClientCommand { client in
-            try await client.setAway(newValue, message: message.isEmpty ? nil : message)
+            try await client.setAway(value, message: message.isEmpty ? nil : message)
         } onSuccess: {
-            self.isAway = newValue
+            self.isAway = value
+            self.awayMessage = message
         }
     }
 
     func toggleInputMuted() {
-        let newValue = !isInputMuted
+        setInputMuted(!isInputMuted)
+    }
+
+    func setInputMuted(_ newValue: Bool) {
         runClientCommand { client in
             try await client.setInputMuted(newValue)
         } onSuccess: {
@@ -1730,7 +1738,10 @@ final class TS3AppModel: ObservableObject {
     }
 
     func toggleOutputMuted() {
-        let newValue = !isOutputMuted
+        setOutputMuted(!isOutputMuted)
+    }
+
+    func setOutputMuted(_ newValue: Bool) {
         runClientCommand { client in
             try await client.setOutputMuted(newValue)
         } onSuccess: {
@@ -2607,9 +2618,11 @@ extension TS3AppModel: TS3ClientDelegate {
                 )
             }
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {
+                self.nickname = ownClient.nickname
                 self.isInputMuted = ownClient.isInputMuted
                 self.isOutputMuted = ownClient.isOutputMuted
                 self.isAway = ownClient.isAway
+                self.awayMessage = ownClient.awayMessage ?? self.awayMessage
             }
         }
     }

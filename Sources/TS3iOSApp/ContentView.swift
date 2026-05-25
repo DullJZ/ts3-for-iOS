@@ -3653,6 +3653,7 @@ struct JoinChannelPasswordSheet: View {
 struct TalkControlBar: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var isShowingAudioSettings = false
+    @State private var isShowingSelfStatus = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -3661,6 +3662,12 @@ struct TalkControlBar: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
                 Spacer()
+                Button {
+                    isShowingSelfStatus = true
+                } label: {
+                    Label(model.isAway ? "Away" : "Self", systemImage: model.isAway ? "moon.zzz" : "person.crop.circle")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
                 Button {
                     isShowingAudioSettings = true
                 } label: {
@@ -3687,6 +3694,10 @@ struct TalkControlBar: View {
             AudioSettingsSheet()
                 .environmentObject(model)
         }
+        .sheet(isPresented: $isShowingSelfStatus) {
+            SelfStatusSheet()
+                .environmentObject(model)
+        }
         .alert(item: $model.microphonePermissionPrompt) { prompt in
             Alert(
                 title: Text(prompt.title),
@@ -3699,6 +3710,83 @@ struct TalkControlBar: View {
                 }
             )
         }
+    }
+}
+
+struct SelfStatusSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var nickname = ""
+    @State private var isAway = false
+    @State private var awayMessage = ""
+    @State private var isInputMuted = false
+    @State private var isOutputMuted = false
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Profile")) {
+                    TextField("Nickname", text: $nickname)
+                        .ts3PlainTextField()
+                    Button("Update Nickname") {
+                        model.updateNickname(to: nickname)
+                    }
+                    .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                Section(header: Text("Status")) {
+                    Toggle("Away", isOn: $isAway)
+                    if isAway {
+                        TextField("Away Message", text: $awayMessage)
+                            .ts3PlainTextField()
+                    }
+                    Button(isAway ? "Set Away" : "Clear Away") {
+                        model.setAway(isAway, message: awayMessage)
+                    }
+                }
+
+                Section(header: Text("Mute")) {
+                    Toggle("Microphone Muted", isOn: inputMutedBinding)
+                    Toggle("Output Muted", isOn: outputMutedBinding)
+                }
+            }
+            .navigationTitle("Self Status")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                nickname = model.nickname
+                isAway = model.isAway
+                awayMessage = model.awayMessage
+                isInputMuted = model.isInputMuted
+                isOutputMuted = model.isOutputMuted
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var inputMutedBinding: Binding<Bool> {
+        Binding(
+            get: { isInputMuted },
+            set: { value in
+                isInputMuted = value
+                model.setInputMuted(value)
+            }
+        )
+    }
+
+    private var outputMutedBinding: Binding<Bool> {
+        Binding(
+            get: { isOutputMuted },
+            set: { value in
+                isOutputMuted = value
+                model.setOutputMuted(value)
+            }
+        )
     }
 }
 
