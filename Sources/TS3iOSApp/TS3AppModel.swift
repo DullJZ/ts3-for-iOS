@@ -171,6 +171,12 @@ struct TS3GroupSummary: Identifiable {
     let name: String
 }
 
+extension TS3GroupSummary {
+    static func name(for id: Int, in groups: [TS3GroupSummary]) -> String {
+        groups.first { $0.id == id }?.name ?? "Group \(id)"
+    }
+}
+
 struct TS3PermissionInfoSummary: Identifiable {
     let id: Int
     let name: String
@@ -1559,6 +1565,9 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
             try await client.addServerGroup(groupId: group.id, toClientDatabaseId: databaseId)
+            await MainActor.run {
+                self.upsertServerGroup(group.id, forClientId: user.id)
+            }
         }
     }
 
@@ -1566,6 +1575,9 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
             try await client.removeServerGroup(groupId: group.id, fromClientDatabaseId: databaseId)
+            await MainActor.run {
+                self.removeServerGroup(group.id, fromClientId: user.id)
+            }
         }
     }
 
@@ -1573,7 +1585,60 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
             try await client.setChannelGroup(groupId: group.id, channelId: channel.id, clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.setChannelGroup(group.id, forClientId: user.id)
+            }
         }
+    }
+
+    private func upsertServerGroup(_ groupId: Int, forClientId clientId: Int) {
+        updateUser(clientId: clientId) { user in
+            if user.serverGroups.contains(groupId) {
+                return user
+            }
+            var groups = user.serverGroups
+            groups.append(groupId)
+            return copyUser(user, serverGroups: groups.sorted())
+        }
+    }
+
+    private func removeServerGroup(_ groupId: Int, fromClientId clientId: Int) {
+        updateUser(clientId: clientId) { user in
+            copyUser(user, serverGroups: user.serverGroups.filter { $0 != groupId })
+        }
+    }
+
+    private func setChannelGroup(_ groupId: Int, forClientId clientId: Int) {
+        updateUser(clientId: clientId) { user in
+            copyUser(user, channelGroupId: groupId)
+        }
+    }
+
+    private func updateUser(clientId: Int, transform: (TS3UserSummary) -> TS3UserSummary) {
+        guard let index = clients.firstIndex(where: { $0.id == clientId }) else { return }
+        clients[index] = transform(clients[index])
+    }
+
+    private func copyUser(
+        _ user: TS3UserSummary,
+        channelGroupId: Int? = nil,
+        serverGroups: [Int]? = nil
+    ) -> TS3UserSummary {
+        TS3UserSummary(
+            id: user.id,
+            channelId: user.channelId,
+            databaseId: user.databaseId,
+            uniqueIdentifier: user.uniqueIdentifier,
+            nickname: user.nickname,
+            isCurrentUser: user.isCurrentUser,
+            isInputMuted: user.isInputMuted,
+            isOutputMuted: user.isOutputMuted,
+            isAway: user.isAway,
+            awayMessage: user.awayMessage,
+            talkPower: user.talkPower,
+            channelGroupId: channelGroupId ?? user.channelGroupId,
+            serverGroups: serverGroups ?? user.serverGroups
+        )
     }
 
     func refreshIdentitySummary() async {

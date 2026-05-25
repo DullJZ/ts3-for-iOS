@@ -449,9 +449,18 @@ struct ChannelMemberRow: View {
                     if let power = member.talkPower {
                         Text("Talk \(power)")
                     }
+                    if let channelGroupId = member.channelGroupId {
+                        Text("Channel: \(TS3GroupSummary.name(for: channelGroupId, in: model.channelGroups))")
+                    }
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
+                if !member.serverGroups.isEmpty {
+                    Text("Server: \(serverGroupNames)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
             if member.isCurrentUser {
                 Text("You")
@@ -473,8 +482,10 @@ struct ChannelMemberRow: View {
                 Button("Poke") {
                     actionMode = .poke
                 }
-                Button("Complain") {
-                    actionMode = .complain
+                if !member.isCurrentUser {
+                    Button("Complain") {
+                        actionMode = .complain
+                    }
                 }
                 Button("Whisper to User") {
                     model.enableWhisperToClient(member)
@@ -489,20 +500,31 @@ struct ChannelMemberRow: View {
                         }
                     }
                 }
-                Button("Kick From Channel") {
-                    actionMode = .kickChannel
+                if !member.isCurrentUser {
+                    Button("Kick From Channel") {
+                        actionMode = .kickChannel
+                    }
+                    Button("Kick From Server") {
+                        actionMode = .kickServer
+                    }
+                    Button("Ban") {
+                        actionMode = .ban
+                    }
                 }
-                Button("Kick From Server") {
-                    actionMode = .kickServer
-                }
-                Button("Ban") {
-                    actionMode = .ban
-                }
-                if !model.serverGroups.isEmpty {
+                if !availableServerGroups.isEmpty {
                     Menu("Add Server Group") {
-                        ForEach(model.serverGroups) { group in
+                        ForEach(availableServerGroups) { group in
                             Button(group.name) {
                                 model.addServerGroup(group, to: member)
+                            }
+                        }
+                    }
+                }
+                if !assignedServerGroups.isEmpty {
+                    Menu("Remove Server Group") {
+                        ForEach(assignedServerGroups) { group in
+                            Button(group.name) {
+                                model.removeServerGroup(group, from: member)
                             }
                         }
                     }
@@ -519,12 +541,25 @@ struct ChannelMemberRow: View {
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
-            .disabled(member.isCurrentUser)
         }
         .sheet(item: $actionMode) { mode in
             UserActionSheet(mode: mode, user: member)
                 .environmentObject(model)
         }
+    }
+
+    private var assignedServerGroups: [TS3GroupSummary] {
+        model.serverGroups.filter { member.serverGroups.contains($0.id) }
+    }
+
+    private var availableServerGroups: [TS3GroupSummary] {
+        model.serverGroups.filter { !member.serverGroups.contains($0.id) }
+    }
+
+    private var serverGroupNames: String {
+        member.serverGroups
+            .map { TS3GroupSummary.name(for: $0, in: model.serverGroups) }
+            .joined(separator: ", ")
     }
 }
 
