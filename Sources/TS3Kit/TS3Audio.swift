@@ -57,6 +57,8 @@ final class TS3AudioEngine {
 
     private var isPlaybackRunning = false
     private var isCaptureRunning = false
+    private var encodedPacketCount = 0
+    private var droppedInputBufferCount = 0
 
     private struct PlaybackSource: Hashable {
         let clientId: UInt16
@@ -122,6 +124,8 @@ final class TS3AudioEngine {
         engine.inputNode.removeTap(onBus: 0)
         converter = nil
         captureBuffer.removeAll()
+        encodedPacketCount = 0
+        droppedInputBufferCount = 0
         isCaptureRunning = false
         if shouldResumePlayback {
             try? configureSession(needsInput: false)
@@ -168,9 +172,7 @@ final class TS3AudioEngine {
     }
 
     private func configureSession(needsInput: Bool) throws {
-        #if targetEnvironment(macCatalyst)
-        _ = needsInput
-        #elseif os(iOS)
+        #if targetEnvironment(macCatalyst) || os(iOS)
         let session = AVAudioSession.sharedInstance()
         let options: AVAudioSession.CategoryOptions
         #if compiler(>=6.3)
@@ -256,6 +258,8 @@ final class TS3AudioEngine {
         engine = AVAudioEngine()
         converter = nil
         captureBuffer.removeAll()
+        encodedPacketCount = 0
+        droppedInputBufferCount = 0
         isPlaybackRunning = false
         isCaptureRunning = false
 
@@ -294,15 +298,32 @@ final class TS3AudioEngine {
     private func processInput(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat, targetFormat: AVAudioFormat) {
         let pcmBuffer: AVAudioPCMBuffer
         if let converter = converter {
-            guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: buffer.frameCapacity) else {
+            let ratio = targetFormat.sampleRate / inputFormat.sampleRate
+            let outputCapacity = max(
+                AVAudioFrameCount(ceil(Double(buffer.frameLength) * ratio)) + 16,
+                config.frameSize
+            )
+            guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: outputCapacity) else {
                 return
             }
             var error: NSError?
+            var didProvideInput = false
             converter.convert(to: converted, error: &error) { _, outStatus in
+                if didProvideInput {
+                    outStatus.pointee = .noDataNow
+                    return nil
+                }
+
+                didProvideInput = true
                 outStatus.pointee = .haveData
                 return buffer
             }
-            if error != nil {
+            if let error {
+                logDroppedInputBuffer("input conversion failed: \(error.localizedDescription)")
+                return
+            }
+            if converted.frameLength == 0 {
+                logDroppedInputBuffer("input conversion produced 0 frames")
                 return
             }
             pcmBuffer = converted
@@ -310,9 +331,16 @@ final class TS3AudioEngine {
             pcmBuffer = buffer
         }
 
-        guard let channelData = pcmBuffer.floatChannelData else { return }
+        guard let channelData = pcmBuffer.floatChannelData else {
+            logDroppedInputBuffer("input buffer has no float channel data")
+            return
+        }
         let channel = channelData[0]
         let frames = Int(pcmBuffer.frameLength)
+        guard frames > 0 else {
+            logDroppedInputBuffer("input buffer has 0 frames")
+            return
+        }
         captureBuffer.append(contentsOf: UnsafeBufferPointer(start: channel, count: frames))
 
         while captureBuffer.count >= Int(config.frameSize) {
@@ -320,10 +348,21 @@ final class TS3AudioEngine {
             captureBuffer.removeFirst(Int(config.frameSize))
             do {
                 let packet = try encoder.encode(pcm: frame)
+                encodedPacketCount += 1
+                if encodedPacketCount == 1 || encodedPacketCount % 50 == 0 {
+                    log(.debug, "encoded microphone packet count=\(encodedPacketCount) bytes=\(packet.count)")
+                }
                 onEncodedPacket?(packet)
             } catch {
-                // ignore
+                logDroppedInputBuffer("opus encode failed: \(error.localizedDescription)")
             }
+        }
+    }
+
+    private func logDroppedInputBuffer(_ reason: String) {
+        droppedInputBufferCount += 1
+        if droppedInputBufferCount == 1 || droppedInputBufferCount % 50 == 0 {
+            log(.warning, "dropped microphone input buffer count=\(droppedInputBufferCount): \(reason)")
         }
     }
 

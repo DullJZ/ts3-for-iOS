@@ -284,22 +284,7 @@ final class TS3AppModel: ObservableObject {
     }
 
     private func currentMicrophonePermissionState() -> MicrophonePermissionState {
-        #if targetEnvironment(macCatalyst)
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            appendAudioPermissionLog("AVCaptureDevice current", status: "authorized")
-            return .granted
-        case .denied, .restricted:
-            appendAudioPermissionLog("AVCaptureDevice current", status: "denied/restricted")
-            return .denied
-        case .notDetermined:
-            appendAudioPermissionLog("AVCaptureDevice current", status: "notDetermined")
-            break
-        @unknown default:
-            appendAudioPermissionLog("AVCaptureDevice current", status: "unknown")
-            return .denied
-        }
-
+        #if targetEnvironment(macCatalyst) || os(iOS)
         if #available(iOS 17.0, macOS 14.0, *) {
             switch AVAudioApplication.shared.recordPermission {
             case .granted:
@@ -317,8 +302,6 @@ final class TS3AppModel: ObservableObject {
             }
         }
 
-        return .notDetermined
-        #elseif os(iOS)
         let session = AVAudioSession.sharedInstance()
         switch session.recordPermission {
         case .granted:
@@ -356,30 +339,7 @@ final class TS3AppModel: ObservableObject {
 
     @MainActor
     private func requestMicrophoneAccessIfNeeded() async -> MicrophoneAccessResult {
-        #if targetEnvironment(macCatalyst)
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            appendAudioPermissionLog("AVCaptureDevice", status: "authorized")
-            return .granted
-        case .denied, .restricted:
-            appendAudioPermissionLog("AVCaptureDevice", status: "denied/restricted")
-            return .denied
-        case .notDetermined:
-            appendAudioPermissionLog("AVCaptureDevice", status: "requesting")
-            let granted = await withCheckedContinuation { continuation in
-                AVCaptureDevice.requestAccess(for: .audio) { granted in
-                    continuation.resume(returning: granted)
-                }
-            }
-            appendAudioPermissionLog("AVCaptureDevice request", status: granted ? "granted" : "denied")
-            if granted {
-                return .granted
-            }
-        @unknown default:
-            appendAudioPermissionLog("AVCaptureDevice", status: "unknown")
-            return .denied
-        }
-
+        #if targetEnvironment(macCatalyst) || os(iOS)
         if #available(iOS 17.0, macOS 14.0, *) {
             switch AVAudioApplication.shared.recordPermission {
             case .granted:
@@ -403,8 +363,6 @@ final class TS3AppModel: ObservableObject {
             }
         }
 
-        return .denied
-        #elseif os(iOS)
         let session = AVAudioSession.sharedInstance()
         switch session.recordPermission {
         case .granted:

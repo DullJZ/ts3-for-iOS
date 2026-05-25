@@ -30,6 +30,7 @@ targets:
         NSMicrophoneUsageDescription: Allow microphone access for voice chat.
     settings:
       base:
+        CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: TS3iOSApp/TS3iOSApp.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: com.example.ts3ios
         PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]: com.example.ts3ios.maccatalyst
         SUPPORTS_MACCATALYST: YES
