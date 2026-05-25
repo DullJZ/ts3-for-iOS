@@ -28,6 +28,8 @@ enum TS3OpusFactory {
 }
 
 final class TS3AudioEngine {
+    private static let badAudioDeviceErrorCode = 560227702 // '!dev' / kAudioHardwareBadDeviceError
+
     struct Config {
         let sampleRate: Double
         let channels: AVAudioChannelCount
@@ -38,7 +40,7 @@ final class TS3AudioEngine {
     }
 
     private let config: Config
-    private let engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
     private var converter: AVAudioConverter?
     private var captureBuffer: [Float] = []
     private lazy var outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
@@ -86,32 +88,28 @@ final class TS3AudioEngine {
         guard !isCaptureRunning else { return }
         let shouldResumePlayback = !playbackStates.isEmpty
         log(.debug, "starting capture; existing playback sources=\(playbackStates.count)")
-        if engine.isRunning {
-            engine.stop()
-        }
+
         do {
-            try configureSession(needsInput: true)
-            installInputTapIfNeeded()
-            rebuildPlaybackGraph()
-            try startEngineIfNeeded()
-            isPlaybackRunning = true
-            isCaptureRunning = true
-            log(.info, "capture started")
+            try startCaptureAttempt()
         } catch {
+            let initialError = error
             log(.warning, "capture start failed: \(error.localizedDescription)")
-            engine.inputNode.removeTap(onBus: 0)
-            converter = nil
-            captureBuffer.removeAll()
-            isCaptureRunning = false
-            if shouldResumePlayback {
-                try? configureSession(needsInput: false)
-                rebuildPlaybackGraph()
-                try? startEngineIfNeeded()
-                isPlaybackRunning = engine.isRunning
-            } else {
-                isPlaybackRunning = false
+            cleanupCaptureStartFailure(restorePlayback: false)
+
+            if shouldRetryCaptureStart(after: error) {
+                recreateEngine(reason: "capture-start-retry")
+                do {
+                    try startCaptureAttempt()
+                    return
+                } catch {
+                    log(.warning, "capture retry failed: \(error.localizedDescription)")
+                    cleanupCaptureStartFailure(restorePlayback: shouldResumePlayback)
+                    throw captureStartError(from: error)
+                }
             }
-            throw error
+
+            cleanupCaptureStartFailure(restorePlayback: shouldResumePlayback)
+            throw captureStartError(from: initialError)
         }
     }
 
@@ -189,12 +187,15 @@ final class TS3AudioEngine {
         #endif
     }
 
-    private func installInputTapIfNeeded() {
+    private func installInputTapIfNeeded() throws {
         guard !isCaptureRunning else { return }
         guard let outputFormat else { return }
         let inputNode = engine.inputNode
         let inputFormat = inputNode.inputFormat(forBus: 0)
         log(.debug, "input format sampleRate=\(inputFormat.sampleRate) channels=\(inputFormat.channelCount)")
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            throw TS3Error.audioInputUnavailable
+        }
         if inputFormat.sampleRate != config.sampleRate || inputFormat.channelCount != config.channels {
             converter = AVAudioConverter(from: inputFormat, to: outputFormat)
             log(.debug, "input converter enabled to sampleRate=\(config.sampleRate) channels=\(config.channels)")
@@ -207,6 +208,87 @@ final class TS3AudioEngine {
             self?.processInput(buffer: buffer, inputFormat: inputFormat, targetFormat: outputFormat)
         }
         log(.debug, "input tap installed")
+    }
+
+    private func startCaptureAttempt() throws {
+        if engine.isRunning {
+            engine.stop()
+        }
+        try configureSession(needsInput: true)
+        try installInputTapIfNeeded()
+        rebuildPlaybackGraph()
+        try startEngineIfNeeded()
+        isPlaybackRunning = true
+        isCaptureRunning = true
+        log(.info, "capture started")
+    }
+
+    private func cleanupCaptureStartFailure(restorePlayback: Bool) {
+        engine.inputNode.removeTap(onBus: 0)
+        converter = nil
+        captureBuffer.removeAll()
+        isCaptureRunning = false
+
+        if restorePlayback {
+            try? configureSession(needsInput: false)
+            rebuildPlaybackGraph()
+            try? startEngineIfNeeded()
+            isPlaybackRunning = engine.isRunning
+        } else {
+            if engine.isRunning {
+                engine.stop()
+            }
+            isPlaybackRunning = false
+        }
+    }
+
+    private func recreateEngine(reason: String) {
+        log(.debug, "recreating audio engine: \(reason)")
+        if engine.isRunning {
+            engine.stop()
+        }
+
+        for state in playbackStates.values {
+            state.playerNode.stop()
+            state.playerNode.reset()
+        }
+
+        engine = AVAudioEngine()
+        converter = nil
+        captureBuffer.removeAll()
+        isPlaybackRunning = false
+        isCaptureRunning = false
+
+        if !playbackStates.isEmpty {
+            rebuildPlaybackGraph()
+        }
+    }
+
+    private func shouldRetryCaptureStart(after error: Error) -> Bool {
+        #if targetEnvironment(macCatalyst) || os(macOS)
+        if case TS3Error.audioInputUnavailable = error {
+            return true
+        }
+
+        let nsError = error as NSError
+        return nsError.code == Self.badAudioDeviceErrorCode
+        #else
+        _ = error
+        return false
+        #endif
+    }
+
+    private func captureStartError(from error: Error) -> Error {
+        if case TS3Error.audioInputUnavailable = error {
+            return error
+        }
+
+        let nsError = error as NSError
+        if nsError.code == Self.badAudioDeviceErrorCode {
+            return TS3Error.audioInputUnavailable
+        }
+
+        return error
     }
 
     private func processInput(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat, targetFormat: AVAudioFormat) {

@@ -49,6 +49,7 @@ public protocol TS3ClientDelegate: AnyObject {
 
 public enum TS3Error: Error {
     case notImplemented
+    case audioInputUnavailable
     case invalidEscape
     case ambiguousCommand
     case derDecodeFailed

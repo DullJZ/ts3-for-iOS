@@ -254,6 +254,8 @@ final class TS3AppModel: ObservableObject {
             switch error {
             case .invalidState:
                 return "Connect to the server before starting microphone capture."
+            case .audioInputUnavailable:
+                return "No usable microphone input device is available. Check microphone permission and the current system input device."
             case .notImplemented:
                 return "Microphone capture is not available on this device."
             default:
