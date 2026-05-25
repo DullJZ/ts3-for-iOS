@@ -336,6 +336,16 @@ struct ChannelRow: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        if let codecQuality = channel.codecQuality {
+                            Text("Quality \(codecQuality)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        if let limitText = channelLimitText {
+                            Text(limitText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     if let topic = channel.topic, !topic.isEmpty {
                         Text(topic)
@@ -403,6 +413,22 @@ struct ChannelRow: View {
                 secondaryButton: .cancel()
             )
         }
+    }
+
+    private var channelLimitText: String? {
+        if channel.maxClientsUnlimited == true {
+            return nil
+        }
+        if let maxClients = channel.maxClients, maxClients >= 0 {
+            return "Limit \(maxClients)"
+        }
+        if channel.maxFamilyClientsInherited == true || channel.maxFamilyClientsUnlimited == true {
+            return nil
+        }
+        if let maxFamilyClients = channel.maxFamilyClients, maxFamilyClients >= 0 {
+            return "Family \(maxFamilyClients)"
+        }
+        return nil
     }
 }
 

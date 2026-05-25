@@ -303,6 +303,18 @@ public struct TS3Channel: Identifiable {
     public let isPermanent: Bool
     public let neededTalkPower: Int?
     public let codec: Int?
+    /// The configured codec quality, when reported by the server.
+    public let codecQuality: Int?
+    /// The maximum number of clients allowed in the channel.
+    public let maxClients: Int?
+    /// The maximum number of clients allowed in the channel family.
+    public let maxFamilyClients: Int?
+    /// Whether the channel has no direct client limit.
+    public let maxClientsUnlimited: Bool?
+    /// Whether the channel family has no client limit.
+    public let maxFamilyClientsUnlimited: Bool?
+    /// Whether the channel inherits its family client limit.
+    public let maxFamilyClientsInherited: Bool?
     /// The channel icon id reported by the server.
     public let iconId: Int?
 
@@ -319,6 +331,12 @@ public struct TS3Channel: Identifiable {
         isPermanent: Bool = false,
         neededTalkPower: Int? = nil,
         codec: Int? = nil,
+        codecQuality: Int? = nil,
+        maxClients: Int? = nil,
+        maxFamilyClients: Int? = nil,
+        maxClientsUnlimited: Bool? = nil,
+        maxFamilyClientsUnlimited: Bool? = nil,
+        maxFamilyClientsInherited: Bool? = nil,
         iconId: Int? = nil
     ) {
         self.id = id
@@ -332,6 +350,12 @@ public struct TS3Channel: Identifiable {
         self.isPermanent = isPermanent
         self.neededTalkPower = neededTalkPower
         self.codec = codec
+        self.codecQuality = codecQuality
+        self.maxClients = maxClients
+        self.maxFamilyClients = maxFamilyClients
+        self.maxClientsUnlimited = maxClientsUnlimited
+        self.maxFamilyClientsUnlimited = maxFamilyClientsUnlimited
+        self.maxFamilyClientsInherited = maxFamilyClientsInherited
         self.iconId = iconId
     }
 }

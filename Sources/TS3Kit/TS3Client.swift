@@ -1950,6 +1950,12 @@ private extension TS3Client {
             isPermanent: command.get("channel_flag_permanent")?.value == "1",
             neededTalkPower: intValue(command, "channel_needed_talk_power"),
             codec: intValue(command, "channel_codec"),
+            codecQuality: intValue(command, "channel_codec_quality"),
+            maxClients: intValue(command, "channel_maxclients"),
+            maxFamilyClients: intValue(command, "channel_maxfamilyclients"),
+            maxClientsUnlimited: optionalBoolValue(command, "channel_flag_maxclients_unlimited"),
+            maxFamilyClientsUnlimited: optionalBoolValue(command, "channel_flag_maxfamilyclients_unlimited"),
+            maxFamilyClientsInherited: optionalBoolValue(command, "channel_flag_maxfamilyclients_inherited"),
             iconId: intValue(command, "channel_icon_id")
         )
     }
@@ -2211,6 +2217,10 @@ private extension TS3Client {
 
     func boolValue(_ command: TS3SingleCommand, _ name: String) -> Bool {
         command.get(name)?.value == "1"
+    }
+
+    func optionalBoolValue(_ command: TS3SingleCommand, _ name: String) -> Bool? {
+        command.get(name)?.value.map { $0 == "1" }
     }
 
     func dateValue(_ command: TS3SingleCommand, _ name: String) -> Date? {

@@ -23,6 +23,13 @@ struct TS3ChannelSummary: Identifiable {
     var isPasswordProtected: Bool
     var isPermanent: Bool
     var neededTalkPower: Int?
+    var codec: Int?
+    var codecQuality: Int?
+    var maxClients: Int?
+    var maxFamilyClients: Int?
+    var maxClientsUnlimited: Bool?
+    var maxFamilyClientsUnlimited: Bool?
+    var maxFamilyClientsInherited: Bool?
     var iconId: Int?
     var isCurrent: Bool
 }
@@ -651,6 +658,13 @@ final class TS3AppModel: ObservableObject {
                 isPasswordProtected: false,
                 isPermanent: false,
                 neededTalkPower: nil,
+                codec: nil,
+                codecQuality: nil,
+                maxClients: nil,
+                maxFamilyClients: nil,
+                maxClientsUnlimited: nil,
+                maxFamilyClientsUnlimited: nil,
+                maxFamilyClientsInherited: nil,
                 iconId: nil,
                 isCurrent: true
             ))
@@ -2411,6 +2425,13 @@ extension TS3AppModel: TS3ClientDelegate {
                     isPasswordProtected: channel.isPasswordProtected,
                     isPermanent: channel.isPermanent,
                     neededTalkPower: channel.neededTalkPower,
+                    codec: channel.codec,
+                    codecQuality: channel.codecQuality,
+                    maxClients: channel.maxClients,
+                    maxFamilyClients: channel.maxFamilyClients,
+                    maxClientsUnlimited: channel.maxClientsUnlimited,
+                    maxFamilyClientsUnlimited: channel.maxFamilyClientsUnlimited,
+                    maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
                     iconId: channel.iconId,
                     isCurrent: channel.id == client.currentChannelId
                 )
