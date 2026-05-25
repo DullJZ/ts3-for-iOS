@@ -1463,9 +1463,9 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func banUser(_ user: TS3UserSummary, message: String?) {
+    func banUser(_ user: TS3UserSummary, durationSeconds: Int?, message: String?) {
         runClientCommand { client in
-            try await client.banClient(clientId: user.id, durationSeconds: nil, message: message)
+            try await client.banClient(clientId: user.id, durationSeconds: durationSeconds, message: message)
             let entries = try await client.refreshBanList()
             await MainActor.run {
                 self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }

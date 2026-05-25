@@ -570,6 +570,8 @@ struct UserActionSheet: View {
     let user: TS3UserSummary
     @State private var subject = ""
     @State private var text = ""
+    @State private var banDuration: TS3BanDuration = .permanent
+    @State private var customBanMinutes = "60"
 
     var title: String {
         switch mode {
@@ -615,6 +617,19 @@ struct UserActionSheet: View {
                     TextField(fieldTitle, text: $text)
                         .ts3PlainTextField()
                 }
+                if mode == .ban {
+                    Section(header: Text("Duration")) {
+                        Picker("Duration", selection: $banDuration) {
+                            ForEach(TS3BanDuration.allCases) { duration in
+                                Text(duration.title).tag(duration)
+                            }
+                        }
+                        if banDuration == .custom {
+                            TextField("Minutes", text: $customBanMinutes)
+                                .ts3PlainTextField()
+                        }
+                    }
+                }
                 Section {
                     Button(actionTitle) {
                         switch mode {
@@ -631,7 +646,11 @@ struct UserActionSheet: View {
                         case .kickServer:
                             model.kickUserFromServer(user, message: text.isEmpty ? nil : text)
                         case .ban:
-                            model.banUser(user, message: text.isEmpty ? nil : text)
+                            model.banUser(
+                                user,
+                                durationSeconds: banDuration.seconds(customMinutes: customBanMinutes),
+                                message: text.isEmpty ? nil : text
+                            )
                         }
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -657,9 +676,52 @@ struct UserActionSheet: View {
             return textIsEmpty
         case .offlineMessage:
             return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .kickChannel, .kickServer, .ban:
+        case .kickChannel, .kickServer:
             return false
+        case .ban:
+            return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
         }
+    }
+}
+
+enum TS3BanDuration: String, CaseIterable, Identifiable {
+    case tenMinutes
+    case oneHour
+    case oneDay
+    case oneWeek
+    case permanent
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .tenMinutes: return "10 Minutes"
+        case .oneHour: return "1 Hour"
+        case .oneDay: return "1 Day"
+        case .oneWeek: return "1 Week"
+        case .permanent: return "Permanent"
+        case .custom: return "Custom"
+        }
+    }
+
+    func seconds(customMinutes: String) -> Int? {
+        switch self {
+        case .tenMinutes: return 10 * 60
+        case .oneHour: return 60 * 60
+        case .oneDay: return 24 * 60 * 60
+        case .oneWeek: return 7 * 24 * 60 * 60
+        case .permanent: return nil
+        case .custom: return Self.customSeconds(from: customMinutes)
+        }
+    }
+
+    static func customSeconds(from minutesText: String) -> Int? {
+        let trimmed = minutesText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let minutes = Int(trimmed), minutes > 0 else {
+            return nil
+        }
+        return minutes * 60
     }
 }
 
