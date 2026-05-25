@@ -799,6 +799,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingBanList = false
     @State private var isShowingPermissions = false
     @State private var isShowingFiles = false
+    @State private var isShowingServerEditor = false
 
     var body: some View {
         NavigationView {
@@ -810,6 +811,9 @@ struct ServerToolsSheet: View {
                     }
                     Button("Refresh Server Info") {
                         model.refreshServerInfo()
+                    }
+                    Button("Edit Server Settings") {
+                        isShowingServerEditor = true
                     }
                     Button("Refresh Permission Groups") {
                         model.refreshGroups()
@@ -897,7 +901,133 @@ struct ServerToolsSheet: View {
                 FileBrowserSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingServerEditor) {
+                ServerSettingsEditorSheet()
+                    .environmentObject(model)
+            }
         }
+    }
+}
+
+struct ServerSettingsEditorSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var name = ""
+    @State private var welcomeMessage = ""
+    @State private var maxClients = ""
+    @State private var reservedSlots = ""
+    @State private var password = ""
+    @State private var clearPassword = false
+    @State private var hostMessage = ""
+    @State private var hostMessageMode = "0"
+    @State private var hostBannerURL = ""
+    @State private var hostBannerGraphicsURL = ""
+    @State private var hostButtonTooltip = ""
+    @State private var hostButtonURL = ""
+    @State private var hostButtonGraphicsURL = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("General")) {
+                    TextField("Server Name", text: $name)
+                        .ts3PlainTextField()
+                    TextField("Welcome Message", text: $welcomeMessage)
+                        .ts3PlainTextField()
+                    TextField("Max Clients", text: $maxClients)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Reserved Slots", text: $reservedSlots)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    Toggle("Clear Server Password", isOn: $clearPassword)
+                    SecureField("New Server Password", text: $password)
+                        .disabled(clearPassword)
+                }
+
+                Section(header: Text("Host Message")) {
+                    Picker("Mode", selection: $hostMessageMode) {
+                        Text("None").tag("0")
+                        Text("Log").tag("1")
+                        Text("Modal").tag("2")
+                        Text("Modal Quit").tag("3")
+                    }
+                    TextField("Message", text: $hostMessage)
+                        .ts3PlainTextField()
+                }
+
+                Section(header: Text("Host Banner")) {
+                    TextField("Banner Link URL", text: $hostBannerURL)
+                        .ts3URLTextField()
+                    TextField("Banner Image URL", text: $hostBannerGraphicsURL)
+                        .ts3URLTextField()
+                }
+
+                Section(header: Text("Host Button")) {
+                    TextField("Tooltip", text: $hostButtonTooltip)
+                        .ts3PlainTextField()
+                    TextField("Button Link URL", text: $hostButtonURL)
+                        .ts3URLTextField()
+                    TextField("Button Image URL", text: $hostButtonGraphicsURL)
+                        .ts3URLTextField()
+                }
+            }
+            .navigationTitle("Server Settings")
+            .ts3InlineNavigationTitle()
+            .onAppear(perform: loadCurrentValues)
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Reset") {
+                        loadCurrentValues()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Save") {
+                        save()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadCurrentValues() {
+        name = model.serverInfo.name
+        welcomeMessage = model.serverInfo.welcomeMessage ?? ""
+        maxClients = model.serverInfo.maxClients.map(String.init) ?? ""
+        reservedSlots = model.serverInfo.reservedSlots.map(String.init) ?? ""
+        password = ""
+        clearPassword = false
+        hostMessage = model.serverInfo.hostMessage ?? ""
+        hostMessageMode = model.serverInfo.hostMessageMode.map(String.init) ?? "0"
+        hostBannerURL = model.serverInfo.hostBannerURL ?? ""
+        hostBannerGraphicsURL = model.serverInfo.hostBannerGraphicsURL ?? ""
+        hostButtonTooltip = model.serverInfo.hostButtonTooltip ?? ""
+        hostButtonURL = model.serverInfo.hostButtonURL ?? ""
+        hostButtonGraphicsURL = model.serverInfo.hostButtonGraphicsURL ?? ""
+    }
+
+    private func save() {
+        model.editServerSettings(
+            name: name,
+            welcomeMessage: welcomeMessage,
+            maxClients: Int(maxClients.trimmingCharacters(in: .whitespacesAndNewlines)),
+            reservedSlots: Int(reservedSlots.trimmingCharacters(in: .whitespacesAndNewlines)),
+            password: clearPassword ? "" : (password.isEmpty ? nil : password),
+            hostMessage: hostMessage,
+            hostMessageMode: Int(hostMessageMode),
+            hostBannerURL: hostBannerURL,
+            hostBannerGraphicsURL: hostBannerGraphicsURL,
+            hostButtonTooltip: hostButtonTooltip,
+            hostButtonURL: hostButtonURL,
+            hostButtonGraphicsURL: hostButtonGraphicsURL
+        )
     }
 }
 

@@ -224,6 +224,25 @@ public final class TS3Client {
         }
     }
 
+    public func editServer(_ edit: TS3ServerEdit) async throws {
+        var params: [TS3CommandParameter] = []
+        appendParameter(&params, name: "virtualserver_name", value: edit.name)
+        appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
+        appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
+        appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))
+        appendParameter(&params, name: "virtualserver_password", value: edit.password)
+        appendParameter(&params, name: "virtualserver_hostmessage", value: edit.hostMessage)
+        appendParameter(&params, name: "virtualserver_hostmessage_mode", value: edit.hostMessageMode.map(String.init))
+        appendParameter(&params, name: "virtualserver_hostbanner_url", value: edit.hostBannerURL)
+        appendParameter(&params, name: "virtualserver_hostbanner_gfx_url", value: edit.hostBannerGraphicsURL)
+        appendParameter(&params, name: "virtualserver_hostbutton_tooltip", value: edit.hostButtonTooltip)
+        appendParameter(&params, name: "virtualserver_hostbutton_url", value: edit.hostButtonURL)
+        appendParameter(&params, name: "virtualserver_hostbutton_gfx_url", value: edit.hostButtonGraphicsURL)
+        guard !params.isEmpty else { return }
+        _ = try await execute(TS3SingleCommand(name: "serveredit", parameters: params))
+        try await refreshServerInfo()
+    }
+
     public func refreshClientDetails(clientId targetClientId: Int) async throws -> TS3ServerClient? {
         let responses = try await execute(TS3SingleCommand(name: "clientinfo", parameters: [
             TS3CommandSingleParameter(name: "clid", value: String(targetClientId))
@@ -1792,6 +1811,11 @@ private extension TS3Client {
 }
 
 private extension TS3Client {
+    func appendParameter(_ params: inout [TS3CommandParameter], name: String, value: String?) {
+        guard let value else { return }
+        params.append(TS3CommandSingleParameter(name: name, value: value))
+    }
+
     func intValue(_ command: TS3SingleCommand, _ name: String) -> Int? {
         command.get(name)?.value.flatMap(Int.init)
     }
@@ -1939,9 +1963,18 @@ private extension TS3Client {
             version: command.get("virtualserver_version")?.value,
             clientsOnline: intValue(command, "virtualserver_clientsonline"),
             maxClients: intValue(command, "virtualserver_maxclients"),
+            reservedSlots: intValue(command, "virtualserver_reserved_slots"),
             channelsOnline: intValue(command, "virtualserver_channelsonline"),
             uptimeSeconds: intValue(command, "virtualserver_uptime"),
-            welcomeMessage: command.get("virtualserver_welcomemessage")?.value
+            welcomeMessage: command.get("virtualserver_welcomemessage")?.value,
+            passwordProtected: boolValue(command, "virtualserver_flag_password"),
+            hostMessage: command.get("virtualserver_hostmessage")?.value,
+            hostMessageMode: intValue(command, "virtualserver_hostmessage_mode"),
+            hostBannerURL: command.get("virtualserver_hostbanner_url")?.value,
+            hostBannerGraphicsURL: command.get("virtualserver_hostbanner_gfx_url")?.value,
+            hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
+            hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
+            hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value
         )
     }
 

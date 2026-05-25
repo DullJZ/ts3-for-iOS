@@ -216,9 +216,18 @@ struct TS3ServerInfoSummary {
     var version: String?
     var clientsOnline: Int?
     var maxClients: Int?
+    var reservedSlots: Int?
     var channelsOnline: Int?
     var uptimeSeconds: Int?
     var welcomeMessage: String?
+    var passwordProtected: Bool
+    var hostMessage: String?
+    var hostMessageMode: Int?
+    var hostBannerURL: String?
+    var hostBannerGraphicsURL: String?
+    var hostButtonTooltip: String?
+    var hostButtonURL: String?
+    var hostButtonGraphicsURL: String?
 
     static let empty = TS3ServerInfoSummary(
         name: "",
@@ -227,9 +236,18 @@ struct TS3ServerInfoSummary {
         version: nil,
         clientsOnline: nil,
         maxClients: nil,
+        reservedSlots: nil,
         channelsOnline: nil,
         uptimeSeconds: nil,
-        welcomeMessage: nil
+        welcomeMessage: nil,
+        passwordProtected: false,
+        hostMessage: nil,
+        hostMessageMode: nil,
+        hostBannerURL: nil,
+        hostBannerGraphicsURL: nil,
+        hostButtonTooltip: nil,
+        hostButtonURL: nil,
+        hostButtonGraphicsURL: nil
     )
 }
 
@@ -564,6 +582,39 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func editServerSettings(
+        name: String,
+        welcomeMessage: String,
+        maxClients: Int?,
+        reservedSlots: Int?,
+        password: String?,
+        hostMessage: String,
+        hostMessageMode: Int?,
+        hostBannerURL: String,
+        hostBannerGraphicsURL: String,
+        hostButtonTooltip: String,
+        hostButtonURL: String,
+        hostButtonGraphicsURL: String
+    ) {
+        let edit = TS3ServerEdit(
+            name: trimmedValue(name),
+            welcomeMessage: welcomeMessage.trimmingCharacters(in: .whitespacesAndNewlines),
+            maxClients: maxClients,
+            reservedSlots: reservedSlots,
+            password: password,
+            hostMessage: hostMessage.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostMessageMode: hostMessageMode,
+            hostBannerURL: hostBannerURL.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostBannerGraphicsURL: hostBannerGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostButtonTooltip: hostButtonTooltip.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostButtonURL: hostButtonURL.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostButtonGraphicsURL: hostButtonGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        runClientCommand { client in
+            try await client.editServer(edit)
+        }
+    }
+
     func refreshBanList() {
         runClientCommand { client in
             let entries = try await client.refreshBanList()
@@ -769,6 +820,10 @@ final class TS3AppModel: ObservableObject {
         } else {
             offlineMessages.insert(message, at: 0)
         }
+    }
+
+    private func trimmedValue(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func sendMessage(_ text: String, targetMode: TS3TextMessageTargetMode, targetId: Int) {
@@ -1390,9 +1445,18 @@ extension TS3AppModel: TS3ClientDelegate {
                 version: info.version,
                 clientsOnline: info.clientsOnline,
                 maxClients: info.maxClients,
+                reservedSlots: info.reservedSlots,
                 channelsOnline: info.channelsOnline,
                 uptimeSeconds: info.uptimeSeconds,
-                welcomeMessage: info.welcomeMessage
+                welcomeMessage: info.welcomeMessage,
+                passwordProtected: info.passwordProtected,
+                hostMessage: info.hostMessage,
+                hostMessageMode: info.hostMessageMode,
+                hostBannerURL: info.hostBannerURL,
+                hostBannerGraphicsURL: info.hostBannerGraphicsURL,
+                hostButtonTooltip: info.hostButtonTooltip,
+                hostButtonURL: info.hostButtonURL,
+                hostButtonGraphicsURL: info.hostButtonGraphicsURL
             )
         }
     }

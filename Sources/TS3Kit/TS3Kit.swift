@@ -51,9 +51,18 @@ public struct TS3ServerInfo {
     public let version: String?
     public let clientsOnline: Int?
     public let maxClients: Int?
+    public let reservedSlots: Int?
     public let channelsOnline: Int?
     public let uptimeSeconds: Int?
     public let welcomeMessage: String?
+    public let passwordProtected: Bool
+    public let hostMessage: String?
+    public let hostMessageMode: Int?
+    public let hostBannerURL: String?
+    public let hostBannerGraphicsURL: String?
+    public let hostButtonTooltip: String?
+    public let hostButtonURL: String?
+    public let hostButtonGraphicsURL: String?
 
     /// Creates a virtual server information snapshot.
     public init(
@@ -63,9 +72,18 @@ public struct TS3ServerInfo {
         version: String?,
         clientsOnline: Int?,
         maxClients: Int?,
+        reservedSlots: Int?,
         channelsOnline: Int?,
         uptimeSeconds: Int?,
-        welcomeMessage: String?
+        welcomeMessage: String?,
+        passwordProtected: Bool = false,
+        hostMessage: String? = nil,
+        hostMessageMode: Int? = nil,
+        hostBannerURL: String? = nil,
+        hostBannerGraphicsURL: String? = nil,
+        hostButtonTooltip: String? = nil,
+        hostButtonURL: String? = nil,
+        hostButtonGraphicsURL: String? = nil
     ) {
         self.uniqueIdentifier = uniqueIdentifier
         self.name = name
@@ -73,9 +91,62 @@ public struct TS3ServerInfo {
         self.version = version
         self.clientsOnline = clientsOnline
         self.maxClients = maxClients
+        self.reservedSlots = reservedSlots
         self.channelsOnline = channelsOnline
         self.uptimeSeconds = uptimeSeconds
         self.welcomeMessage = welcomeMessage
+        self.passwordProtected = passwordProtected
+        self.hostMessage = hostMessage
+        self.hostMessageMode = hostMessageMode
+        self.hostBannerURL = hostBannerURL
+        self.hostBannerGraphicsURL = hostBannerGraphicsURL
+        self.hostButtonTooltip = hostButtonTooltip
+        self.hostButtonURL = hostButtonURL
+        self.hostButtonGraphicsURL = hostButtonGraphicsURL
+    }
+}
+
+public struct TS3ServerEdit {
+    public var name: String?
+    public var welcomeMessage: String?
+    public var maxClients: Int?
+    public var reservedSlots: Int?
+    public var password: String?
+    public var hostMessage: String?
+    public var hostMessageMode: Int?
+    public var hostBannerURL: String?
+    public var hostBannerGraphicsURL: String?
+    public var hostButtonTooltip: String?
+    public var hostButtonURL: String?
+    public var hostButtonGraphicsURL: String?
+
+    /// Creates a partial virtual server update. Nil properties are left unchanged.
+    public init(
+        name: String? = nil,
+        welcomeMessage: String? = nil,
+        maxClients: Int? = nil,
+        reservedSlots: Int? = nil,
+        password: String? = nil,
+        hostMessage: String? = nil,
+        hostMessageMode: Int? = nil,
+        hostBannerURL: String? = nil,
+        hostBannerGraphicsURL: String? = nil,
+        hostButtonTooltip: String? = nil,
+        hostButtonURL: String? = nil,
+        hostButtonGraphicsURL: String? = nil
+    ) {
+        self.name = name
+        self.welcomeMessage = welcomeMessage
+        self.maxClients = maxClients
+        self.reservedSlots = reservedSlots
+        self.password = password
+        self.hostMessage = hostMessage
+        self.hostMessageMode = hostMessageMode
+        self.hostBannerURL = hostBannerURL
+        self.hostBannerGraphicsURL = hostBannerGraphicsURL
+        self.hostButtonTooltip = hostButtonTooltip
+        self.hostButtonURL = hostButtonURL
+        self.hostButtonGraphicsURL = hostButtonGraphicsURL
     }
 }
 
