@@ -235,6 +235,7 @@ public struct TS3ServerClient: Identifiable {
     public let channelGroupId: Int?
     public let serverGroups: [Int]
     public let description: String?
+    public let avatarHash: String?
 
     /// Creates a server client snapshot from server-provided metadata.
     public init(
@@ -251,7 +252,8 @@ public struct TS3ServerClient: Identifiable {
         talkPower: Int? = nil,
         channelGroupId: Int? = nil,
         serverGroups: [Int] = [],
-        description: String? = nil
+        description: String? = nil,
+        avatarHash: String? = nil
     ) {
         self.id = id
         self.channelId = channelId
@@ -267,6 +269,7 @@ public struct TS3ServerClient: Identifiable {
         self.channelGroupId = channelGroupId
         self.serverGroups = serverGroups
         self.description = description
+        self.avatarHash = avatarHash
     }
 }
 

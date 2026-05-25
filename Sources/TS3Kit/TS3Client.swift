@@ -729,6 +729,11 @@ public final class TS3Client {
         return transfer
     }
 
+    /// Initializes a virtual server avatar download for the provided avatar hash.
+    public func initAvatarDownload(hash avatarHash: String) async throws -> TS3FileTransferParameters {
+        try await initFileDownload(channelId: 0, path: "/avatar_\(avatarHash)")
+    }
+
     /// Initializes a channel file upload and returns the socket transfer descriptor.
     public func initFileUpload(
         channelId: Int,
@@ -2106,7 +2111,8 @@ private extension TS3Client {
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
-            description: command.get("client_description")?.value
+            description: command.get("client_description")?.value,
+            avatarHash: command.get("client_base64HashClientUID")?.value
         )
     }
 
@@ -2130,7 +2136,8 @@ private extension TS3Client {
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
-            description: command.get("client_description")?.value ?? existing?.description
+            description: command.get("client_description")?.value ?? existing?.description,
+            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash
         )
     }
 
@@ -2155,7 +2162,8 @@ private extension TS3Client {
             talkPower: intValue(command, "client_talk_power") ?? existing.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
-            description: command.get("client_description")?.value ?? existing.description
+            description: command.get("client_description")?.value ?? existing.description,
+            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing.avatarHash
         )
         clientCache[clid] = existing
         return existing
@@ -2180,7 +2188,8 @@ private extension TS3Client {
             talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
-            description: command.get("client_description")?.value ?? existing?.description
+            description: command.get("client_description")?.value ?? existing?.description,
+            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash
         )
         clientCache[key] = updated
         return updated
@@ -2194,7 +2203,8 @@ private extension TS3Client {
         isOutputMuted: Bool? = nil,
         isAway: Bool? = nil,
         awayMessage: String? = nil,
-        description: String? = nil
+        description: String? = nil,
+        avatarHash: String? = nil
     ) -> TS3ServerClient {
         TS3ServerClient(
             id: client.id,
@@ -2210,7 +2220,8 @@ private extension TS3Client {
             talkPower: client.talkPower,
             channelGroupId: client.channelGroupId,
             serverGroups: client.serverGroups,
-            description: description ?? client.description
+            description: description ?? client.description,
+            avatarHash: avatarHash ?? client.avatarHash
         )
     }
 

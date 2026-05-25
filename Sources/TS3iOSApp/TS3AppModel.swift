@@ -41,6 +41,8 @@ struct TS3UserSummary: Identifiable {
     let channelGroupId: Int?
     let serverGroups: [Int]
     let description: String?
+    let avatarHash: String?
+    let avatarURL: URL?
 }
 
 struct TS3ChatMessageSummary: Identifiable {
@@ -427,6 +429,7 @@ final class TS3AppModel: ObservableObject {
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
     @Published var lastError: String?
+    @Published var avatarDownloadStatus: String?
     @Published var playbackVolume: Double = 1.0
     @Published var inputGain: Double = 1.0
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
@@ -1233,6 +1236,19 @@ final class TS3AppModel: ObservableObject {
         return uniqueFileURL(in: directory, named: name)
     }
 
+    private func avatarDestination(for hash: String) throws -> URL {
+        let caches = try FileManager.default.url(
+            for: .cachesDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = caches.appendingPathComponent("TS3 Avatars", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileName = "avatar_" + (hash.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? hash)
+        return directory.appendingPathComponent(fileName)
+    }
+
     private func uniqueFileURL(in directory: URL, named name: String) -> URL {
         let fallbackName = name.isEmpty ? "download" : name
         let baseURL = directory.appendingPathComponent(fallbackName)
@@ -1271,9 +1287,59 @@ final class TS3AppModel: ObservableObject {
         return formatter
     }()
 
+    func refreshUserAvatar(_ user: TS3UserSummary) {
+        guard let client else {
+            lastError = "Connect to a server first."
+            return
+        }
+        Task {
+            do {
+                await MainActor.run {
+                    self.avatarDownloadStatus = "Preparing avatar: \(user.nickname)"
+                }
+                var avatarHash = user.avatarHash ?? ""
+                if avatarHash.isEmpty,
+                   let updated = try await client.refreshClientDetails(clientId: user.id),
+                   let updatedHash = updated.avatarHash {
+                    avatarHash = updatedHash
+                    await MainActor.run {
+                        self.updateUser(clientId: user.id) { existing in
+                            self.copyUser(existing, avatarHash: updatedHash)
+                        }
+                    }
+                }
+                guard !avatarHash.isEmpty else {
+                    throw TS3Error.fileTransferFailed
+                }
+                let destination = try avatarDestination(for: avatarHash)
+                let parameters = try await client.initAvatarDownload(hash: avatarHash)
+                try await TS3FileTransfer.download(parameters: parameters, to: destination)
+                await MainActor.run {
+                    self.updateUser(clientId: user.id) { existing in
+                        self.copyUser(existing, avatarURL: destination)
+                    }
+                    self.avatarDownloadStatus = "Downloaded avatar: \(user.nickname)"
+                    self.lastError = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.avatarDownloadStatus = nil
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     func refreshUserDetails(_ user: TS3UserSummary) {
         runClientCommand { client in
-            _ = try await client.refreshClientDetails(clientId: user.id)
+            let updated = try await client.refreshClientDetails(clientId: user.id)
+            if let updated {
+                await MainActor.run {
+                    self.updateUser(clientId: user.id) { existing in
+                        self.copyUser(existing, avatarHash: updated.avatarHash)
+                    }
+                }
+            }
         }
     }
 
@@ -1635,7 +1701,9 @@ final class TS3AppModel: ObservableObject {
         _ user: TS3UserSummary,
         channelGroupId: Int? = nil,
         serverGroups: [Int]? = nil,
-        description: String? = nil
+        description: String? = nil,
+        avatarHash: String? = nil,
+        avatarURL: URL? = nil
     ) -> TS3UserSummary {
         TS3UserSummary(
             id: user.id,
@@ -1651,7 +1719,9 @@ final class TS3AppModel: ObservableObject {
             talkPower: user.talkPower,
             channelGroupId: channelGroupId ?? user.channelGroupId,
             serverGroups: serverGroups ?? user.serverGroups,
-            description: description ?? user.description
+            description: description ?? user.description,
+            avatarHash: avatarHash ?? user.avatarHash,
+            avatarURL: avatarURL ?? user.avatarURL
         )
     }
 
@@ -2139,8 +2209,13 @@ extension TS3AppModel: TS3ClientDelegate {
 
     nonisolated func ts3Client(_ client: TS3Client, didUpdateClients clients: [TS3ServerClient]) {
         Task { @MainActor in
+            let existingAvatars = Dictionary(uniqueKeysWithValues: self.clients.map {
+                ($0.id, (hash: $0.avatarHash, url: $0.avatarURL))
+            })
             self.clients = clients.map { client in
-                TS3UserSummary(
+                let existingAvatar = existingAvatars[client.id]
+                let avatarURL = existingAvatar?.hash == client.avatarHash ? existingAvatar?.url : nil
+                return TS3UserSummary(
                     id: client.id,
                     channelId: client.channelId,
                     databaseId: client.databaseId,
@@ -2154,7 +2229,9 @@ extension TS3AppModel: TS3ClientDelegate {
                     talkPower: client.talkPower,
                     channelGroupId: client.channelGroupId,
                     serverGroups: client.serverGroups,
-                    description: client.description
+                    description: client.description,
+                    avatarHash: client.avatarHash,
+                    avatarURL: avatarURL
                 )
             }
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {

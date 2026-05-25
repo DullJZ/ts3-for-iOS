@@ -432,8 +432,7 @@ struct ChannelMemberRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: member.isCurrentUser ? "person.crop.circle.fill" : "person.fill")
-                .foregroundColor(member.isCurrentUser ? .accentColor : .secondary)
+            UserAvatarView(user: member)
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.nickname)
                     .font(.subheadline)
@@ -500,6 +499,9 @@ struct ChannelMemberRow: View {
                 }
                 Button("Refresh Details") {
                     model.refreshUserDetails(member)
+                }
+                Button("Download Avatar") {
+                    model.refreshUserAvatar(member)
                 }
                 Button("Edit Description") {
                     actionMode = .editDescription
@@ -702,6 +704,49 @@ struct UserActionSheet: View {
         case .ban:
             return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
         }
+    }
+}
+
+struct UserAvatarView: View {
+    let user: TS3UserSummary
+
+    var body: some View {
+        Group {
+            if let image = platformImage {
+                Image(ts3PlatformImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+            } else {
+                Image(systemName: user.isCurrentUser ? "person.crop.circle.fill" : "person.fill")
+                    .font(.title3)
+                    .foregroundColor(user.isCurrentUser ? .accentColor : .secondary)
+                    .frame(width: 28, height: 28)
+            }
+        }
+        .frame(width: 28, height: 28)
+    }
+
+    private var platformImage: TS3PlatformImage? {
+        guard let avatarURL = user.avatarURL else { return nil }
+        return TS3PlatformImage(contentsOfFile: avatarURL.path)
+    }
+}
+
+#if canImport(UIKit)
+typealias TS3PlatformImage = UIImage
+#else
+typealias TS3PlatformImage = NSImage
+#endif
+
+private extension Image {
+    init(ts3PlatformImage image: TS3PlatformImage) {
+        #if canImport(UIKit)
+        self.init(uiImage: image)
+        #else
+        self.init(nsImage: image)
+        #endif
     }
 }
 
