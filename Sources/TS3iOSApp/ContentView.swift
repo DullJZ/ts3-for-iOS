@@ -198,6 +198,9 @@ struct ChannelListView: View {
             }
             .padding(.horizontal)
 
+            ServerHeaderView()
+                .padding(.horizontal)
+
             CurrentChannelCard()
                 .padding(.horizontal)
 
@@ -245,6 +248,128 @@ struct ChannelListView: View {
     private var channelTree: [ChannelTreeItem] {
         ChannelTreeItem.flatten(channels: model.channels)
     }
+}
+
+struct ServerHeaderView: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: model.serverInfo.passwordProtected ? "lock.shield" : "server.rack")
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(serverName)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if let statusLine {
+                        Text(statusLine)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+            }
+
+            if let welcomeMessage {
+                Text(welcomeMessage)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+
+            if let hostMessage {
+                Text(hostMessage)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+
+            if !linkActions.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(linkActions) { action in
+                        Button(action.title) {
+                            TS3PlatformSupport.openURL(action.url)
+                        }
+                        .buttonStyle(TS3BorderedButtonStyle())
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var serverName: String {
+        model.serverInfo.name.isEmpty ? model.serverHost : model.serverInfo.name
+    }
+
+    private var statusLine: String? {
+        var parts: [String] = []
+        if let clients = model.serverInfo.clientsOnline {
+            if let maxClients = model.serverInfo.maxClients {
+                parts.append("\(clients)/\(maxClients) clients")
+            } else {
+                parts.append("\(clients) clients")
+            }
+        }
+        if let channels = model.serverInfo.channelsOnline {
+            parts.append("\(channels) channels")
+        }
+        if let uptime = model.serverInfo.uptimeSeconds {
+            parts.append(ServerInfoRows.uptimeText(uptime))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " / ")
+    }
+
+    private var welcomeMessage: String? {
+        nonEmpty(model.serverInfo.welcomeMessage)
+    }
+
+    private var hostMessage: String? {
+        nonEmpty(model.serverInfo.hostMessage)
+    }
+
+    private var linkActions: [ServerHeaderLinkAction] {
+        var actions: [ServerHeaderLinkAction] = []
+        if let url = parsedURL(model.serverInfo.hostBannerURL) {
+            actions.append(ServerHeaderLinkAction(title: "Banner Link", url: url))
+        }
+        if let url = parsedURL(model.serverInfo.hostBannerGraphicsURL) {
+            actions.append(ServerHeaderLinkAction(title: "Banner Image", url: url))
+        }
+        if let url = parsedURL(model.serverInfo.hostButtonURL) {
+            actions.append(ServerHeaderLinkAction(title: nonEmpty(model.serverInfo.hostButtonTooltip) ?? "Host Link", url: url))
+        }
+        if let url = parsedURL(model.serverInfo.hostButtonGraphicsURL) {
+            actions.append(ServerHeaderLinkAction(title: "Host Image", url: url))
+        }
+        return actions
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func parsedURL(_ value: String?) -> URL? {
+        guard let text = nonEmpty(value) else { return nil }
+        return URL(string: text)
+    }
+}
+
+struct ServerHeaderLinkAction: Identifiable {
+    let title: String
+    let url: URL
+
+    var id: String { "\(title)-\(url.absoluteString)" }
 }
 
 struct ChannelTreeItem: Identifiable {
@@ -3747,6 +3872,16 @@ enum TS3PlatformSupport {
         pasteboard.setString(string, forType: .string)
         #elseif canImport(UIKit)
         UIPasteboard.general.string = string
+        #endif
+    }
+
+    static func openURL(_ url: URL) {
+        #if targetEnvironment(macCatalyst)
+        UIApplication.shared.open(url)
+        #elseif os(macOS)
+        NSWorkspace.shared.open(url)
+        #elseif canImport(UIKit)
+        UIApplication.shared.open(url)
         #endif
     }
 
