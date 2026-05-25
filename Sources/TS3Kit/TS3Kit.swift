@@ -346,6 +346,33 @@ public struct TS3BanEntry: Identifiable {
     }
 }
 
+public struct TS3ComplaintEntry: Identifiable {
+    public var id: String { "\(targetClientDatabaseId):\(sourceClientDatabaseId)" }
+    public let targetClientDatabaseId: Int
+    public let targetName: String?
+    public let sourceClientDatabaseId: Int
+    public let sourceName: String?
+    public let message: String?
+    public let timestamp: Date?
+
+    /// Creates a complaint-list entry from server-provided metadata.
+    public init(
+        targetClientDatabaseId: Int,
+        targetName: String?,
+        sourceClientDatabaseId: Int,
+        sourceName: String?,
+        message: String?,
+        timestamp: Date?
+    ) {
+        self.targetClientDatabaseId = targetClientDatabaseId
+        self.targetName = targetName
+        self.sourceClientDatabaseId = sourceClientDatabaseId
+        self.sourceName = sourceName
+        self.message = message
+        self.timestamp = timestamp
+    }
+}
+
 public struct TS3PermissionInfo: Identifiable {
     public let id: Int
     public let name: String

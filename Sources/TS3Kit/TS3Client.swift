@@ -438,6 +438,33 @@ public final class TS3Client {
         _ = try await execute(TS3SingleCommand(name: "bandelall"))
     }
 
+    public func addComplaint(clientDatabaseId: Int, message: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "complainadd", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "message", value: message)
+        ]))
+    }
+
+    public func refreshComplaints(clientDatabaseId: Int) async throws -> [TS3ComplaintEntry] {
+        let responses = try await execute(TS3SingleCommand(name: "complainlist", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(clientDatabaseId))
+        ]))
+        return responses.compactMap { complaintEntry(from: $0, fallbackTargetClientDatabaseId: clientDatabaseId) }
+    }
+
+    public func deleteComplaint(targetClientDatabaseId: Int, sourceClientDatabaseId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "complaindel", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(targetClientDatabaseId)),
+            TS3CommandSingleParameter(name: "fcldbid", value: String(sourceClientDatabaseId))
+        ]))
+    }
+
+    public func deleteAllComplaints(clientDatabaseId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "complaindelall", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(clientDatabaseId))
+        ]))
+    }
+
     public func pokeClient(clientId targetClientId: Int, message: String) async throws {
         _ = try await execute(TS3SingleCommand(name: "clientpoke", parameters: [
             TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
@@ -2049,6 +2076,29 @@ private extension TS3Client {
             invokerName: command.get("invokername")?.value,
             reason: command.get("reason")?.value,
             enforcements: intValue(command, "enforcements")
+        )
+    }
+
+    func complaintEntry(from command: TS3SingleCommand, fallbackTargetClientDatabaseId: Int) -> TS3ComplaintEntry? {
+        let targetDatabaseId = intValue(command, "tcldbid") ?? fallbackTargetClientDatabaseId
+        guard let sourceDatabaseId = intValue(command, "fcldbid") ?? intValue(command, "cldbid") else {
+            return nil
+        }
+
+        let timestamp: Date?
+        if let created = intValue(command, "timestamp") ?? intValue(command, "created") {
+            timestamp = Date(timeIntervalSince1970: TimeInterval(created))
+        } else {
+            timestamp = nil
+        }
+
+        return TS3ComplaintEntry(
+            targetClientDatabaseId: targetDatabaseId,
+            targetName: command.get("tname")?.value ?? command.get("targetname")?.value,
+            sourceClientDatabaseId: sourceDatabaseId,
+            sourceName: command.get("fname")?.value ?? command.get("name")?.value,
+            message: command.get("message")?.value,
+            timestamp: timestamp
         )
     }
 

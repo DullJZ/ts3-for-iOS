@@ -112,6 +112,26 @@ extension TS3BanEntrySummary {
     }
 }
 
+struct TS3ComplaintSummary: Identifiable {
+    let id: String
+    let targetClientDatabaseId: Int
+    let targetName: String?
+    let sourceClientDatabaseId: Int
+    let sourceName: String?
+    let message: String?
+    let timestamp: Date?
+
+    init(entry: TS3ComplaintEntry) {
+        self.id = entry.id
+        self.targetClientDatabaseId = entry.targetClientDatabaseId
+        self.targetName = entry.targetName
+        self.sourceClientDatabaseId = entry.sourceClientDatabaseId
+        self.sourceName = entry.sourceName
+        self.message = entry.message
+        self.timestamp = entry.timestamp
+    }
+}
+
 struct TS3GroupSummary: Identifiable {
     let id: Int
     let name: String
@@ -293,6 +313,8 @@ final class TS3AppModel: ObservableObject {
     @Published var chatMessages: [TS3ChatMessageSummary] = []
     @Published var offlineMessages: [TS3OfflineMessageSummary] = []
     @Published var banEntries: [TS3BanEntrySummary] = []
+    @Published var complaintEntries: [TS3ComplaintSummary] = []
+    @Published var complaintTarget: TS3UserSummary?
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
@@ -475,6 +497,8 @@ final class TS3AppModel: ObservableObject {
         chatMessages = []
         offlineMessages = []
         banEntries = []
+        complaintEntries = []
+        complaintTarget = nil
         serverGroups = []
         channelGroups = []
         permissionInfos = []
@@ -949,6 +973,62 @@ final class TS3AppModel: ObservableObject {
             try await client.deleteAllBans()
             await MainActor.run {
                 self.banEntries = []
+            }
+        }
+    }
+
+    func complainAboutUser(_ user: TS3UserSummary, message: String) {
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: user, using: client)
+            try await client.addComplaint(clientDatabaseId: databaseId, message: message)
+        }
+    }
+
+    func refreshComplaints(for user: TS3UserSummary) {
+        complaintTarget = user
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: user, using: client)
+            let entries = try await client.refreshComplaints(clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.complaintTarget = user
+                self.complaintEntries = entries
+                    .map { TS3ComplaintSummary(entry: $0) }
+                    .sorted {
+                        switch ($0.timestamp, $1.timestamp) {
+                        case let (lhs?, rhs?): return lhs > rhs
+                        case (_?, nil): return true
+                        case (nil, _?): return false
+                        case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
+                        }
+                    }
+            }
+        }
+    }
+
+    func deleteComplaint(_ entry: TS3ComplaintSummary) {
+        runClientCommand { client in
+            try await client.deleteComplaint(
+                targetClientDatabaseId: entry.targetClientDatabaseId,
+                sourceClientDatabaseId: entry.sourceClientDatabaseId
+            )
+            await MainActor.run {
+                self.complaintEntries.removeAll { $0.id == entry.id }
+            }
+        }
+    }
+
+    func deleteAllComplaintsForCurrentTarget() {
+        guard let target = complaintTarget else {
+            lastError = "Select a user before clearing complaints."
+            return
+        }
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: target, using: client)
+            try await client.deleteAllComplaints(clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.complaintEntries = []
             }
         }
     }

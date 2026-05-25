@@ -404,6 +404,7 @@ enum UserActionMode: Identifiable {
     case privateMessage
     case offlineMessage
     case poke
+    case complain
     case kickChannel
     case kickServer
     case ban
@@ -413,6 +414,7 @@ enum UserActionMode: Identifiable {
         case .privateMessage: return "privateMessage"
         case .offlineMessage: return "offlineMessage"
         case .poke: return "poke"
+        case .complain: return "complain"
         case .kickChannel: return "kickChannel"
         case .kickServer: return "kickServer"
         case .ban: return "ban"
@@ -469,6 +471,9 @@ struct ChannelMemberRow: View {
                 }
                 Button("Poke") {
                     actionMode = .poke
+                }
+                Button("Complain") {
+                    actionMode = .complain
                 }
                 Button("Whisper to User") {
                     model.enableWhisperToClient(member)
@@ -535,6 +540,7 @@ struct UserActionSheet: View {
         case .privateMessage: return "Private Message"
         case .offlineMessage: return "Offline Message"
         case .poke: return "Poke"
+        case .complain: return "Complain"
         case .kickChannel: return "Kick From Channel"
         case .kickServer: return "Kick From Server"
         case .ban: return "Ban User"
@@ -546,6 +552,7 @@ struct UserActionSheet: View {
         case .privateMessage: return "Message"
         case .offlineMessage: return "Message"
         case .poke: return "Poke Message"
+        case .complain: return "Complaint"
         case .kickChannel, .kickServer, .ban: return "Reason"
         }
     }
@@ -555,6 +562,7 @@ struct UserActionSheet: View {
         case .privateMessage: return "Send"
         case .offlineMessage: return "Send"
         case .poke: return "Poke"
+        case .complain: return "Submit Complaint"
         case .kickChannel, .kickServer: return "Kick"
         case .ban: return "Ban"
         }
@@ -580,6 +588,8 @@ struct UserActionSheet: View {
                             model.sendOfflineMessage(to: user, subject: subject, message: text)
                         case .poke:
                             model.pokeUser(user, message: text)
+                        case .complain:
+                            model.complainAboutUser(user, message: text)
                         case .kickChannel:
                             model.kickUserFromChannel(user, message: text.isEmpty ? nil : text)
                         case .kickServer:
@@ -607,7 +617,7 @@ struct UserActionSheet: View {
     private var isActionDisabled: Bool {
         let textIsEmpty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         switch mode {
-        case .privateMessage, .poke:
+        case .privateMessage, .poke, .complain:
             return textIsEmpty
         case .offlineMessage:
             return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -800,6 +810,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingPermissions = false
     @State private var isShowingFiles = false
     @State private var isShowingServerEditor = false
+    @State private var isShowingComplaints = false
 
     var body: some View {
         NavigationView {
@@ -830,6 +841,12 @@ struct ServerToolsSheet: View {
                     Button("Manage Bans") {
                         model.refreshBanList()
                         isShowingBanList = true
+                    }
+                    Button("Manage Complaints") {
+                        if let user = model.clients.first(where: { !$0.isCurrentUser }) {
+                            model.refreshComplaints(for: user)
+                        }
+                        isShowingComplaints = true
                     }
                 }
 
@@ -903,6 +920,10 @@ struct ServerToolsSheet: View {
             }
             .sheet(isPresented: $isShowingServerEditor) {
                 ServerSettingsEditorSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingComplaints) {
+                ComplaintListSheet()
                     .environmentObject(model)
             }
         }
@@ -1471,6 +1492,132 @@ struct BanListSheet: View {
                 )
             }
         }
+    }
+}
+
+struct ComplaintListSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var isConfirmingDeleteAll = false
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("User")) {
+                    if model.clients.filter({ !$0.isCurrentUser }).isEmpty {
+                        Text("No other users")
+                            .foregroundColor(.secondary)
+                    } else {
+                        Picker("User", selection: selectedUserId) {
+                            ForEach(model.clients.filter { !$0.isCurrentUser }) { user in
+                                Text(user.nickname).tag(user.id)
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Complaints")) {
+                    if model.complaintEntries.isEmpty {
+                        Text("No complaints")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.complaintEntries) { entry in
+                            ComplaintEntryRow(entry: entry)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+
+                if !model.complaintEntries.isEmpty {
+                    Section {
+                        Button("Delete All Complaints") {
+                            isConfirmingDeleteAll = true
+                        }
+                        .foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle("Complaints")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        if let target = model.complaintTarget {
+                            model.refreshComplaints(for: target)
+                        }
+                    }
+                    .disabled(model.complaintTarget == nil)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .alert(isPresented: $isConfirmingDeleteAll) {
+                Alert(
+                    title: Text("Delete All Complaints?"),
+                    message: Text(model.complaintTarget?.nickname ?? "Selected user"),
+                    primaryButton: .destructive(Text("Delete All")) {
+                        model.deleteAllComplaintsForCurrentTarget()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        }
+    }
+
+    private var selectedUserId: Binding<Int> {
+        Binding(
+            get: { model.complaintTarget?.id ?? model.clients.first(where: { !$0.isCurrentUser })?.id ?? 0 },
+            set: { userId in
+                if let user = model.clients.first(where: { $0.id == userId }) {
+                    model.refreshComplaints(for: user)
+                }
+            }
+        )
+    }
+}
+
+struct ComplaintEntryRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let entry: TS3ComplaintSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(entry.sourceName?.isEmpty == false ? entry.sourceName! : "Client DB \(entry.sourceClientDatabaseId)")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Source DB \(entry.sourceClientDatabaseId)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if let timestamp = entry.timestamp {
+                    Text(Self.dateText(timestamp))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            if let message = entry.message, !message.isEmpty {
+                Text(message)
+            }
+            Button("Delete Complaint") {
+                model.deleteComplaint(entry)
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.red)
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
