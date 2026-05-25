@@ -106,6 +106,25 @@ public struct TS3ServerInfo {
     }
 }
 
+public struct TS3ServerLogEntry: Identifiable {
+    public let id: Int
+    public let timestamp: Date?
+    public let level: String?
+    public let channel: String?
+    public let message: String
+    public let rawLine: String
+
+    /// Creates a virtual server log entry.
+    public init(id: Int, timestamp: Date?, level: String?, channel: String?, message: String, rawLine: String) {
+        self.id = id
+        self.timestamp = timestamp
+        self.level = level
+        self.channel = channel
+        self.message = message
+        self.rawLine = rawLine
+    }
+}
+
 public struct TS3ServerEdit {
     public var name: String?
     public var welcomeMessage: String?

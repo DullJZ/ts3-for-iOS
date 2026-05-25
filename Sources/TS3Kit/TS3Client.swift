@@ -243,6 +243,17 @@ public final class TS3Client {
         try await refreshServerInfo()
     }
 
+    public func serverLogEntries(limit: Int = 100, reverse: Bool = true, instance: Bool = false) async throws -> [TS3ServerLogEntry] {
+        let responses = try await execute(TS3SingleCommand(name: "logview", parameters: [
+            TS3CommandSingleParameter(name: "lines", value: String(limit)),
+            TS3CommandSingleParameter(name: "reverse", value: reverse ? "1" : "0"),
+            TS3CommandSingleParameter(name: "instance", value: instance ? "1" : "0")
+        ]))
+        return responses.enumerated().compactMap { index, command in
+            serverLogEntry(from: command, index: index)
+        }
+    }
+
     public func refreshClientDetails(clientId targetClientId: Int) async throws -> TS3ServerClient? {
         let responses = try await execute(TS3SingleCommand(name: "clientinfo", parameters: [
             TS3CommandSingleParameter(name: "clid", value: String(targetClientId))
@@ -1881,6 +1892,13 @@ private extension TS3Client {
 }
 
 private extension TS3Client {
+    static let serverLogDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSSS"
+        return formatter
+    }()
+
     func appendParameter(_ params: inout [TS3CommandParameter], name: String, value: String?) {
         guard let value else { return }
         params.append(TS3CommandSingleParameter(name: name, value: value))
@@ -2079,6 +2097,37 @@ private extension TS3Client {
             hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
             hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
             hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value
+        )
+    }
+
+    func serverLogEntry(from command: TS3SingleCommand, index: Int) -> TS3ServerLogEntry? {
+        guard let line = command.get("l")?.value
+            ?? command.get("msg")?.value
+            ?? command.get("message")?.value
+            ?? command.get("logmsg")?.value else {
+            return nil
+        }
+
+        let parts = line.split(separator: "|", omittingEmptySubsequences: false).map {
+            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let timestamp = parts.first.flatMap(Self.serverLogDateFormatter.date(from:))
+        let level = parts.count > 1 && !parts[1].isEmpty ? parts[1] : nil
+        let channel = parts.count > 2 && !parts[2].isEmpty ? parts[2] : nil
+        let message: String
+        if parts.count > 3 {
+            message = parts.dropFirst(3).joined(separator: " | ")
+        } else {
+            message = line
+        }
+
+        return TS3ServerLogEntry(
+            id: index,
+            timestamp: timestamp,
+            level: level,
+            channel: channel,
+            message: message,
+            rawLine: line
         )
     }
 

@@ -305,6 +305,24 @@ struct TS3ServerInfoSummary {
     )
 }
 
+struct TS3ServerLogSummary: Identifiable {
+    let id: Int
+    let timestamp: Date?
+    let level: String?
+    let channel: String?
+    let message: String
+    let rawLine: String
+
+    init(entry: TS3ServerLogEntry) {
+        self.id = entry.id
+        self.timestamp = entry.timestamp
+        self.level = entry.level
+        self.channel = entry.channel
+        self.message = entry.message
+        self.rawLine = entry.rawLine
+    }
+}
+
 enum TS3WhisperRoute: Equatable {
     case none
     case server
@@ -353,6 +371,7 @@ final class TS3AppModel: ObservableObject {
     @Published var databaseSearchResults: [TS3DatabaseClientSummary] = []
     @Published var clientLocations: [TS3ClientLocationSummary] = []
     @Published var selectedDatabaseClient: TS3DatabaseClientSummary?
+    @Published var serverLogEntries: [TS3ServerLogSummary] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
@@ -541,6 +560,7 @@ final class TS3AppModel: ObservableObject {
         databaseSearchResults = []
         clientLocations = []
         selectedDatabaseClient = nil
+        serverLogEntries = []
         serverGroups = []
         channelGroups = []
         permissionInfos = []
@@ -645,6 +665,15 @@ final class TS3AppModel: ObservableObject {
     func refreshServerInfo() {
         runClientCommand { client in
             try await client.refreshServerInfo()
+        }
+    }
+
+    func refreshServerLogs(limit: Int = 100, reverse: Bool = true, instance: Bool = false) {
+        runClientCommand { client in
+            let entries = try await client.serverLogEntries(limit: limit, reverse: reverse, instance: instance)
+            await MainActor.run {
+                self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
+            }
         }
     }
 

@@ -812,6 +812,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingServerEditor = false
     @State private var isShowingComplaints = false
     @State private var isShowingClientDatabase = false
+    @State private var isShowingServerLogs = false
 
     var body: some View {
         NavigationView {
@@ -823,6 +824,10 @@ struct ServerToolsSheet: View {
                     }
                     Button("Refresh Server Info") {
                         model.refreshServerInfo()
+                    }
+                    Button("View Server Logs") {
+                        model.refreshServerLogs()
+                        isShowingServerLogs = true
                     }
                     Button("Edit Server Settings") {
                         isShowingServerEditor = true
@@ -935,7 +940,113 @@ struct ServerToolsSheet: View {
                 ClientDatabaseSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingServerLogs) {
+                ServerLogsSheet()
+                    .environmentObject(model)
+            }
         }
+    }
+}
+
+struct ServerLogsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var lineLimit = "100"
+    @State private var reverseOrder = true
+    @State private var instanceLogs = false
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Controls")) {
+                    TextField("Lines", text: $lineLimit)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    Toggle("Reverse Order", isOn: $reverseOrder)
+                    Toggle("Instance Logs", isOn: $instanceLogs)
+                    Button("Refresh") {
+                        model.refreshServerLogs(
+                            limit: Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100,
+                            reverse: reverseOrder,
+                            instance: instanceLogs
+                        )
+                    }
+                }
+
+                Section(header: Text("Server Log")) {
+                    if model.serverLogEntries.isEmpty {
+                        Text("No log entries")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.serverLogEntries) { entry in
+                            ServerLogRow(entry: entry)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Server Logs")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshServerLogs(
+                            limit: Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100,
+                            reverse: reverseOrder,
+                            instance: instanceLogs
+                        )
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                model.refreshServerLogs(
+                    limit: Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100,
+                    reverse: reverseOrder,
+                    instance: instanceLogs
+                )
+            }
+        }
+    }
+}
+
+struct ServerLogRow: View {
+    let entry: TS3ServerLogSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                if let timestamp = entry.timestamp {
+                    Text(Self.dateText(timestamp))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if let level = entry.level, !level.isEmpty {
+                    Text(level)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if let channel = entry.channel, !channel.isEmpty {
+                    Text(channel)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            Text(entry.message)
+                .font(.subheadline)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 }
 
