@@ -1571,6 +1571,7 @@ struct PermissionsSheet: View {
     @State private var searchText = ""
     @State private var permissionName = ""
     @State private var permissionValue = "0"
+    @State private var permissionNegated = false
     @State private var permissionSkip = false
 
     var filteredPermissionInfos: [TS3PermissionInfoSummary] {
@@ -1583,37 +1584,96 @@ struct PermissionsSheet: View {
         }
     }
 
+    var displayedPermissions: [TS3PermissionSummary] {
+        model.permissionEditScope == .ownClient ? model.ownClientPermissions : model.scopedPermissions
+    }
+
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Current Client Direct Permissions")) {
-                    if let databaseId = model.ownClientDatabaseId {
+                Section(header: Text("Permission Target")) {
+                    Picker("Target", selection: Binding(
+                        get: { model.permissionEditScope },
+                        set: { model.selectPermissionScope($0) }
+                    )) {
+                        ForEach(TS3PermissionEditScope.allCases) { scope in
+                            Text(scope.title).tag(scope)
+                        }
+                    }
+                    if model.permissionEditScope == .ownClient, let databaseId = model.ownClientDatabaseId {
                         Text("Database ID \(databaseId)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    if model.ownClientPermissions.isEmpty {
-                        Text("No direct client permissions")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(model.ownClientPermissions) { permission in
-                            PermissionRow(permission: permission)
-                                .environmentObject(model)
+                    if model.permissionEditScope == .serverGroup {
+                        Picker("Server Group", selection: Binding(
+                            get: { model.selectedServerGroupPermissionId ?? model.serverGroups.first?.id ?? 0 },
+                            set: {
+                                model.selectedServerGroupPermissionId = $0
+                                model.refreshSelectedPermissions()
+                            }
+                        )) {
+                            ForEach(model.serverGroups) { group in
+                                Text(group.name).tag(group.id)
+                            }
+                        }
+                    }
+                    if model.permissionEditScope == .channelGroup {
+                        Picker("Channel Group", selection: Binding(
+                            get: { model.selectedChannelGroupPermissionId ?? model.channelGroups.first?.id ?? 0 },
+                            set: {
+                                model.selectedChannelGroupPermissionId = $0
+                                model.refreshSelectedPermissions()
+                            }
+                        )) {
+                            ForEach(model.channelGroups) { group in
+                                Text(group.name).tag(group.id)
+                            }
+                        }
+                    }
+                    if model.permissionEditScope == .channel {
+                        Picker("Channel", selection: Binding(
+                            get: { model.selectedChannelPermissionId ?? model.currentChannel?.id ?? model.channels.first?.id ?? 0 },
+                            set: {
+                                model.selectedChannelPermissionId = $0
+                                model.refreshSelectedPermissions()
+                            }
+                        )) {
+                            ForEach(model.channels) { channel in
+                                Text(channel.name).tag(channel.id)
+                            }
                         }
                     }
                 }
 
-                Section(header: Text("Add Direct Permission")) {
+                Section(header: Text("\(model.permissionEditScope.title) Permissions")) {
+                    if displayedPermissions.isEmpty {
+                        Text("No permissions")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(displayedPermissions) { permission in
+                            PermissionRow(permission: permission) {
+                                model.deleteSelectedPermission(permission)
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Add Permission")) {
                     TextField("Permission Name", text: $permissionName)
                         .ts3PlainTextField()
                     TextField("Value", text: $permissionValue)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
+                    Toggle("Negated", isOn: $permissionNegated)
+                        .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .channel)
                     Toggle("Skip", isOn: $permissionSkip)
+                        .disabled(model.permissionEditScope == .channel)
                     Button("Add or Update Permission") {
-                        model.addOwnClientPermission(
+                        model.addSelectedPermission(
                             name: permissionName,
                             value: Int(permissionValue.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                            negated: permissionNegated,
                             skip: permissionSkip
                         )
                     }
@@ -1640,13 +1700,15 @@ struct PermissionsSheet: View {
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshPermissionList()
-                model.refreshOwnClientPermissions()
+                model.refreshGroups()
+                model.refreshSelectedPermissions()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Refresh") {
                         model.refreshPermissionList()
-                        model.refreshOwnClientPermissions()
+                        model.refreshGroups()
+                        model.refreshSelectedPermissions()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -1660,8 +1722,8 @@ struct PermissionsSheet: View {
 }
 
 struct PermissionRow: View {
-    @EnvironmentObject private var model: TS3AppModel
     let permission: TS3PermissionSummary
+    let delete: () -> Void
     @State private var isConfirmingDelete = false
 
     var body: some View {
@@ -1698,7 +1760,7 @@ struct PermissionRow: View {
                 title: Text("Delete Permission?"),
                 message: Text(permission.name),
                 primaryButton: .destructive(Text("Delete")) {
-                    model.deleteOwnClientPermission(permission)
+                    delete()
                 },
                 secondaryButton: .cancel()
             )

@@ -199,6 +199,28 @@ struct TS3PermissionSummary: Identifiable {
     }
 }
 
+enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
+    case ownClient
+    case serverGroup
+    case channelGroup
+    case channel
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .ownClient:
+            return "Current Client"
+        case .serverGroup:
+            return "Server Group"
+        case .channelGroup:
+            return "Channel Group"
+        case .channel:
+            return "Channel"
+        }
+    }
+}
+
 struct TS3FileEntrySummary: Identifiable {
     let id: String
     let channelId: Int
@@ -377,6 +399,11 @@ final class TS3AppModel: ObservableObject {
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
     @Published var ownClientPermissions: [TS3PermissionSummary] = []
     @Published var ownClientDatabaseId: Int?
+    @Published var permissionEditScope: TS3PermissionEditScope = .ownClient
+    @Published var selectedServerGroupPermissionId: Int?
+    @Published var selectedChannelGroupPermissionId: Int?
+    @Published var selectedChannelPermissionId: Int?
+    @Published var scopedPermissions: [TS3PermissionSummary] = []
     @Published var fileEntries: [TS3FileEntrySummary] = []
     @Published var fileBrowserChannelId: Int?
     @Published var fileBrowserPath = "/"
@@ -566,6 +593,11 @@ final class TS3AppModel: ObservableObject {
         permissionInfos = []
         ownClientPermissions = []
         ownClientDatabaseId = nil
+        permissionEditScope = .ownClient
+        selectedServerGroupPermissionId = nil
+        selectedChannelGroupPermissionId = nil
+        selectedChannelPermissionId = nil
+        scopedPermissions = []
         fileEntries = []
         fileBrowserChannelId = nil
         fileBrowserPath = "/"
@@ -624,6 +656,55 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func refreshSelectedPermissions() {
+        switch permissionEditScope {
+        case .ownClient:
+            refreshOwnClientPermissions()
+        case .serverGroup:
+            guard let groupId = selectedServerGroupPermissionId ?? serverGroups.first?.id else {
+                scopedPermissions = []
+                return
+            }
+            selectedServerGroupPermissionId = groupId
+            runClientCommand { client in
+                let permissions = try await client.refreshServerGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channelGroup:
+            guard let groupId = selectedChannelGroupPermissionId ?? channelGroups.first?.id else {
+                scopedPermissions = []
+                return
+            }
+            selectedChannelGroupPermissionId = groupId
+            runClientCommand { client in
+                let permissions = try await client.refreshChannelGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channel:
+            guard let channelId = selectedChannelPermissionId ?? currentChannel?.id ?? channels.first?.id else {
+                scopedPermissions = []
+                return
+            }
+            selectedChannelPermissionId = channelId
+            runClientCommand { client in
+                let permissions = try await client.refreshChannelPermissions(channelId: channelId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        }
+    }
+
+    func selectPermissionScope(_ scope: TS3PermissionEditScope) {
+        permissionEditScope = scope
+        scopedPermissions = []
+        refreshSelectedPermissions()
+    }
+
     func addOwnClientPermission(name: String, value: Int, skip: Bool) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
@@ -644,6 +725,51 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func addSelectedPermission(name: String, value: Int, negated: Bool, skip: Bool) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        switch permissionEditScope {
+        case .ownClient:
+            addOwnClientPermission(name: name, value: value, skip: skip)
+        case .serverGroup:
+            guard let groupId = selectedServerGroupPermissionId else {
+                lastError = "Select a server group first."
+                return
+            }
+            runClientCommand { client in
+                try await client.addServerGroupPermission(groupId: groupId, permissionName: name, value: value, negated: negated, skip: skip)
+                let permissions = try await client.refreshServerGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channelGroup:
+            guard let groupId = selectedChannelGroupPermissionId else {
+                lastError = "Select a channel group first."
+                return
+            }
+            runClientCommand { client in
+                try await client.addChannelGroupPermission(groupId: groupId, permissionName: name, value: value, negated: negated, skip: skip)
+                let permissions = try await client.refreshChannelGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channel:
+            guard let channelId = selectedChannelPermissionId else {
+                lastError = "Select a channel first."
+                return
+            }
+            runClientCommand { client in
+                try await client.addChannelPermission(channelId: channelId, permissionName: name, value: value)
+                let permissions = try await client.refreshChannelPermissions(channelId: channelId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        }
+    }
+
     func deleteOwnClientPermission(_ permission: TS3PermissionSummary) {
         guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
             lastError = "Current client details are not available yet."
@@ -660,6 +786,55 @@ final class TS3AppModel: ObservableObject {
                     .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             }
         }
+    }
+
+    func deleteSelectedPermission(_ permission: TS3PermissionSummary) {
+        switch permissionEditScope {
+        case .ownClient:
+            deleteOwnClientPermission(permission)
+        case .serverGroup:
+            guard let groupId = selectedServerGroupPermissionId else {
+                lastError = "Select a server group first."
+                return
+            }
+            runClientCommand { client in
+                try await client.deleteServerGroupPermission(groupId: groupId, permissionName: permission.name)
+                let permissions = try await client.refreshServerGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channelGroup:
+            guard let groupId = selectedChannelGroupPermissionId else {
+                lastError = "Select a channel group first."
+                return
+            }
+            runClientCommand { client in
+                try await client.deleteChannelGroupPermission(groupId: groupId, permissionName: permission.name)
+                let permissions = try await client.refreshChannelGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channel:
+            guard let channelId = selectedChannelPermissionId else {
+                lastError = "Select a channel first."
+                return
+            }
+            runClientCommand { client in
+                try await client.deleteChannelPermission(channelId: channelId, permissionName: permission.name)
+                let permissions = try await client.refreshChannelPermissions(channelId: channelId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        }
+    }
+
+    private func permissionSummaries(from permissions: [TS3Permission]) -> [TS3PermissionSummary] {
+        permissions
+            .map { TS3PermissionSummary(permission: $0) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     func refreshServerInfo() {

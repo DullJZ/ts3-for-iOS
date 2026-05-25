@@ -571,6 +571,79 @@ public final class TS3Client {
         ]))
     }
 
+    public func refreshServerGroupPermissions(groupId: Int) async throws -> [TS3Permission] {
+        let responses = try await execute(TS3SingleCommand(name: "servergrouppermlist", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandOption(name: "permsid")
+        ]))
+        return responses.compactMap { permission(from: $0) }
+    }
+
+    public func addServerGroupPermission(groupId: Int, permissionName: String, value: Int, negated: Bool = false, skip: Bool = false) async throws {
+        _ = try await execute(TS3SingleCommand(name: "servergroupaddperm", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName),
+            TS3CommandSingleParameter(name: "permvalue", value: String(value)),
+            TS3CommandSingleParameter(name: "permnegated", value: negated ? "1" : "0"),
+            TS3CommandSingleParameter(name: "permskip", value: skip ? "1" : "0")
+        ]))
+    }
+
+    public func deleteServerGroupPermission(groupId: Int, permissionName: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "servergroupdelperm", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName)
+        ]))
+    }
+
+    public func refreshChannelGroupPermissions(groupId: Int) async throws -> [TS3Permission] {
+        let responses = try await execute(TS3SingleCommand(name: "channelgrouppermlist", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandOption(name: "permsid")
+        ]))
+        return responses.compactMap { permission(from: $0) }
+    }
+
+    public func addChannelGroupPermission(groupId: Int, permissionName: String, value: Int, negated: Bool = false, skip: Bool = false) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelgroupaddperm", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName),
+            TS3CommandSingleParameter(name: "permvalue", value: String(value)),
+            TS3CommandSingleParameter(name: "permnegated", value: negated ? "1" : "0"),
+            TS3CommandSingleParameter(name: "permskip", value: skip ? "1" : "0")
+        ]))
+    }
+
+    public func deleteChannelGroupPermission(groupId: Int, permissionName: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelgroupdelperm", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName)
+        ]))
+    }
+
+    public func refreshChannelPermissions(channelId: Int) async throws -> [TS3Permission] {
+        let responses = try await execute(TS3SingleCommand(name: "channelpermlist", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandOption(name: "permsid")
+        ]))
+        return responses.compactMap { permission(from: $0) }
+    }
+
+    public func addChannelPermission(channelId: Int, permissionName: String, value: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channeladdperm", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName),
+            TS3CommandSingleParameter(name: "permvalue", value: String(value))
+        ]))
+    }
+
+    public func deleteChannelPermission(channelId: Int, permissionName: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channeldelperm", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName)
+        ]))
+    }
+
     public func refreshFileList(channelId: Int, path: String, password: String? = nil) async throws -> [TS3FileEntry] {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),
