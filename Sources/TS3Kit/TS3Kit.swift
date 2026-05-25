@@ -626,25 +626,44 @@ public struct TS3FileTransferParameters {
     }
 }
 
+/// Describes whether a permission group is a template, regular, or query group.
+public enum TS3PermissionGroupDatabaseType: Int, CaseIterable, Identifiable {
+    /// A template group used as a basis for new groups.
+    case template = 0
+    /// A normal permission group used by regular clients.
+    case regular = 1
+    /// A server query permission group.
+    case query = 2
+
+    /// The numeric TeamSpeak database type.
+    public var id: Int { rawValue }
+}
+
 public struct TS3ServerGroup: Identifiable {
     public let id: Int
     public let name: String
+    /// The database type reported by the server, when available.
+    public let type: TS3PermissionGroupDatabaseType?
 
     /// Creates a server group summary.
-    public init(id: Int, name: String) {
+    public init(id: Int, name: String, type: TS3PermissionGroupDatabaseType? = nil) {
         self.id = id
         self.name = name
+        self.type = type
     }
 }
 
 public struct TS3ChannelGroup: Identifiable {
     public let id: Int
     public let name: String
+    /// The database type reported by the server, when available.
+    public let type: TS3PermissionGroupDatabaseType?
 
     /// Creates a channel group summary.
-    public init(id: Int, name: String) {
+    public init(id: Int, name: String, type: TS3PermissionGroupDatabaseType? = nil) {
         self.id = id
         self.name = name
+        self.type = type
     }
 }
 

@@ -543,17 +543,105 @@ public final class TS3Client {
     public func refreshGroups() async throws {
         let serverGroups = try await execute(TS3SingleCommand(name: "servergrouplist"))
         serverGroupCache = Dictionary(uniqueKeysWithValues: serverGroups.compactMap { command in
-            guard let idText = command.get("sgid")?.value, let id = Int(idText),
-                  let name = command.get("name")?.value else { return nil }
-            return (id, TS3ServerGroup(id: id, name: name))
+            serverGroup(from: command).map { ($0.id, $0) }
         })
         let channelGroups = try await execute(TS3SingleCommand(name: "channelgrouplist"))
         channelGroupCache = Dictionary(uniqueKeysWithValues: channelGroups.compactMap { command in
-            guard let idText = command.get("cgid")?.value, let id = Int(idText),
-                  let name = command.get("name")?.value else { return nil }
-            return (id, TS3ChannelGroup(id: id, name: name))
+            channelGroup(from: command).map { ($0.id, $0) }
         })
         publishGroups()
+    }
+
+    /// Creates a server group and returns the server-assigned group id.
+    public func createServerGroup(name: String, type: TS3PermissionGroupDatabaseType = .regular) async throws -> Int {
+        let responses = try await execute(TS3SingleCommand(name: "servergroupadd", parameters: [
+            TS3CommandSingleParameter(name: "name", value: name),
+            TS3CommandSingleParameter(name: "type", value: String(type.rawValue))
+        ]))
+        guard let groupId = responses.first.flatMap({ intValue($0, "sgid") }) else {
+            throw TS3Error.invalidCommand
+        }
+        try await refreshGroups()
+        return groupId
+    }
+
+    /// Copies an existing server group and returns the new group id.
+    public func copyServerGroup(sourceGroupId: Int, targetGroupId: Int = 0, name: String, type: TS3PermissionGroupDatabaseType = .regular) async throws -> Int {
+        let responses = try await execute(TS3SingleCommand(name: "servergroupcopy", parameters: [
+            TS3CommandSingleParameter(name: "ssgid", value: String(sourceGroupId)),
+            TS3CommandSingleParameter(name: "tsgid", value: String(targetGroupId)),
+            TS3CommandSingleParameter(name: "name", value: name),
+            TS3CommandSingleParameter(name: "type", value: String(type.rawValue))
+        ]))
+        guard let groupId = responses.first.flatMap({ intValue($0, "sgid") }) else {
+            throw TS3Error.invalidCommand
+        }
+        try await refreshGroups()
+        return groupId
+    }
+
+    /// Renames a server group.
+    public func renameServerGroup(groupId: Int, name: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "servergrouprename", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "name", value: name)
+        ]))
+        try await refreshGroups()
+    }
+
+    /// Deletes a server group.
+    public func deleteServerGroup(groupId: Int, force: Bool = false) async throws {
+        _ = try await execute(TS3SingleCommand(name: "servergroupdel", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "force", value: force ? "1" : "0")
+        ]))
+        try await refreshGroups()
+    }
+
+    /// Creates a channel group and returns the server-assigned group id.
+    public func createChannelGroup(name: String, type: TS3PermissionGroupDatabaseType = .regular) async throws -> Int {
+        let responses = try await execute(TS3SingleCommand(name: "channelgroupadd", parameters: [
+            TS3CommandSingleParameter(name: "name", value: name),
+            TS3CommandSingleParameter(name: "type", value: String(type.rawValue))
+        ]))
+        guard let groupId = responses.first.flatMap({ intValue($0, "cgid") }) else {
+            throw TS3Error.invalidCommand
+        }
+        try await refreshGroups()
+        return groupId
+    }
+
+    /// Copies an existing channel group and returns the new group id.
+    public func copyChannelGroup(sourceGroupId: Int, targetGroupId: Int = 0, name: String, type: TS3PermissionGroupDatabaseType = .regular) async throws -> Int {
+        let responses = try await execute(TS3SingleCommand(name: "channelgroupcopy", parameters: [
+            TS3CommandSingleParameter(name: "scgid", value: String(sourceGroupId)),
+            TS3CommandSingleParameter(name: "tcgid", value: String(targetGroupId)),
+            TS3CommandSingleParameter(name: "name", value: name),
+            TS3CommandSingleParameter(name: "type", value: String(type.rawValue))
+        ]))
+        guard let groupId = responses.first.flatMap({ intValue($0, "cgid") }) else {
+            throw TS3Error.invalidCommand
+        }
+        try await refreshGroups()
+        return groupId
+    }
+
+    /// Renames a channel group.
+    public func renameChannelGroup(groupId: Int, name: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelgrouprename", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "name", value: name)
+        ]))
+        try await refreshGroups()
+    }
+
+    /// Deletes a channel group.
+    public func deleteChannelGroup(groupId: Int, force: Bool = false) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelgroupdel", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "force", value: force ? "1" : "0")
+        ]))
+        try await refreshGroups()
     }
 
     public func refreshPermissionList() async throws -> [TS3PermissionInfo] {
@@ -2467,7 +2555,11 @@ private extension TS3Client {
               let name = command.get("name")?.value else {
             return nil
         }
-        return TS3ServerGroup(id: id, name: name)
+        return TS3ServerGroup(
+            id: id,
+            name: name,
+            type: intValue(command, "type").flatMap(TS3PermissionGroupDatabaseType.init(rawValue:))
+        )
     }
 
     func channelGroup(from command: TS3SingleCommand) -> TS3ChannelGroup? {
@@ -2475,7 +2567,11 @@ private extension TS3Client {
               let name = command.get("name")?.value else {
             return nil
         }
-        return TS3ChannelGroup(id: id, name: name)
+        return TS3ChannelGroup(
+            id: id,
+            name: name,
+            type: intValue(command, "type").flatMap(TS3PermissionGroupDatabaseType.init(rawValue:))
+        )
     }
 
     func permissionInfo(from command: TS3SingleCommand) -> TS3PermissionInfo? {

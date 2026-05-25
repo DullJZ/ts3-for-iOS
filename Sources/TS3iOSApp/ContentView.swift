@@ -978,6 +978,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingClientDatabase = false
     @State private var isShowingServerLogs = false
     @State private var isShowingPrivilegeKeys = false
+    @State private var isShowingGroupManagement = false
 
     var body: some View {
         NavigationView {
@@ -999,6 +1000,10 @@ struct ServerToolsSheet: View {
                     }
                     Button("Refresh Permission Groups") {
                         model.refreshGroups()
+                    }
+                    Button("Manage Permission Groups") {
+                        model.refreshGroups()
+                        isShowingGroupManagement = true
                     }
                     Button("View Permissions") {
                         model.refreshPermissionList()
@@ -1095,6 +1100,10 @@ struct ServerToolsSheet: View {
             }
             .sheet(isPresented: $isShowingPrivilegeKeys) {
                 PrivilegeKeysSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingGroupManagement) {
+                GroupManagementSheet()
                     .environmentObject(model)
             }
             .sheet(isPresented: $isShowingFiles) {
@@ -1220,6 +1229,298 @@ struct ServerLogRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .medium
         return formatter.string(from: date)
+    }
+}
+
+enum TS3GroupManagementTarget: String, CaseIterable, Identifiable {
+    case server
+    case channel
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .server:
+            return "Server Groups"
+        case .channel:
+            return "Channel Groups"
+        }
+    }
+}
+
+struct GroupManagementSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var target: TS3GroupManagementTarget = .server
+    @State private var newGroupName = ""
+    @State private var newGroupType: TS3PermissionGroupDatabaseType = .regular
+
+    private var groups: [TS3GroupSummary] {
+        switch target {
+        case .server:
+            return model.serverGroups
+        case .channel:
+            return model.channelGroups
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Target")) {
+                    Picker("Group Type", selection: $target) {
+                        ForEach(TS3GroupManagementTarget.allCases) { target in
+                            Text(target.title).tag(target)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+
+                Section(header: Text("Create")) {
+                    TextField("Group Name", text: $newGroupName)
+                        .ts3PlainTextField()
+                    Picker("Database Type", selection: $newGroupType) {
+                        ForEach(TS3PermissionGroupDatabaseType.allCases) { type in
+                            Text(type.title).tag(type)
+                        }
+                    }
+                    Button("Create Group") {
+                        createGroup()
+                    }
+                    .disabled(newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                Section(header: Text(target.title)) {
+                    if groups.isEmpty {
+                        Text("No groups")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(groups) { group in
+                            GroupManagementRow(group: group, target: target)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Permission Groups")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshGroups()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshGroups()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func createGroup() {
+        switch target {
+        case .server:
+            model.createServerGroup(name: newGroupName, type: newGroupType)
+        case .channel:
+            model.createChannelGroup(name: newGroupName, type: newGroupType)
+        }
+        newGroupName = ""
+        newGroupType = .regular
+    }
+}
+
+struct GroupManagementRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
+    @State private var isShowingRename = false
+    @State private var isShowingCopy = false
+    @State private var isConfirmingDelete = false
+    @State private var isConfirmingForcedDelete = false
+
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(group.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                HStack(spacing: 8) {
+                    Text("#\(group.id)")
+                    Text(group.typeTitle)
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            Spacer()
+            Menu {
+                Button("Rename") {
+                    isShowingRename = true
+                }
+                Button("Copy") {
+                    isShowingCopy = true
+                }
+                Button("Delete") {
+                    isConfirmingDelete = true
+                }
+                Button("Force Delete") {
+                    isConfirmingForcedDelete = true
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.vertical, 3)
+        .sheet(isPresented: $isShowingRename) {
+            GroupNameSheet(
+                title: "Rename Group",
+                actionTitle: "Rename",
+                initialName: group.name,
+                allowsTypeSelection: false,
+                initialType: group.type ?? .regular
+            ) { name, _ in
+                renameGroup(name: name)
+            }
+        }
+        .sheet(isPresented: $isShowingCopy) {
+            GroupNameSheet(
+                title: "Copy Group",
+                actionTitle: "Copy",
+                initialName: "\(group.name) Copy",
+                allowsTypeSelection: true,
+                initialType: group.type ?? .regular
+            ) { name, type in
+                copyGroup(name: name, type: type)
+            }
+        }
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Group?"),
+                message: Text(group.name),
+                primaryButton: .destructive(Text("Delete")) {
+                    deleteGroup(force: false)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .background(
+            EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
+                Alert(
+                    title: Text("Force Delete Group?"),
+                    message: Text(group.name),
+                    primaryButton: .destructive(Text("Force Delete")) {
+                        deleteGroup(force: true)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        )
+    }
+
+    private func renameGroup(name: String) {
+        switch target {
+        case .server:
+            model.renameServerGroup(group, name: name)
+        case .channel:
+            model.renameChannelGroup(group, name: name)
+        }
+    }
+
+    private func copyGroup(name: String, type: TS3PermissionGroupDatabaseType) {
+        switch target {
+        case .server:
+            model.copyServerGroup(group, name: name, type: type)
+        case .channel:
+            model.copyChannelGroup(group, name: name, type: type)
+        }
+    }
+
+    private func deleteGroup(force: Bool) {
+        switch target {
+        case .server:
+            model.deleteServerGroup(group, force: force)
+        case .channel:
+            model.deleteChannelGroup(group, force: force)
+        }
+    }
+}
+
+struct GroupNameSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let title: String
+    let actionTitle: String
+    let allowsTypeSelection: Bool
+    let submit: (String, TS3PermissionGroupDatabaseType) -> Void
+    @State private var name: String
+    @State private var type: TS3PermissionGroupDatabaseType
+
+    init(
+        title: String,
+        actionTitle: String,
+        initialName: String,
+        allowsTypeSelection: Bool,
+        initialType: TS3PermissionGroupDatabaseType,
+        submit: @escaping (String, TS3PermissionGroupDatabaseType) -> Void
+    ) {
+        self.title = title
+        self.actionTitle = actionTitle
+        self.allowsTypeSelection = allowsTypeSelection
+        self.submit = submit
+        _name = State(initialValue: initialName)
+        _type = State(initialValue: initialType)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    TextField("Group Name", text: $name)
+                        .ts3PlainTextField()
+                    if allowsTypeSelection {
+                        Picker("Database Type", selection: $type) {
+                            ForEach(TS3PermissionGroupDatabaseType.allCases) { type in
+                                Text(type.title).tag(type)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button(actionTitle) {
+                        submit(name, type)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+extension TS3PermissionGroupDatabaseType {
+    var title: String {
+        switch self {
+        case .template:
+            return "Template"
+        case .regular:
+            return "Regular"
+        case .query:
+            return "Query"
+        }
     }
 }
 

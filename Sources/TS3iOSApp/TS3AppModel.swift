@@ -172,11 +172,25 @@ struct TS3ClientLocationSummary: Identifiable {
 struct TS3GroupSummary: Identifiable {
     let id: Int
     let name: String
+    let type: TS3PermissionGroupDatabaseType?
 }
 
 extension TS3GroupSummary {
     static func name(for id: Int, in groups: [TS3GroupSummary]) -> String {
         groups.first { $0.id == id }?.name ?? "Group \(id)"
+    }
+
+    var typeTitle: String {
+        switch type {
+        case .template:
+            return "Template"
+        case .regular:
+            return "Regular"
+        case .query:
+            return "Query"
+        case nil:
+            return "Unknown"
+        }
     }
 }
 
@@ -740,6 +754,66 @@ final class TS3AppModel: ObservableObject {
     func refreshGroups() {
         runClientCommand { client in
             try await client.refreshGroups()
+        }
+    }
+
+    func createServerGroup(name: String, type: TS3PermissionGroupDatabaseType) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        runClientCommand { client in
+            _ = try await client.createServerGroup(name: name, type: type)
+        }
+    }
+
+    func copyServerGroup(_ group: TS3GroupSummary, name: String, type: TS3PermissionGroupDatabaseType) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        runClientCommand { client in
+            _ = try await client.copyServerGroup(sourceGroupId: group.id, name: name, type: type)
+        }
+    }
+
+    func renameServerGroup(_ group: TS3GroupSummary, name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != group.name else { return }
+        runClientCommand { client in
+            try await client.renameServerGroup(groupId: group.id, name: name)
+        }
+    }
+
+    func deleteServerGroup(_ group: TS3GroupSummary, force: Bool) {
+        runClientCommand { client in
+            try await client.deleteServerGroup(groupId: group.id, force: force)
+        }
+    }
+
+    func createChannelGroup(name: String, type: TS3PermissionGroupDatabaseType) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        runClientCommand { client in
+            _ = try await client.createChannelGroup(name: name, type: type)
+        }
+    }
+
+    func copyChannelGroup(_ group: TS3GroupSummary, name: String, type: TS3PermissionGroupDatabaseType) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        runClientCommand { client in
+            _ = try await client.copyChannelGroup(sourceGroupId: group.id, name: name, type: type)
+        }
+    }
+
+    func renameChannelGroup(_ group: TS3GroupSummary, name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != group.name else { return }
+        runClientCommand { client in
+            try await client.renameChannelGroup(groupId: group.id, name: name)
+        }
+    }
+
+    func deleteChannelGroup(_ group: TS3GroupSummary, force: Bool) {
+        runClientCommand { client in
+            try await client.deleteChannelGroup(groupId: group.id, force: force)
         }
     }
 
@@ -2364,13 +2438,13 @@ extension TS3AppModel: TS3ClientDelegate {
 
     nonisolated func ts3Client(_ client: TS3Client, didUpdateServerGroups groups: [TS3ServerGroup]) {
         Task { @MainActor in
-            self.serverGroups = groups.map { TS3GroupSummary(id: $0.id, name: $0.name) }
+            self.serverGroups = groups.map { TS3GroupSummary(id: $0.id, name: $0.name, type: $0.type) }
         }
     }
 
     nonisolated func ts3Client(_ client: TS3Client, didUpdateChannelGroups groups: [TS3ChannelGroup]) {
         Task { @MainActor in
-            self.channelGroups = groups.map { TS3GroupSummary(id: $0.id, name: $0.name) }
+            self.channelGroups = groups.map { TS3GroupSummary(id: $0.id, name: $0.name, type: $0.type) }
         }
     }
 }
