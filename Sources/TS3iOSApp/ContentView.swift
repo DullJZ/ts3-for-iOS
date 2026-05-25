@@ -798,6 +798,7 @@ struct ServerToolsSheet: View {
     @State private var importedIdentity = ""
     @State private var isShowingBanList = false
     @State private var isShowingPermissions = false
+    @State private var isShowingFiles = false
 
     var body: some View {
         NavigationView {
@@ -817,6 +818,10 @@ struct ServerToolsSheet: View {
                         model.refreshPermissionList()
                         model.refreshOwnClientPermissions()
                         isShowingPermissions = true
+                    }
+                    Button("Browse Channel Files") {
+                        model.openFileBrowser()
+                        isShowingFiles = true
                     }
                     Button("Manage Bans") {
                         model.refreshBanList()
@@ -887,6 +892,228 @@ struct ServerToolsSheet: View {
             .sheet(isPresented: $isShowingPermissions) {
                 PermissionsSheet()
                     .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingFiles) {
+                FileBrowserSheet()
+                    .environmentObject(model)
+            }
+        }
+    }
+}
+
+struct FileBrowserSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var directoryName = ""
+
+    var selectedChannel: TS3ChannelSummary? {
+        guard let channelId = model.fileBrowserChannelId else { return nil }
+        return model.channels.first { $0.id == channelId }
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                if !model.channels.isEmpty {
+                    Section(header: Text("Channel")) {
+                        Picker("Channel", selection: channelSelection) {
+                            ForEach(model.channels) { channel in
+                                Text(channel.name).tag(channel.id)
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text(model.fileBrowserPath)) {
+                    if model.fileBrowserPath != "/" {
+                        Button("Parent Directory") {
+                            model.leaveFileDirectory()
+                        }
+                    }
+
+                    if model.fileEntries.isEmpty {
+                        Text("No files")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.fileEntries) { entry in
+                            FileEntryRow(entry: entry)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+
+                Section(header: Text("New Directory")) {
+                    TextField("Directory Name", text: $directoryName)
+                        .ts3PlainTextField()
+                    Button("Create Directory") {
+                        model.createFileDirectory(named: directoryName)
+                        directoryName = ""
+                    }
+                    .disabled(directoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle(selectedChannel?.name ?? "Files")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                if model.fileBrowserChannelId == nil {
+                    model.openFileBrowser()
+                } else {
+                    model.refreshFileList()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshFileList()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var channelSelection: Binding<Int> {
+        Binding(
+            get: { model.fileBrowserChannelId ?? model.currentChannel?.id ?? model.channels.first?.id ?? 0 },
+            set: { channelId in
+                if let channel = model.channels.first(where: { $0.id == channelId }) {
+                    model.selectFileBrowserChannel(channel)
+                }
+            }
+        )
+    }
+}
+
+struct FileEntryRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let entry: TS3FileEntrySummary
+    @State private var isRenaming = false
+    @State private var isConfirmingDelete = false
+    @State private var newName = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                if entry.isDirectory {
+                    model.enterFileDirectory(entry)
+                }
+            } label: {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: entry.isDirectory ? "folder" : "doc")
+                        .foregroundColor(entry.isDirectory ? .accentColor : .secondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(entry.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.primary)
+                        Text(detailText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+
+            HStack {
+                Button("Rename") {
+                    newName = entry.name
+                    isRenaming = true
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Button("Delete") {
+                    isConfirmingDelete = true
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(.red)
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete File Entry?"),
+                message: Text(entry.name),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteFileEntry(entry)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .sheet(isPresented: $isRenaming) {
+            RenameFileEntrySheet(entry: entry, newName: $newName)
+                .environmentObject(model)
+        }
+    }
+
+    private var detailText: String {
+        var parts: [String] = []
+        parts.append(entry.isDirectory ? "Directory" : Self.sizeText(entry.size))
+        if entry.isStillUploading {
+            parts.append("Uploading")
+        }
+        if let modifiedAt = entry.modifiedAt {
+            parts.append(Self.dateText(modifiedAt))
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func sizeText(_ bytes: Int64) -> String {
+        if bytes < 1_024 {
+            return "\(bytes) B"
+        }
+        let kb = Double(bytes) / 1_024
+        if kb < 1_024 {
+            return String(format: "%.1f KB", kb)
+        }
+        let mb = kb / 1_024
+        if mb < 1_024 {
+            return String(format: "%.1f MB", mb)
+        }
+        return String(format: "%.1f GB", mb / 1_024)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+struct RenameFileEntrySheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let entry: TS3FileEntrySummary
+    @Binding var newName: String
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(entry.name)) {
+                    TextField("New Name", text: $newName)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button("Rename") {
+                        model.renameFileEntry(entry, to: newName)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle("Rename")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
             }
         }
     }

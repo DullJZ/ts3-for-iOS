@@ -145,6 +145,30 @@ struct TS3PermissionSummary: Identifiable {
     }
 }
 
+struct TS3FileEntrySummary: Identifiable {
+    let id: String
+    let channelId: Int
+    let path: String
+    let parentPath: String
+    let name: String
+    let size: Int64
+    let modifiedAt: Date?
+    let isDirectory: Bool
+    let isStillUploading: Bool
+
+    init(entry: TS3FileEntry) {
+        self.id = entry.id
+        self.channelId = entry.channelId
+        self.path = entry.path
+        self.parentPath = entry.parentPath
+        self.name = entry.name
+        self.size = entry.size
+        self.modifiedAt = entry.modifiedAt
+        self.isDirectory = entry.isDirectory
+        self.isStillUploading = entry.isStillUploading
+    }
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -255,6 +279,9 @@ final class TS3AppModel: ObservableObject {
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
     @Published var ownClientPermissions: [TS3PermissionSummary] = []
+    @Published var fileEntries: [TS3FileEntrySummary] = []
+    @Published var fileBrowserChannelId: Int?
+    @Published var fileBrowserPath = "/"
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
@@ -433,6 +460,9 @@ final class TS3AppModel: ObservableObject {
         channelGroups = []
         permissionInfos = []
         ownClientPermissions = []
+        fileEntries = []
+        fileBrowserChannelId = nil
+        fileBrowserPath = "/"
         serverInfo = .empty
         isTalking = false
         isAway = false
@@ -500,6 +530,114 @@ final class TS3AppModel: ObservableObject {
                 self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
             }
         }
+    }
+
+    func openFileBrowser(channel: TS3ChannelSummary? = nil) {
+        let target = channel ?? currentChannel ?? channels.first
+        guard let target else {
+            lastError = "Join or select a channel before browsing files."
+            return
+        }
+        fileBrowserChannelId = target.id
+        fileBrowserPath = "/"
+        refreshFileList()
+    }
+
+    func selectFileBrowserChannel(_ channel: TS3ChannelSummary) {
+        fileBrowserChannelId = channel.id
+        fileBrowserPath = "/"
+        refreshFileList()
+    }
+
+    func refreshFileList() {
+        guard let channelId = fileBrowserChannelId ?? currentChannel?.id ?? channels.first?.id else {
+            lastError = "No channel is available for file browsing."
+            return
+        }
+        fileBrowserChannelId = channelId
+        let path = normalizedFileDirectoryPath(fileBrowserPath)
+        fileBrowserPath = path
+        runClientCommand { client in
+            let entries = try await client.refreshFileList(channelId: channelId, path: path)
+            await MainActor.run {
+                self.fileEntries = entries
+                    .map { TS3FileEntrySummary(entry: $0) }
+                    .sorted {
+                        if $0.isDirectory != $1.isDirectory { return $0.isDirectory && !$1.isDirectory }
+                        return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                    }
+            }
+        }
+    }
+
+    func enterFileDirectory(_ entry: TS3FileEntrySummary) {
+        guard entry.isDirectory else { return }
+        fileBrowserChannelId = entry.channelId
+        fileBrowserPath = normalizedFileDirectoryPath(entry.path)
+        refreshFileList()
+    }
+
+    func leaveFileDirectory() {
+        guard fileBrowserPath != "/" else { return }
+        let trimmed = fileBrowserPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let components = trimmed.split(separator: "/").dropLast()
+        fileBrowserPath = components.isEmpty ? "/" : "/" + components.joined(separator: "/") + "/"
+        refreshFileList()
+    }
+
+    func createFileDirectory(named name: String) {
+        guard let channelId = fileBrowserChannelId else {
+            lastError = "No channel is selected for file browsing."
+            return
+        }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        let path = joinedFilePath(parentPath: fileBrowserPath, name: name)
+        runClientCommand { client in
+            try await client.createFileDirectory(channelId: channelId, path: path)
+        } onSuccess: {
+            self.refreshFileList()
+        }
+    }
+
+    func deleteFileEntry(_ entry: TS3FileEntrySummary) {
+        runClientCommand { client in
+            try await client.deleteFile(channelId: entry.channelId, path: entry.path)
+        } onSuccess: {
+            self.refreshFileList()
+        }
+    }
+
+    func renameFileEntry(_ entry: TS3FileEntrySummary, to newName: String) {
+        let newName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newName.isEmpty, newName != entry.name else { return }
+        let newPath = joinedFilePath(parentPath: entry.parentPath, name: newName)
+        runClientCommand { client in
+            try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath)
+        } onSuccess: {
+            self.refreshFileList()
+        }
+    }
+
+    private func normalizedFileDirectoryPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/" }
+        var result = trimmed
+        if !result.hasPrefix("/") {
+            result = "/" + result
+        }
+        if !result.hasSuffix("/") {
+            result += "/"
+        }
+        return result
+    }
+
+    private func joinedFilePath(parentPath: String, name: String) -> String {
+        let parentPath = normalizedFileDirectoryPath(parentPath)
+        if name.hasPrefix("/") {
+            return name
+        }
+        return parentPath + name
     }
 
     func refreshUserDetails(_ user: TS3UserSummary) {

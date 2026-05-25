@@ -342,6 +342,43 @@ public struct TS3PermissionAssignment: Identifiable {
     }
 }
 
+public struct TS3FileEntry: Identifiable {
+    public var id: String { "\(channelId):\(path)" }
+    public let channelId: Int
+    public let path: String
+    public let parentPath: String
+    public let name: String
+    public let size: Int64
+    public let modifiedAt: Date?
+    public let type: Int
+    public let incompleteSize: Int64?
+
+    public var isDirectory: Bool { type == 0 }
+    public var isFile: Bool { type == 1 }
+    public var isStillUploading: Bool { (incompleteSize ?? 0) > 0 }
+
+    /// Creates a channel file browser entry from server-provided metadata.
+    public init(
+        channelId: Int,
+        path: String,
+        parentPath: String,
+        name: String,
+        size: Int64,
+        modifiedAt: Date?,
+        type: Int,
+        incompleteSize: Int64?
+    ) {
+        self.channelId = channelId
+        self.path = path
+        self.parentPath = parentPath
+        self.name = name
+        self.size = size
+        self.modifiedAt = modifiedAt
+        self.type = type
+        self.incompleteSize = incompleteSize
+    }
+}
+
 public struct TS3ServerGroup: Identifiable {
     public let id: Int
     public let name: String

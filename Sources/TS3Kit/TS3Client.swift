@@ -455,6 +455,52 @@ public final class TS3Client {
         return responses.compactMap { permission(from: $0) }
     }
 
+    public func refreshFileList(channelId: Int, path: String, password: String? = nil) async throws -> [TS3FileEntry] {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "path", value: path)
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        let responses = try await execute(TS3SingleCommand(name: "ftgetfilelist", parameters: params))
+        return responses.compactMap { fileEntry(from: $0, channelId: channelId, parentPath: path) }
+    }
+
+    public func createFileDirectory(channelId: Int, path: String, password: String? = nil) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "dirname", value: path)
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        _ = try await execute(TS3SingleCommand(name: "ftcreatedir", parameters: params))
+    }
+
+    public func deleteFile(channelId: Int, path: String, password: String? = nil) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "name", value: path)
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        _ = try await execute(TS3SingleCommand(name: "ftdeletefile", parameters: params))
+    }
+
+    public func renameFile(channelId: Int, oldPath: String, newPath: String, password: String? = nil) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "oldname", value: oldPath),
+            TS3CommandSingleParameter(name: "newname", value: newPath)
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        _ = try await execute(TS3SingleCommand(name: "ftrenamefile", parameters: params))
+    }
+
     public func addServerGroup(groupId: Int, toClientDatabaseId clientDatabaseId: Int) async throws {
         _ = try await execute(TS3SingleCommand(name: "servergroupaddclient", parameters: [
             TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
@@ -1734,6 +1780,10 @@ private extension TS3Client {
         command.get(name)?.value.flatMap(Int.init)
     }
 
+    func int64Value(_ command: TS3SingleCommand, _ name: String) -> Int64? {
+        command.get(name)?.value.flatMap(Int64.init)
+    }
+
     func boolValue(_ command: TS3SingleCommand, _ name: String) -> Bool {
         command.get(name)?.value == "1"
     }
@@ -1992,6 +2042,53 @@ private extension TS3Client {
             isNegated: boolValue(command, "permnegated"),
             isSkipped: boolValue(command, "permskip")
         )
+    }
+
+    func fileEntry(from command: TS3SingleCommand, channelId: Int, parentPath fallbackParentPath: String) -> TS3FileEntry? {
+        guard let name = command.get("name")?.value else {
+            return nil
+        }
+
+        let parentPath = normalizedDirectoryPath(command.get("path")?.value ?? fallbackParentPath)
+        let path = joinedFilePath(parentPath: parentPath, name: name)
+        let modifiedAt: Date?
+        if let seconds = int64Value(command, "datetime") {
+            modifiedAt = Date(timeIntervalSince1970: TimeInterval(seconds))
+        } else {
+            modifiedAt = nil
+        }
+
+        return TS3FileEntry(
+            channelId: intValue(command, "cid") ?? channelId,
+            path: path,
+            parentPath: parentPath,
+            name: name,
+            size: int64Value(command, "size") ?? 0,
+            modifiedAt: modifiedAt,
+            type: intValue(command, "type") ?? 1,
+            incompleteSize: int64Value(command, "incompletesize")
+        )
+    }
+
+    func normalizedDirectoryPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/" }
+        var result = trimmed
+        if !result.hasPrefix("/") {
+            result = "/" + result
+        }
+        if !result.hasSuffix("/") {
+            result += "/"
+        }
+        return result
+    }
+
+    func joinedFilePath(parentPath: String, name: String) -> String {
+        let parent = normalizedDirectoryPath(parentPath)
+        if name.hasPrefix("/") {
+            return name
+        }
+        return parent + name
     }
 
     func targetChannelId(from command: TS3SingleCommand) -> Int? {
