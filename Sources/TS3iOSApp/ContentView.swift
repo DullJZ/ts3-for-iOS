@@ -977,6 +977,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingComplaints = false
     @State private var isShowingClientDatabase = false
     @State private var isShowingServerLogs = false
+    @State private var isShowingPrivilegeKeys = false
 
     var body: some View {
         NavigationView {
@@ -1003,6 +1004,10 @@ struct ServerToolsSheet: View {
                         model.refreshPermissionList()
                         model.refreshOwnClientPermissions()
                         isShowingPermissions = true
+                    }
+                    Button("Manage Privilege Keys") {
+                        model.refreshPrivilegeKeys()
+                        isShowingPrivilegeKeys = true
                     }
                     Button("Browse Client Database") {
                         model.refreshClientDatabase()
@@ -1086,6 +1091,10 @@ struct ServerToolsSheet: View {
             }
             .sheet(isPresented: $isShowingPermissions) {
                 PermissionsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingPrivilegeKeys) {
+                PrivilegeKeysSheet()
                     .environmentObject(model)
             }
             .sheet(isPresented: $isShowingFiles) {
@@ -1992,6 +2001,229 @@ struct PermissionInfoRow: View {
             .padding(.vertical, 3)
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct PrivilegeKeysSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var targetType: TS3PrivilegeKeyTargetType = .serverGroup
+    @State private var selectedServerGroupId = 0
+    @State private var selectedChannelGroupId = 0
+    @State private var selectedChannelId = 0
+    @State private var description = ""
+    @State private var customSet = ""
+
+    var body: some View {
+        NavigationView {
+            List {
+                if let key = model.generatedPrivilegeKey {
+                    Section(header: Text("Generated Key")) {
+                        Text(key)
+                            .font(.system(.footnote, design: .monospaced))
+                            .lineLimit(3)
+                        Button("Use Generated Key") {
+                            model.usePrivilegeKey(key)
+                        }
+                        Button("Copy Generated Key") {
+                            TS3PlatformSupport.copyToPasteboard(key)
+                        }
+                    }
+                }
+
+                Section(header: Text("Create")) {
+                    Picker("Type", selection: $targetType) {
+                        ForEach(TS3PrivilegeKeyTargetType.allCases) { type in
+                            Text(type.title).tag(type)
+                        }
+                    }
+
+                    if targetType == .serverGroup {
+                        Picker("Server Group", selection: $selectedServerGroupId) {
+                            ForEach(model.serverGroups) { group in
+                                Text(group.name).tag(group.id)
+                            }
+                        }
+                    } else {
+                        Picker("Channel Group", selection: $selectedChannelGroupId) {
+                            ForEach(model.channelGroups) { group in
+                                Text(group.name).tag(group.id)
+                            }
+                        }
+                        Picker("Channel", selection: $selectedChannelId) {
+                            ForEach(model.channels) { channel in
+                                Text(channel.name).tag(channel.id)
+                            }
+                        }
+                    }
+
+                    TextField("Description", text: $description)
+                        .ts3PlainTextField()
+                    TextField("Custom Set", text: $customSet)
+                        .ts3PlainTextField()
+                    Button("Create Privilege Key") {
+                        model.createPrivilegeKey(
+                            targetType: targetType,
+                            groupId: selectedGroupId,
+                            channelId: selectedChannelId == 0 ? nil : selectedChannelId,
+                            description: description,
+                            customSet: customSet
+                        )
+                        description = ""
+                        customSet = ""
+                    }
+                    .disabled(!canCreate)
+                }
+
+                Section(header: Text("Existing Keys")) {
+                    if model.privilegeKeys.isEmpty {
+                        Text("No privilege keys")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.privilegeKeys) { key in
+                            PrivilegeKeyRow(key: key)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Privilege Keys")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                normalizeSelections()
+                model.refreshGroups()
+                model.refreshPrivilegeKeys()
+            }
+            .onChange(of: model.serverGroups.map(\.id)) { _ in
+                normalizeSelections()
+            }
+            .onChange(of: model.channelGroups.map(\.id)) { _ in
+                normalizeSelections()
+            }
+            .onChange(of: model.channels.map(\.id)) { _ in
+                normalizeSelections()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshGroups()
+                        model.refreshPrivilegeKeys()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var selectedGroupId: Int {
+        targetType == .serverGroup ? selectedServerGroupId : selectedChannelGroupId
+    }
+
+    private var canCreate: Bool {
+        switch targetType {
+        case .serverGroup:
+            return selectedServerGroupId != 0
+        case .channelGroup:
+            return selectedChannelGroupId != 0 && selectedChannelId != 0
+        }
+    }
+
+    private func normalizeSelections() {
+        if selectedServerGroupId == 0 || !model.serverGroups.contains(where: { $0.id == selectedServerGroupId }) {
+            selectedServerGroupId = model.serverGroups.first?.id ?? 0
+        }
+        if selectedChannelGroupId == 0 || !model.channelGroups.contains(where: { $0.id == selectedChannelGroupId }) {
+            selectedChannelGroupId = model.channelGroups.first?.id ?? 0
+        }
+        if selectedChannelId == 0 || !model.channels.contains(where: { $0.id == selectedChannelId }) {
+            selectedChannelId = model.currentChannel?.id ?? model.channels.first?.id ?? 0
+        }
+    }
+}
+
+struct PrivilegeKeyRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let key: TS3PrivilegeKeySummary
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(key.key)
+                        .font(.system(.footnote, design: .monospaced))
+                        .lineLimit(3)
+                    Text(targetText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let description = key.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if let customSet = key.customSet, !customSet.isEmpty {
+                        Text(customSet)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                Spacer()
+                Menu {
+                    Button("Use Key") {
+                        model.usePrivilegeKey(key.key)
+                    }
+                    Button("Copy Key") {
+                        TS3PlatformSupport.copyToPasteboard(key.key)
+                    }
+                    Button("Delete Key") {
+                        isConfirmingDelete = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+            if let createdAt = key.createdAt {
+                Text(Self.dateText(createdAt))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 3)
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Privilege Key?"),
+                message: Text(key.key),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deletePrivilegeKey(key)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private var targetText: String {
+        switch key.type {
+        case .serverGroup:
+            return "Server Group: \(TS3GroupSummary.name(for: key.groupId, in: model.serverGroups))"
+        case .channelGroup:
+            let group = TS3GroupSummary.name(for: key.groupId, in: model.channelGroups)
+            let channel = key.channelId.flatMap { id in model.channels.first { $0.id == id }?.name } ?? "Any Channel"
+            return "Channel Group: \(group) in \(channel)"
+        case nil:
+            return "Group \(key.groupId)"
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 

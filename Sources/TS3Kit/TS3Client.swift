@@ -792,6 +792,41 @@ public final class TS3Client {
         try? await refreshGroups()
     }
 
+    /// Returns the virtual server privilege keys visible to the current client.
+    public func refreshPrivilegeKeys() async throws -> [TS3PrivilegeKeyEntry] {
+        let responses = try await execute(TS3SingleCommand(name: "privilegekeylist"))
+        return responses.compactMap { privilegeKeyEntry(from: $0) }
+    }
+
+    /// Creates a privilege key for a server or channel group and returns the generated key.
+    public func createPrivilegeKey(
+        type: TS3PrivilegeKeyType,
+        groupId: Int,
+        channelId: Int? = nil,
+        description: String? = nil,
+        customSet: String? = nil
+    ) async throws -> String {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "tokentype", value: String(type.rawValue)),
+            TS3CommandSingleParameter(name: "tokenid1", value: String(groupId)),
+            TS3CommandSingleParameter(name: "tokenid2", value: String(channelId ?? 0))
+        ]
+        appendParameter(&params, name: "tokendescription", value: description)
+        appendParameter(&params, name: "tokencustomset", value: customSet)
+        let responses = try await execute(TS3SingleCommand(name: "privilegekeyadd", parameters: params))
+        guard let key = responses.first?.get("token")?.value else {
+            throw TS3Error.invalidCommand
+        }
+        return key
+    }
+
+    /// Deletes a privilege key from the virtual server.
+    public func deletePrivilegeKey(_ key: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "privilegekeydelete", parameters: [
+            TS3CommandSingleParameter(name: "token", value: key)
+        ]))
+    }
+
     public func identitySnapshot() async throws -> TS3IdentitySnapshot {
         let identity = try await loadIdentity()
         return TS3IdentitySnapshot(
@@ -2406,6 +2441,24 @@ private extension TS3Client {
             sourceName: command.get("fname")?.value ?? command.get("name")?.value,
             message: command.get("message")?.value,
             timestamp: timestamp
+        )
+    }
+
+    func privilegeKeyEntry(from command: TS3SingleCommand) -> TS3PrivilegeKeyEntry? {
+        guard let key = command.get("token")?.value,
+              let groupId = intValue(command, "token_id1") else {
+            return nil
+        }
+        let typeValue = intValue(command, "token_type")
+        let channelId = intValue(command, "token_id2").flatMap { $0 == 0 ? nil : $0 }
+        return TS3PrivilegeKeyEntry(
+            key: key,
+            type: typeValue.flatMap(TS3PrivilegeKeyType.init(rawValue:)),
+            groupId: groupId,
+            channelId: channelId,
+            createdAt: dateValue(command, "token_created"),
+            description: command.get("token_description")?.value,
+            customSet: command.get("token_customset")?.value
         )
     }
 

@@ -452,6 +452,43 @@ public struct TS3ComplaintEntry: Identifiable {
     }
 }
 
+public enum TS3PrivilegeKeyType: Int, CaseIterable, Identifiable {
+    case serverGroup = 0
+    case channelGroup = 1
+
+    public var id: Int { rawValue }
+}
+
+public struct TS3PrivilegeKeyEntry: Identifiable {
+    public var id: String { key }
+    public let key: String
+    public let type: TS3PrivilegeKeyType?
+    public let groupId: Int
+    public let channelId: Int?
+    public let createdAt: Date?
+    public let description: String?
+    public let customSet: String?
+
+    /// Creates a privilege-key entry from server-provided metadata.
+    public init(
+        key: String,
+        type: TS3PrivilegeKeyType?,
+        groupId: Int,
+        channelId: Int?,
+        createdAt: Date?,
+        description: String?,
+        customSet: String?
+    ) {
+        self.key = key
+        self.type = type
+        self.groupId = groupId
+        self.channelId = channelId
+        self.createdAt = createdAt
+        self.description = description
+        self.customSet = customSet
+    }
+}
+
 public struct TS3PermissionInfo: Identifiable {
     public let id: Int
     public let name: String

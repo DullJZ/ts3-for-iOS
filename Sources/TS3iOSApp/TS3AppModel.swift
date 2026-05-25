@@ -208,6 +208,49 @@ struct TS3PermissionSummary: Identifiable {
     }
 }
 
+enum TS3PrivilegeKeyTargetType: String, CaseIterable, Identifiable {
+    case serverGroup
+    case channelGroup
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .serverGroup: return "Server Group"
+        case .channelGroup: return "Channel Group"
+        }
+    }
+
+    var kitType: TS3PrivilegeKeyType {
+        switch self {
+        case .serverGroup: return .serverGroup
+        case .channelGroup: return .channelGroup
+        }
+    }
+}
+
+struct TS3PrivilegeKeySummary: Identifiable {
+    let id: String
+    let key: String
+    let type: TS3PrivilegeKeyType?
+    let groupId: Int
+    let channelId: Int?
+    let createdAt: Date?
+    let description: String?
+    let customSet: String?
+
+    init(entry: TS3PrivilegeKeyEntry) {
+        self.id = entry.id
+        self.key = entry.key
+        self.type = entry.type
+        self.groupId = entry.groupId
+        self.channelId = entry.channelId
+        self.createdAt = entry.createdAt
+        self.description = entry.description
+        self.customSet = entry.customSet
+    }
+}
+
 enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
     case ownClient
     case serverGroup
@@ -413,6 +456,8 @@ final class TS3AppModel: ObservableObject {
     @Published var selectedChannelGroupPermissionId: Int?
     @Published var selectedChannelPermissionId: Int?
     @Published var scopedPermissions: [TS3PermissionSummary] = []
+    @Published var privilegeKeys: [TS3PrivilegeKeySummary] = []
+    @Published var generatedPrivilegeKey: String?
     @Published var fileEntries: [TS3FileEntrySummary] = []
     @Published var fileBrowserChannelId: Int?
     @Published var fileBrowserPath = "/"
@@ -637,6 +682,8 @@ final class TS3AppModel: ObservableObject {
         selectedChannelGroupPermissionId = nil
         selectedChannelPermissionId = nil
         scopedPermissions = []
+        privilegeKeys = []
+        generatedPrivilegeKey = nil
         fileEntries = []
         fileBrowserChannelId = nil
         fileBrowserPath = "/"
@@ -1636,6 +1683,62 @@ final class TS3AppModel: ObservableObject {
         guard !trimmed.isEmpty else { return }
         runClientCommand { client in
             try await client.usePrivilegeKey(trimmed)
+        }
+    }
+
+    func refreshPrivilegeKeys() {
+        runClientCommand { client in
+            let keys = try await client.refreshPrivilegeKeys()
+            await MainActor.run {
+                self.privilegeKeys = keys
+                    .map { TS3PrivilegeKeySummary(entry: $0) }
+                    .sorted {
+                        switch ($0.createdAt, $1.createdAt) {
+                        case let (lhs?, rhs?): return lhs > rhs
+                        case (_?, nil): return true
+                        case (nil, _?): return false
+                        case (nil, nil): return $0.key < $1.key
+                        }
+                    }
+            }
+        }
+    }
+
+    func createPrivilegeKey(
+        targetType: TS3PrivilegeKeyTargetType,
+        groupId: Int,
+        channelId: Int?,
+        description: String,
+        customSet: String
+    ) {
+        let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let customSet = customSet.trimmingCharacters(in: .whitespacesAndNewlines)
+        let channelId = targetType == .channelGroup ? channelId : nil
+        runClientCommand { client in
+            let key = try await client.createPrivilegeKey(
+                type: targetType.kitType,
+                groupId: groupId,
+                channelId: channelId,
+                description: description.isEmpty ? nil : description,
+                customSet: customSet.isEmpty ? nil : customSet
+            )
+            let keys = try await client.refreshPrivilegeKeys()
+            await MainActor.run {
+                self.generatedPrivilegeKey = key
+                self.privilegeKeys = keys.map { TS3PrivilegeKeySummary(entry: $0) }
+            }
+        }
+    }
+
+    func deletePrivilegeKey(_ key: TS3PrivilegeKeySummary) {
+        runClientCommand { client in
+            try await client.deletePrivilegeKey(key.key)
+            await MainActor.run {
+                self.privilegeKeys.removeAll { $0.id == key.id }
+                if self.generatedPrivilegeKey == key.key {
+                    self.generatedPrivilegeKey = nil
+                }
+            }
         }
     }
 
