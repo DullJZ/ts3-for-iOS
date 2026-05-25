@@ -203,9 +203,10 @@ struct ChannelListView: View {
 
             List {
                 Section(header: Text("Channels")) {
-                    ForEach(model.channels) { channel in
-                        ChannelRow(channel: channel, members: model.members(in: channel.id))
-                            .listRowBackground(channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
+                    ForEach(channelTree) { item in
+                        ChannelRow(channel: item.channel, members: model.members(in: item.channel.id))
+                            .padding(.leading, CGFloat(item.depth) * 18)
+                            .listRowBackground(item.channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
                     }
                 }
             }
@@ -239,6 +240,125 @@ struct ChannelListView: View {
             ChannelEditorSheet(mode: .create(parent: model.currentChannel))
                 .environmentObject(model)
         }
+    }
+
+    private var channelTree: [ChannelTreeItem] {
+        ChannelTreeItem.flatten(channels: model.channels)
+    }
+}
+
+struct ChannelTreeItem: Identifiable {
+    let channel: TS3ChannelSummary
+    let depth: Int
+
+    var id: Int { channel.id }
+
+    static func flatten(channels: [TS3ChannelSummary]) -> [ChannelTreeItem] {
+        let children = Dictionary(grouping: channels) { channel in
+            normalizedParentId(channel.parentId)
+        }
+        var visited: Set<Int> = []
+        var result: [ChannelTreeItem] = []
+
+        appendChildren(
+            of: nil,
+            depth: 0,
+            children: children,
+            visited: &visited,
+            result: &result
+        )
+
+        let remaining = channels
+            .filter { !visited.contains($0.id) }
+            .sorted(by: stableChannelSort)
+        for channel in remaining {
+            appendChannel(
+                channel,
+                depth: 0,
+                children: children,
+                visited: &visited,
+                result: &result
+            )
+        }
+        return result
+    }
+
+    private static func appendChildren(
+        of parentId: Int?,
+        depth: Int,
+        children: [Int?: [TS3ChannelSummary]],
+        visited: inout Set<Int>,
+        result: inout [ChannelTreeItem]
+    ) {
+        let sortedChildren = orderedSiblings(children[parentId] ?? [])
+        for channel in sortedChildren {
+            appendChannel(
+                channel,
+                depth: depth,
+                children: children,
+                visited: &visited,
+                result: &result
+            )
+        }
+    }
+
+    private static func appendChannel(
+        _ channel: TS3ChannelSummary,
+        depth: Int,
+        children: [Int?: [TS3ChannelSummary]],
+        visited: inout Set<Int>,
+        result: inout [ChannelTreeItem]
+    ) {
+        guard !visited.contains(channel.id) else { return }
+        visited.insert(channel.id)
+        result.append(ChannelTreeItem(channel: channel, depth: depth))
+        appendChildren(
+            of: channel.id,
+            depth: depth + 1,
+            children: children,
+            visited: &visited,
+            result: &result
+        )
+    }
+
+    private static func normalizedParentId(_ parentId: Int?) -> Int? {
+        guard let parentId, parentId > 0 else { return nil }
+        return parentId
+    }
+
+    private static func orderedSiblings(_ channels: [TS3ChannelSummary]) -> [TS3ChannelSummary] {
+        let ids = Set(channels.map(\.id))
+        let byPreviousId = Dictionary(grouping: channels) { channel -> Int? in
+            guard let previousId = channel.order, ids.contains(previousId) else { return nil }
+            return previousId
+        }
+        var visited: Set<Int> = []
+        var result: [TS3ChannelSummary] = []
+
+        func appendChain(startingAt channel: TS3ChannelSummary) {
+            var current: TS3ChannelSummary? = channel
+            while let channel = current, !visited.contains(channel.id) {
+                visited.insert(channel.id)
+                result.append(channel)
+                current = byPreviousId[channel.id]?.sorted(by: stableChannelSort).first {
+                    !visited.contains($0.id)
+                }
+            }
+        }
+
+        for channel in (byPreviousId[nil] ?? []).sorted(by: stableChannelSort) {
+            appendChain(startingAt: channel)
+        }
+
+        for channel in channels.sorted(by: stableChannelSort) where !visited.contains(channel.id) {
+            appendChain(startingAt: channel)
+        }
+
+        return result
+    }
+
+    private static func stableChannelSort(_ lhs: TS3ChannelSummary, _ rhs: TS3ChannelSummary) -> Bool {
+        lhs.id < rhs.id
     }
 }
 

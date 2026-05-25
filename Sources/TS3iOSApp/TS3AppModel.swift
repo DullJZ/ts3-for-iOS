@@ -16,6 +16,7 @@ enum UIConnectionState {
 struct TS3ChannelSummary: Identifiable {
     let id: Int
     let parentId: Int?
+    let order: Int?
     var name: String
     var topic: String?
     var description: String?
@@ -655,6 +656,7 @@ final class TS3AppModel: ObservableObject {
             channels.append(TS3ChannelSummary(
                 id: id,
                 parentId: nil,
+                order: nil,
                 name: name,
                 topic: topic,
                 description: nil,
@@ -2500,6 +2502,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 TS3ChannelSummary(
                     id: channel.id,
                     parentId: channel.parentId,
+                    order: channel.order,
                     name: channel.name,
                     topic: channel.topic,
                     description: channel.description,
