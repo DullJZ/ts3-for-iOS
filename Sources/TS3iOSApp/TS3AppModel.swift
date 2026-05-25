@@ -40,6 +40,7 @@ struct TS3UserSummary: Identifiable {
     let talkPower: Int?
     let channelGroupId: Int?
     let serverGroups: [Int]
+    let description: String?
 }
 
 struct TS3ChatMessageSummary: Identifiable {
@@ -1553,6 +1554,17 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func editUserDescription(_ user: TS3UserSummary, description: String) {
+        runClientCommand { client in
+            try await client.editClientDescription(clientId: user.id, description: description)
+            await MainActor.run {
+                self.updateUser(clientId: user.id) { existing in
+                    self.copyUser(existing, description: description)
+                }
+            }
+        }
+    }
+
     func usePrivilegeKey(_ key: String) {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -1622,7 +1634,8 @@ final class TS3AppModel: ObservableObject {
     private func copyUser(
         _ user: TS3UserSummary,
         channelGroupId: Int? = nil,
-        serverGroups: [Int]? = nil
+        serverGroups: [Int]? = nil,
+        description: String? = nil
     ) -> TS3UserSummary {
         TS3UserSummary(
             id: user.id,
@@ -1637,7 +1650,8 @@ final class TS3AppModel: ObservableObject {
             awayMessage: user.awayMessage,
             talkPower: user.talkPower,
             channelGroupId: channelGroupId ?? user.channelGroupId,
-            serverGroups: serverGroups ?? user.serverGroups
+            serverGroups: serverGroups ?? user.serverGroups,
+            description: description ?? user.description
         )
     }
 
@@ -2139,7 +2153,8 @@ extension TS3AppModel: TS3ClientDelegate {
                     awayMessage: client.awayMessage,
                     talkPower: client.talkPower,
                     channelGroupId: client.channelGroupId,
-                    serverGroups: client.serverGroups
+                    serverGroups: client.serverGroups,
+                    description: client.description
                 )
             }
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {

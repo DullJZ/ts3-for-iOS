@@ -528,6 +528,18 @@ public final class TS3Client {
         ]))
     }
 
+    /// Updates a visible client description for the selected online client.
+    public func editClientDescription(clientId targetClientId: Int, description: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientedit", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
+            TS3CommandSingleParameter(name: "client_description", value: description)
+        ]))
+        if let existing = clientCache[UInt16(targetClientId)] {
+            clientCache[UInt16(targetClientId)] = copyClient(existing, description: description)
+            publishClients()
+        }
+    }
+
     public func refreshGroups() async throws {
         let serverGroups = try await execute(TS3SingleCommand(name: "servergrouplist"))
         serverGroupCache = Dictionary(uniqueKeysWithValues: serverGroups.compactMap { command in
@@ -2093,7 +2105,8 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value,
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
-            serverGroups: serverGroupIds(from: command)
+            serverGroups: serverGroupIds(from: command),
+            description: command.get("client_description")?.value
         )
     }
 
@@ -2116,7 +2129,8 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value,
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
-            serverGroups: serverGroupIds(from: command)
+            serverGroups: serverGroupIds(from: command),
+            description: command.get("client_description")?.value ?? existing?.description
         )
     }
 
@@ -2140,7 +2154,8 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value ?? existing.awayMessage,
             talkPower: intValue(command, "client_talk_power") ?? existing.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
-            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups
+            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
+            description: command.get("client_description")?.value ?? existing.description
         )
         clientCache[clid] = existing
         return existing
@@ -2164,7 +2179,8 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
             talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
-            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? []
+            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
+            description: command.get("client_description")?.value ?? existing?.description
         )
         clientCache[key] = updated
         return updated
@@ -2177,7 +2193,8 @@ private extension TS3Client {
         isInputMuted: Bool? = nil,
         isOutputMuted: Bool? = nil,
         isAway: Bool? = nil,
-        awayMessage: String? = nil
+        awayMessage: String? = nil,
+        description: String? = nil
     ) -> TS3ServerClient {
         TS3ServerClient(
             id: client.id,
@@ -2192,7 +2209,8 @@ private extension TS3Client {
             awayMessage: awayMessage ?? client.awayMessage,
             talkPower: client.talkPower,
             channelGroupId: client.channelGroupId,
-            serverGroups: client.serverGroups
+            serverGroups: client.serverGroups,
+            description: description ?? client.description
         )
     }
 

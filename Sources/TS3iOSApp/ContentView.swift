@@ -405,6 +405,7 @@ enum UserActionMode: Identifiable {
     case privateMessage
     case offlineMessage
     case poke
+    case editDescription
     case complain
     case kickChannel
     case kickServer
@@ -415,6 +416,7 @@ enum UserActionMode: Identifiable {
         case .privateMessage: return "privateMessage"
         case .offlineMessage: return "offlineMessage"
         case .poke: return "poke"
+        case .editDescription: return "editDescription"
         case .complain: return "complain"
         case .kickChannel: return "kickChannel"
         case .kickServer: return "kickServer"
@@ -461,6 +463,12 @@ struct ChannelMemberRow: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
+                if let description = member.description, !description.isEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
             }
             if member.isCurrentUser {
                 Text("You")
@@ -492,6 +500,9 @@ struct ChannelMemberRow: View {
                 }
                 Button("Refresh Details") {
                     model.refreshUserDetails(member)
+                }
+                Button("Edit Description") {
+                    actionMode = .editDescription
                 }
                 Menu("Move To") {
                     ForEach(model.channels) { channel in
@@ -578,6 +589,7 @@ struct UserActionSheet: View {
         case .privateMessage: return "Private Message"
         case .offlineMessage: return "Offline Message"
         case .poke: return "Poke"
+        case .editDescription: return "Edit Description"
         case .complain: return "Complain"
         case .kickChannel: return "Kick From Channel"
         case .kickServer: return "Kick From Server"
@@ -590,6 +602,7 @@ struct UserActionSheet: View {
         case .privateMessage: return "Message"
         case .offlineMessage: return "Message"
         case .poke: return "Poke Message"
+        case .editDescription: return "Description"
         case .complain: return "Complaint"
         case .kickChannel, .kickServer, .ban: return "Reason"
         }
@@ -600,6 +613,7 @@ struct UserActionSheet: View {
         case .privateMessage: return "Send"
         case .offlineMessage: return "Send"
         case .poke: return "Poke"
+        case .editDescription: return "Save"
         case .complain: return "Submit Complaint"
         case .kickChannel, .kickServer: return "Kick"
         case .ban: return "Ban"
@@ -639,6 +653,8 @@ struct UserActionSheet: View {
                             model.sendOfflineMessage(to: user, subject: subject, message: text)
                         case .poke:
                             model.pokeUser(user, message: text)
+                        case .editDescription:
+                            model.editUserDescription(user, description: text)
                         case .complain:
                             model.complainAboutUser(user, message: text)
                         case .kickChannel:
@@ -659,6 +675,11 @@ struct UserActionSheet: View {
             }
             .navigationTitle(title)
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if mode == .editDescription {
+                    text = user.description ?? ""
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
@@ -676,7 +697,7 @@ struct UserActionSheet: View {
             return textIsEmpty
         case .offlineMessage:
             return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .kickChannel, .kickServer:
+        case .editDescription, .kickChannel, .kickServer:
             return false
         case .ban:
             return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
