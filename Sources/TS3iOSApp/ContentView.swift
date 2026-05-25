@@ -1,5 +1,6 @@
 import SwiftUI
 import TS3Kit
+import UniformTypeIdentifiers
 
 #if os(macOS)
 import AppKit
@@ -1351,6 +1352,7 @@ struct FileBrowserSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var directoryName = ""
+    @State private var isShowingFileImporter = false
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -1397,6 +1399,24 @@ struct FileBrowserSheet: View {
                     }
                     .disabled(directoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+
+                Section(header: Text("Transfer")) {
+                    Button {
+                        isShowingFileImporter = true
+                    } label: {
+                        Label("Upload File", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(model.fileBrowserChannelId == nil)
+
+                    if let status = model.fileTransferStatus {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if let progress = model.fileTransferProgress {
+                        ProgressView(value: progress)
+                    }
+                }
             }
             .navigationTitle(selectedChannel?.name ?? "Files")
             .ts3InlineNavigationTitle()
@@ -1417,6 +1437,15 @@ struct FileBrowserSheet: View {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
+                }
+            }
+            .fileImporter(
+                isPresented: $isShowingFileImporter,
+                allowedContentTypes: [.data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    model.uploadFile(from: url)
                 }
             }
         }
@@ -1465,6 +1494,12 @@ struct FileEntryRow: View {
             .buttonStyle(.plain)
 
             HStack {
+                if !entry.isDirectory {
+                    Button("Download") {
+                        model.downloadFileEntry(entry)
+                    }
+                    .buttonStyle(.borderless)
+                }
                 Button("Rename") {
                     newName = entry.name
                     isRenaming = true

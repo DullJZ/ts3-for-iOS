@@ -550,6 +550,39 @@ public struct TS3FileEntry: Identifiable {
     }
 }
 
+/// Describes a file transfer socket negotiated through the TS3 command channel.
+public struct TS3FileTransferParameters {
+    /// Client-generated transfer id sent as `clientftfid`.
+    public let clientTransferId: Int
+    /// Server-generated transfer id returned as `serverftfid`.
+    public let serverTransferId: Int
+    /// File transfer key that must be sent first on the TCP socket.
+    public let key: String
+    /// File transfer host returned by the server.
+    public let host: String
+    /// File transfer TCP port returned by the server.
+    public let port: Int
+    /// Expected byte count when the server provides one.
+    public let size: Int64?
+
+    /// Creates a server-negotiated file transfer descriptor.
+    public init(
+        clientTransferId: Int,
+        serverTransferId: Int,
+        key: String,
+        host: String,
+        port: Int,
+        size: Int64?
+    ) {
+        self.clientTransferId = clientTransferId
+        self.serverTransferId = serverTransferId
+        self.key = key
+        self.host = host
+        self.port = port
+        self.size = size
+    }
+}
+
 public struct TS3ServerGroup: Identifiable {
     public let id: Int
     public let name: String
@@ -611,6 +644,7 @@ public enum TS3Error: Error {
     case disconnected
     case compressionUnsupported
     case decompressionTooLarge
+    case fileTransferFailed
 }
 
 public enum TS3LogLevel: String {

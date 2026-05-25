@@ -407,6 +407,8 @@ final class TS3AppModel: ObservableObject {
     @Published var fileEntries: [TS3FileEntrySummary] = []
     @Published var fileBrowserChannelId: Int?
     @Published var fileBrowserPath = "/"
+    @Published var fileTransferStatus: String?
+    @Published var fileTransferProgress: Double?
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
@@ -1099,6 +1101,98 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func downloadFileEntry(_ entry: TS3FileEntrySummary) {
+        guard !entry.isDirectory else { return }
+        guard let client else {
+            lastError = "Connect to a server first."
+            return
+        }
+        Task {
+            do {
+                let destination = try downloadDestination(for: entry.name)
+                await MainActor.run {
+                    self.fileTransferStatus = "Preparing download: \(entry.name)"
+                    self.fileTransferProgress = 0
+                }
+                let parameters = try await client.initFileDownload(channelId: entry.channelId, path: entry.path)
+                try await TS3FileTransfer.download(parameters: parameters, to: destination) { received, total in
+                    Task { @MainActor in
+                        if let total, total > 0 {
+                            self.fileTransferProgress = min(1, Double(received) / Double(total))
+                        }
+                        self.fileTransferStatus = "Downloading \(entry.name): \(Self.transferProgressText(received, total: total))"
+                    }
+                }
+                await MainActor.run {
+                    self.fileTransferProgress = 1
+                    self.fileTransferStatus = "Downloaded \(entry.name) to \(destination.lastPathComponent)"
+                    self.lastError = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.fileTransferProgress = nil
+                    self.fileTransferStatus = nil
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    func uploadFile(from source: URL) {
+        guard let channelId = fileBrowserChannelId else {
+            lastError = "No channel is selected for file browsing."
+            return
+        }
+        guard let client else {
+            lastError = "Connect to a server first."
+            return
+        }
+        Task {
+            let didAccess = source.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess {
+                    source.stopAccessingSecurityScopedResource()
+                }
+            }
+            do {
+                let attributes = try FileManager.default.attributesOfItem(atPath: source.path)
+                let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+                let remoteName = source.lastPathComponent
+                let remotePath = joinedFilePath(parentPath: fileBrowserPath, name: remoteName)
+                await MainActor.run {
+                    self.fileTransferStatus = "Preparing upload: \(remoteName)"
+                    self.fileTransferProgress = 0
+                }
+                let parameters = try await client.initFileUpload(
+                    channelId: channelId,
+                    path: remotePath,
+                    size: size,
+                    overwrite: true
+                )
+                try await TS3FileTransfer.upload(parameters: parameters, from: source) { sent, total in
+                    Task { @MainActor in
+                        if let total, total > 0 {
+                            self.fileTransferProgress = min(1, Double(sent) / Double(total))
+                        }
+                        self.fileTransferStatus = "Uploading \(remoteName): \(Self.transferProgressText(sent, total: total))"
+                    }
+                }
+                await MainActor.run {
+                    self.fileTransferProgress = 1
+                    self.fileTransferStatus = "Uploaded \(remoteName)"
+                    self.lastError = nil
+                    self.refreshFileList()
+                }
+            } catch {
+                await MainActor.run {
+                    self.fileTransferProgress = nil
+                    self.fileTransferStatus = nil
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     private func normalizedFileDirectoryPath(_ path: String) -> String {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "/" }
@@ -1119,6 +1213,56 @@ final class TS3AppModel: ObservableObject {
         }
         return parentPath + name
     }
+
+    private func downloadDestination(for name: String) throws -> URL {
+        let documents = try FileManager.default.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = documents.appendingPathComponent("TS3 Downloads", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return uniqueFileURL(in: directory, named: name)
+    }
+
+    private func uniqueFileURL(in directory: URL, named name: String) -> URL {
+        let fallbackName = name.isEmpty ? "download" : name
+        let baseURL = directory.appendingPathComponent(fallbackName)
+        guard FileManager.default.fileExists(atPath: baseURL.path) else {
+            return baseURL
+        }
+
+        let baseName = (fallbackName as NSString).deletingPathExtension
+        let pathExtension = (fallbackName as NSString).pathExtension
+        var index = 2
+        while true {
+            let candidateName: String
+            if pathExtension.isEmpty {
+                candidateName = "\(baseName) \(index)"
+            } else {
+                candidateName = "\(baseName) \(index).\(pathExtension)"
+            }
+            let candidate = directory.appendingPathComponent(candidateName)
+            if !FileManager.default.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+            index += 1
+        }
+    }
+
+    private static func transferProgressText(_ completed: Int64, total: Int64?) -> String {
+        guard let total, total > 0 else {
+            return byteCountFormatter.string(fromByteCount: completed)
+        }
+        return "\(byteCountFormatter.string(fromByteCount: completed)) of \(byteCountFormatter.string(fromByteCount: total))"
+    }
+
+    private static let byteCountFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter
+    }()
 
     func refreshUserDetails(_ user: TS3UserSummary) {
         runClientCommand { client in

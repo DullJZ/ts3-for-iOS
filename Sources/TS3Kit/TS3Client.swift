@@ -55,6 +55,7 @@ public final class TS3Client {
 
     private var pendingCommands: [Int: PendingCommand] = [:]
     private var nextCommandCode: Int = 1
+    private var nextFileTransferId: Int = 1
 
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var serverInfo: TS3ServerInfo?
@@ -95,6 +96,7 @@ public final class TS3Client {
         channelGroupCache.removeAll()
         defaultChannelId = nil
         nextCommandCode = 1
+        nextFileTransferId = 1
         isDisconnecting = false
         disconnectTimeoutWorkItem?.cancel()
         disconnectTimeoutWorkItem = nil
@@ -688,6 +690,60 @@ public final class TS3Client {
             params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
         }
         _ = try await execute(TS3SingleCommand(name: "ftrenamefile", parameters: params))
+    }
+
+    /// Initializes a channel file download and returns the socket transfer descriptor.
+    public func initFileDownload(
+        channelId: Int,
+        path: String,
+        seekPosition: Int64 = 0,
+        password: String? = nil
+    ) async throws -> TS3FileTransferParameters {
+        let transferId = nextTransferId()
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clientftfid", value: String(transferId)),
+            TS3CommandSingleParameter(name: "name", value: path),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "seekpos", value: String(seekPosition))
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        let responses = try await execute(TS3SingleCommand(name: "ftinitdownload", parameters: params))
+        guard let response = responses.first,
+              let transfer = fileTransferParameters(from: response, fallbackClientTransferId: transferId) else {
+            throw TS3Error.invalidCommand
+        }
+        return transfer
+    }
+
+    /// Initializes a channel file upload and returns the socket transfer descriptor.
+    public func initFileUpload(
+        channelId: Int,
+        path: String,
+        size: Int64,
+        overwrite: Bool = false,
+        resume: Bool = false,
+        password: String? = nil
+    ) async throws -> TS3FileTransferParameters {
+        let transferId = nextTransferId()
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clientftfid", value: String(transferId)),
+            TS3CommandSingleParameter(name: "name", value: path),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "size", value: String(size)),
+            TS3CommandSingleParameter(name: "overwrite", value: overwrite ? "1" : "0"),
+            TS3CommandSingleParameter(name: "resume", value: resume ? "1" : "0")
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        let responses = try await execute(TS3SingleCommand(name: "ftinitupload", parameters: params))
+        guard let response = responses.first,
+              let transfer = fileTransferParameters(from: response, fallbackClientTransferId: transferId) else {
+            throw TS3Error.invalidCommand
+        }
+        return transfer
     }
 
     public func addServerGroup(groupId: Int, toClientDatabaseId clientDatabaseId: Int) async throws {
@@ -2389,6 +2445,34 @@ private extension TS3Client {
             type: intValue(command, "type") ?? 1,
             incompleteSize: int64Value(command, "incompletesize")
         )
+    }
+
+    func fileTransferParameters(
+        from command: TS3SingleCommand,
+        fallbackClientTransferId: Int
+    ) -> TS3FileTransferParameters? {
+        guard let serverTransferId = intValue(command, "serverftfid"),
+              let key = command.get("ftkey")?.value,
+              let port = intValue(command, "port") else {
+            return nil
+        }
+        return TS3FileTransferParameters(
+            clientTransferId: intValue(command, "clientftfid") ?? fallbackClientTransferId,
+            serverTransferId: serverTransferId,
+            key: key,
+            host: command.get("ip")?.value ?? config.host,
+            port: port,
+            size: int64Value(command, "size")
+        )
+    }
+
+    func nextTransferId() -> Int {
+        let id = nextFileTransferId
+        nextFileTransferId += 1
+        if nextFileTransferId == Int.max {
+            nextFileTransferId = 1
+        }
+        return id
     }
 
     func normalizedDirectoryPath(_ path: String) -> String {
