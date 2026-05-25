@@ -2204,6 +2204,10 @@ private extension TS3Client {
         command.get(name)?.value.flatMap(Int64.init)
     }
 
+    func doubleValue(_ command: TS3SingleCommand, _ name: String) -> Double? {
+        command.get(name)?.value.flatMap(Double.init)
+    }
+
     func boolValue(_ command: TS3SingleCommand, _ name: String) -> Bool {
         command.get(name)?.value == "1"
     }
@@ -2387,13 +2391,41 @@ private extension TS3Client {
             name: name,
             platform: command.get("virtualserver_platform")?.value,
             version: command.get("virtualserver_version")?.value,
+            createdAt: dateValue(command, "virtualserver_created"),
             clientsOnline: intValue(command, "virtualserver_clientsonline"),
             maxClients: intValue(command, "virtualserver_maxclients"),
+            clientsInQuery: intValue(command, "virtualserver_queryclientsonline"),
             reservedSlots: intValue(command, "virtualserver_reserved_slots"),
             channelsOnline: intValue(command, "virtualserver_channelsonline"),
             uptimeSeconds: intValue(command, "virtualserver_uptime"),
             welcomeMessage: command.get("virtualserver_welcomemessage")?.value,
             passwordProtected: boolValue(command, "virtualserver_flag_password"),
+            status: command.get("virtualserver_status")?.value,
+            machineId: command.get("virtualserver_machine_id")?.value,
+            codecEncryptionMode: intValue(command, "virtualserver_codec_encryption_mode"),
+            defaultServerGroupId: intValue(command, "virtualserver_default_server_group"),
+            defaultChannelGroupId: intValue(command, "virtualserver_default_channel_group"),
+            defaultChannelAdminGroupId: intValue(command, "virtualserver_default_channel_admin_group"),
+            fileBase: command.get("virtualserver_filebase")?.value,
+            fileTransferPort: intValue(command, "virtualserver_filetransfer_port"),
+            complainAutoBanCount: intValue(command, "virtualserver_complain_autoban_count"),
+            complainAutoBanTime: intValue(command, "virtualserver_complain_autoban_time"),
+            complainRemoveTime: intValue(command, "virtualserver_complain_remove_time"),
+            minClientsInChannelBeforeForcedSilence: intValue(command, "virtualserver_min_clients_in_channel_before_forced_silence"),
+            prioritySpeakerDimmModificator: doubleValue(command, "virtualserver_priority_speaker_dimm_modificator"),
+            clientConnections: intValue(command, "virtualserver_client_connections"),
+            queryClientConnections: intValue(command, "virtualserver_query_client_connections"),
+            downloadQuota: int64Value(command, "virtualserver_download_quota"),
+            uploadQuota: int64Value(command, "virtualserver_upload_quota"),
+            monthlyBytesDownloaded: int64Value(command, "connection_bytes_received_month"),
+            monthlyBytesUploaded: int64Value(command, "connection_bytes_sent_month"),
+            totalBytesDownloaded: int64Value(command, "connection_bytes_received_total"),
+            totalBytesUploaded: int64Value(command, "connection_bytes_sent_total"),
+            totalPacketLossSpeech: doubleValue(command, "virtualserver_total_packetloss_speech"),
+            totalPacketLossKeepalive: doubleValue(command, "virtualserver_total_packetloss_keepalive"),
+            totalPacketLossControl: doubleValue(command, "virtualserver_total_packetloss_control"),
+            totalPacketLossTotal: doubleValue(command, "virtualserver_total_packetloss_total"),
+            totalPing: doubleValue(command, "virtualserver_total_ping"),
             hostMessage: command.get("virtualserver_hostmessage")?.value,
             hostMessageMode: intValue(command, "virtualserver_hostmessage_mode"),
             hostBannerURL: command.get("virtualserver_hostbanner_url")?.value,

@@ -59,13 +59,69 @@ public struct TS3ServerInfo {
     public let name: String
     public let platform: String?
     public let version: String?
+    /// The virtual server creation time, when reported by the server.
+    public let createdAt: Date?
     public let clientsOnline: Int?
     public let maxClients: Int?
+    /// The number of connected ServerQuery clients.
+    public let clientsInQuery: Int?
     public let reservedSlots: Int?
     public let channelsOnline: Int?
     public let uptimeSeconds: Int?
     public let welcomeMessage: String?
     public let passwordProtected: Bool
+    /// The virtual server runtime status, such as online.
+    public let status: String?
+    /// The machine id associated with the virtual server.
+    public let machineId: String?
+    /// The codec encryption mode configured on the virtual server.
+    public let codecEncryptionMode: Int?
+    /// The default server group id for new clients.
+    public let defaultServerGroupId: Int?
+    /// The default channel group id for new clients.
+    public let defaultChannelGroupId: Int?
+    /// The default channel admin group id.
+    public let defaultChannelAdminGroupId: Int?
+    /// The server file repository base path, when exposed.
+    public let fileBase: String?
+    /// The file transfer TCP port.
+    public let fileTransferPort: Int?
+    /// The complaint count that triggers automatic bans.
+    public let complainAutoBanCount: Int?
+    /// The automatic ban duration after complaint threshold is reached.
+    public let complainAutoBanTime: Int?
+    /// The time after which complaints are removed.
+    public let complainRemoveTime: Int?
+    /// The client count threshold for forced channel silence.
+    public let minClientsInChannelBeforeForcedSilence: Int?
+    /// The volume dimming factor applied for priority speakers.
+    public let prioritySpeakerDimmModificator: Double?
+    /// The total number of regular client connections.
+    public let clientConnections: Int?
+    /// The total number of ServerQuery client connections.
+    public let queryClientConnections: Int?
+    /// The configured monthly download quota in bytes.
+    public let downloadQuota: Int64?
+    /// The configured monthly upload quota in bytes.
+    public let uploadQuota: Int64?
+    /// The number of bytes downloaded during the current month.
+    public let monthlyBytesDownloaded: Int64?
+    /// The number of bytes uploaded during the current month.
+    public let monthlyBytesUploaded: Int64?
+    /// The total number of downloaded bytes.
+    public let totalBytesDownloaded: Int64?
+    /// The total number of uploaded bytes.
+    public let totalBytesUploaded: Int64?
+    /// The packet loss fraction for speech packets.
+    public let totalPacketLossSpeech: Double?
+    /// The packet loss fraction for keepalive packets.
+    public let totalPacketLossKeepalive: Double?
+    /// The packet loss fraction for control packets.
+    public let totalPacketLossControl: Double?
+    /// The total packet loss fraction.
+    public let totalPacketLossTotal: Double?
+    /// The current aggregate ping in milliseconds.
+    public let totalPing: Double?
     public let hostMessage: String?
     public let hostMessageMode: Int?
     public let hostBannerURL: String?
@@ -80,13 +136,41 @@ public struct TS3ServerInfo {
         name: String,
         platform: String?,
         version: String?,
+        createdAt: Date? = nil,
         clientsOnline: Int?,
         maxClients: Int?,
+        clientsInQuery: Int? = nil,
         reservedSlots: Int?,
         channelsOnline: Int?,
         uptimeSeconds: Int?,
         welcomeMessage: String?,
         passwordProtected: Bool = false,
+        status: String? = nil,
+        machineId: String? = nil,
+        codecEncryptionMode: Int? = nil,
+        defaultServerGroupId: Int? = nil,
+        defaultChannelGroupId: Int? = nil,
+        defaultChannelAdminGroupId: Int? = nil,
+        fileBase: String? = nil,
+        fileTransferPort: Int? = nil,
+        complainAutoBanCount: Int? = nil,
+        complainAutoBanTime: Int? = nil,
+        complainRemoveTime: Int? = nil,
+        minClientsInChannelBeforeForcedSilence: Int? = nil,
+        prioritySpeakerDimmModificator: Double? = nil,
+        clientConnections: Int? = nil,
+        queryClientConnections: Int? = nil,
+        downloadQuota: Int64? = nil,
+        uploadQuota: Int64? = nil,
+        monthlyBytesDownloaded: Int64? = nil,
+        monthlyBytesUploaded: Int64? = nil,
+        totalBytesDownloaded: Int64? = nil,
+        totalBytesUploaded: Int64? = nil,
+        totalPacketLossSpeech: Double? = nil,
+        totalPacketLossKeepalive: Double? = nil,
+        totalPacketLossControl: Double? = nil,
+        totalPacketLossTotal: Double? = nil,
+        totalPing: Double? = nil,
         hostMessage: String? = nil,
         hostMessageMode: Int? = nil,
         hostBannerURL: String? = nil,
@@ -99,13 +183,41 @@ public struct TS3ServerInfo {
         self.name = name
         self.platform = platform
         self.version = version
+        self.createdAt = createdAt
         self.clientsOnline = clientsOnline
         self.maxClients = maxClients
+        self.clientsInQuery = clientsInQuery
         self.reservedSlots = reservedSlots
         self.channelsOnline = channelsOnline
         self.uptimeSeconds = uptimeSeconds
         self.welcomeMessage = welcomeMessage
         self.passwordProtected = passwordProtected
+        self.status = status
+        self.machineId = machineId
+        self.codecEncryptionMode = codecEncryptionMode
+        self.defaultServerGroupId = defaultServerGroupId
+        self.defaultChannelGroupId = defaultChannelGroupId
+        self.defaultChannelAdminGroupId = defaultChannelAdminGroupId
+        self.fileBase = fileBase
+        self.fileTransferPort = fileTransferPort
+        self.complainAutoBanCount = complainAutoBanCount
+        self.complainAutoBanTime = complainAutoBanTime
+        self.complainRemoveTime = complainRemoveTime
+        self.minClientsInChannelBeforeForcedSilence = minClientsInChannelBeforeForcedSilence
+        self.prioritySpeakerDimmModificator = prioritySpeakerDimmModificator
+        self.clientConnections = clientConnections
+        self.queryClientConnections = queryClientConnections
+        self.downloadQuota = downloadQuota
+        self.uploadQuota = uploadQuota
+        self.monthlyBytesDownloaded = monthlyBytesDownloaded
+        self.monthlyBytesUploaded = monthlyBytesUploaded
+        self.totalBytesDownloaded = totalBytesDownloaded
+        self.totalBytesUploaded = totalBytesUploaded
+        self.totalPacketLossSpeech = totalPacketLossSpeech
+        self.totalPacketLossKeepalive = totalPacketLossKeepalive
+        self.totalPacketLossControl = totalPacketLossControl
+        self.totalPacketLossTotal = totalPacketLossTotal
+        self.totalPing = totalPing
         self.hostMessage = hostMessage
         self.hostMessageMode = hostMessageMode
         self.hostBannerURL = hostBannerURL

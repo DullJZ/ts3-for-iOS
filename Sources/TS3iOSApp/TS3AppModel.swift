@@ -356,13 +356,41 @@ struct TS3ServerInfoSummary {
     var uniqueIdentifier: String?
     var platform: String?
     var version: String?
+    var createdAt: Date?
     var clientsOnline: Int?
     var maxClients: Int?
+    var clientsInQuery: Int?
     var reservedSlots: Int?
     var channelsOnline: Int?
     var uptimeSeconds: Int?
     var welcomeMessage: String?
     var passwordProtected: Bool
+    var status: String?
+    var machineId: String?
+    var codecEncryptionMode: Int?
+    var defaultServerGroupId: Int?
+    var defaultChannelGroupId: Int?
+    var defaultChannelAdminGroupId: Int?
+    var fileBase: String?
+    var fileTransferPort: Int?
+    var complainAutoBanCount: Int?
+    var complainAutoBanTime: Int?
+    var complainRemoveTime: Int?
+    var minClientsInChannelBeforeForcedSilence: Int?
+    var prioritySpeakerDimmModificator: Double?
+    var clientConnections: Int?
+    var queryClientConnections: Int?
+    var downloadQuota: Int64?
+    var uploadQuota: Int64?
+    var monthlyBytesDownloaded: Int64?
+    var monthlyBytesUploaded: Int64?
+    var totalBytesDownloaded: Int64?
+    var totalBytesUploaded: Int64?
+    var totalPacketLossSpeech: Double?
+    var totalPacketLossKeepalive: Double?
+    var totalPacketLossControl: Double?
+    var totalPacketLossTotal: Double?
+    var totalPing: Double?
     var hostMessage: String?
     var hostMessageMode: Int?
     var hostBannerURL: String?
@@ -376,13 +404,41 @@ struct TS3ServerInfoSummary {
         uniqueIdentifier: nil,
         platform: nil,
         version: nil,
+        createdAt: nil,
         clientsOnline: nil,
         maxClients: nil,
+        clientsInQuery: nil,
         reservedSlots: nil,
         channelsOnline: nil,
         uptimeSeconds: nil,
         welcomeMessage: nil,
         passwordProtected: false,
+        status: nil,
+        machineId: nil,
+        codecEncryptionMode: nil,
+        defaultServerGroupId: nil,
+        defaultChannelGroupId: nil,
+        defaultChannelAdminGroupId: nil,
+        fileBase: nil,
+        fileTransferPort: nil,
+        complainAutoBanCount: nil,
+        complainAutoBanTime: nil,
+        complainRemoveTime: nil,
+        minClientsInChannelBeforeForcedSilence: nil,
+        prioritySpeakerDimmModificator: nil,
+        clientConnections: nil,
+        queryClientConnections: nil,
+        downloadQuota: nil,
+        uploadQuota: nil,
+        monthlyBytesDownloaded: nil,
+        monthlyBytesUploaded: nil,
+        totalBytesDownloaded: nil,
+        totalBytesUploaded: nil,
+        totalPacketLossSpeech: nil,
+        totalPacketLossKeepalive: nil,
+        totalPacketLossControl: nil,
+        totalPacketLossTotal: nil,
+        totalPing: nil,
         hostMessage: nil,
         hostMessageMode: nil,
         hostBannerURL: nil,
@@ -2366,13 +2422,41 @@ extension TS3AppModel: TS3ClientDelegate {
                 uniqueIdentifier: info.uniqueIdentifier,
                 platform: info.platform,
                 version: info.version,
+                createdAt: info.createdAt,
                 clientsOnline: info.clientsOnline,
                 maxClients: info.maxClients,
+                clientsInQuery: info.clientsInQuery,
                 reservedSlots: info.reservedSlots,
                 channelsOnline: info.channelsOnline,
                 uptimeSeconds: info.uptimeSeconds,
                 welcomeMessage: info.welcomeMessage,
                 passwordProtected: info.passwordProtected,
+                status: info.status,
+                machineId: info.machineId,
+                codecEncryptionMode: info.codecEncryptionMode,
+                defaultServerGroupId: info.defaultServerGroupId,
+                defaultChannelGroupId: info.defaultChannelGroupId,
+                defaultChannelAdminGroupId: info.defaultChannelAdminGroupId,
+                fileBase: info.fileBase,
+                fileTransferPort: info.fileTransferPort,
+                complainAutoBanCount: info.complainAutoBanCount,
+                complainAutoBanTime: info.complainAutoBanTime,
+                complainRemoveTime: info.complainRemoveTime,
+                minClientsInChannelBeforeForcedSilence: info.minClientsInChannelBeforeForcedSilence,
+                prioritySpeakerDimmModificator: info.prioritySpeakerDimmModificator,
+                clientConnections: info.clientConnections,
+                queryClientConnections: info.queryClientConnections,
+                downloadQuota: info.downloadQuota,
+                uploadQuota: info.uploadQuota,
+                monthlyBytesDownloaded: info.monthlyBytesDownloaded,
+                monthlyBytesUploaded: info.monthlyBytesUploaded,
+                totalBytesDownloaded: info.totalBytesDownloaded,
+                totalBytesUploaded: info.totalBytesUploaded,
+                totalPacketLossSpeech: info.totalPacketLossSpeech,
+                totalPacketLossKeepalive: info.totalPacketLossKeepalive,
+                totalPacketLossControl: info.totalPacketLossControl,
+                totalPacketLossTotal: info.totalPacketLossTotal,
+                totalPing: info.totalPing,
                 hostMessage: info.hostMessage,
                 hostMessageMode: info.hostMessageMode,
                 hostBannerURL: info.hostBannerURL,

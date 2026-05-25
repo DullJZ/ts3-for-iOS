@@ -974,6 +974,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingPermissions = false
     @State private var isShowingFiles = false
     @State private var isShowingServerEditor = false
+    @State private var isShowingServerInfo = false
     @State private var isShowingComplaints = false
     @State private var isShowingClientDatabase = false
     @State private var isShowingServerLogs = false
@@ -990,6 +991,10 @@ struct ServerToolsSheet: View {
                     }
                     Button("Refresh Server Info") {
                         model.refreshServerInfo()
+                    }
+                    Button("View Server Information") {
+                        model.refreshServerInfo()
+                        isShowingServerInfo = true
                     }
                     Button("View Server Logs") {
                         model.refreshServerLogs()
@@ -1114,6 +1119,10 @@ struct ServerToolsSheet: View {
                 ServerSettingsEditorSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingServerInfo) {
+                ServerInformationSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $isShowingComplaints) {
                 ComplaintListSheet()
                     .environmentObject(model)
@@ -1229,6 +1238,168 @@ struct ServerLogRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .medium
         return formatter.string(from: date)
+    }
+}
+
+struct ServerInformationSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Overview")) {
+                    ServerInfoDetailRow(label: "Name", value: model.serverInfo.name)
+                    ServerInfoDetailRow(label: "Status", value: model.serverInfo.status)
+                    ServerInfoDetailRow(label: "Unique ID", value: model.serverInfo.uniqueIdentifier, monospaced: true)
+                    ServerInfoDetailRow(label: "Machine ID", value: model.serverInfo.machineId, monospaced: true)
+                    ServerInfoDetailRow(label: "Platform", value: model.serverInfo.platform)
+                    ServerInfoDetailRow(label: "Version", value: model.serverInfo.version)
+                    ServerInfoDetailRow(label: "Created", value: model.serverInfo.createdAt.map(Self.dateText))
+                    ServerInfoDetailRow(label: "Uptime", value: model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText))
+                    ServerInfoDetailRow(label: "Password", value: model.serverInfo.passwordProtected ? "Protected" : "Not Protected")
+                    if let message = model.serverInfo.welcomeMessage, !message.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Welcome Message")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(message)
+                                .font(.footnote)
+                        }
+                    }
+                }
+
+                Section(header: Text("Population")) {
+                    ServerInfoDetailRow(label: "Clients", value: clientsText)
+                    ServerInfoDetailRow(label: "Query Clients", value: model.serverInfo.clientsInQuery.map(String.init))
+                    ServerInfoDetailRow(label: "Channels", value: model.serverInfo.channelsOnline.map(String.init))
+                    ServerInfoDetailRow(label: "Client Connections", value: model.serverInfo.clientConnections.map(String.init))
+                    ServerInfoDetailRow(label: "Query Connections", value: model.serverInfo.queryClientConnections.map(String.init))
+                }
+
+                Section(header: Text("Default Groups")) {
+                    ServerInfoDetailRow(label: "Server Group", value: groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups))
+                    ServerInfoDetailRow(label: "Channel Group", value: groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups))
+                    ServerInfoDetailRow(label: "Channel Admin", value: groupName(model.serverInfo.defaultChannelAdminGroupId, groups: model.channelGroups))
+                }
+
+                Section(header: Text("Limits")) {
+                    ServerInfoDetailRow(label: "Reserved Slots", value: model.serverInfo.reservedSlots.map(String.init))
+                    ServerInfoDetailRow(label: "Download Quota", value: model.serverInfo.downloadQuota.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Upload Quota", value: model.serverInfo.uploadQuota.map(Self.byteText))
+                    ServerInfoDetailRow(label: "File Transfer Port", value: model.serverInfo.fileTransferPort.map(String.init))
+                    ServerInfoDetailRow(label: "File Base", value: model.serverInfo.fileBase)
+                    ServerInfoDetailRow(label: "Codec Encryption", value: model.serverInfo.codecEncryptionMode.map(String.init))
+                }
+
+                Section(header: Text("Anti-Flood and Complaints")) {
+                    ServerInfoDetailRow(label: "Auto-Ban Count", value: model.serverInfo.complainAutoBanCount.map(String.init))
+                    ServerInfoDetailRow(label: "Auto-Ban Time", value: model.serverInfo.complainAutoBanTime.map(Self.durationText))
+                    ServerInfoDetailRow(label: "Complaint Remove Time", value: model.serverInfo.complainRemoveTime.map(Self.durationText))
+                    ServerInfoDetailRow(label: "Forced Silence Clients", value: model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init))
+                    ServerInfoDetailRow(label: "Priority Speaker Dimming", value: model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText))
+                }
+
+                Section(header: Text("Traffic")) {
+                    ServerInfoDetailRow(label: "Month Downloaded", value: model.serverInfo.monthlyBytesDownloaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Month Uploaded", value: model.serverInfo.monthlyBytesUploaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Total Downloaded", value: model.serverInfo.totalBytesDownloaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Total Uploaded", value: model.serverInfo.totalBytesUploaded.map(Self.byteText))
+                }
+
+                Section(header: Text("Connection Quality")) {
+                    ServerInfoDetailRow(label: "Ping", value: model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" })
+                    ServerInfoDetailRow(label: "Packet Loss", value: model.serverInfo.totalPacketLossTotal.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Speech Loss", value: model.serverInfo.totalPacketLossSpeech.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Keepalive Loss", value: model.serverInfo.totalPacketLossKeepalive.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Control Loss", value: model.serverInfo.totalPacketLossControl.map(Self.percentText))
+                }
+
+                Section(header: Text("Host Presentation")) {
+                    ServerInfoDetailRow(label: "Host Message", value: model.serverInfo.hostMessage)
+                    ServerInfoDetailRow(label: "Message Mode", value: model.serverInfo.hostMessageMode.map(String.init))
+                    ServerInfoDetailRow(label: "Banner URL", value: model.serverInfo.hostBannerURL)
+                    ServerInfoDetailRow(label: "Banner Graphic", value: model.serverInfo.hostBannerGraphicsURL)
+                    ServerInfoDetailRow(label: "Button Tooltip", value: model.serverInfo.hostButtonTooltip)
+                    ServerInfoDetailRow(label: "Button URL", value: model.serverInfo.hostButtonURL)
+                    ServerInfoDetailRow(label: "Button Graphic", value: model.serverInfo.hostButtonGraphicsURL)
+                }
+            }
+            .navigationTitle("Server Information")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshServerInfo()
+                model.refreshGroups()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshServerInfo()
+                        model.refreshGroups()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var clientsText: String? {
+        guard let clients = model.serverInfo.clientsOnline else { return nil }
+        if let maxClients = model.serverInfo.maxClients {
+            return "\(clients) / \(maxClients)"
+        }
+        return String(clients)
+    }
+
+    private func groupName(_ id: Int?, groups: [TS3GroupSummary]) -> String? {
+        id.map { TS3GroupSummary.name(for: $0, in: groups) }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private static func byteText(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
+    }
+
+    private static func durationText(_ seconds: Int) -> String {
+        ServerInfoRows.uptimeText(seconds)
+    }
+
+    private static func decimalText(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+
+    private static func percentText(_ value: Double) -> String {
+        String(format: "%.2f%%", value * 100)
+    }
+}
+
+struct ServerInfoDetailRow: View {
+    let label: String
+    let value: String?
+    var monospaced = false
+
+    var body: some View {
+        if let value, !value.isEmpty {
+            HStack(alignment: .top) {
+                Text(label)
+                Spacer(minLength: 12)
+                Text(value)
+                    .font(monospaced ? .system(.footnote, design: .monospaced) : .body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(3)
+            }
+        }
     }
 }
 
@@ -2920,7 +3091,7 @@ struct ServerInfoRows: View {
         }
     }
 
-    private static func uptimeText(_ seconds: Int) -> String {
+    static func uptimeText(_ seconds: Int) -> String {
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
         let minutes = (seconds % 3_600) / 60
