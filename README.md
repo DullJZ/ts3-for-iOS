@@ -114,6 +114,9 @@ xcodebuild \
   -derivedDataPath build/DerivedData-iOSDevice \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
+  ONLY_ACTIVE_ARCH=YES \
+  ARCHS=arm64 \
+  clean \
   build
 
 rm -rf build/ipa
@@ -138,8 +141,9 @@ cp -R build/DerivedData-iOSDevice/Build/Products/Release-iphoneos/TS3iOSApp.app 
 它会执行以下检查：
 
 - `SwiftPM` 构建 `TS3CLI`
-- 在 `macos-15` runner 上构建 iOS Simulator 版本
+- 在 `macos-15` 与 `macos-15-intel` runner 上分别构建 `arm64` 和 `x86_64` iOS Simulator 版本
 - 在 `macos-15` runner 上构建 iPhoneOS 未签名 `ipa`
+  - 固定使用 `arm64` 单架构设备构建，避免 runner 在设备产物上做无意义的多架构解析
 - 在 `macos-15` 与 `macos-15-intel` runner 上分别构建 Mac Catalyst，覆盖 Apple Silicon 与 Intel
 - 分别构建 `arm64` 和 `intel` 两个可拖拽安装的 macOS `dmg`
 
@@ -149,7 +153,8 @@ cp -R build/DerivedData-iOSDevice/Build/Products/Release-iphoneos/TS3iOSApp.app 
 
 工作流会上传以下无签名产物：
 
-- iOS Simulator `.app`
+- iOS Simulator `arm64` `.app`
+- iOS Simulator `intel` `.app`
 - iPhoneOS 未签名 `ipa`
 - Mac Catalyst `.app`
 - macOS `arm64` `.dmg`
@@ -158,6 +163,7 @@ cp -R build/DerivedData-iOSDevice/Build/Products/Release-iphoneos/TS3iOSApp.app 
 这些产物用于验证编译链路是否正常。
 
 其中未签名 `ipa` 适合交给用户自己签名再安装，不依赖仓库内保存 Apple 证书或 provisioning profile。
+如果该任务失败，工作流还会额外上传完整的 `xcodebuild` 日志，便于直接定位真实报错，而不是只看 GitHub 摘要里的编译阶段名称。
 
 ## Release 上传
 
