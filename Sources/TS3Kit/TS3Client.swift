@@ -857,6 +857,11 @@ public final class TS3Client {
         try await initFileDownload(channelId: 0, path: "/avatar_\(avatarHash)")
     }
 
+    /// Initializes a virtual server icon download for the provided icon id.
+    public func initIconDownload(iconId: Int) async throws -> TS3FileTransferParameters {
+        try await initFileDownload(channelId: 0, path: "/icon_\(iconId)")
+    }
+
     /// Initializes a channel file upload and returns the socket transfer descriptor.
     public func initFileUpload(
         channelId: Int,

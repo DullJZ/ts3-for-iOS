@@ -318,9 +318,7 @@ struct ChannelRow: View {
                                 .foregroundColor(.secondary)
                         }
                         if let iconId = channel.iconId, iconId != 0 {
-                            Label("Icon \(iconId)", systemImage: "seal.fill")
-                                .labelStyle(.iconOnly)
-                                .foregroundColor(.secondary)
+                            ChannelIconView(channel: channel)
                         }
                         if channel.isPasswordProtected {
                             Image(systemName: "lock.fill")
@@ -429,6 +427,32 @@ struct ChannelRow: View {
             return "Family \(maxFamilyClients)"
         }
         return nil
+    }
+}
+
+struct ChannelIconView: View {
+    let channel: TS3ChannelSummary
+
+    var body: some View {
+        Group {
+            if let image = platformImage {
+                Image(ts3PlatformImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: "seal.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(width: 16, height: 16)
+        .accessibilityLabel("Icon \(channel.iconId ?? 0)")
+    }
+
+    private var platformImage: TS3PlatformImage? {
+        guard let iconURL = channel.iconURL else { return nil }
+        return TS3PlatformImage(contentsOfFile: iconURL.path)
     }
 }
 

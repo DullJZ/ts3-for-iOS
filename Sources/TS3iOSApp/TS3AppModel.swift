@@ -31,6 +31,7 @@ struct TS3ChannelSummary: Identifiable {
     var maxFamilyClientsUnlimited: Bool?
     var maxFamilyClientsInherited: Bool?
     var iconId: Int?
+    var iconURL: URL?
     var isCurrent: Bool
 }
 
@@ -569,6 +570,9 @@ final class TS3AppModel: ObservableObject {
     @Published var awayMessage = ""
 
     private var client: TS3Client?
+    private var channelIconURLs: [Int: URL] = [:]
+    private var channelIconDownloads: Set<Int> = []
+    private var failedChannelIconIds: Set<Int> = []
 
     init() {
         loadBookmarks()
@@ -666,6 +670,7 @@ final class TS3AppModel: ObservableObject {
                 maxFamilyClientsUnlimited: nil,
                 maxFamilyClientsInherited: nil,
                 iconId: nil,
+                iconURL: nil,
                 isCurrent: true
             ))
             channels.sort { $0.id < $1.id }
@@ -780,6 +785,9 @@ final class TS3AppModel: ObservableObject {
         isOutputMuted = false
         whisperRoute = .none
         microphonePermissionPrompt = nil
+        channelIconURLs = [:]
+        channelIconDownloads = []
+        failedChannelIconIds = []
     }
 
     func updatePlaybackVolume(_ volume: Double) {
@@ -1440,6 +1448,60 @@ final class TS3AppModel: ObservableObject {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let fileName = "avatar_" + (hash.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? hash)
         return directory.appendingPathComponent(fileName)
+    }
+
+    private func channelIconDestination(for iconId: Int) throws -> URL {
+        let caches = try FileManager.default.url(
+            for: .cachesDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let directory = caches.appendingPathComponent("TS3 Icons", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("icon_\(iconId)")
+    }
+
+    private func refreshMissingChannelIcons() {
+        guard let client else { return }
+        let iconIds = Set(channels.compactMap { channel -> Int? in
+            guard let iconId = channel.iconId, iconId != 0 else { return nil }
+            return iconId
+        })
+        for iconId in iconIds where channelIconURLs[iconId] == nil
+            && !channelIconDownloads.contains(iconId)
+            && !failedChannelIconIds.contains(iconId) {
+            downloadChannelIcon(iconId, using: client)
+        }
+    }
+
+    private func downloadChannelIcon(_ iconId: Int, using client: TS3Client) {
+        channelIconDownloads.insert(iconId)
+        Task {
+            do {
+                let destination = try channelIconDestination(for: iconId)
+                if !FileManager.default.fileExists(atPath: destination.path) {
+                    let parameters = try await client.initIconDownload(iconId: iconId)
+                    try await TS3FileTransfer.download(parameters: parameters, to: destination)
+                }
+                await MainActor.run {
+                    self.channelIconDownloads.remove(iconId)
+                    self.channelIconURLs[iconId] = destination
+                    self.channels = self.channels.map { channel in
+                        var updated = channel
+                        if channel.iconId == iconId {
+                            updated.iconURL = destination
+                        }
+                        return updated
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.channelIconDownloads.remove(iconId)
+                    self.failedChannelIconIds.insert(iconId)
+                }
+            }
+        }
     }
 
     private func uniqueFileURL(in directory: URL, named name: String) -> URL {
@@ -2453,9 +2515,11 @@ extension TS3AppModel: TS3ClientDelegate {
                     maxFamilyClientsUnlimited: channel.maxFamilyClientsUnlimited,
                     maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
                     iconId: channel.iconId,
+                    iconURL: channel.iconId.flatMap { self.channelIconURLs[$0] },
                     isCurrent: channel.id == client.currentChannelId
                 )
             }
+            self.refreshMissingChannelIcons()
         }
     }
 
