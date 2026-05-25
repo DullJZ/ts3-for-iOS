@@ -132,6 +132,40 @@ struct TS3ComplaintSummary: Identifiable {
     }
 }
 
+struct TS3DatabaseClientSummary: Identifiable {
+    let id: Int
+    let uniqueIdentifier: String?
+    let nickname: String
+    let createdAt: Date?
+    let lastConnectedAt: Date?
+    let totalConnections: Int?
+    let description: String?
+    let lastIP: String?
+
+    init(client: TS3DatabaseClient) {
+        self.id = client.id
+        self.uniqueIdentifier = client.uniqueIdentifier
+        self.nickname = client.nickname
+        self.createdAt = client.createdAt
+        self.lastConnectedAt = client.lastConnectedAt
+        self.totalConnections = client.totalConnections
+        self.description = client.description
+        self.lastIP = client.lastIP
+    }
+}
+
+struct TS3ClientLocationSummary: Identifiable {
+    let id: Int
+    let clientId: Int
+    let nickname: String?
+
+    init(location: TS3ClientLocation) {
+        self.id = location.id
+        self.clientId = location.clientId
+        self.nickname = location.nickname
+    }
+}
+
 struct TS3GroupSummary: Identifiable {
     let id: Int
     let name: String
@@ -315,6 +349,10 @@ final class TS3AppModel: ObservableObject {
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var complaintEntries: [TS3ComplaintSummary] = []
     @Published var complaintTarget: TS3UserSummary?
+    @Published var databaseClients: [TS3DatabaseClientSummary] = []
+    @Published var databaseSearchResults: [TS3DatabaseClientSummary] = []
+    @Published var clientLocations: [TS3ClientLocationSummary] = []
+    @Published var selectedDatabaseClient: TS3DatabaseClientSummary?
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
@@ -499,6 +537,10 @@ final class TS3AppModel: ObservableObject {
         banEntries = []
         complaintEntries = []
         complaintTarget = nil
+        databaseClients = []
+        databaseSearchResults = []
+        clientLocations = []
+        selectedDatabaseClient = nil
         serverGroups = []
         channelGroups = []
         permissionInfos = []
@@ -603,6 +645,68 @@ final class TS3AppModel: ObservableObject {
     func refreshServerInfo() {
         runClientCommand { client in
             try await client.refreshServerInfo()
+        }
+    }
+
+    func refreshClientDatabase(limit: Int = 100) {
+        runClientCommand { client in
+            let records = try await client.refreshClientDatabase(start: 0, duration: limit)
+            await MainActor.run {
+                self.databaseClients = records
+                    .map { TS3DatabaseClientSummary(client: $0) }
+                    .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+            }
+        }
+    }
+
+    func searchClientDatabase(pattern: String) {
+        let pattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !pattern.isEmpty else {
+            databaseSearchResults = []
+            clientLocations = []
+            return
+        }
+        runClientCommand { client in
+            let databaseRecords = try await client.findDatabaseClients(pattern: pattern)
+            let locations = try await client.onlineClientIds(forNamePattern: pattern)
+            await MainActor.run {
+                self.databaseSearchResults = databaseRecords
+                    .map { TS3DatabaseClientSummary(client: $0) }
+                    .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+                self.clientLocations = locations.map { TS3ClientLocationSummary(location: $0) }
+            }
+        }
+    }
+
+    func loadDatabaseClientDetails(_ record: TS3DatabaseClientSummary) {
+        runClientCommand { client in
+            let detailed = try await client.databaseClientInfo(clientDatabaseId: record.id)
+            let locations: [TS3ClientLocation]
+            if let uniqueIdentifier = detailed?.uniqueIdentifier ?? record.uniqueIdentifier {
+                locations = try await client.onlineClientIds(forUniqueIdentifier: uniqueIdentifier)
+            } else {
+                locations = []
+            }
+            await MainActor.run {
+                self.selectedDatabaseClient = (detailed.map { TS3DatabaseClientSummary(client: $0) } ?? record)
+                self.clientLocations = locations.map { TS3ClientLocationSummary(location: $0) }
+            }
+        }
+    }
+
+    func resolveDatabaseIdForSelectedClient() {
+        guard let uniqueIdentifier = selectedDatabaseClient?.uniqueIdentifier else {
+            lastError = "Selected database client has no unique id."
+            return
+        }
+        runClientCommand { client in
+            guard let databaseId = try await client.databaseId(forUniqueIdentifier: uniqueIdentifier),
+                  let detailed = try await client.databaseClientInfo(clientDatabaseId: databaseId) else {
+                throw TS3Error.serverError(message: "No database id found for selected unique id.")
+            }
+            await MainActor.run {
+                self.selectedDatabaseClient = TS3DatabaseClientSummary(client: detailed)
+            }
         }
     }
 

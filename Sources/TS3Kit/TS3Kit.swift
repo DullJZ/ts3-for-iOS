@@ -238,6 +238,50 @@ public struct TS3ServerClient: Identifiable {
     }
 }
 
+public struct TS3DatabaseClient: Identifiable {
+    public let id: Int
+    public let uniqueIdentifier: String?
+    public let nickname: String
+    public let createdAt: Date?
+    public let lastConnectedAt: Date?
+    public let totalConnections: Int?
+    public let description: String?
+    public let lastIP: String?
+
+    /// Creates a client database record from server-provided metadata.
+    public init(
+        id: Int,
+        uniqueIdentifier: String?,
+        nickname: String,
+        createdAt: Date?,
+        lastConnectedAt: Date?,
+        totalConnections: Int?,
+        description: String?,
+        lastIP: String?
+    ) {
+        self.id = id
+        self.uniqueIdentifier = uniqueIdentifier
+        self.nickname = nickname
+        self.createdAt = createdAt
+        self.lastConnectedAt = lastConnectedAt
+        self.totalConnections = totalConnections
+        self.description = description
+        self.lastIP = lastIP
+    }
+}
+
+public struct TS3ClientLocation: Identifiable {
+    public var id: Int { clientId }
+    public let clientId: Int
+    public let nickname: String?
+
+    /// Creates a currently connected client location.
+    public init(clientId: Int, nickname: String?) {
+        self.clientId = clientId
+        self.nickname = nickname
+    }
+}
+
 public enum TS3TextMessageTargetMode: Int {
     case client = 1
     case channel = 2

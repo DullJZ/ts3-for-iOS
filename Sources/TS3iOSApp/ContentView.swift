@@ -811,6 +811,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingFiles = false
     @State private var isShowingServerEditor = false
     @State private var isShowingComplaints = false
+    @State private var isShowingClientDatabase = false
 
     var body: some View {
         NavigationView {
@@ -833,6 +834,10 @@ struct ServerToolsSheet: View {
                         model.refreshPermissionList()
                         model.refreshOwnClientPermissions()
                         isShowingPermissions = true
+                    }
+                    Button("Browse Client Database") {
+                        model.refreshClientDatabase()
+                        isShowingClientDatabase = true
                     }
                     Button("Browse Channel Files") {
                         model.openFileBrowser()
@@ -926,7 +931,186 @@ struct ServerToolsSheet: View {
                 ComplaintListSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingClientDatabase) {
+                ClientDatabaseSheet()
+                    .environmentObject(model)
+            }
         }
+    }
+}
+
+struct ClientDatabaseSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var searchText = ""
+
+    var displayedRecords: [TS3DatabaseClientSummary] {
+        model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Search")) {
+                    TextField("Nickname", text: $searchText)
+                        .ts3PlainTextField()
+                    HStack {
+                        Button("Search") {
+                            model.searchClientDatabase(pattern: searchText)
+                        }
+                        .disabled(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        Spacer()
+                        Button("Clear") {
+                            searchText = ""
+                            model.databaseSearchResults = []
+                            model.clientLocations = []
+                        }
+                    }
+                }
+
+                if let selected = model.selectedDatabaseClient {
+                    Section(header: Text("Selected Client")) {
+                        DatabaseClientDetailRows(record: selected)
+                        if !model.clientLocations.isEmpty {
+                            ForEach(model.clientLocations) { location in
+                                Text(location.nickname ?? "Client \(location.clientId)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Button("Resolve Database ID From UID") {
+                            model.resolveDatabaseIdForSelectedClient()
+                        }
+                        .disabled(selected.uniqueIdentifier == nil)
+                    }
+                }
+
+                Section(header: Text(model.databaseSearchResults.isEmpty ? "Database Clients" : "Search Results")) {
+                    if displayedRecords.isEmpty {
+                        Text("No clients")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(displayedRecords) { record in
+                            DatabaseClientRow(record: record)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Client Database")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshClientDatabase()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct DatabaseClientRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let record: TS3DatabaseClientSummary
+
+    var body: some View {
+        Button {
+            model.loadDatabaseClientDetails(record)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(record.nickname)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("DB \(record.id)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                    Text(uniqueIdentifier)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            .padding(.vertical, 3)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct DatabaseClientDetailRows: View {
+    let record: TS3DatabaseClientSummary
+
+    var body: some View {
+        HStack {
+            Text("Nickname")
+            Spacer()
+            Text(record.nickname)
+                .foregroundColor(.secondary)
+        }
+        HStack {
+            Text("Database ID")
+            Spacer()
+            Text("\(record.id)")
+                .foregroundColor(.secondary)
+        }
+        if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            Text(uniqueIdentifier)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        if let createdAt = record.createdAt {
+            HStack {
+                Text("Created")
+                Spacer()
+                Text(Self.dateText(createdAt))
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let lastConnectedAt = record.lastConnectedAt {
+            HStack {
+                Text("Last Connected")
+                Spacer()
+                Text(Self.dateText(lastConnectedAt))
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let totalConnections = record.totalConnections {
+            HStack {
+                Text("Connections")
+                Spacer()
+                Text("\(totalConnections)")
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let lastIP = record.lastIP, !lastIP.isEmpty {
+            HStack {
+                Text("Last IP")
+                Spacer()
+                Text(lastIP)
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let description = record.description, !description.isEmpty {
+            Text(description)
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 

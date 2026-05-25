@@ -258,6 +258,49 @@ public final class TS3Client {
         return lastUpdated
     }
 
+    public func refreshClientDatabase(start: Int = 0, duration: Int = 100) async throws -> [TS3DatabaseClient] {
+        let responses = try await execute(TS3SingleCommand(name: "clientdblist", parameters: [
+            TS3CommandSingleParameter(name: "start", value: String(start)),
+            TS3CommandSingleParameter(name: "duration", value: String(duration))
+        ]))
+        return responses.compactMap { databaseClient(from: $0) }
+    }
+
+    public func databaseClientInfo(clientDatabaseId: Int) async throws -> TS3DatabaseClient? {
+        let responses = try await execute(TS3SingleCommand(name: "clientdbinfo", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ]))
+        return responses.compactMap { databaseClient(from: $0, fallbackDatabaseId: clientDatabaseId) }.first
+    }
+
+    public func findDatabaseClients(pattern: String) async throws -> [TS3DatabaseClient] {
+        let responses = try await execute(TS3SingleCommand(name: "clientdbfind", parameters: [
+            TS3CommandSingleParameter(name: "pattern", value: pattern)
+        ]))
+        return responses.compactMap { databaseClient(from: $0) }
+    }
+
+    public func onlineClientIds(forNamePattern pattern: String) async throws -> [TS3ClientLocation] {
+        let responses = try await execute(TS3SingleCommand(name: "clientfind", parameters: [
+            TS3CommandSingleParameter(name: "pattern", value: pattern)
+        ]))
+        return responses.compactMap { clientLocation(from: $0) }
+    }
+
+    public func onlineClientIds(forUniqueIdentifier uniqueIdentifier: String) async throws -> [TS3ClientLocation] {
+        let responses = try await execute(TS3SingleCommand(name: "clientgetids", parameters: [
+            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
+        ]))
+        return responses.compactMap { clientLocation(from: $0) }
+    }
+
+    public func databaseId(forUniqueIdentifier uniqueIdentifier: String) async throws -> Int? {
+        let responses = try await execute(TS3SingleCommand(name: "clientgetdbidfromuid", parameters: [
+            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
+        ]))
+        return responses.compactMap { intValue($0, "cldbid") }.first
+    }
+
     public func sendTextMessage(_ message: String, targetMode: TS3TextMessageTargetMode, targetId: Int) async throws {
         _ = try await execute(TS3SingleCommand(name: "sendtextmessage", parameters: [
             TS3CommandSingleParameter(name: "targetmode", value: String(targetMode.rawValue)),
@@ -1855,6 +1898,10 @@ private extension TS3Client {
         command.get(name)?.value == "1"
     }
 
+    func dateValue(_ command: TS3SingleCommand, _ name: String) -> Date? {
+        int64Value(command, name).map { Date(timeIntervalSince1970: TimeInterval($0)) }
+    }
+
     func clientFromEnterViewCommand(_ command: TS3SingleCommand) -> TS3ServerClient? {
         guard let clidValue = command.get("clid")?.value,
               let clid = Int(clidValue),
@@ -1976,6 +2023,36 @@ private extension TS3Client {
             talkPower: client.talkPower,
             channelGroupId: client.channelGroupId,
             serverGroups: client.serverGroups
+        )
+    }
+
+    func databaseClient(from command: TS3SingleCommand, fallbackDatabaseId: Int? = nil) -> TS3DatabaseClient? {
+        guard let databaseId = intValue(command, "cldbid") ?? intValue(command, "client_database_id") ?? fallbackDatabaseId else {
+            return nil
+        }
+        let nickname = command.get("client_nickname")?.value
+            ?? command.get("name")?.value
+            ?? command.get("client_lastnickname")?.value
+            ?? "Client DB \(databaseId)"
+        return TS3DatabaseClient(
+            id: databaseId,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? command.get("cluid")?.value,
+            nickname: nickname,
+            createdAt: dateValue(command, "client_created"),
+            lastConnectedAt: dateValue(command, "client_lastconnected"),
+            totalConnections: intValue(command, "client_totalconnections"),
+            description: command.get("client_description")?.value,
+            lastIP: command.get("client_lastip")?.value
+        )
+    }
+
+    func clientLocation(from command: TS3SingleCommand) -> TS3ClientLocation? {
+        guard let clientId = intValue(command, "clid") else {
+            return nil
+        }
+        return TS3ClientLocation(
+            clientId: clientId,
+            nickname: command.get("name")?.value ?? command.get("client_nickname")?.value
         )
     }
 
