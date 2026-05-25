@@ -1949,7 +1949,8 @@ private extension TS3Client {
             isPasswordProtected: command.get("channel_flag_password")?.value == "1",
             isPermanent: command.get("channel_flag_permanent")?.value == "1",
             neededTalkPower: intValue(command, "channel_needed_talk_power"),
-            codec: intValue(command, "channel_codec")
+            codec: intValue(command, "channel_codec"),
+            iconId: intValue(command, "channel_icon_id")
         )
     }
 }

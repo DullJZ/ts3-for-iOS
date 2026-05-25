@@ -317,6 +317,11 @@ struct ChannelRow: View {
                             Image(systemName: "house.fill")
                                 .foregroundColor(.secondary)
                         }
+                        if let iconId = channel.iconId, iconId != 0 {
+                            Label("Icon \(iconId)", systemImage: "seal.fill")
+                                .labelStyle(.iconOnly)
+                                .foregroundColor(.secondary)
+                        }
                         if channel.isPasswordProtected {
                             Image(systemName: "lock.fill")
                                 .foregroundColor(.secondary)

@@ -303,6 +303,8 @@ public struct TS3Channel: Identifiable {
     public let isPermanent: Bool
     public let neededTalkPower: Int?
     public let codec: Int?
+    /// The channel icon id reported by the server.
+    public let iconId: Int?
 
     /// Creates a channel snapshot from server-provided metadata.
     public init(
@@ -316,7 +318,8 @@ public struct TS3Channel: Identifiable {
         isPasswordProtected: Bool = false,
         isPermanent: Bool = false,
         neededTalkPower: Int? = nil,
-        codec: Int? = nil
+        codec: Int? = nil,
+        iconId: Int? = nil
     ) {
         self.id = id
         self.parentId = parentId
@@ -329,6 +332,7 @@ public struct TS3Channel: Identifiable {
         self.isPermanent = isPermanent
         self.neededTalkPower = neededTalkPower
         self.codec = codec
+        self.iconId = iconId
     }
 }
 

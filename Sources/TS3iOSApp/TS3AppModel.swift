@@ -23,6 +23,7 @@ struct TS3ChannelSummary: Identifiable {
     var isPasswordProtected: Bool
     var isPermanent: Bool
     var neededTalkPower: Int?
+    var iconId: Int?
     var isCurrent: Bool
 }
 
@@ -650,6 +651,7 @@ final class TS3AppModel: ObservableObject {
                 isPasswordProtected: false,
                 isPermanent: false,
                 neededTalkPower: nil,
+                iconId: nil,
                 isCurrent: true
             ))
             channels.sort { $0.id < $1.id }
@@ -2409,6 +2411,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     isPasswordProtected: channel.isPasswordProtected,
                     isPermanent: channel.isPermanent,
                     neededTalkPower: channel.neededTalkPower,
+                    iconId: channel.iconId,
                     isCurrent: channel.id == client.currentChannelId
                 )
             }
