@@ -1123,6 +1123,9 @@ struct PermissionsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var permissionName = ""
+    @State private var permissionValue = "0"
+    @State private var permissionSkip = false
 
     var filteredPermissionInfos: [TS3PermissionInfoSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1138,14 +1141,37 @@ struct PermissionsSheet: View {
         NavigationView {
             List {
                 Section(header: Text("Current Client Direct Permissions")) {
+                    if let databaseId = model.ownClientDatabaseId {
+                        Text("Database ID \(databaseId)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     if model.ownClientPermissions.isEmpty {
                         Text("No direct client permissions")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.ownClientPermissions) { permission in
                             PermissionRow(permission: permission)
+                                .environmentObject(model)
                         }
                     }
+                }
+
+                Section(header: Text("Add Direct Permission")) {
+                    TextField("Permission Name", text: $permissionName)
+                        .ts3PlainTextField()
+                    TextField("Value", text: $permissionValue)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    Toggle("Skip", isOn: $permissionSkip)
+                    Button("Add or Update Permission") {
+                        model.addOwnClientPermission(
+                            name: permissionName,
+                            value: Int(permissionValue.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                            skip: permissionSkip
+                        )
+                    }
+                    .disabled(permissionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Section(header: Text("Permission Directory")) {
@@ -1156,7 +1182,10 @@ struct PermissionsSheet: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredPermissionInfos) { permission in
-                            PermissionInfoRow(permission: permission)
+                            PermissionInfoRow(permission: permission) {
+                                permissionName = permission.name
+                                searchText = permission.name
+                            }
                         }
                     }
                 }
@@ -1185,7 +1214,9 @@ struct PermissionsSheet: View {
 }
 
 struct PermissionRow: View {
+    @EnvironmentObject private var model: TS3AppModel
     let permission: TS3PermissionSummary
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -1205,36 +1236,56 @@ struct PermissionRow: View {
                 if permission.isSkipped {
                     Text("Skipped")
                 }
+                Spacer()
+                Button("Delete") {
+                    isConfirmingDelete = true
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(.red)
             }
             .font(.caption)
             .foregroundColor(.secondary)
         }
         .padding(.vertical, 3)
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Permission?"),
+                message: Text(permission.name),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteOwnClientPermission(permission)
+                },
+                secondaryButton: .cancel()
+            )
+        }
     }
 }
 
 struct PermissionInfoRow: View {
     let permission: TS3PermissionInfoSummary
+    let select: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(permission.name)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer()
-                Text("#\(permission.id)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        Button(action: select) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(permission.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                    Text("#\(permission.id)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if let description = permission.description, !description.isEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            if let description = permission.description, !description.isEmpty {
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            .padding(.vertical, 3)
         }
-        .padding(.vertical, 3)
+        .buttonStyle(.plain)
     }
 }
 

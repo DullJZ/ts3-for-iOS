@@ -455,6 +455,22 @@ public final class TS3Client {
         return responses.compactMap { permission(from: $0) }
     }
 
+    public func addClientPermission(clientDatabaseId: Int, permissionName: String, value: Int, skip: Bool = false) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientaddperm", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName),
+            TS3CommandSingleParameter(name: "permvalue", value: String(value)),
+            TS3CommandSingleParameter(name: "permskip", value: skip ? "1" : "0")
+        ]))
+    }
+
+    public func deleteClientPermission(clientDatabaseId: Int, permissionName: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientdelperm", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName)
+        ]))
+    }
+
     public func refreshFileList(channelId: Int, path: String, password: String? = nil) async throws -> [TS3FileEntry] {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),

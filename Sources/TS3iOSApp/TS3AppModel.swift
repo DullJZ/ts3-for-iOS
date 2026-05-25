@@ -279,6 +279,7 @@ final class TS3AppModel: ObservableObject {
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
     @Published var ownClientPermissions: [TS3PermissionSummary] = []
+    @Published var ownClientDatabaseId: Int?
     @Published var fileEntries: [TS3FileEntrySummary] = []
     @Published var fileBrowserChannelId: Int?
     @Published var fileBrowserPath = "/"
@@ -460,6 +461,7 @@ final class TS3AppModel: ObservableObject {
         channelGroups = []
         permissionInfos = []
         ownClientPermissions = []
+        ownClientDatabaseId = nil
         fileEntries = []
         fileBrowserChannelId = nil
         fileBrowserPath = "/"
@@ -510,6 +512,45 @@ final class TS3AppModel: ObservableObject {
             let databaseId = try await self.databaseId(for: ownClient, using: client)
             let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
             await MainActor.run {
+                self.ownClientDatabaseId = databaseId
+                self.ownClientPermissions = permissions
+                    .map { TS3PermissionSummary(permission: $0) }
+                    .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            }
+        }
+    }
+
+    func addOwnClientPermission(name: String, value: Int, skip: Bool) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
+            lastError = "Current client details are not available yet."
+            return
+        }
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: ownClient, using: client)
+            try await client.addClientPermission(clientDatabaseId: databaseId, permissionName: name, value: value, skip: skip)
+            let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.ownClientDatabaseId = databaseId
+                self.ownClientPermissions = permissions
+                    .map { TS3PermissionSummary(permission: $0) }
+                    .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            }
+        }
+    }
+
+    func deleteOwnClientPermission(_ permission: TS3PermissionSummary) {
+        guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
+            lastError = "Current client details are not available yet."
+            return
+        }
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: ownClient, using: client)
+            try await client.deleteClientPermission(clientDatabaseId: databaseId, permissionName: permission.name)
+            let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.ownClientDatabaseId = databaseId
                 self.ownClientPermissions = permissions
                     .map { TS3PermissionSummary(permission: $0) }
                     .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
