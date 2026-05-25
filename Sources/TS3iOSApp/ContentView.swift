@@ -68,20 +68,65 @@ struct ConnectingView: View {
 
 struct ConnectView: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var bookmarkName = ""
+    @State private var isShowingIdentity = false
 
     var body: some View {
         Form {
+            if !model.bookmarks.isEmpty {
+                Section(header: Text("Bookmarks")) {
+                    ForEach(model.bookmarks) { bookmark in
+                        HStack {
+                            Button {
+                                model.applyBookmark(bookmark)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(bookmark.name)
+                                    Text("\(bookmark.host):\(bookmark.port)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .buttonStyle(.borderless)
+                            Spacer()
+                            Button {
+                                model.deleteBookmark(bookmark)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+            }
+
             Section(header: Text("Server")) {
                 TextField("Host (e.g. ts.example.com)", text: $model.serverHost)
                     .ts3URLTextField()
                 TextField("Port", text: $model.serverPort)
                     .ts3NumericKeyboard()
                 SecureField("Server Password (optional)", text: $model.serverPassword)
+                TextField("Default Channel (optional)", text: $model.defaultChannel)
+                    .ts3PlainTextField()
+                SecureField("Channel Password (optional)", text: $model.defaultChannelPassword)
             }
 
             Section(header: Text("Profile")) {
                 TextField("Nickname", text: $model.nickname)
                     .ts3PlainTextField()
+                SecureField("Privilege Key (optional)", text: $model.privilegeKey)
+                Button("Manage Identity") {
+                    isShowingIdentity = true
+                }
+            }
+
+            Section(header: Text("Bookmark")) {
+                TextField("Bookmark Name", text: $bookmarkName)
+                Button("Save Current Server") {
+                    model.saveCurrentBookmark(name: bookmarkName)
+                    bookmarkName = ""
+                }
+                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
             if let error = model.lastError {
@@ -106,11 +151,19 @@ struct ConnectView: View {
             }
         }
         .navigationTitle("TS3 Connect")
+        .sheet(isPresented: $isShowingIdentity) {
+            IdentityManagementSheet()
+                .environmentObject(model)
+        }
     }
 }
 
 struct ChannelListView: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isShowingServerTools = false
+    @State private var isShowingChat = false
+    @State private var isShowingWhisper = false
+    @State private var isShowingCreateChannel = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -119,6 +172,24 @@ struct ChannelListView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
                 Spacer()
+                Button {
+                    isShowingChat = true
+                } label: {
+                    Label("Chat", systemImage: "message")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                Button {
+                    isShowingServerTools = true
+                } label: {
+                    Label("Tools", systemImage: "slider.horizontal.3")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                Button {
+                    isShowingWhisper = true
+                } label: {
+                    Label("Whisper", systemImage: "wave.3.right")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
                 Button("Disconnect") {
                     model.disconnect()
                 }
@@ -142,6 +213,31 @@ struct ChannelListView: View {
             TalkControlBar()
         }
         .navigationTitle("Channels")
+        .toolbar {
+            ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                Button {
+                    isShowingCreateChannel = true
+                } label: {
+                    Label("New Channel", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingChat) {
+            ChatSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingServerTools) {
+            ServerToolsSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingWhisper) {
+            WhisperSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingCreateChannel) {
+            ChannelEditorSheet(mode: .create(parent: model.currentChannel))
+                .environmentObject(model)
+        }
     }
 }
 
@@ -195,6 +291,10 @@ struct ChannelRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
     let members: [TS3UserSummary]
+    @State private var joinPassword = ""
+    @State private var isShowingJoinPassword = false
+    @State private var isShowingEdit = false
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -212,11 +312,24 @@ struct ChannelRow: View {
                                 .background(Color.accentColor.opacity(0.12))
                                 .clipShape(Capsule())
                         }
+                        if channel.isDefault {
+                            Image(systemName: "house.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        if channel.isPasswordProtected {
+                            Image(systemName: "lock.fill")
+                                .foregroundColor(.secondary)
+                        }
                     }
                     HStack(spacing: 6) {
                         Text("\(members.count) user\(members.count == 1 ? "" : "s")")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        if let power = channel.neededTalkPower {
+                            Text("Talk \(power)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     if let topic = channel.topic, !topic.isEmpty {
                         Text(topic)
@@ -230,9 +343,26 @@ struct ChannelRow: View {
                         .foregroundColor(.accentColor)
                 } else {
                     Button("Join") {
-                        model.joinChannel(channel)
+                        if channel.isPasswordProtected {
+                            isShowingJoinPassword = true
+                        } else {
+                            model.joinChannel(channel)
+                        }
                     }
                     .buttonStyle(TS3BorderedButtonStyle())
+                }
+                Menu {
+                    Button("Edit Channel") {
+                        isShowingEdit = true
+                    }
+                    Button("Whisper to Channel") {
+                        model.enableWhisperToChannel(id: channel.id)
+                    }
+                    Button("Delete Channel") {
+                        isConfirmingDelete = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
             }
 
@@ -249,19 +379,77 @@ struct ChannelRow: View {
             }
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $isShowingJoinPassword) {
+            JoinChannelPasswordSheet(channel: channel, password: $joinPassword)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingEdit) {
+            ChannelEditorSheet(mode: .edit(channel))
+                .environmentObject(model)
+        }
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Channel"),
+                message: Text(channel.name),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteChannel(channel)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+}
+
+enum UserActionMode: Identifiable {
+    case privateMessage
+    case offlineMessage
+    case poke
+    case kickChannel
+    case kickServer
+    case ban
+
+    var id: String {
+        switch self {
+        case .privateMessage: return "privateMessage"
+        case .offlineMessage: return "offlineMessage"
+        case .poke: return "poke"
+        case .kickChannel: return "kickChannel"
+        case .kickServer: return "kickServer"
+        case .ban: return "ban"
+        }
     }
 }
 
 struct ChannelMemberRow: View {
+    @EnvironmentObject private var model: TS3AppModel
     let member: TS3UserSummary
+    @State private var actionMode: UserActionMode?
 
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: member.isCurrentUser ? "person.crop.circle.fill" : "person.fill")
                 .foregroundColor(member.isCurrentUser ? .accentColor : .secondary)
-            Text(member.nickname)
-                .font(.subheadline)
-                .foregroundColor(.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(member.nickname)
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                HStack(spacing: 8) {
+                    if member.isAway {
+                        Text(member.awayMessage?.isEmpty == false ? "Away: \(member.awayMessage!)" : "Away")
+                    }
+                    if member.isInputMuted {
+                        Text("Mic muted")
+                    }
+                    if member.isOutputMuted {
+                        Text("Sound muted")
+                    }
+                    if let power = member.talkPower {
+                        Text("Talk \(power)")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
             if member.isCurrentUser {
                 Text("You")
                     .font(.caption.weight(.semibold))
@@ -272,6 +460,881 @@ struct ChannelMemberRow: View {
                     .clipShape(Capsule())
             }
             Spacer()
+            Menu {
+                Button("Send Private Message") {
+                    actionMode = .privateMessage
+                }
+                Button("Send Offline Message") {
+                    actionMode = .offlineMessage
+                }
+                Button("Poke") {
+                    actionMode = .poke
+                }
+                Button("Whisper to User") {
+                    model.enableWhisperToClient(member)
+                }
+                Button("Refresh Details") {
+                    model.refreshUserDetails(member)
+                }
+                Menu("Move To") {
+                    ForEach(model.channels) { channel in
+                        Button(channel.name) {
+                            model.moveUser(member, to: channel)
+                        }
+                    }
+                }
+                Button("Kick From Channel") {
+                    actionMode = .kickChannel
+                }
+                Button("Kick From Server") {
+                    actionMode = .kickServer
+                }
+                Button("Ban") {
+                    actionMode = .ban
+                }
+                if !model.serverGroups.isEmpty {
+                    Menu("Add Server Group") {
+                        ForEach(model.serverGroups) { group in
+                            Button(group.name) {
+                                model.addServerGroup(group, to: member)
+                            }
+                        }
+                    }
+                }
+                if !model.channelGroups.isEmpty, let channel = model.channels.first(where: { $0.id == member.channelId }) {
+                    Menu("Set Channel Group") {
+                        ForEach(model.channelGroups) { group in
+                            Button(group.name) {
+                                model.setChannelGroup(group, for: member, in: channel)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .disabled(member.isCurrentUser)
+        }
+        .sheet(item: $actionMode) { mode in
+            UserActionSheet(mode: mode, user: member)
+                .environmentObject(model)
+        }
+    }
+}
+
+struct UserActionSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let mode: UserActionMode
+    let user: TS3UserSummary
+    @State private var subject = ""
+    @State private var text = ""
+
+    var title: String {
+        switch mode {
+        case .privateMessage: return "Private Message"
+        case .offlineMessage: return "Offline Message"
+        case .poke: return "Poke"
+        case .kickChannel: return "Kick From Channel"
+        case .kickServer: return "Kick From Server"
+        case .ban: return "Ban User"
+        }
+    }
+
+    var fieldTitle: String {
+        switch mode {
+        case .privateMessage: return "Message"
+        case .offlineMessage: return "Message"
+        case .poke: return "Poke Message"
+        case .kickChannel, .kickServer, .ban: return "Reason"
+        }
+    }
+
+    var actionTitle: String {
+        switch mode {
+        case .privateMessage: return "Send"
+        case .offlineMessage: return "Send"
+        case .poke: return "Poke"
+        case .kickChannel, .kickServer: return "Kick"
+        case .ban: return "Ban"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(user.nickname)) {
+                    if mode == .offlineMessage {
+                        TextField("Subject", text: $subject)
+                            .ts3PlainTextField()
+                    }
+                    TextField(fieldTitle, text: $text)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button(actionTitle) {
+                        switch mode {
+                        case .privateMessage:
+                            model.sendPrivateMessage(text, to: user)
+                        case .offlineMessage:
+                            model.sendOfflineMessage(to: user, subject: subject, message: text)
+                        case .poke:
+                            model.pokeUser(user, message: text)
+                        case .kickChannel:
+                            model.kickUserFromChannel(user, message: text.isEmpty ? nil : text)
+                        case .kickServer:
+                            model.kickUserFromServer(user, message: text.isEmpty ? nil : text)
+                        case .ban:
+                            model.banUser(user, message: text.isEmpty ? nil : text)
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(isActionDisabled)
+                }
+            }
+            .navigationTitle(title)
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var isActionDisabled: Bool {
+        let textIsEmpty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        switch mode {
+        case .privateMessage, .poke:
+            return textIsEmpty
+        case .offlineMessage:
+            return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .kickChannel, .kickServer, .ban:
+            return false
+        }
+    }
+}
+
+struct ChatSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var message = ""
+    @State private var target: TS3TextMessageTargetMode = .channel
+    @State private var isShowingOfflineMessages = false
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                Picker("Target", selection: $target) {
+                    Text("Channel").tag(TS3TextMessageTargetMode.channel)
+                    Text("Server").tag(TS3TextMessageTargetMode.server)
+                }
+                .pickerStyle(.segmented)
+                .padding()
+
+                List(model.chatMessages) { item in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(item.senderName)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(item.targetMode == .server ? "Server" : item.targetMode == .channel ? "Channel" : "Private")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text(item.message)
+                            .font(.body)
+                    }
+                    .listRowBackground(item.isOwnMessage ? Color.accentColor.opacity(0.08) : Color.clear)
+                }
+
+                HStack(spacing: 8) {
+                    TextField("Message", text: $message)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Send") {
+                        if target == .server {
+                            model.sendServerMessage(message)
+                        } else {
+                            model.sendChannelMessage(message)
+                        }
+                        message = ""
+                    }
+                    .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
+                }
+                .padding()
+            }
+            .navigationTitle("Chat")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Inbox") {
+                        model.refreshOfflineMessages()
+                        isShowingOfflineMessages = true
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingOfflineMessages) {
+                OfflineMessagesSheet()
+                    .environmentObject(model)
+            }
+        }
+    }
+}
+
+struct OfflineMessagesSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        NavigationView {
+            List {
+                if model.offlineMessages.isEmpty {
+                    Text("No offline messages")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(model.offlineMessages) { message in
+                        OfflineMessageRow(message: message)
+                            .environmentObject(model)
+                    }
+                }
+            }
+            .navigationTitle("Inbox")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshOfflineMessages()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshOfflineMessages()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct OfflineMessageRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let message: TS3OfflineMessageSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(message.subject)
+                            .font(.subheadline.weight(message.isRead ? .regular : .semibold))
+                        if !message.isRead {
+                            Text("Unread")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    Text(message.senderName ?? message.senderUniqueIdentifier ?? "Unknown sender")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if let timestamp = message.timestamp {
+                    Text(Self.dateText(timestamp))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let body = message.message, !body.isEmpty {
+                Text(body)
+                    .font(.body)
+            } else {
+                Button("Open Message") {
+                    model.openOfflineMessage(message)
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+            }
+
+            HStack {
+                Button(message.isRead ? "Mark Unread" : "Mark Read") {
+                    model.markOfflineMessage(message, read: !message.isRead)
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Button("Delete") {
+                    model.deleteOfflineMessage(message)
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(.red)
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+struct ServerToolsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var nickname = ""
+    @State private var privilegeKey = ""
+    @State private var importedIdentity = ""
+    @State private var isShowingBanList = false
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Server")) {
+                    ServerInfoRows()
+                    Button("Refresh Channels and Clients") {
+                        model.refreshServerView()
+                    }
+                    Button("Refresh Server Info") {
+                        model.refreshServerInfo()
+                    }
+                    Button("Refresh Permission Groups") {
+                        model.refreshGroups()
+                    }
+                    Button("Manage Bans") {
+                        model.refreshBanList()
+                        isShowingBanList = true
+                    }
+                }
+
+                Section(header: Text("Profile")) {
+                    TextField("Nickname", text: $nickname)
+                        .ts3PlainTextField()
+                    Button("Apply Nickname") {
+                        model.updateNickname(to: nickname.isEmpty ? model.nickname : nickname)
+                    }
+                    TextField("Away Message", text: $model.awayMessage)
+                    Button(model.isAway ? "Clear Away" : "Set Away") {
+                        model.toggleAway()
+                    }
+                    Button(model.isInputMuted ? "Unmute Microphone" : "Mute Microphone") {
+                        model.toggleInputMuted()
+                    }
+                    Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
+                        model.toggleOutputMuted()
+                    }
+                }
+
+                Section(header: Text("Privilege Key")) {
+                    SecureField("Privilege Key", text: $privilegeKey)
+                    Button("Use Privilege Key") {
+                        model.usePrivilegeKey(privilegeKey)
+                        privilegeKey = ""
+                    }
+                }
+
+                Section(header: Text("Identity")) {
+                    IdentitySummaryRows(importedIdentity: $importedIdentity)
+                }
+
+                if !model.serverGroups.isEmpty || !model.channelGroups.isEmpty {
+                    Section(header: Text("Permission Groups")) {
+                        ForEach(model.serverGroups) { group in
+                            Text("Server: \(group.name)")
+                        }
+                        ForEach(model.channelGroups) { group in
+                            Text("Channel: \(group.name)")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Server Tools")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                nickname = model.nickname
+                Task { @MainActor in
+                    await model.refreshIdentitySummary()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingBanList) {
+                BanListSheet()
+                    .environmentObject(model)
+            }
+        }
+    }
+}
+
+struct BanListSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var isConfirmingDeleteAll = false
+
+    var body: some View {
+        NavigationView {
+            List {
+                if model.banEntries.isEmpty {
+                    Text("No bans")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(model.banEntries) { entry in
+                        BanEntryRow(entry: entry)
+                            .environmentObject(model)
+                    }
+                    Section {
+                        Button("Delete All Bans") {
+                            isConfirmingDeleteAll = true
+                        }
+                        .foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle("Ban List")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshBanList()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshBanList()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .alert(isPresented: $isConfirmingDeleteAll) {
+                Alert(
+                    title: Text("Delete All Bans?"),
+                    message: Text("This removes every ban entry on the server."),
+                    primaryButton: .destructive(Text("Delete All")) {
+                        model.deleteAllBans()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        }
+    }
+}
+
+struct BanEntryRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let entry: TS3BanEntrySummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                if let createdAt = entry.createdAt {
+                    Text(Self.dateText(createdAt))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let reason = entry.reason, !reason.isEmpty {
+                Text(reason)
+                    .font(.body)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                if let duration = entry.durationSeconds {
+                    Text("Duration: \(Self.durationText(duration))")
+                }
+                if let invoker = entry.invokerName, !invoker.isEmpty {
+                    Text("Invoker: \(invoker)")
+                }
+                if let enforcements = entry.enforcements {
+                    Text("Enforcements: \(enforcements)")
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+
+            Button("Delete Ban") {
+                model.deleteBan(entry)
+            }
+            .buttonStyle(.borderless)
+            .foregroundColor(.red)
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var title: String {
+        if let name = entry.name, !name.isEmpty {
+            return name
+        }
+        if let lastNickname = entry.lastNickname, !lastNickname.isEmpty {
+            return lastNickname
+        }
+        if let ip = entry.ip, !ip.isEmpty {
+            return ip
+        }
+        return "Ban \(entry.id)"
+    }
+
+    private var subtitle: String {
+        [entry.ip, entry.uniqueIdentifier]
+            .compactMap { value in
+                guard let value, !value.isEmpty else { return nil }
+                return value
+            }
+            .joined(separator: " | ")
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private static func durationText(_ seconds: Int) -> String {
+        if seconds == 0 {
+            return "Permanent"
+        }
+        let days = seconds / 86_400
+        let hours = (seconds % 86_400) / 3_600
+        let minutes = (seconds % 3_600) / 60
+        if days > 0 {
+            return "\(days)d \(hours)h"
+        }
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m"
+    }
+}
+
+struct WhisperSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Current Route")) {
+                    Text(model.whisperRouteDescription)
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Quick Actions")) {
+                    Button("Whisper to Server") {
+                        model.enableWhisperToServer()
+                    }
+                    Button("Voice to Current Channel") {
+                        model.disableWhisper()
+                    }
+                }
+
+                if !model.channels.isEmpty {
+                    Section(header: Text("Channels")) {
+                        ForEach(model.channels) { channel in
+                            Button(channel.name) {
+                                model.enableWhisperToChannel(id: channel.id)
+                            }
+                        }
+                    }
+                }
+
+                if !model.clients.isEmpty {
+                    Section(header: Text("Users")) {
+                        ForEach(model.clients.filter { !$0.isCurrentUser }) { user in
+                            Button(user.nickname) {
+                                model.enableWhisperToClient(user)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Whisper")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct ServerInfoRows: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        if !model.serverInfo.name.isEmpty {
+            HStack {
+                Text("Name")
+                Spacer()
+                Text(model.serverInfo.name)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        if let clientsOnline = model.serverInfo.clientsOnline {
+            HStack {
+                Text("Clients")
+                Spacer()
+                if let maxClients = model.serverInfo.maxClients {
+                    Text("\(clientsOnline) / \(maxClients)")
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("\(clientsOnline)")
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        if let channelsOnline = model.serverInfo.channelsOnline {
+            HStack {
+                Text("Channels")
+                Spacer()
+                Text("\(channelsOnline)")
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let uptime = model.serverInfo.uptimeSeconds {
+            HStack {
+                Text("Uptime")
+                Spacer()
+                Text(Self.uptimeText(uptime))
+                    .foregroundColor(.secondary)
+            }
+        }
+        if let version = model.serverInfo.version, !version.isEmpty {
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(version)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        if let message = model.serverInfo.welcomeMessage, !message.isEmpty {
+            Text(message)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private static func uptimeText(_ seconds: Int) -> String {
+        let days = seconds / 86_400
+        let hours = (seconds % 86_400) / 3_600
+        let minutes = (seconds % 3_600) / 60
+        if days > 0 {
+            return "\(days)d \(hours)h"
+        }
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m"
+    }
+}
+
+struct IdentitySummaryRows: View {
+    @EnvironmentObject private var model: TS3AppModel
+    @Binding var importedIdentity: String
+
+    var body: some View {
+        HStack {
+            Text("UID")
+            Spacer()
+            Text(model.identitySummary.uid.isEmpty ? "Unavailable" : model.identitySummary.uid)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        HStack {
+            Text("Security")
+            Spacer()
+            Text("\(model.identitySummary.securityLevel)")
+                .foregroundColor(.secondary)
+        }
+        Button("Refresh Identity") {
+            Task { @MainActor in
+                await model.refreshIdentitySummary()
+            }
+        }
+        Button("Copy Identity Backup") {
+            model.copyIdentityExport()
+        }
+        .disabled(model.identitySummary.exportString.isEmpty)
+        TextField("Identity Backup", text: $importedIdentity)
+            .ts3PlainTextField()
+        Button("Import Identity") {
+            model.importIdentity(importedIdentity)
+            importedIdentity = ""
+        }
+        .disabled(importedIdentity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+}
+
+struct IdentityManagementSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var importedIdentity = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Identity")) {
+                    IdentitySummaryRows(importedIdentity: $importedIdentity)
+                }
+            }
+            .navigationTitle("Identity")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                Task { @MainActor in
+                    await model.refreshIdentitySummary()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum ChannelEditorMode {
+    case create(parent: TS3ChannelSummary?)
+    case edit(TS3ChannelSummary)
+}
+
+struct ChannelEditorSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let mode: ChannelEditorMode
+    @State private var name = ""
+    @State private var topic = ""
+    @State private var description = ""
+    @State private var password = ""
+    @State private var permanent = true
+
+    var title: String {
+        switch mode {
+        case .create: return "New Channel"
+        case .edit: return "Edit Channel"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Channel")) {
+                    TextField("Name", text: $name)
+                    TextField("Topic", text: $topic)
+                    TextField("Description", text: $description)
+                    SecureField("Password", text: $password)
+                    Toggle("Permanent", isOn: $permanent)
+                }
+                Section {
+                    Button(title) {
+                        switch mode {
+                        case let .create(parent):
+                            model.createChannel(
+                                name: name,
+                                parentId: parent?.id,
+                                password: password.isEmpty ? nil : password,
+                                permanent: permanent
+                            )
+                        case let .edit(channel):
+                            model.editChannel(
+                                channel,
+                                name: name,
+                                topic: topic,
+                                description: description,
+                                password: password.isEmpty ? nil : password
+                            )
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle(title)
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                if case let .edit(channel) = mode {
+                    name = channel.name
+                    topic = channel.topic ?? ""
+                    description = channel.description ?? ""
+                    permanent = channel.isPermanent
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct JoinChannelPasswordSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let channel: TS3ChannelSummary
+    @Binding var password: String
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    SecureField("Password", text: $password)
+                }
+                Section {
+                    Button("Join") {
+                        model.joinChannel(channel, password: password)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Channel Password")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
 }

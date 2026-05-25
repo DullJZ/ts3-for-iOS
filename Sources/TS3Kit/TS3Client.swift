@@ -57,8 +57,11 @@ public final class TS3Client {
     private var nextCommandCode: Int = 1
 
     private var connectContinuation: CheckedContinuation<Void, Error>?
+    private var serverInfo: TS3ServerInfo?
     private var channelCache: [Int: TS3Channel] = [:]
     private var clientCache: [UInt16: TS3ServerClient] = [:]
+    private var serverGroupCache: [Int: TS3ServerGroup] = [:]
+    private var channelGroupCache: [Int: TS3ChannelGroup] = [:]
     private var defaultChannelId: Int?
     private var audioEngine: TS3AudioEngine?
     private var isSendingAudio = false
@@ -86,7 +89,10 @@ public final class TS3Client {
         clientId = 0
         serverId = nil
         currentChannelId = nil
+        serverInfo = nil
         clientCache.removeAll()
+        serverGroupCache.removeAll()
+        channelGroupCache.removeAll()
         defaultChannelId = nil
         nextCommandCode = 1
         isDisconnecting = false
@@ -187,6 +193,307 @@ public final class TS3Client {
         updateClientChannel(clientId: Int(clientId), channelId: channelId)
         publishClients()
         publishChannels()
+    }
+
+    public func refreshServerView() async throws {
+        try await refreshServerInfo()
+        _ = try await execute(TS3SingleCommand(name: "channellist", parameters: [
+            TS3CommandOption(name: "topic"),
+            TS3CommandOption(name: "flags"),
+            TS3CommandOption(name: "voice"),
+            TS3CommandOption(name: "limits"),
+            TS3CommandOption(name: "icon")
+        ]))
+        _ = try await execute(TS3SingleCommand(name: "clientlist", parameters: [
+            TS3CommandOption(name: "uid"),
+            TS3CommandOption(name: "away"),
+            TS3CommandOption(name: "voice"),
+            TS3CommandOption(name: "groups")
+        ]))
+        publishChannels()
+        publishClients()
+    }
+
+    public func refreshServerInfo() async throws {
+        let responses = try await execute(TS3SingleCommand(name: "serverinfo"))
+        for response in responses {
+            if let info = serverInfo(from: response) {
+                serverInfo = info
+                publishServerInfo(info)
+            }
+        }
+    }
+
+    public func refreshClientDetails(clientId targetClientId: Int) async throws -> TS3ServerClient? {
+        let responses = try await execute(TS3SingleCommand(name: "clientinfo", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId))
+        ]))
+        var lastUpdated: TS3ServerClient?
+        for response in responses {
+            if let updated = mergeDetailedClientInfo(response, fallbackClientId: targetClientId) {
+                clientCache[UInt16(updated.id)] = updated
+                lastUpdated = updated
+            }
+        }
+        publishClients()
+        return lastUpdated
+    }
+
+    public func sendTextMessage(_ message: String, targetMode: TS3TextMessageTargetMode, targetId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "sendtextmessage", parameters: [
+            TS3CommandSingleParameter(name: "targetmode", value: String(targetMode.rawValue)),
+            TS3CommandSingleParameter(name: "target", value: String(targetId)),
+            TS3CommandSingleParameter(name: "msg", value: message)
+        ]))
+        let local = TS3TextMessage(
+            timestamp: Date(),
+            targetMode: targetMode,
+            targetId: targetId,
+            senderId: Int(clientId),
+            senderName: config.nickname,
+            message: message,
+            isOwnMessage: true
+        )
+        DispatchQueue.main.async {
+            self.delegate?.ts3Client(self, didReceiveTextMessage: local)
+        }
+    }
+
+    public func refreshOfflineMessages() async throws -> [TS3OfflineMessage] {
+        let responses = try await execute(TS3SingleCommand(name: "messagelist"))
+        return responses.compactMap { offlineMessage(from: $0, detailedMessage: nil) }
+    }
+
+    public func offlineMessage(messageId: Int) async throws -> TS3OfflineMessage? {
+        let responses = try await execute(TS3SingleCommand(name: "messageget", parameters: [
+            TS3CommandSingleParameter(name: "msgid", value: String(messageId))
+        ]))
+        return responses.compactMap { offlineMessage(from: $0, detailedMessage: $0.get("message")?.value) }.first
+    }
+
+    public func sendOfflineMessage(toUniqueIdentifier uniqueIdentifier: String, subject: String, message: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "messageadd", parameters: [
+            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier),
+            TS3CommandSingleParameter(name: "subject", value: subject),
+            TS3CommandSingleParameter(name: "message", value: message)
+        ]))
+    }
+
+    public func deleteOfflineMessage(messageId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "messagedel", parameters: [
+            TS3CommandSingleParameter(name: "msgid", value: String(messageId))
+        ]))
+    }
+
+    public func setOfflineMessageRead(messageId: Int, isRead: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: "messageupdateflag", parameters: [
+            TS3CommandSingleParameter(name: "msgid", value: String(messageId)),
+            TS3CommandSingleParameter(name: "flag", value: isRead ? "1" : "0")
+        ]))
+    }
+
+    public func updateNickname(_ nickname: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_nickname", value: nickname)
+        ]))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(existing, nickname: nickname)
+            publishClients()
+        }
+    }
+
+    public func setAway(_ isAway: Bool, message: String?) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_away", value: isAway ? "1" : "0"),
+            TS3CommandSingleParameter(name: "client_away_message", value: isAway ? (message ?? "") : "")
+        ]))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(existing, isAway: isAway, awayMessage: isAway ? message : nil)
+            publishClients()
+        }
+    }
+
+    public func setInputMuted(_ isMuted: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_input_muted", value: isMuted ? "1" : "0")
+        ]))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(existing, isInputMuted: isMuted)
+            publishClients()
+        }
+    }
+
+    public func setOutputMuted(_ isMuted: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_output_muted", value: isMuted ? "1" : "0")
+        ]))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(existing, isOutputMuted: isMuted)
+            publishClients()
+        }
+    }
+
+    public func createChannel(name: String, parentId: Int?, password: String?, permanent: Bool) async throws -> Int? {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "channel_name", value: name)
+        ]
+        if let parentId {
+            params.append(TS3CommandSingleParameter(name: "cpid", value: String(parentId)))
+        }
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "channel_password", value: password))
+        }
+        params.append(TS3CommandSingleParameter(name: permanent ? "channel_flag_permanent" : "channel_flag_semi_permanent", value: "1"))
+
+        let responses = try await execute(TS3SingleCommand(name: "channelcreate", parameters: params))
+        let createdId = responses.compactMap { $0.get("cid")?.value }.compactMap(Int.init).first
+        try? await refreshServerView()
+        return createdId
+    }
+
+    public func editChannel(channelId: Int, name: String?, topic: String?, description: String?, password: String?) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId))
+        ]
+        if let name { params.append(TS3CommandSingleParameter(name: "channel_name", value: name)) }
+        if let topic { params.append(TS3CommandSingleParameter(name: "channel_topic", value: topic)) }
+        if let description { params.append(TS3CommandSingleParameter(name: "channel_description", value: description)) }
+        if let password { params.append(TS3CommandSingleParameter(name: "channel_password", value: password)) }
+        _ = try await execute(TS3SingleCommand(name: "channeledit", parameters: params))
+        try? await refreshServerView()
+    }
+
+    public func deleteChannel(channelId: Int, force: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channeldelete", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "force", value: force ? "1" : "0")
+        ]))
+        channelCache.removeValue(forKey: channelId)
+        publishChannels()
+    }
+
+    public func moveClient(clientId targetClientId: Int, to channelId: Int, password: String?) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId))
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        _ = try await execute(TS3SingleCommand(name: "clientmove", parameters: params))
+        updateClientChannel(clientId: targetClientId, channelId: channelId)
+        publishClients()
+    }
+
+    public func kickClient(clientId targetClientId: Int, reason: TS3KickReason, message: String?) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientkick", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
+            TS3CommandSingleParameter(name: "reasonid", value: String(reason.rawValue)),
+            TS3CommandSingleParameter(name: "reasonmsg", value: message ?? "")
+        ]))
+    }
+
+    public func banClient(clientId targetClientId: Int, durationSeconds: Int?, message: String?) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
+            TS3CommandSingleParameter(name: "banreason", value: message ?? "")
+        ]
+        if let durationSeconds {
+            params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
+        }
+        _ = try await execute(TS3SingleCommand(name: "banclient", parameters: params))
+    }
+
+    public func refreshBanList() async throws -> [TS3BanEntry] {
+        let responses = try await execute(TS3SingleCommand(name: "banlist"))
+        return responses.compactMap { banEntry(from: $0) }
+    }
+
+    public func deleteBan(banId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "deleteban", parameters: [
+            TS3CommandSingleParameter(name: "banid", value: String(banId))
+        ]))
+    }
+
+    public func deleteAllBans() async throws {
+        _ = try await execute(TS3SingleCommand(name: "bandelall"))
+    }
+
+    public func pokeClient(clientId targetClientId: Int, message: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientpoke", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
+            TS3CommandSingleParameter(name: "msg", value: message)
+        ]))
+    }
+
+    public func refreshGroups() async throws {
+        let serverGroups = try await execute(TS3SingleCommand(name: "servergrouplist"))
+        serverGroupCache = Dictionary(uniqueKeysWithValues: serverGroups.compactMap { command in
+            guard let idText = command.get("sgid")?.value, let id = Int(idText),
+                  let name = command.get("name")?.value else { return nil }
+            return (id, TS3ServerGroup(id: id, name: name))
+        })
+        let channelGroups = try await execute(TS3SingleCommand(name: "channelgrouplist"))
+        channelGroupCache = Dictionary(uniqueKeysWithValues: channelGroups.compactMap { command in
+            guard let idText = command.get("cgid")?.value, let id = Int(idText),
+                  let name = command.get("name")?.value else { return nil }
+            return (id, TS3ChannelGroup(id: id, name: name))
+        })
+        publishGroups()
+    }
+
+    public func addServerGroup(groupId: Int, toClientDatabaseId clientDatabaseId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "servergroupaddclient", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ]))
+    }
+
+    public func removeServerGroup(groupId: Int, fromClientDatabaseId clientDatabaseId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "servergroupdelclient", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ]))
+    }
+
+    public func setChannelGroup(groupId: Int, channelId: Int, clientDatabaseId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "setclientchannelgroup", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ]))
+    }
+
+    public func usePrivilegeKey(_ key: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "privilegekeyuse", parameters: [
+            TS3CommandSingleParameter(name: "token", value: key)
+        ]))
+        try? await refreshGroups()
+    }
+
+    public func identitySnapshot() async throws -> TS3IdentitySnapshot {
+        let identity = try await loadIdentity()
+        return TS3IdentitySnapshot(
+            uid: identity.uid.toBase64(),
+            securityLevel: identity.securityLevel(),
+            keyOffset: identity.keyOffset,
+            exportString: try identityExportString(for: identity)
+        )
+    }
+
+    public func importIdentity(exportString: String) async throws -> TS3IdentitySnapshot {
+        guard state == .disconnected else {
+            throw TS3Error.invalidState
+        }
+        let identity = try identity(fromExportString: exportString)
+        try saveIdentity(identity)
+        self.identity = identity
+        return TS3IdentitySnapshot(
+            uid: identity.uid.toBase64(),
+            securityLevel: identity.securityLevel(),
+            keyOffset: identity.keyOffset,
+            exportString: try identityExportString(for: identity)
+        )
     }
 
     public func startMicrophone() throws {
@@ -704,12 +1011,12 @@ private extension TS3Client {
             TS3CommandSingleParameter(name: "client_version_sign", value: "DX5NIYLvfJEUjuIbCidnoeozxIDRRkpq3I9vVMBmE9L2qnekOoBzSenkzsg2lC9CMv8K5hkEzhr2TYUYSwUXCg=="),
             TS3CommandSingleParameter(name: "client_input_hardware", value: "1"),
             TS3CommandSingleParameter(name: "client_output_hardware", value: "1"),
-            TS3CommandSingleParameter(name: "client_default_channel", value: nil),
-            TS3CommandSingleParameter(name: "client_default_channel_password", value: nil),
+            TS3CommandSingleParameter(name: "client_default_channel", value: config.defaultChannel),
+            TS3CommandSingleParameter(name: "client_default_channel_password", value: config.defaultChannelPassword.map(TS3Crypto.hashPassword)),
             TS3CommandSingleParameter(name: "client_server_password", value: config.serverPassword.map(TS3Crypto.hashPassword)),
             TS3CommandSingleParameter(name: "client_nickname_phonetic", value: nil),
             TS3CommandSingleParameter(name: "client_meta_data", value: ""),
-            TS3CommandSingleParameter(name: "client_default_token", value: nil),
+            TS3CommandSingleParameter(name: "client_default_token", value: config.privilegeKey),
             TS3CommandSingleParameter(name: "client_key_offset", value: String(identity.keyOffset)),
             TS3CommandSingleParameter(name: "hwid", value: "+LyYqbDqOvEEpN5pdAbF8/v5kZ0=")
         ]
@@ -901,6 +1208,48 @@ private extension TS3Client {
         }
     }
 
+    func finishConnectedSetup() async {
+        let registrations = [
+            TS3SingleCommand(name: "servernotifyregister", parameters: [
+                TS3CommandSingleParameter(name: "event", value: "server")
+            ]),
+            TS3SingleCommand(name: "servernotifyregister", parameters: [
+                TS3CommandSingleParameter(name: "event", value: "channel"),
+                TS3CommandSingleParameter(name: "id", value: "0")
+            ]),
+            TS3SingleCommand(name: "servernotifyregister", parameters: [
+                TS3CommandSingleParameter(name: "event", value: "textserver")
+            ]),
+            TS3SingleCommand(name: "servernotifyregister", parameters: [
+                TS3CommandSingleParameter(name: "event", value: "textchannel")
+            ]),
+            TS3SingleCommand(name: "servernotifyregister", parameters: [
+                TS3CommandSingleParameter(name: "event", value: "textprivate")
+            ])
+        ]
+
+        for command in registrations {
+            do {
+                _ = try await execute(command)
+                log(.debug, "registered notify event \(command.get("event")?.value ?? command.name)")
+            } catch {
+                log(.warning, "notify registration failed for \(command.get("event")?.value ?? command.name): \(error.localizedDescription)")
+            }
+        }
+
+        do {
+            try await refreshServerView()
+        } catch {
+            log(.warning, "initial client/channel refresh failed: \(error.localizedDescription)")
+        }
+
+        do {
+            try await refreshGroups()
+        } catch {
+            log(.warning, "initial group refresh failed: \(error.localizedDescription)")
+        }
+    }
+
     func handleCommandText(_ text: String) {
         do {
             let multi = try TS3MultiCommand.parse(text)
@@ -938,6 +1287,7 @@ private extension TS3Client {
         }
 
         if command.name == "channellist" {
+            recordPendingResponse(command)
             if let cidValue = command.get("cid")?.value,
                let cid = Int(cidValue),
                command.get("channel_flag_default")?.value == "1" {
@@ -946,6 +1296,77 @@ private extension TS3Client {
             }
             if let channel = channelFromCommand(command) {
                 channelCache[channel.id] = channel
+            }
+            return
+        }
+
+        if command.name == "clientlist" {
+            recordPendingResponse(command)
+            if let serverClient = clientFromListCommand(command) {
+                clientCache[UInt16(serverClient.id)] = serverClient
+            }
+            return
+        }
+
+        if command.name == "serverinfo" {
+            recordPendingResponse(command)
+            if let info = serverInfo(from: command) {
+                serverInfo = info
+                publishServerInfo(info)
+            }
+            return
+        }
+
+        if command.name == "notifychannelcreated" || command.name == "notifychanneledited" || command.name == "notifychannelsubscribed" {
+            if let channel = channelFromCommand(command) {
+                channelCache[channel.id] = channel
+                publishChannels()
+            } else {
+                Task { try? await refreshServerView() }
+            }
+            return
+        }
+
+        if command.name == "notifychanneldeleted" {
+            if let cidValue = command.get("cid")?.value, let cid = Int(cidValue) {
+                channelCache.removeValue(forKey: cid)
+                publishChannels()
+            }
+            return
+        }
+
+        if command.name == "notifychannelmoved" || command.name == "notifychannelpasswordchanged" || command.name == "notifychanneldescriptionchanged" {
+            Task { try? await refreshServerView() }
+            return
+        }
+
+        if command.name == "notifytextmessage" {
+            if let message = textMessage(from: command) {
+                DispatchQueue.main.async {
+                    self.delegate?.ts3Client(self, didReceiveTextMessage: message)
+                }
+            }
+            return
+        }
+
+        if command.name == "servergrouplist" || command.name == "notifyservergrouplist" {
+            if command.name == "servergrouplist" {
+                recordPendingResponse(command)
+            }
+            if let group = serverGroup(from: command) {
+                serverGroupCache[group.id] = group
+                publishGroups()
+            }
+            return
+        }
+
+        if command.name == "channelgrouplist" || command.name == "notifychannelgrouplist" {
+            if command.name == "channelgrouplist" {
+                recordPendingResponse(command)
+            }
+            if let group = channelGroup(from: command) {
+                channelGroupCache[group.id] = group
+                publishGroups()
             }
             return
         }
@@ -960,6 +1381,9 @@ private extension TS3Client {
             connectContinuation = nil
             log(.info, "channel list completed")
             publishChannels()
+            Task {
+                await self.finishConnectedSetup()
+            }
             DispatchQueue.main.async {
                 self.delegate?.ts3ClientDidConnect(self)
             }
@@ -1028,6 +1452,11 @@ private extension TS3Client {
             return
         }
 
+        recordPendingResponse(command)
+    }
+
+    func recordPendingResponse(_ command: TS3SingleCommand) {
+        guard command.name != "error" else { return }
         let code = Int(command.get("return_code")?.value ?? "") ?? pendingCommands.keys.min()
         if let code, var pending = pendingCommands[code] {
             pending.responses.append(command)
@@ -1042,7 +1471,19 @@ private extension TS3Client {
             return nil
         }
         let topic = command.get("channel_topic")?.value
-        return TS3Channel(id: cid, name: name, topic: topic)
+        return TS3Channel(
+            id: cid,
+            parentId: intValue(command, "pid") ?? intValue(command, "cpid"),
+            order: intValue(command, "channel_order"),
+            name: name,
+            topic: topic,
+            description: command.get("channel_description")?.value,
+            isDefault: command.get("channel_flag_default")?.value == "1",
+            isPasswordProtected: command.get("channel_flag_password")?.value == "1",
+            isPermanent: command.get("channel_flag_permanent")?.value == "1",
+            neededTalkPower: intValue(command, "channel_needed_talk_power"),
+            codec: intValue(command, "channel_codec")
+        )
     }
 }
 
@@ -1207,10 +1648,14 @@ private extension TS3Client {
 
 // MARK: - Identity
 private extension TS3Client {
-    func loadIdentity() async throws -> TS3Identity {
+    func identityFileURL() throws -> URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
-        let fileURL = baseURL.appendingPathComponent("ts3-identity.key")
+        return baseURL.appendingPathComponent("ts3-identity.key")
+    }
+
+    func loadIdentity() async throws -> TS3Identity {
+        let fileURL = try identityFileURL()
 
         if let data = try? Data(contentsOf: fileURL), data.count >= 32 {
             let privateKeyBytes = [UInt8](data.prefix(32))
@@ -1229,15 +1674,57 @@ private extension TS3Client {
         let identity = try TS3Identity.generate(securityLevel: 8) { [weak self] oldLevel, newLevel, offset in
             self?.log(.debug, "Improved identity security level: from \(oldLevel) to \(newLevel) (\(offset))")
         }
+        try saveIdentity(identity)
+        return identity
+    }
+
+    func saveIdentity(_ identity: TS3Identity) throws {
+        let fileURL = try identityFileURL()
         var saveData = Data(identity.privateKeyBytes)
         var offset = UInt32(identity.keyOffset).bigEndian
         saveData.append(Data(bytes: &offset, count: 4))
         try saveData.write(to: fileURL, options: .atomic)
-        return identity
+    }
+
+    func identityExportString(for identity: TS3Identity) throws -> String {
+        var data = Data(identity.privateKeyBytes)
+        var offset = UInt32(identity.keyOffset).bigEndian
+        data.append(Data(bytes: &offset, count: 4))
+        return "TS3IOS1:\(data.base64EncodedString())"
+    }
+
+    func identity(fromExportString raw: String) throws -> TS3Identity {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload: String
+        if trimmed.hasPrefix("TS3IOS1:") {
+            payload = String(trimmed.dropFirst("TS3IOS1:".count))
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload), data.count >= 32 else {
+            throw TS3Error.invalidIdentity
+        }
+
+        let privateKeyBytes = [UInt8](data.prefix(32))
+        var keyOffset = 0
+        if data.count >= 36 {
+            let offsetBytes = data.subdata(in: 32..<36)
+            keyOffset = Int(UInt32(bigEndian: offsetBytes.withUnsafeBytes { $0.load(as: UInt32.self) }))
+        }
+        return try TS3Identity(privateKeyBytes: privateKeyBytes, keyOffset: keyOffset)
     }
 }
 
 private extension TS3Client {
+    func intValue(_ command: TS3SingleCommand, _ name: String) -> Int? {
+        command.get(name)?.value.flatMap(Int.init)
+    }
+
+    func boolValue(_ command: TS3SingleCommand, _ name: String) -> Bool {
+        command.get(name)?.value == "1"
+    }
+
     func clientFromEnterViewCommand(_ command: TS3SingleCommand) -> TS3ServerClient? {
         guard let clidValue = command.get("clid")?.value,
               let clid = Int(clidValue),
@@ -1249,8 +1736,40 @@ private extension TS3Client {
         return TS3ServerClient(
             id: clid,
             channelId: channelId,
+            databaseId: intValue(command, "client_database_id") ?? intValue(command, "client_dbid"),
             nickname: nickname,
-            isCurrentUser: UInt16(clid) == clientId
+            isCurrentUser: UInt16(clid) == clientId,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value,
+            isInputMuted: boolValue(command, "client_input_muted"),
+            isOutputMuted: boolValue(command, "client_output_muted"),
+            isAway: boolValue(command, "client_away"),
+            awayMessage: command.get("client_away_message")?.value,
+            talkPower: intValue(command, "client_talk_power"),
+            channelGroupId: intValue(command, "client_channel_group_id"),
+            serverGroups: serverGroupIds(from: command)
+        )
+    }
+
+    func clientFromListCommand(_ command: TS3SingleCommand) -> TS3ServerClient? {
+        guard let clid = intValue(command, "clid"),
+              let channelId = targetChannelId(from: command) else {
+            return nil
+        }
+        let existing = clientCache[UInt16(clid)]
+        return TS3ServerClient(
+            id: clid,
+            channelId: channelId,
+            databaseId: intValue(command, "client_database_id") ?? intValue(command, "client_dbid") ?? existing?.databaseId,
+            nickname: command.get("client_nickname")?.value ?? existing?.nickname ?? "Client \(clid)",
+            isCurrentUser: UInt16(clid) == clientId,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? existing?.uniqueIdentifier,
+            isInputMuted: boolValue(command, "client_input_muted"),
+            isOutputMuted: boolValue(command, "client_output_muted"),
+            isAway: boolValue(command, "client_away"),
+            awayMessage: command.get("client_away_message")?.value,
+            talkPower: intValue(command, "client_talk_power"),
+            channelGroupId: intValue(command, "client_channel_group_id"),
+            serverGroups: serverGroupIds(from: command)
         )
     }
 
@@ -1264,11 +1783,177 @@ private extension TS3Client {
         existing = TS3ServerClient(
             id: existing.id,
             channelId: targetChannelId(from: command) ?? existing.channelId,
+            databaseId: intValue(command, "client_database_id") ?? intValue(command, "client_dbid") ?? existing.databaseId,
             nickname: command.get("client_nickname")?.value ?? existing.nickname,
-            isCurrentUser: existing.isCurrentUser
+            isCurrentUser: existing.isCurrentUser,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? existing.uniqueIdentifier,
+            isInputMuted: command.has("client_input_muted") ? boolValue(command, "client_input_muted") : existing.isInputMuted,
+            isOutputMuted: command.has("client_output_muted") ? boolValue(command, "client_output_muted") : existing.isOutputMuted,
+            isAway: command.has("client_away") ? boolValue(command, "client_away") : existing.isAway,
+            awayMessage: command.get("client_away_message")?.value ?? existing.awayMessage,
+            talkPower: intValue(command, "client_talk_power") ?? existing.talkPower,
+            channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
+            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups
         )
         clientCache[clid] = existing
         return existing
+    }
+
+    func mergeDetailedClientInfo(_ command: TS3SingleCommand, fallbackClientId: Int) -> TS3ServerClient? {
+        let clid = intValue(command, "clid") ?? fallbackClientId
+        let key = UInt16(clid)
+        let existing = clientCache[key]
+        let channelId = targetChannelId(from: command) ?? existing?.channelId ?? currentChannelId ?? 0
+        let updated = TS3ServerClient(
+            id: clid,
+            channelId: channelId,
+            databaseId: intValue(command, "client_database_id") ?? intValue(command, "client_dbid") ?? existing?.databaseId,
+            nickname: command.get("client_nickname")?.value ?? existing?.nickname ?? "Client \(clid)",
+            isCurrentUser: key == clientId,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? existing?.uniqueIdentifier,
+            isInputMuted: command.has("client_input_muted") ? boolValue(command, "client_input_muted") : existing?.isInputMuted ?? false,
+            isOutputMuted: command.has("client_output_muted") ? boolValue(command, "client_output_muted") : existing?.isOutputMuted ?? false,
+            isAway: command.has("client_away") ? boolValue(command, "client_away") : existing?.isAway ?? false,
+            awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
+            talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
+            channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
+            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? []
+        )
+        clientCache[key] = updated
+        return updated
+    }
+
+    func copyClient(
+        _ client: TS3ServerClient,
+        channelId: Int? = nil,
+        nickname: String? = nil,
+        isInputMuted: Bool? = nil,
+        isOutputMuted: Bool? = nil,
+        isAway: Bool? = nil,
+        awayMessage: String? = nil
+    ) -> TS3ServerClient {
+        TS3ServerClient(
+            id: client.id,
+            channelId: channelId ?? client.channelId,
+            databaseId: client.databaseId,
+            nickname: nickname ?? client.nickname,
+            isCurrentUser: client.isCurrentUser,
+            uniqueIdentifier: client.uniqueIdentifier,
+            isInputMuted: isInputMuted ?? client.isInputMuted,
+            isOutputMuted: isOutputMuted ?? client.isOutputMuted,
+            isAway: isAway ?? client.isAway,
+            awayMessage: awayMessage ?? client.awayMessage,
+            talkPower: client.talkPower,
+            channelGroupId: client.channelGroupId,
+            serverGroups: client.serverGroups
+        )
+    }
+
+    func serverInfo(from command: TS3SingleCommand) -> TS3ServerInfo? {
+        let name = command.get("virtualserver_name")?.value
+            ?? command.get("name")?.value
+            ?? serverAddress
+        return TS3ServerInfo(
+            uniqueIdentifier: command.get("virtualserver_unique_identifier")?.value,
+            name: name,
+            platform: command.get("virtualserver_platform")?.value,
+            version: command.get("virtualserver_version")?.value,
+            clientsOnline: intValue(command, "virtualserver_clientsonline"),
+            maxClients: intValue(command, "virtualserver_maxclients"),
+            channelsOnline: intValue(command, "virtualserver_channelsonline"),
+            uptimeSeconds: intValue(command, "virtualserver_uptime"),
+            welcomeMessage: command.get("virtualserver_welcomemessage")?.value
+        )
+    }
+
+    func serverGroupIds(from command: TS3SingleCommand) -> [Int] {
+        guard let groups = command.get("client_servergroups")?.value else {
+            return []
+        }
+        return groups.split(separator: ",").compactMap { Int($0) }
+    }
+
+    func textMessage(from command: TS3SingleCommand) -> TS3TextMessage? {
+        guard let modeValue = intValue(command, "targetmode"),
+              let mode = TS3TextMessageTargetMode(rawValue: modeValue),
+              let message = command.get("msg")?.value else {
+            return nil
+        }
+        let senderId = intValue(command, "invokerid")
+        return TS3TextMessage(
+            timestamp: Date(),
+            targetMode: mode,
+            targetId: intValue(command, "target"),
+            senderId: senderId,
+            senderName: command.get("invokername")?.value ?? "Client \(senderId ?? 0)",
+            message: message,
+            isOwnMessage: UInt16(senderId ?? -1) == clientId
+        )
+    }
+
+    func offlineMessage(from command: TS3SingleCommand, detailedMessage: String?) -> TS3OfflineMessage? {
+        guard let id = intValue(command, "msgid") else {
+            return nil
+        }
+
+        let timestamp: Date?
+        if let seconds = intValue(command, "timestamp") {
+            timestamp = Date(timeIntervalSince1970: TimeInterval(seconds))
+        } else {
+            timestamp = nil
+        }
+
+        return TS3OfflineMessage(
+            id: id,
+            senderUniqueIdentifier: command.get("cluid")?.value,
+            senderName: command.get("invokername")?.value ?? command.get("sender")?.value,
+            subject: command.get("subject")?.value ?? "Message \(id)",
+            message: detailedMessage,
+            timestamp: timestamp,
+            isRead: boolValue(command, "flag_read")
+        )
+    }
+
+    func banEntry(from command: TS3SingleCommand) -> TS3BanEntry? {
+        guard let id = intValue(command, "banid") else {
+            return nil
+        }
+
+        let createdAt: Date?
+        if let created = intValue(command, "created") {
+            createdAt = Date(timeIntervalSince1970: TimeInterval(created))
+        } else {
+            createdAt = nil
+        }
+
+        return TS3BanEntry(
+            id: id,
+            ip: command.get("ip")?.value,
+            name: command.get("name")?.value,
+            uniqueIdentifier: command.get("uid")?.value,
+            lastNickname: command.get("lastnickname")?.value,
+            createdAt: createdAt,
+            durationSeconds: intValue(command, "duration"),
+            invokerName: command.get("invokername")?.value,
+            reason: command.get("reason")?.value,
+            enforcements: intValue(command, "enforcements")
+        )
+    }
+
+    func serverGroup(from command: TS3SingleCommand) -> TS3ServerGroup? {
+        guard let id = intValue(command, "sgid"),
+              let name = command.get("name")?.value else {
+            return nil
+        }
+        return TS3ServerGroup(id: id, name: name)
+    }
+
+    func channelGroup(from command: TS3SingleCommand) -> TS3ChannelGroup? {
+        guard let id = intValue(command, "cgid"),
+              let name = command.get("name")?.value else {
+            return nil
+        }
+        return TS3ChannelGroup(id: id, name: name)
     }
 
     func targetChannelId(from command: TS3SingleCommand) -> Int? {
@@ -1297,12 +1982,7 @@ private extension TS3Client {
     func updateClientChannel(clientId: Int, channelId: Int) {
         let key = UInt16(clientId)
         if let existing = clientCache[key] {
-            clientCache[key] = TS3ServerClient(
-                id: existing.id,
-                channelId: channelId,
-                nickname: existing.nickname,
-                isCurrentUser: existing.isCurrentUser
-            )
+            clientCache[key] = copyClient(existing, channelId: channelId)
         } else {
             clientCache[key] = TS3ServerClient(
                 id: clientId,
@@ -1324,10 +2004,25 @@ private extension TS3Client {
         }
     }
 
+    func publishServerInfo(_ info: TS3ServerInfo) {
+        DispatchQueue.main.async {
+            self.delegate?.ts3Client(self, didUpdateServerInfo: info)
+        }
+    }
+
     func publishChannels() {
         let channels = channelCache.values.sorted { $0.id < $1.id }
         DispatchQueue.main.async {
             self.delegate?.ts3Client(self, didUpdateChannels: channels)
+        }
+    }
+
+    func publishGroups() {
+        let serverGroups = serverGroupCache.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let channelGroups = channelGroupCache.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        DispatchQueue.main.async {
+            self.delegate?.ts3Client(self, didUpdateServerGroups: serverGroups)
+            self.delegate?.ts3Client(self, didUpdateChannelGroups: channelGroups)
         }
     }
 
