@@ -3218,6 +3218,13 @@ struct ChannelEditorSheet: View {
     @State private var description = ""
     @State private var password = ""
     @State private var permanent = true
+    @State private var neededTalkPower = ""
+    @State private var codecQuality = ""
+    @State private var maxClients = ""
+    @State private var maxFamilyClients = ""
+    @State private var maxClientsUnlimited = true
+    @State private var maxFamilyClientsUnlimited = true
+    @State private var maxFamilyClientsInherited = false
 
     var title: String {
         switch mode {
@@ -3234,7 +3241,32 @@ struct ChannelEditorSheet: View {
                     TextField("Topic", text: $topic)
                     TextField("Description", text: $description)
                     SecureField("Password", text: $password)
-                    Toggle("Permanent", isOn: $permanent)
+                    if case .create = mode {
+                        Toggle("Permanent", isOn: $permanent)
+                    }
+                }
+                if case .edit = mode {
+                    Section(header: Text("Voice")) {
+                        TextField("Needed Talk Power", text: $neededTalkPower)
+                            .ts3NumericKeyboard()
+                        TextField("Codec Quality", text: $codecQuality)
+                            .ts3NumericKeyboard()
+                    }
+                    Section(header: Text("Limits")) {
+                        Toggle("Unlimited Clients", isOn: $maxClientsUnlimited)
+                        if !maxClientsUnlimited {
+                            TextField("Max Clients", text: $maxClients)
+                                .ts3NumericKeyboard()
+                        }
+                        Toggle("Inherit Family Limit", isOn: $maxFamilyClientsInherited)
+                        if !maxFamilyClientsInherited {
+                            Toggle("Unlimited Family Clients", isOn: $maxFamilyClientsUnlimited)
+                            if !maxFamilyClientsUnlimited {
+                                TextField("Max Family Clients", text: $maxFamilyClients)
+                                    .ts3NumericKeyboard()
+                            }
+                        }
+                    }
                 }
                 Section {
                     Button(title) {
@@ -3252,12 +3284,19 @@ struct ChannelEditorSheet: View {
                                 name: name,
                                 topic: topic,
                                 description: description,
-                                password: password.isEmpty ? nil : password
+                                password: password.isEmpty ? nil : password,
+                                neededTalkPower: parsedOptionalInt(neededTalkPower),
+                                codecQuality: parsedOptionalInt(codecQuality),
+                                maxClients: parsedOptionalInt(maxClients),
+                                maxFamilyClients: parsedOptionalInt(maxFamilyClients),
+                                maxClientsUnlimited: maxClientsUnlimited,
+                                maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+                                maxFamilyClientsInherited: maxFamilyClientsInherited
                             )
                         }
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSubmit)
                 }
             }
             .navigationTitle(title)
@@ -3268,6 +3307,13 @@ struct ChannelEditorSheet: View {
                     topic = channel.topic ?? ""
                     description = channel.description ?? ""
                     permanent = channel.isPermanent
+                    neededTalkPower = channel.neededTalkPower.map(String.init) ?? ""
+                    codecQuality = channel.codecQuality.map(String.init) ?? ""
+                    maxClients = channel.maxClients.map(String.init) ?? ""
+                    maxFamilyClients = channel.maxFamilyClients.map(String.init) ?? ""
+                    maxClientsUnlimited = channel.maxClientsUnlimited ?? true
+                    maxFamilyClientsUnlimited = channel.maxFamilyClientsUnlimited ?? true
+                    maxFamilyClientsInherited = channel.maxFamilyClientsInherited ?? false
                 }
             }
             .toolbar {
@@ -3278,6 +3324,28 @@ struct ChannelEditorSheet: View {
                 }
             }
         }
+    }
+
+    private var canSubmit: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && isOptionalInt(neededTalkPower)
+            && isOptionalInt(codecQuality)
+            && (maxClientsUnlimited || isRequiredInt(maxClients))
+            && (maxFamilyClientsInherited || maxFamilyClientsUnlimited || isRequiredInt(maxFamilyClients))
+    }
+
+    private func parsedOptionalInt(_ text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : Int(trimmed)
+    }
+
+    private func isOptionalInt(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Int(trimmed) != nil
+    }
+
+    private func isRequiredInt(_ text: String) -> Bool {
+        Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
     }
 }
 

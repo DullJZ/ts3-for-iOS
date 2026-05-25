@@ -1687,14 +1687,34 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func editChannel(_ channel: TS3ChannelSummary, name: String, topic: String, description: String, password: String?) {
+    func editChannel(
+        _ channel: TS3ChannelSummary,
+        name: String,
+        topic: String,
+        description: String,
+        password: String?,
+        neededTalkPower: Int?,
+        codecQuality: Int?,
+        maxClients: Int?,
+        maxFamilyClients: Int?,
+        maxClientsUnlimited: Bool,
+        maxFamilyClientsUnlimited: Bool,
+        maxFamilyClientsInherited: Bool
+    ) {
         runClientCommand { client in
             try await client.editChannel(
                 channelId: channel.id,
                 name: name.isEmpty ? nil : name,
                 topic: topic.isEmpty ? nil : topic,
                 description: description.isEmpty ? nil : description,
-                password: password?.isEmpty == true ? nil : password
+                password: password?.isEmpty == true ? nil : password,
+                neededTalkPower: neededTalkPower,
+                codecQuality: codecQuality,
+                maxClients: maxClientsUnlimited ? nil : maxClients,
+                maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
+                maxClientsUnlimited: maxClientsUnlimited,
+                maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+                maxFamilyClientsInherited: maxFamilyClientsInherited
             )
         }
     }

@@ -426,7 +426,21 @@ public final class TS3Client {
         return createdId
     }
 
-    public func editChannel(channelId: Int, name: String?, topic: String?, description: String?, password: String?) async throws {
+    /// Edits channel metadata and optional voice or client limit settings.
+    public func editChannel(
+        channelId: Int,
+        name: String?,
+        topic: String?,
+        description: String?,
+        password: String?,
+        neededTalkPower: Int? = nil,
+        codecQuality: Int? = nil,
+        maxClients: Int? = nil,
+        maxFamilyClients: Int? = nil,
+        maxClientsUnlimited: Bool? = nil,
+        maxFamilyClientsUnlimited: Bool? = nil,
+        maxFamilyClientsInherited: Bool? = nil
+    ) async throws {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "cid", value: String(channelId))
         ]
@@ -434,6 +448,27 @@ public final class TS3Client {
         if let topic { params.append(TS3CommandSingleParameter(name: "channel_topic", value: topic)) }
         if let description { params.append(TS3CommandSingleParameter(name: "channel_description", value: description)) }
         if let password { params.append(TS3CommandSingleParameter(name: "channel_password", value: password)) }
+        if let neededTalkPower {
+            params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))
+        }
+        if let codecQuality {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_quality", value: String(codecQuality)))
+        }
+        if let maxClients {
+            params.append(TS3CommandSingleParameter(name: "channel_maxclients", value: String(maxClients)))
+        }
+        if let maxFamilyClients {
+            params.append(TS3CommandSingleParameter(name: "channel_maxfamilyclients", value: String(maxFamilyClients)))
+        }
+        if let maxClientsUnlimited {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_maxclients_unlimited", value: maxClientsUnlimited ? "1" : "0"))
+        }
+        if let maxFamilyClientsUnlimited {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_unlimited", value: maxFamilyClientsUnlimited ? "1" : "0"))
+        }
+        if let maxFamilyClientsInherited {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_inherited", value: maxFamilyClientsInherited ? "1" : "0"))
+        }
         _ = try await execute(TS3SingleCommand(name: "channeledit", parameters: params))
         try? await refreshServerView()
     }
