@@ -814,6 +814,29 @@ public final class TS3Client {
         log(.info, "playback volume set to \(Int((clamped * 100).rounded()))%")
     }
 
+    public func setInputGain(_ gain: Float) {
+        let clamped = min(max(gain, 0), 4)
+        withAudioQueueSync {
+            audioEngine?.setInputGain(clamped)
+        }
+        log(.info, "input gain set to \(Int((clamped * 100).rounded()))%")
+    }
+
+    public func setAudioTransmitMode(_ mode: TS3AudioTransmitMode) {
+        withAudioQueueSync {
+            audioEngine?.setTransmitMode(mode)
+        }
+        log(.info, "audio transmit mode set to \(mode.rawValue)")
+    }
+
+    public func setVoiceActivationThreshold(_ threshold: Float) {
+        let clamped = min(max(threshold, 0.001), 0.5)
+        withAudioQueueSync {
+            audioEngine?.setVoiceActivationThreshold(clamped)
+        }
+        log(.info, "voice activation threshold set to \(String(format: "%.3f", clamped))")
+    }
+
     public func startWhisper(target: TS3WhisperTarget) {
         whisperTarget = target
         isWhispering = true

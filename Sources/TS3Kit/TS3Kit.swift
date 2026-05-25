@@ -44,6 +44,16 @@ public struct TS3IdentitySnapshot {
     }
 }
 
+public enum TS3AudioTransmitMode: String, CaseIterable, Identifiable {
+    public static let allCases: [TS3AudioTransmitMode] = [.pushToTalk, .continuous, .voiceActivation]
+
+    case pushToTalk
+    case continuous
+    case voiceActivation
+
+    public var id: String { rawValue }
+}
+
 public struct TS3ServerInfo {
     public let uniqueIdentifier: String?
     public let name: String

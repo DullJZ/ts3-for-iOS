@@ -2382,7 +2382,7 @@ struct JoinChannelPasswordSheet: View {
 
 struct TalkControlBar: View {
     @EnvironmentObject private var model: TS3AppModel
-    @State private var isShowingPlaybackVolume = false
+    @State private var isShowingAudioSettings = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -2392,9 +2392,9 @@ struct TalkControlBar: View {
                     .foregroundColor(.secondary)
                 Spacer()
                 Button {
-                    isShowingPlaybackVolume = true
+                    isShowingAudioSettings = true
                 } label: {
-                    Label(model.playbackVolumePercentText, systemImage: "speaker.wave.2.fill")
+                    Label(model.playbackVolumePercentText, systemImage: "slider.horizontal.3")
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
             }
@@ -2407,14 +2407,14 @@ struct TalkControlBar: View {
             Button(action: {
                 model.toggleTalking()
             }) {
-                Text(model.isTalking ? "Stop Talking" : "Push To Talk")
+                Text(model.transmitButtonTitle)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
         }
         .padding()
-        .sheet(isPresented: $isShowingPlaybackVolume) {
-            PlaybackVolumeSheet()
+        .sheet(isPresented: $isShowingAudioSettings) {
+            AudioSettingsSheet()
                 .environmentObject(model)
         }
         .alert(item: $model.microphonePermissionPrompt) { prompt in
@@ -2432,7 +2432,7 @@ struct TalkControlBar: View {
     }
 }
 
-struct PlaybackVolumeSheet: View {
+struct AudioSettingsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
 
@@ -2443,9 +2443,63 @@ struct PlaybackVolumeSheet: View {
         )
     }
 
+    private var inputGainBinding: Binding<Double> {
+        Binding(
+            get: { model.inputGain },
+            set: { model.updateInputGain($0) }
+        )
+    }
+
+    private var thresholdBinding: Binding<Double> {
+        Binding(
+            get: { model.voiceActivationThreshold },
+            set: { model.updateVoiceActivationThreshold($0) }
+        )
+    }
+
+    private var transmitModeBinding: Binding<TS3AudioTransmitMode> {
+        Binding(
+            get: { model.audioTransmitMode },
+            set: { model.updateAudioTransmitMode($0) }
+        )
+    }
+
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Transmit Mode")) {
+                    Picker("Mode", selection: transmitModeBinding) {
+                        Text("Push To Talk").tag(TS3AudioTransmitMode.pushToTalk)
+                        Text("Continuous").tag(TS3AudioTransmitMode.continuous)
+                        Text("Voice Activation").tag(TS3AudioTransmitMode.voiceActivation)
+                    }
+                    if model.audioTransmitMode == .voiceActivation {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Activation Threshold")
+                                Spacer()
+                                Text(model.voiceActivationThresholdText)
+                                    .foregroundColor(.secondary)
+                            }
+                            Slider(value: thresholdBinding, in: 0.001...0.5, step: 0.001)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
+                Section(header: Text("Microphone")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Input Gain")
+                            Spacer()
+                            Text(model.inputGainPercentText)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: inputGainBinding, in: 0...4, step: 0.05)
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section(header: Text("Received Audio")) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -2475,7 +2529,7 @@ struct PlaybackVolumeSheet: View {
                     .padding(.vertical, 4)
                 }
             }
-            .navigationTitle("Audio Volume")
+            .navigationTitle("Audio Settings")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {

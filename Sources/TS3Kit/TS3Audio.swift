@@ -51,6 +51,10 @@ final class TS3AudioEngine {
     private let encoder: TS3OpusEncoder
     private var playbackStates: [PlaybackSource: PlaybackState] = [:]
     private var playbackVolume: Float = 1.0
+    private var inputGain: Float = 1.0
+    private var transmitMode: TS3AudioTransmitMode = .pushToTalk
+    private var voiceActivationThreshold: Float = 0.03
+    private var wasVoiceActive = false
 
     var onEncodedPacket: ((Data) -> Void)?
     var onLog: ((TS3LogLevel, String) -> Void)?
@@ -151,6 +155,21 @@ final class TS3AudioEngine {
 
     func setPlaybackVolume(_ volume: Float) {
         playbackVolume = min(max(volume, 0), 4)
+    }
+
+    func setInputGain(_ gain: Float) {
+        inputGain = min(max(gain, 0), 4)
+    }
+
+    func setTransmitMode(_ mode: TS3AudioTransmitMode) {
+        transmitMode = mode
+        if mode != .voiceActivation {
+            wasVoiceActive = false
+        }
+    }
+
+    func setVoiceActivationThreshold(_ threshold: Float) {
+        voiceActivationThreshold = min(max(threshold, 0.001), 0.5)
     }
 
     func handleIncoming(packet: Data, from clientId: UInt16, isWhisper: Bool, sessionMarker: UInt8?) {
@@ -344,8 +363,9 @@ final class TS3AudioEngine {
         captureBuffer.append(contentsOf: UnsafeBufferPointer(start: channel, count: frames))
 
         while captureBuffer.count >= Int(config.frameSize) {
-            let frame = Array(captureBuffer.prefix(Int(config.frameSize)))
+            let frame = processedFrame(Array(captureBuffer.prefix(Int(config.frameSize))))
             captureBuffer.removeFirst(Int(config.frameSize))
+            guard shouldTransmit(frame: frame) else { continue }
             do {
                 let packet = try encoder.encode(pcm: frame)
                 encodedPacketCount += 1
@@ -357,6 +377,22 @@ final class TS3AudioEngine {
                 logDroppedInputBuffer("opus encode failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func processedFrame(_ frame: [Float]) -> [Float] {
+        guard inputGain != 1 else { return frame }
+        return frame.map { min(max($0 * inputGain, -1), 1) }
+    }
+
+    private func shouldTransmit(frame: [Float]) -> Bool {
+        guard transmitMode == .voiceActivation else { return true }
+        let rms = sqrt(frame.reduce(Float(0)) { $0 + ($1 * $1) } / Float(max(frame.count, 1)))
+        let isVoiceActive = rms >= voiceActivationThreshold
+        if wasVoiceActive && !isVoiceActive {
+            onEncodedPacket?(Data())
+        }
+        wasVoiceActive = isVoiceActive
+        return isVoiceActive
     }
 
     private func logDroppedInputBuffer(_ reason: String) {

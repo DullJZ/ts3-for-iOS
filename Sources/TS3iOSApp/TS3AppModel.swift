@@ -419,6 +419,9 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingDebug = false
     @Published var lastError: String?
     @Published var playbackVolume: Double = 1.0
+    @Published var inputGain: Double = 1.0
+    @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
+    @Published var voiceActivationThreshold: Double = 0.03
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
 
     @Published var serverHost = ""
@@ -451,11 +454,35 @@ final class TS3AppModel: ObservableObject {
     }
 
     var talkStatus: String {
-        isTalking ? "Sending microphone audio" : "Mic idle"
+        if isTalking {
+            switch audioTransmitMode {
+            case .pushToTalk:
+                return "Sending microphone audio"
+            case .continuous:
+                return "Continuous transmission active"
+            case .voiceActivation:
+                return "Voice activation listening"
+            }
+        }
+        return "Mic idle"
     }
 
     var playbackVolumePercentText: String {
         "\(Int((playbackVolume * 100).rounded()))%"
+    }
+
+    var transmitButtonTitle: String {
+        if isTalking {
+            return audioTransmitMode == .pushToTalk ? "Stop Talking" : "Stop Transmission"
+        }
+        switch audioTransmitMode {
+        case .pushToTalk:
+            return "Push To Talk"
+        case .continuous:
+            return "Start Continuous"
+        case .voiceActivation:
+            return "Start Voice Activation"
+        }
     }
 
     var currentChannel: TS3ChannelSummary? {
@@ -524,7 +551,7 @@ final class TS3AppModel: ObservableObject {
                 self?.appendLog(entry)
             }
         }
-        newClient.setPlaybackVolume(Float(playbackVolume))
+        applyAudioSettings(to: newClient)
         client = newClient
 
         Task {
@@ -614,6 +641,35 @@ final class TS3AppModel: ObservableObject {
         let clamped = min(max(volume, 0), 4)
         playbackVolume = clamped
         client?.setPlaybackVolume(Float(clamped))
+    }
+
+    func updateInputGain(_ gain: Double) {
+        let clamped = min(max(gain, 0), 4)
+        inputGain = clamped
+        client?.setInputGain(Float(clamped))
+    }
+
+    func updateVoiceActivationThreshold(_ threshold: Double) {
+        let clamped = min(max(threshold, 0.001), 0.5)
+        voiceActivationThreshold = clamped
+        client?.setVoiceActivationThreshold(Float(clamped))
+    }
+
+    func updateAudioTransmitMode(_ mode: TS3AudioTransmitMode) {
+        audioTransmitMode = mode
+        client?.setAudioTransmitMode(mode)
+        if isTalking {
+            client?.stopMicrophone()
+            isTalking = false
+        }
+    }
+
+    var inputGainPercentText: String {
+        "\(Int((inputGain * 100).rounded()))%"
+    }
+
+    var voiceActivationThresholdText: String {
+        String(format: "%.3f", voiceActivationThreshold)
     }
 
     func refreshServerView() {
@@ -1500,6 +1556,7 @@ final class TS3AppModel: ObservableObject {
             return
         }
 
+        applyAudioSettings(to: client)
         switch currentMicrophonePermissionState() {
         case .granted:
             beginTalking(with: client)
@@ -1612,6 +1669,7 @@ final class TS3AppModel: ObservableObject {
     private func beginTalking(with client: TS3Client) {
         Task {
             do {
+                applyAudioSettings(to: client)
                 try client.startMicrophone()
                 await MainActor.run {
                     self.lastError = nil
@@ -1624,6 +1682,13 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    private func applyAudioSettings(to client: TS3Client) {
+        client.setPlaybackVolume(Float(playbackVolume))
+        client.setInputGain(Float(inputGain))
+        client.setAudioTransmitMode(audioTransmitMode)
+        client.setVoiceActivationThreshold(Float(voiceActivationThreshold))
     }
 
     private func currentMicrophonePermissionState() -> MicrophonePermissionState {
