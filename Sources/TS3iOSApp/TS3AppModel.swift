@@ -117,6 +117,34 @@ struct TS3GroupSummary: Identifiable {
     let name: String
 }
 
+struct TS3PermissionInfoSummary: Identifiable {
+    let id: Int
+    let name: String
+    let description: String?
+
+    init(info: TS3PermissionInfo) {
+        self.id = info.id
+        self.name = info.name
+        self.description = info.description
+    }
+}
+
+struct TS3PermissionSummary: Identifiable {
+    let id: String
+    let name: String
+    let value: Int
+    let isNegated: Bool
+    let isSkipped: Bool
+
+    init(permission: TS3Permission) {
+        self.id = permission.id
+        self.name = permission.name
+        self.value = permission.value
+        self.isNegated = permission.isNegated
+        self.isSkipped = permission.isSkipped
+    }
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -225,6 +253,8 @@ final class TS3AppModel: ObservableObject {
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
+    @Published var permissionInfos: [TS3PermissionInfoSummary] = []
+    @Published var ownClientPermissions: [TS3PermissionSummary] = []
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
@@ -401,6 +431,8 @@ final class TS3AppModel: ObservableObject {
         banEntries = []
         serverGroups = []
         channelGroups = []
+        permissionInfos = []
+        ownClientPermissions = []
         serverInfo = .empty
         isTalking = false
         isAway = false
@@ -425,6 +457,33 @@ final class TS3AppModel: ObservableObject {
     func refreshGroups() {
         runClientCommand { client in
             try await client.refreshGroups()
+        }
+    }
+
+    func refreshPermissionList() {
+        runClientCommand { client in
+            let permissions = try await client.refreshPermissionList()
+            await MainActor.run {
+                self.permissionInfos = permissions
+                    .map { TS3PermissionInfoSummary(info: $0) }
+                    .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            }
+        }
+    }
+
+    func refreshOwnClientPermissions() {
+        guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
+            lastError = "Current client details are not available yet."
+            return
+        }
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: ownClient, using: client)
+            let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.ownClientPermissions = permissions
+                    .map { TS3PermissionSummary(permission: $0) }
+                    .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            }
         }
     }
 

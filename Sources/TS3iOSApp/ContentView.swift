@@ -797,6 +797,7 @@ struct ServerToolsSheet: View {
     @State private var privilegeKey = ""
     @State private var importedIdentity = ""
     @State private var isShowingBanList = false
+    @State private var isShowingPermissions = false
 
     var body: some View {
         NavigationView {
@@ -811,6 +812,11 @@ struct ServerToolsSheet: View {
                     }
                     Button("Refresh Permission Groups") {
                         model.refreshGroups()
+                    }
+                    Button("View Permissions") {
+                        model.refreshPermissionList()
+                        model.refreshOwnClientPermissions()
+                        isShowingPermissions = true
                     }
                     Button("Manage Bans") {
                         model.refreshBanList()
@@ -878,7 +884,130 @@ struct ServerToolsSheet: View {
                 BanListSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingPermissions) {
+                PermissionsSheet()
+                    .environmentObject(model)
+            }
         }
+    }
+}
+
+struct PermissionsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var searchText = ""
+
+    var filteredPermissionInfos: [TS3PermissionInfoSummary] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return model.permissionInfos }
+        return model.permissionInfos.filter {
+            $0.name.localizedCaseInsensitiveContains(query) ||
+            String($0.id).contains(query) ||
+            ($0.description?.localizedCaseInsensitiveContains(query) ?? false)
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Current Client Direct Permissions")) {
+                    if model.ownClientPermissions.isEmpty {
+                        Text("No direct client permissions")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.ownClientPermissions) { permission in
+                            PermissionRow(permission: permission)
+                        }
+                    }
+                }
+
+                Section(header: Text("Permission Directory")) {
+                    TextField("Search", text: $searchText)
+                        .ts3PlainTextField()
+                    if filteredPermissionInfos.isEmpty {
+                        Text("No permissions")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(filteredPermissionInfos) { permission in
+                            PermissionInfoRow(permission: permission)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Permissions")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshPermissionList()
+                model.refreshOwnClientPermissions()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshPermissionList()
+                        model.refreshOwnClientPermissions()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct PermissionRow: View {
+    let permission: TS3PermissionSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(permission.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Text("\(permission.value)")
+                    .foregroundColor(.secondary)
+            }
+            HStack(spacing: 10) {
+                if permission.isNegated {
+                    Text("Negated")
+                }
+                if permission.isSkipped {
+                    Text("Skipped")
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 3)
+    }
+}
+
+struct PermissionInfoRow: View {
+    let permission: TS3PermissionInfoSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(permission.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Text("#\(permission.id)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            if let description = permission.description, !description.isEmpty {
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 3)
     }
 }
 

@@ -442,6 +442,19 @@ public final class TS3Client {
         publishGroups()
     }
 
+    public func refreshPermissionList() async throws -> [TS3PermissionInfo] {
+        let responses = try await execute(TS3SingleCommand(name: "permissionlist"))
+        return responses.compactMap { permissionInfo(from: $0) }
+    }
+
+    public func refreshClientPermissions(clientDatabaseId: Int) async throws -> [TS3Permission] {
+        let responses = try await execute(TS3SingleCommand(name: "clientpermlist", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandOption(name: "permsid")
+        ]))
+        return responses.compactMap { permission(from: $0) }
+    }
+
     public func addServerGroup(groupId: Int, toClientDatabaseId clientDatabaseId: Int) async throws {
         _ = try await execute(TS3SingleCommand(name: "servergroupaddclient", parameters: [
             TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
@@ -1954,6 +1967,31 @@ private extension TS3Client {
             return nil
         }
         return TS3ChannelGroup(id: id, name: name)
+    }
+
+    func permissionInfo(from command: TS3SingleCommand) -> TS3PermissionInfo? {
+        guard let id = intValue(command, "permid"),
+              let name = command.get("permname")?.value else {
+            return nil
+        }
+        return TS3PermissionInfo(
+            id: id,
+            name: name,
+            description: command.get("permdesc")?.value
+        )
+    }
+
+    func permission(from command: TS3SingleCommand) -> TS3Permission? {
+        guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
+              let value = intValue(command, "permvalue") else {
+            return nil
+        }
+        return TS3Permission(
+            name: name,
+            value: value,
+            isNegated: boolValue(command, "permnegated"),
+            isSkipped: boolValue(command, "permskip")
+        )
     }
 
     func targetChannelId(from command: TS3SingleCommand) -> Int? {

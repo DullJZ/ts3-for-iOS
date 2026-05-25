@@ -275,6 +275,73 @@ public struct TS3BanEntry: Identifiable {
     }
 }
 
+public struct TS3PermissionInfo: Identifiable {
+    public let id: Int
+    public let name: String
+    public let description: String?
+
+    /// Creates a permission definition from server-provided metadata.
+    public init(id: Int, name: String, description: String?) {
+        self.id = id
+        self.name = name
+        self.description = description
+    }
+}
+
+public struct TS3Permission: Identifiable {
+    public var id: String { name }
+    public let name: String
+    public let value: Int
+    public let isNegated: Bool
+    public let isSkipped: Bool
+
+    /// Creates a permission assignment from server-provided metadata.
+    public init(name: String, value: Int, isNegated: Bool, isSkipped: Bool) {
+        self.name = name
+        self.value = value
+        self.isNegated = isNegated
+        self.isSkipped = isSkipped
+    }
+}
+
+public enum TS3PermissionGroupType: Int {
+    case serverGroup = 0
+    case globalClient = 1
+    case channel = 2
+    case channelGroup = 3
+    case channelClient = 4
+}
+
+public struct TS3PermissionAssignment: Identifiable {
+    public let id = UUID()
+    public let type: TS3PermissionGroupType?
+    public let majorId: Int?
+    public let minorId: Int?
+    public let permissionId: Int
+    public let value: Int
+    public let isNegated: Bool
+    public let isSkipped: Bool
+
+    /// Creates a permission overview entry from server-provided metadata.
+    public init(
+        type: TS3PermissionGroupType?,
+        majorId: Int?,
+        minorId: Int?,
+        permissionId: Int,
+        value: Int,
+        isNegated: Bool,
+        isSkipped: Bool
+    ) {
+        self.type = type
+        self.majorId = majorId
+        self.minorId = minorId
+        self.permissionId = permissionId
+        self.value = value
+        self.isNegated = isNegated
+        self.isSkipped = isSkipped
+    }
+}
+
 public struct TS3ServerGroup: Identifiable {
     public let id: Int
     public let name: String
