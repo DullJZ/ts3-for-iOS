@@ -2233,9 +2233,14 @@ private extension TS3Client {
 
         if command.name == "error" {
             let code = Int(command.get("return_code")?.value ?? "") ?? pendingCommands.keys.min()
-            if let code, var pending = pendingCommands[code] {
+            if let code, let pending = pendingCommands[code] {
                 if let id = command.get("id")?.value, id != "0" {
-                    pending.continuation.resume(throwing: TS3Error.serverError(message: command.get("msg")?.value ?? "error"))
+                    let message = command.get("msg")?.value ?? "error"
+                    if let errorId = Int(id) {
+                        pending.continuation.resume(throwing: TS3Error.serverErrorWithCode(id: errorId, message: message))
+                    } else {
+                        pending.continuation.resume(throwing: TS3Error.serverError(message: message))
+                    }
                 } else {
                     pending.continuation.resume(returning: pending.responses)
                 }

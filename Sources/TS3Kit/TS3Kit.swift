@@ -940,6 +940,7 @@ public enum TS3Error: Error {
     case invalidMac
     case cryptoFailed
     case serverError(message: String)
+    case serverErrorWithCode(id: Int, message: String)
     case packetTooLarge
     case invalidState
     case timeout
@@ -947,6 +948,57 @@ public enum TS3Error: Error {
     case compressionUnsupported
     case decompressionTooLarge
     case fileTransferFailed
+}
+
+extension TS3Error: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .notImplemented:
+            return "This feature is not implemented."
+        case .audioInputUnavailable:
+            return "Audio input is unavailable."
+        case .invalidEscape:
+            return "The command contains an invalid escape sequence."
+        case .ambiguousCommand:
+            return "The command response is ambiguous."
+        case .derDecodeFailed:
+            return "Failed to decode DER data."
+        case .invalidBeta:
+            return "The server returned an invalid beta value."
+        case .invalidInitStep:
+            return "The TeamSpeak handshake step is invalid."
+        case .invalidCommand:
+            return "The TeamSpeak command is invalid."
+        case .invalidIdentity:
+            return "The TeamSpeak identity is invalid."
+        case .invalidKey:
+            return "The key is invalid."
+        case .invalidLicense:
+            return "The license data is invalid."
+        case .invalidMac:
+            return "The packet authentication code is invalid."
+        case .cryptoFailed:
+            return "A cryptographic operation failed."
+        case .serverError(let message):
+            return message
+        case .serverErrorWithCode(let id, let message):
+            return "\(message) (id \(id))"
+        case .packetTooLarge:
+            return "The packet is too large."
+        case .invalidState:
+            return "The client is in an invalid state for this operation."
+        case .timeout:
+            return "The connection timed out."
+        case .disconnected:
+            return "The client is disconnected."
+        case .compressionUnsupported:
+            return "The compression format is unsupported."
+        case .decompressionTooLarge:
+            return "The decompressed payload is too large."
+        case .fileTransferFailed:
+            return "The file transfer failed."
+        }
+    }
 }
 
 public enum TS3LogLevel: String {
