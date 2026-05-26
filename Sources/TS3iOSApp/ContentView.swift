@@ -715,6 +715,7 @@ struct ChannelIconView: View {
 }
 
 enum UserActionMode: Identifiable {
+    case info
     case privateMessage
     case offlineMessage
     case poke
@@ -726,6 +727,7 @@ enum UserActionMode: Identifiable {
 
     var id: String {
         switch self {
+        case .info: return "info"
         case .privateMessage: return "privateMessage"
         case .offlineMessage: return "offlineMessage"
         case .poke: return "poke"
@@ -793,6 +795,9 @@ struct ChannelMemberRow: View {
             }
             Spacer()
             Menu {
+                Button("Client Info") {
+                    actionMode = .info
+                }
                 Button("Send Private Message") {
                     actionMode = .privateMessage
                 }
@@ -901,6 +906,7 @@ struct UserActionSheet: View {
 
     var title: String {
         switch mode {
+        case .info: return "Client Info"
         case .privateMessage: return "Private Message"
         case .offlineMessage: return "Offline Message"
         case .poke: return "Poke"
@@ -914,6 +920,7 @@ struct UserActionSheet: View {
 
     var fieldTitle: String {
         switch mode {
+        case .info: return "Details"
         case .privateMessage: return "Message"
         case .offlineMessage: return "Message"
         case .poke: return "Poke Message"
@@ -925,6 +932,7 @@ struct UserActionSheet: View {
 
     var actionTitle: String {
         switch mode {
+        case .info: return "Refresh"
         case .privateMessage: return "Send"
         case .offlineMessage: return "Send"
         case .poke: return "Poke"
@@ -938,54 +946,62 @@ struct UserActionSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text(user.nickname)) {
-                    if mode == .offlineMessage {
-                        TextField("Subject", text: $subject)
-                            .ts3PlainTextField()
-                    }
-                    TextField(fieldTitle, text: $text)
-                        .ts3PlainTextField()
-                }
-                if mode == .ban {
-                    Section(header: Text("Duration")) {
-                        Picker("Duration", selection: $banDuration) {
-                            ForEach(TS3BanDuration.allCases) { duration in
-                                Text(duration.title).tag(duration)
-                            }
-                        }
-                        if banDuration == .custom {
-                            TextField("Minutes", text: $customBanMinutes)
+                if mode == .info {
+                    UserInfoRows(user: currentUser)
+                } else {
+                    Section(header: Text(user.nickname)) {
+                        if mode == .offlineMessage {
+                            TextField("Subject", text: $subject)
                                 .ts3PlainTextField()
                         }
+                        TextField(fieldTitle, text: $text)
+                            .ts3PlainTextField()
                     }
-                }
-                Section {
-                    Button(actionTitle) {
-                        switch mode {
-                        case .privateMessage:
-                            model.sendPrivateMessage(text, to: user)
-                        case .offlineMessage:
-                            model.sendOfflineMessage(to: user, subject: subject, message: text)
-                        case .poke:
-                            model.pokeUser(user, message: text)
-                        case .editDescription:
-                            model.editUserDescription(user, description: text)
-                        case .complain:
-                            model.complainAboutUser(user, message: text)
-                        case .kickChannel:
-                            model.kickUserFromChannel(user, message: text.isEmpty ? nil : text)
-                        case .kickServer:
-                            model.kickUserFromServer(user, message: text.isEmpty ? nil : text)
-                        case .ban:
-                            model.banUser(
-                                user,
-                                durationSeconds: banDuration.seconds(customMinutes: customBanMinutes),
-                                message: text.isEmpty ? nil : text
-                            )
+                    if mode == .ban {
+                        Section(header: Text("Duration")) {
+                            Picker("Duration", selection: $banDuration) {
+                                ForEach(TS3BanDuration.allCases) { duration in
+                                    Text(duration.title).tag(duration)
+                                }
+                            }
+                            if banDuration == .custom {
+                                TextField("Minutes", text: $customBanMinutes)
+                                    .ts3PlainTextField()
+                            }
                         }
-                        presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(isActionDisabled)
+                    if mode != .info {
+                        Section {
+                            Button(actionTitle) {
+                                switch mode {
+                                case .info:
+                                    break
+                                case .privateMessage:
+                                    model.sendPrivateMessage(text, to: user)
+                                case .offlineMessage:
+                                    model.sendOfflineMessage(to: user, subject: subject, message: text)
+                                case .poke:
+                                    model.pokeUser(user, message: text)
+                                case .editDescription:
+                                    model.editUserDescription(user, description: text)
+                                case .complain:
+                                    model.complainAboutUser(user, message: text)
+                                case .kickChannel:
+                                    model.kickUserFromChannel(user, message: text.isEmpty ? nil : text)
+                                case .kickServer:
+                                    model.kickUserFromServer(user, message: text.isEmpty ? nil : text)
+                                case .ban:
+                                    model.banUser(
+                                        user,
+                                        durationSeconds: banDuration.seconds(customMinutes: customBanMinutes),
+                                        message: text.isEmpty ? nil : text
+                                    )
+                                }
+                                presentationMode.wrappedValue.dismiss()
+                            }
+                            .disabled(isActionDisabled)
+                        }
+                    }
                 }
             }
             .navigationTitle(title)
@@ -993,6 +1009,9 @@ struct UserActionSheet: View {
             .onAppear {
                 if mode == .editDescription {
                     text = user.description ?? ""
+                }
+                if mode == .info {
+                    model.refreshUserDetails(user)
                 }
             }
             .toolbar {
@@ -1008,6 +1027,8 @@ struct UserActionSheet: View {
     private var isActionDisabled: Bool {
         let textIsEmpty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         switch mode {
+        case .info:
+            return true
         case .privateMessage, .poke, .complain:
             return textIsEmpty
         case .offlineMessage:
@@ -1017,6 +1038,61 @@ struct UserActionSheet: View {
         case .ban:
             return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
         }
+    }
+
+    private var currentUser: TS3UserSummary {
+        model.clients.first(where: { $0.id == user.id }) ?? user
+    }
+}
+
+struct UserInfoRows: View {
+    let user: TS3UserSummary
+
+    var body: some View {
+        Section(header: Text(user.nickname)) {
+            ServerInfoDetailRow(label: "Client ID", value: String(user.id))
+            ServerInfoDetailRow(label: "Database ID", value: user.databaseId.map(String.init))
+            ServerInfoDetailRow(label: "Unique ID", value: user.uniqueIdentifier, monospaced: true)
+            ServerInfoDetailRow(label: "Channel", value: String(user.channelId))
+            ServerInfoDetailRow(label: "Country", value: user.country)
+            ServerInfoDetailRow(label: "IP Address", value: user.ipAddress)
+        }
+
+        Section(header: Text("Application")) {
+            ServerInfoDetailRow(label: "Platform", value: user.platform)
+            ServerInfoDetailRow(label: "Version", value: user.version)
+        }
+
+        Section(header: Text("Activity")) {
+            ServerInfoDetailRow(label: "Connected", value: durationText(user.connectedSeconds))
+            ServerInfoDetailRow(label: "Idle", value: durationText(user.idleTimeSeconds))
+            ServerInfoDetailRow(label: "Total Connections", value: user.totalConnections.map(String.init))
+            ServerInfoDetailRow(label: "Created", value: dateText(user.createdAt))
+            ServerInfoDetailRow(label: "Last Connected", value: dateText(user.lastConnectedAt))
+        }
+
+        Section(header: Text("Status")) {
+            ServerInfoDetailRow(label: "Away", value: user.isAway ? (user.awayMessage?.isEmpty == false ? user.awayMessage : "Yes") : "No")
+            ServerInfoDetailRow(label: "Input Muted", value: user.isInputMuted ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Output Muted", value: user.isOutputMuted ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
+        }
+    }
+
+    private func dateText(_ date: Date?) -> String? {
+        guard let date else { return nil }
+        return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .short)
+    }
+
+    private func durationText(_ seconds: Int?) -> String? {
+        guard let seconds else { return nil }
+        if seconds < 60 { return "\(seconds)s" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes)m \(seconds % 60)s" }
+        let hours = minutes / 60
+        if hours < 24 { return "\(hours)h \(minutes % 60)m" }
+        let days = hours / 24
+        return "\(days)d \(hours % 24)h"
     }
 }
 

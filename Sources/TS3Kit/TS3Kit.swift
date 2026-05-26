@@ -380,6 +380,24 @@ public struct TS3ServerClient: Identifiable {
     public let serverGroups: [Int]
     public let description: String?
     public let avatarHash: String?
+    /// The client application version reported by `clientinfo`.
+    public let version: String?
+    /// The client platform reported by `clientinfo`.
+    public let platform: String?
+    /// The two-letter country code reported by `clientinfo`.
+    public let country: String?
+    /// The remote IP address reported by `clientinfo`, when visible.
+    public let ipAddress: String?
+    /// The database record creation date, when reported.
+    public let createdAt: Date?
+    /// The last connection date, when reported.
+    public let lastConnectedAt: Date?
+    /// The number of times this client has connected to the server.
+    public let totalConnections: Int?
+    /// The client idle time in seconds, when reported.
+    public let idleTimeSeconds: Int?
+    /// The current connection duration in seconds, when reported.
+    public let connectedSeconds: Int?
 
     /// Creates a server client snapshot from server-provided metadata.
     public init(
@@ -397,7 +415,16 @@ public struct TS3ServerClient: Identifiable {
         channelGroupId: Int? = nil,
         serverGroups: [Int] = [],
         description: String? = nil,
-        avatarHash: String? = nil
+        avatarHash: String? = nil,
+        version: String? = nil,
+        platform: String? = nil,
+        country: String? = nil,
+        ipAddress: String? = nil,
+        createdAt: Date? = nil,
+        lastConnectedAt: Date? = nil,
+        totalConnections: Int? = nil,
+        idleTimeSeconds: Int? = nil,
+        connectedSeconds: Int? = nil
     ) {
         self.id = id
         self.channelId = channelId
@@ -414,6 +441,15 @@ public struct TS3ServerClient: Identifiable {
         self.serverGroups = serverGroups
         self.description = description
         self.avatarHash = avatarHash
+        self.version = version
+        self.platform = platform
+        self.country = country
+        self.ipAddress = ipAddress
+        self.createdAt = createdAt
+        self.lastConnectedAt = lastConnectedAt
+        self.totalConnections = totalConnections
+        self.idleTimeSeconds = idleTimeSeconds
+        self.connectedSeconds = connectedSeconds
     }
 }
 

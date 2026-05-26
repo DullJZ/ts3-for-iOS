@@ -2345,7 +2345,16 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
             description: command.get("client_description")?.value,
-            avatarHash: command.get("client_base64HashClientUID")?.value
+            avatarHash: command.get("client_base64HashClientUID")?.value,
+            version: command.get("client_version")?.value,
+            platform: command.get("client_platform")?.value,
+            country: command.get("client_country")?.value,
+            ipAddress: command.get("connection_client_ip")?.value,
+            createdAt: dateValue(command, "client_created"),
+            lastConnectedAt: dateValue(command, "client_lastconnected"),
+            totalConnections: intValue(command, "client_totalconnections"),
+            idleTimeSeconds: intValue(command, "client_idle_time").map { $0 / 1000 },
+            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 }
         )
     }
 
@@ -2370,7 +2379,16 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
             description: command.get("client_description")?.value ?? existing?.description,
-            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash
+            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash,
+            version: command.get("client_version")?.value ?? existing?.version,
+            platform: command.get("client_platform")?.value ?? existing?.platform,
+            country: command.get("client_country")?.value ?? existing?.country,
+            ipAddress: command.get("connection_client_ip")?.value ?? existing?.ipAddress,
+            createdAt: dateValue(command, "client_created") ?? existing?.createdAt,
+            lastConnectedAt: dateValue(command, "client_lastconnected") ?? existing?.lastConnectedAt,
+            totalConnections: intValue(command, "client_totalconnections") ?? existing?.totalConnections,
+            idleTimeSeconds: intValue(command, "client_idle_time").map { $0 / 1000 } ?? existing?.idleTimeSeconds,
+            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 } ?? existing?.connectedSeconds
         )
     }
 
@@ -2396,7 +2414,16 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
             description: command.get("client_description")?.value ?? existing.description,
-            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing.avatarHash
+            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing.avatarHash,
+            version: command.get("client_version")?.value ?? existing.version,
+            platform: command.get("client_platform")?.value ?? existing.platform,
+            country: command.get("client_country")?.value ?? existing.country,
+            ipAddress: command.get("connection_client_ip")?.value ?? existing.ipAddress,
+            createdAt: dateValue(command, "client_created") ?? existing.createdAt,
+            lastConnectedAt: dateValue(command, "client_lastconnected") ?? existing.lastConnectedAt,
+            totalConnections: intValue(command, "client_totalconnections") ?? existing.totalConnections,
+            idleTimeSeconds: intValue(command, "client_idle_time").map { $0 / 1000 } ?? existing.idleTimeSeconds,
+            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 } ?? existing.connectedSeconds
         )
         clientCache[clid] = existing
         return existing
@@ -2422,7 +2449,16 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
             description: command.get("client_description")?.value ?? existing?.description,
-            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash
+            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash,
+            version: command.get("client_version")?.value ?? existing?.version,
+            platform: command.get("client_platform")?.value ?? existing?.platform,
+            country: command.get("client_country")?.value ?? existing?.country,
+            ipAddress: command.get("connection_client_ip")?.value ?? existing?.ipAddress,
+            createdAt: dateValue(command, "client_created") ?? existing?.createdAt,
+            lastConnectedAt: dateValue(command, "client_lastconnected") ?? existing?.lastConnectedAt,
+            totalConnections: intValue(command, "client_totalconnections") ?? existing?.totalConnections,
+            idleTimeSeconds: intValue(command, "client_idle_time").map { $0 / 1000 } ?? existing?.idleTimeSeconds,
+            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 } ?? existing?.connectedSeconds
         )
         clientCache[key] = updated
         return updated
@@ -2454,7 +2490,16 @@ private extension TS3Client {
             channelGroupId: client.channelGroupId,
             serverGroups: client.serverGroups,
             description: description ?? client.description,
-            avatarHash: avatarHash ?? client.avatarHash
+            avatarHash: avatarHash ?? client.avatarHash,
+            version: client.version,
+            platform: client.platform,
+            country: client.country,
+            ipAddress: client.ipAddress,
+            createdAt: client.createdAt,
+            lastConnectedAt: client.lastConnectedAt,
+            totalConnections: client.totalConnections,
+            idleTimeSeconds: client.idleTimeSeconds,
+            connectedSeconds: client.connectedSeconds
         )
     }
 

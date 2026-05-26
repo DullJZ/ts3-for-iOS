@@ -54,6 +54,15 @@ struct TS3UserSummary: Identifiable {
     let description: String?
     let avatarHash: String?
     let avatarURL: URL?
+    let version: String?
+    let platform: String?
+    let country: String?
+    let ipAddress: String?
+    let createdAt: Date?
+    let lastConnectedAt: Date?
+    let totalConnections: Int?
+    let idleTimeSeconds: Int?
+    let connectedSeconds: Int?
 }
 
 struct TS3ChatMessageSummary: Identifiable {
@@ -1594,7 +1603,19 @@ final class TS3AppModel: ObservableObject {
             if let updated {
                 await MainActor.run {
                     self.updateUser(clientId: user.id) { existing in
-                        self.copyUser(existing, avatarHash: updated.avatarHash)
+                        self.copyUser(
+                            existing,
+                            avatarHash: updated.avatarHash,
+                            version: updated.version,
+                            platform: updated.platform,
+                            country: updated.country,
+                            ipAddress: updated.ipAddress,
+                            createdAt: updated.createdAt,
+                            lastConnectedAt: updated.lastConnectedAt,
+                            totalConnections: updated.totalConnections,
+                            idleTimeSeconds: updated.idleTimeSeconds,
+                            connectedSeconds: updated.connectedSeconds
+                        )
                     }
                 }
             }
@@ -2054,7 +2075,16 @@ final class TS3AppModel: ObservableObject {
         serverGroups: [Int]? = nil,
         description: String? = nil,
         avatarHash: String? = nil,
-        avatarURL: URL? = nil
+        avatarURL: URL? = nil,
+        version: String? = nil,
+        platform: String? = nil,
+        country: String? = nil,
+        ipAddress: String? = nil,
+        createdAt: Date? = nil,
+        lastConnectedAt: Date? = nil,
+        totalConnections: Int? = nil,
+        idleTimeSeconds: Int? = nil,
+        connectedSeconds: Int? = nil
     ) -> TS3UserSummary {
         TS3UserSummary(
             id: user.id,
@@ -2072,7 +2102,16 @@ final class TS3AppModel: ObservableObject {
             serverGroups: serverGroups ?? user.serverGroups,
             description: description ?? user.description,
             avatarHash: avatarHash ?? user.avatarHash,
-            avatarURL: avatarURL ?? user.avatarURL
+            avatarURL: avatarURL ?? user.avatarURL,
+            version: version ?? user.version,
+            platform: platform ?? user.platform,
+            country: country ?? user.country,
+            ipAddress: ipAddress ?? user.ipAddress,
+            createdAt: createdAt ?? user.createdAt,
+            lastConnectedAt: lastConnectedAt ?? user.lastConnectedAt,
+            totalConnections: totalConnections ?? user.totalConnections,
+            idleTimeSeconds: idleTimeSeconds ?? user.idleTimeSeconds,
+            connectedSeconds: connectedSeconds ?? user.connectedSeconds
         )
     }
 
@@ -2622,7 +2661,16 @@ extension TS3AppModel: TS3ClientDelegate {
                     serverGroups: client.serverGroups,
                     description: client.description,
                     avatarHash: client.avatarHash,
-                    avatarURL: avatarURL
+                    avatarURL: avatarURL,
+                    version: client.version,
+                    platform: client.platform,
+                    country: client.country,
+                    ipAddress: client.ipAddress,
+                    createdAt: client.createdAt,
+                    lastConnectedAt: client.lastConnectedAt,
+                    totalConnections: client.totalConnections,
+                    idleTimeSeconds: client.idleTimeSeconds,
+                    connectedSeconds: client.connectedSeconds
                 )
             }
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {
