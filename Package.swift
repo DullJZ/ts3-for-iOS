@@ -37,6 +37,11 @@ let package = Package(
             name: "TS3CLI",
             dependencies: ["TS3Kit"],
             path: "Sources/TS3CLI"
+        ),
+        .testTarget(
+            name: "TS3KitTests",
+            dependencies: ["TS3Kit"],
+            path: "Tests/TS3KitTests"
         )
     ]
 )

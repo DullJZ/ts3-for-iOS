@@ -853,6 +853,19 @@ public struct TS3FileTransferParameters {
     }
 }
 
+/// Utilities for TeamSpeak virtual server icon files.
+public enum TS3IconFile {
+    /// Returns the virtual server file path for an icon id.
+    public static func path(for iconId: Int) -> String {
+        "/icon_\(iconId)"
+    }
+
+    /// Calculates the TeamSpeak icon id for icon file bytes.
+    public static func iconId(for data: Data) -> Int {
+        Int(TS3CRC32.checksum(data))
+    }
+}
+
 /// Describes whether a permission group is a template, regular, or query group.
 public enum TS3PermissionGroupDatabaseType: Int, CaseIterable, Identifiable {
     /// A template group used as a basis for new groups.

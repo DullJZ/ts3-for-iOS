@@ -1398,6 +1398,15 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func uploadServerIcon(from source: URL, updateDraft: ((Int) -> Void)? = nil) {
+        uploadIcon(from: source) { client, iconId in
+            try await client.editServer(TS3ServerEdit(iconId: iconId))
+        } onSuccess: { iconId in
+            updateDraft?(iconId)
+            self.serverInfo.iconId = iconId
+        }
+    }
+
     func refreshBanList() {
         runClientCommand { client in
             let entries = try await client.refreshBanList()
@@ -1575,6 +1584,56 @@ final class TS3AppModel: ObservableObject {
                     self.fileTransferStatus = "Uploaded \(remoteName)"
                     self.lastError = nil
                     self.refreshFileList()
+                }
+            } catch {
+                await MainActor.run {
+                    self.fileTransferProgress = nil
+                    self.fileTransferStatus = nil
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func uploadIcon(
+        from source: URL,
+        apply: @escaping (TS3Client, Int) async throws -> Void,
+        onSuccess: @escaping @MainActor (Int) -> Void
+    ) {
+        guard let client else {
+            lastError = "Connect to a server first."
+            return
+        }
+        Task {
+            let didAccess = source.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess {
+                    source.stopAccessingSecurityScopedResource()
+                }
+            }
+            do {
+                let data = try Data(contentsOf: source)
+                let iconId = TS3IconFile.iconId(for: data)
+                let fileName = source.lastPathComponent
+                await MainActor.run {
+                    self.fileTransferStatus = "Preparing icon upload: \(fileName)"
+                    self.fileTransferProgress = 0
+                }
+                let parameters = try await client.initIconUpload(iconId: iconId, size: Int64(data.count))
+                try await TS3FileTransfer.upload(parameters: parameters, from: source) { sent, total in
+                    Task { @MainActor in
+                        if let total, total > 0 {
+                            self.fileTransferProgress = min(1, Double(sent) / Double(total))
+                        }
+                        self.fileTransferStatus = "Uploading icon \(iconId): \(Self.transferProgressText(sent, total: total))"
+                    }
+                }
+                try await apply(client, iconId)
+                await MainActor.run {
+                    self.fileTransferProgress = 1
+                    self.fileTransferStatus = "Uploaded icon \(iconId)"
+                    self.lastError = nil
+                    onSuccess(iconId)
                 }
             } catch {
                 await MainActor.run {
@@ -1970,6 +2029,18 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func uploadSelfIcon(from source: URL, updateDraft: ((Int) -> Void)? = nil) {
+        uploadIcon(from: source) { client, iconId in
+            try await client.setClientIcon(iconId: iconId)
+        } onSuccess: { iconId in
+            updateDraft?(iconId)
+            guard let ownClient = self.clients.first(where: { $0.isCurrentUser }) else { return }
+            self.updateUser(clientId: ownClient.id) { existing in
+                self.copyUser(existing, iconId: iconId)
+            }
+        }
+    }
+
     func createChannel(
         name: String,
         parentId: Int?,
@@ -2061,6 +2132,38 @@ final class TS3AppModel: ObservableObject {
                 maxFamilyClientsInherited: maxFamilyClientsInherited,
                 iconId: iconId
             )
+        }
+    }
+
+    func uploadChannelIcon(from source: URL, for channel: TS3ChannelSummary, updateDraft: ((Int) -> Void)? = nil) {
+        uploadIcon(from: source) { client, iconId in
+            try await client.editChannel(
+                channelId: channel.id,
+                name: nil,
+                phoneticName: nil,
+                topic: nil,
+                description: nil,
+                password: nil,
+                iconId: iconId
+            )
+        } onSuccess: { iconId in
+            updateDraft?(iconId)
+            self.channels = self.channels.map { existing in
+                var updated = existing
+                if existing.id == channel.id {
+                    updated.iconId = iconId
+                    updated.iconURL = self.channelIconURLs[iconId]
+                }
+                return updated
+            }
+            self.refreshMissingChannelIcons()
+        }
+    }
+
+    func uploadDraftChannelIcon(from source: URL, updateDraft: @escaping (Int) -> Void) {
+        uploadIcon(from: source) { _, _ in
+        } onSuccess: { iconId in
+            updateDraft(iconId)
         }
     }
 

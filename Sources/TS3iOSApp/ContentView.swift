@@ -2535,6 +2535,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var hostButtonURL = ""
     @State private var hostButtonGraphicsURL = ""
     @State private var iconId = ""
+    @State private var isShowingIconImporter = false
 
     var body: some View {
         NavigationView {
@@ -2556,6 +2557,11 @@ struct ServerSettingsEditorSheet: View {
                     TextField("Icon ID", text: $iconId)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
+                    Button {
+                        isShowingIconImporter = true
+                    } label: {
+                        Label("Upload Icon", systemImage: "photo")
+                    }
                 }
 
                 Section(header: Text("Host Message")) {
@@ -2604,6 +2610,17 @@ struct ServerSettingsEditorSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
                         presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $isShowingIconImporter,
+                allowedContentTypes: [.image, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    model.uploadServerIcon(from: url) { uploadedIconId in
+                        iconId = String(uploadedIconId)
                     }
                 }
             }
@@ -3936,6 +3953,7 @@ struct ChannelEditorSheet: View {
     @State private var maxFamilyClientsUnlimited = true
     @State private var maxFamilyClientsInherited = false
     @State private var iconId = ""
+    @State private var isShowingIconImporter = false
 
     var title: String {
         switch mode {
@@ -3963,6 +3981,11 @@ struct ChannelEditorSheet: View {
                     }
                     TextField("Icon ID", text: $iconId)
                         .ts3NumericKeyboard()
+                    Button {
+                        isShowingIconImporter = true
+                    } label: {
+                        Label("Upload Icon", systemImage: "photo")
+                    }
                 }
 
                 Section(header: Text("Voice")) {
@@ -4072,6 +4095,24 @@ struct ChannelEditorSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
                         presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $isShowingIconImporter,
+                allowedContentTypes: [.image, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    switch mode {
+                    case .create:
+                        model.uploadDraftChannelIcon(from: url) { uploadedIconId in
+                            iconId = String(uploadedIconId)
+                        }
+                    case let .edit(channel):
+                        model.uploadChannelIcon(from: url, for: channel) { uploadedIconId in
+                            iconId = String(uploadedIconId)
+                        }
                     }
                 }
             }
@@ -4221,6 +4262,7 @@ struct SelfStatusSheet: View {
     @State private var isChannelCommander = false
     @State private var talkRequestMessage = ""
     @State private var selfIconId = ""
+    @State private var isShowingIconImporter = false
 
     var body: some View {
         NavigationView {
@@ -4258,6 +4300,11 @@ struct SelfStatusSheet: View {
                         model.setSelfIcon(iconId: Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)))
                     }
                     .disabled(!selfIconId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)) == nil)
+                    Button {
+                        isShowingIconImporter = true
+                    } label: {
+                        Label("Upload Client Icon", systemImage: "photo")
+                    }
                 }
 
                 Section(header: Text("Talk Power")) {
@@ -4292,6 +4339,17 @@ struct SelfStatusSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $isShowingIconImporter,
+                allowedContentTypes: [.image, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    model.uploadSelfIcon(from: url) { uploadedIconId in
+                        selfIconId = String(uploadedIconId)
                     }
                 }
             }
