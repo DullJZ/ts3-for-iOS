@@ -145,6 +145,23 @@ struct ConnectView: View {
                 }
             }
 
+            if let snapshot = model.lastConnectionSnapshot {
+                Section(header: Text("Recent Connection")) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(snapshot.title)
+                        if let message = model.lastDisconnectMessage, !message.isEmpty {
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Button("Reconnect") {
+                        model.reconnect()
+                    }
+                    .disabled(snapshot.host.isEmpty || snapshot.nickname.isEmpty)
+                }
+            }
+
             Section {
                 Button(action: {
                     model.connect()

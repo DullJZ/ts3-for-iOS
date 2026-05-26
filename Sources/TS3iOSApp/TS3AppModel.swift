@@ -499,6 +499,20 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     }
 }
 
+struct TS3ConnectionSnapshot {
+    let host: String
+    let port: String
+    let nickname: String
+    let serverPassword: String
+    let defaultChannel: String
+    let defaultChannelPassword: String
+    let privilegeKey: String
+
+    var title: String {
+        "\(host):\(port)"
+    }
+}
+
 struct TS3IdentitySummary {
     var uid: String
     var securityLevel: Int
@@ -727,6 +741,8 @@ final class TS3AppModel: ObservableObject {
     @Published var privilegeKey = ""
     @Published var nickname = TS3PlatformSupport.defaultNickname
     @Published var awayMessage = ""
+    @Published private(set) var lastConnectionSnapshot: TS3ConnectionSnapshot?
+    @Published private(set) var lastDisconnectMessage: String?
 
     private var client: TS3Client?
     private var iconURLs: [Int: URL] = [:]
@@ -844,9 +860,11 @@ final class TS3AppModel: ObservableObject {
 
     func connect() {
         lastError = nil
+        lastDisconnectMessage = nil
         state = .connecting
 
         let port = Int(serverPort) ?? 9987
+        lastConnectionSnapshot = currentConnectionSnapshot(port: port)
         let config = TS3ClientConfig(
             host: serverHost,
             port: port,
@@ -873,10 +891,30 @@ final class TS3AppModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.lastError = error.localizedDescription
+                    self.lastDisconnectMessage = error.localizedDescription
+                    if self.client === newClient {
+                        self.client = nil
+                    }
+                    self.clearConnectionState(keepLastConnection: true)
                     self.state = .disconnected
                 }
             }
         }
+    }
+
+    func reconnect() {
+        guard let snapshot = lastConnectionSnapshot else {
+            lastError = "No previous connection is available."
+            return
+        }
+        serverHost = snapshot.host
+        serverPort = snapshot.port
+        nickname = snapshot.nickname
+        serverPassword = snapshot.serverPassword
+        defaultChannel = snapshot.defaultChannel
+        defaultChannelPassword = snapshot.defaultChannelPassword
+        privilegeKey = snapshot.privilegeKey
+        connect()
     }
 
     func applyBookmark(_ bookmark: TS3BookmarkSummary) {
@@ -934,7 +972,24 @@ final class TS3AppModel: ObservableObject {
         client?.delegate = nil
         client?.disconnect(reason: "ui-disconnect")
         client = nil
+        lastDisconnectMessage = nil
+        clearConnectionState(keepLastConnection: true)
         state = .disconnected
+    }
+
+    private func currentConnectionSnapshot(port: Int? = nil) -> TS3ConnectionSnapshot {
+        TS3ConnectionSnapshot(
+            host: serverHost.trimmingCharacters(in: .whitespacesAndNewlines),
+            port: String(port ?? (Int(serverPort) ?? 9987)),
+            nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            serverPassword: serverPassword,
+            defaultChannel: defaultChannel,
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey
+        )
+    }
+
+    private func clearConnectionState(keepLastConnection: Bool) {
         channels = []
         clients = []
         chatMessages = []
@@ -975,6 +1030,9 @@ final class TS3AppModel: ObservableObject {
         iconURLs = [:]
         iconDownloads = []
         failedIconIds = []
+        if !keepLastConnection {
+            lastConnectionSnapshot = nil
+        }
     }
 
     func updatePlaybackVolume(_ volume: Double) {
@@ -3213,6 +3271,7 @@ private enum MicrophonePermissionState {
 extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3ClientDidConnect(_ client: TS3Client) {
         Task { @MainActor in
+            self.lastDisconnectMessage = nil
             self.state = .connected
         }
     }
@@ -3220,9 +3279,14 @@ extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3Client(_ client: TS3Client, didDisconnectWith error: Error?) {
         Task { @MainActor in
             if let error {
-                self.lastError = error.localizedDescription
+                let message = error.localizedDescription
+                self.lastError = message
+                self.lastDisconnectMessage = message
             }
-            self.isTalking = false
+            if self.client === client {
+                self.client = nil
+            }
+            self.clearConnectionState(keepLastConnection: true)
             self.state = .disconnected
         }
     }
