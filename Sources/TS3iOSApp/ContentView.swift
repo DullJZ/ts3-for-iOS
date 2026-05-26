@@ -1068,6 +1068,23 @@ enum UserActionMode: Identifiable {
     }
 }
 
+enum DatabaseClientActionMode: Identifiable {
+    case offlineMessage
+    case complain
+    case ban
+
+    var id: String {
+        switch self {
+        case .offlineMessage:
+            return "offlineMessage"
+        case .complain:
+            return "complain"
+        case .ban:
+            return "ban"
+        }
+    }
+}
+
 struct ChannelMemberRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let member: TS3UserSummary
@@ -2535,6 +2552,8 @@ struct ClientDatabaseSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
     @State private var isShowingDescriptionEditor = false
+    @State private var actionMode: DatabaseClientActionMode?
+    @State private var isShowingComplaints = false
     @State private var isConfirmingDelete = false
 
     var displayedRecords: [TS3DatabaseClientSummary] {
@@ -2578,6 +2597,21 @@ struct ClientDatabaseSheet: View {
                         Button("Edit Description") {
                             isShowingDescriptionEditor = true
                         }
+                        Button("Send Offline Message") {
+                            actionMode = .offlineMessage
+                        }
+                        .disabled(selected.uniqueIdentifier == nil)
+                        Button("Submit Complaint") {
+                            actionMode = .complain
+                        }
+                        Button("View Complaints") {
+                            model.refreshComplaints(for: selected)
+                            isShowingComplaints = true
+                        }
+                        Button("Ban Unique ID") {
+                            actionMode = .ban
+                        }
+                        .disabled(selected.uniqueIdentifier == nil)
                         Button("Delete Database Record") {
                             isConfirmingDelete = true
                         }
@@ -2610,12 +2644,22 @@ struct ClientDatabaseSheet: View {
                     }
                 }
             }
+            .sheet(item: $actionMode) { mode in
+                if let selected = model.selectedDatabaseClient {
+                    DatabaseClientActionSheet(mode: mode, record: selected)
+                        .environmentObject(model)
+                }
+            }
             .sheet(isPresented: $isShowingDescriptionEditor) {
                 if let selected = model.selectedDatabaseClient {
                     DatabaseClientDescriptionSheet(record: selected) { description in
                         model.editDatabaseClientDescription(selected, description: description)
                     }
                 }
+            }
+            .sheet(isPresented: $isShowingComplaints) {
+                ComplaintListSheet()
+                    .environmentObject(model)
             }
             .alert(isPresented: $isConfirmingDelete) {
                 Alert(
@@ -2668,6 +2712,120 @@ struct DatabaseClientDescriptionSheet: View {
                     }
                 }
             }
+        }
+    }
+}
+
+struct DatabaseClientActionSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let mode: DatabaseClientActionMode
+    let record: TS3DatabaseClientSummary
+    @State private var subject = ""
+    @State private var text = ""
+    @State private var duration: TS3BanDuration = .permanent
+    @State private var customBanMinutes = "60"
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(record.nickname)) {
+                    if mode == .offlineMessage {
+                        TextField("Subject", text: $subject)
+                            .ts3PlainTextField()
+                    }
+                    TextField(fieldTitle, text: $text)
+                        .ts3PlainTextField()
+                    if mode == .ban {
+                        Picker("Duration", selection: $duration) {
+                            ForEach(TS3BanDuration.allCases) { duration in
+                                Text(duration.title).tag(duration)
+                            }
+                        }
+                        if duration == .custom {
+                            TextField("Minutes", text: $customBanMinutes)
+                                .ts3PlainTextField()
+                                .ts3NumericKeyboard()
+                        }
+                    }
+                }
+                Section {
+                    Button(actionTitle) {
+                        submit()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(isActionDisabled)
+                }
+            }
+            .navigationTitle(title)
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var title: String {
+        switch mode {
+        case .offlineMessage:
+            return "Offline Message"
+        case .complain:
+            return "Submit Complaint"
+        case .ban:
+            return "Ban Unique ID"
+        }
+    }
+
+    private var fieldTitle: String {
+        switch mode {
+        case .offlineMessage:
+            return "Message"
+        case .complain:
+            return "Complaint"
+        case .ban:
+            return "Reason"
+        }
+    }
+
+    private var actionTitle: String {
+        switch mode {
+        case .offlineMessage:
+            return "Send"
+        case .complain:
+            return "Submit Complaint"
+        case .ban:
+            return "Ban"
+        }
+    }
+
+    private var isActionDisabled: Bool {
+        let textIsEmpty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        switch mode {
+        case .offlineMessage:
+            return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .complain:
+            return textIsEmpty
+        case .ban:
+            return duration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
+        }
+    }
+
+    private func submit() {
+        switch mode {
+        case .offlineMessage:
+            model.sendOfflineMessage(to: record, subject: subject, message: text)
+        case .complain:
+            model.complainAboutDatabaseClient(record, message: text)
+        case .ban:
+            model.banDatabaseClient(
+                record,
+                durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+                reason: text.isEmpty ? nil : text
+            )
         }
     }
 }
@@ -3889,15 +4047,21 @@ struct ComplaintListSheet: View {
         NavigationView {
             List {
                 Section(header: Text("User")) {
-                    if model.clients.filter({ !$0.isCurrentUser }).isEmpty {
-                        Text("No other users")
-                            .foregroundColor(.secondary)
-                    } else {
+                    if let target = model.complaintTarget {
+                        ServerInfoDetailRow(label: "Selected", value: target.nickname)
+                        if let databaseId = target.databaseId {
+                            ServerInfoDetailRow(label: "Database ID", value: String(databaseId))
+                        }
+                    }
+                    if !model.clients.filter({ !$0.isCurrentUser }).isEmpty {
                         Picker("User", selection: selectedUserId) {
                             ForEach(model.clients.filter { !$0.isCurrentUser }) { user in
                                 Text(user.nickname).tag(user.id)
                             }
                         }
+                    } else if model.complaintTarget == nil {
+                        Text("No other users")
+                            .foregroundColor(.secondary)
                     }
                 }
 

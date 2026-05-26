@@ -238,6 +238,43 @@ struct TS3DatabaseClientSummary: Identifiable {
         self.description = description
         self.lastIP = lastIP
     }
+
+    var userSummary: TS3UserSummary {
+        TS3UserSummary(
+            id: -id,
+            channelId: 0,
+            databaseId: id,
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            isCurrentUser: false,
+            isInputMuted: false,
+            isOutputMuted: false,
+            isAway: false,
+            awayMessage: nil,
+            isChannelCommander: false,
+            isPrioritySpeaker: false,
+            isTalker: false,
+            isRequestingTalkPower: false,
+            talkRequestMessage: nil,
+            talkPower: nil,
+            channelGroupId: nil,
+            serverGroups: [],
+            description: description,
+            avatarHash: nil,
+            avatarURL: nil,
+            iconId: nil,
+            iconURL: nil,
+            version: nil,
+            platform: nil,
+            country: nil,
+            ipAddress: lastIP,
+            createdAt: createdAt,
+            lastConnectedAt: lastConnectedAt,
+            totalConnections: totalConnections,
+            idleTimeSeconds: nil,
+            connectedSeconds: nil
+        )
+    }
 }
 
 struct TS3ClientLocationSummary: Identifiable {
@@ -1441,6 +1478,65 @@ final class TS3AppModel: ObservableObject {
                     self.selectedDatabaseClient = nil
                     self.clientLocations = []
                 }
+            }
+        }
+    }
+
+    func sendOfflineMessage(to record: TS3DatabaseClientSummary, subject: String, message: String) {
+        let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !subject.isEmpty, !message.isEmpty else { return }
+        guard let uniqueIdentifier = record.uniqueIdentifier else {
+            lastError = "Selected database client has no unique id."
+            return
+        }
+        runClientCommand { client in
+            try await client.sendOfflineMessage(toUniqueIdentifier: uniqueIdentifier, subject: subject, message: message)
+        }
+    }
+
+    func complainAboutDatabaseClient(_ record: TS3DatabaseClientSummary, message: String) {
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
+        runClientCommand { client in
+            try await client.addComplaint(clientDatabaseId: record.id, message: message)
+        }
+    }
+
+    func banDatabaseClient(_ record: TS3DatabaseClientSummary, durationSeconds: Int?, reason: String?) {
+        guard let uniqueIdentifier = record.uniqueIdentifier else {
+            lastError = "Selected database client has no unique id."
+            return
+        }
+        runClientCommand { client in
+            try await client.addBan(
+                uniqueIdentifier: uniqueIdentifier,
+                durationSeconds: durationSeconds,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            let entries = try await client.refreshBanList()
+            await MainActor.run {
+                self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
+            }
+        }
+    }
+
+    func refreshComplaints(for record: TS3DatabaseClientSummary) {
+        complaintTarget = record.userSummary
+        runClientCommand { client in
+            let entries = try await client.refreshComplaints(clientDatabaseId: record.id)
+            await MainActor.run {
+                self.complaintTarget = record.userSummary
+                self.complaintEntries = entries
+                    .map { TS3ComplaintSummary(entry: $0) }
+                    .sorted {
+                        switch ($0.timestamp, $1.timestamp) {
+                        case let (lhs?, rhs?): return lhs > rhs
+                        case (_?, nil): return true
+                        case (nil, _?): return false
+                        case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
+                        }
+                    }
             }
         }
     }
