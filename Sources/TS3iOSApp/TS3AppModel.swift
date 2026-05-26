@@ -364,6 +364,12 @@ struct TS3FileEntrySummary: Identifiable {
     }
 }
 
+struct TS3DownloadedFileSummary: Identifiable {
+    let id = UUID()
+    let name: String
+    let url: URL
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -620,6 +626,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileBrowserPath = "/"
     @Published var fileTransferStatus: String?
     @Published var fileTransferProgress: Double?
+    @Published var lastDownloadedFile: TS3DownloadedFileSummary?
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
@@ -1546,6 +1553,7 @@ final class TS3AppModel: ObservableObject {
                 await MainActor.run {
                     self.fileTransferProgress = 1
                     self.fileTransferStatus = "Downloaded \(entry.name) to \(destination.lastPathComponent)"
+                    self.lastDownloadedFile = TS3DownloadedFileSummary(name: destination.lastPathComponent, url: destination)
                     self.lastError = nil
                 }
             } catch {
@@ -1556,6 +1564,11 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func openLastDownloadedFile() {
+        guard let file = lastDownloadedFile else { return }
+        TS3PlatformSupport.openURL(file.url)
     }
 
     func uploadFile(from source: URL) {

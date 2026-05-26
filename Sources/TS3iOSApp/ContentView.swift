@@ -2856,6 +2856,9 @@ struct FileBrowserSheet: View {
     @State private var directoryName = ""
     @State private var pathText = "/"
     @State private var isShowingFileImporter = false
+    @State private var isExportingDownloadedFile = false
+    @State private var downloadedFileDocument = TS3DownloadedFileDocument()
+    @State private var downloadedFileExportName = "download"
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -2932,6 +2935,24 @@ struct FileBrowserSheet: View {
                     if let progress = model.fileTransferProgress {
                         ProgressView(value: progress)
                     }
+
+                    if let downloadedFile = model.lastDownloadedFile {
+                        Divider()
+                        Text("Last download: \(downloadedFile.name)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        HStack {
+                            Button("Open") {
+                                model.openLastDownloadedFile()
+                            }
+                            .buttonStyle(.borderless)
+                            Button("Export") {
+                                exportDownloadedFile(downloadedFile)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .font(.caption)
+                    }
                 }
             }
             .navigationTitle(selectedChannel?.name ?? "Files")
@@ -2968,6 +2989,26 @@ struct FileBrowserSheet: View {
                     model.uploadFile(from: url)
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingDownloadedFile,
+                document: downloadedFileDocument,
+                contentType: .data,
+                defaultFilename: downloadedFileExportName
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func exportDownloadedFile(_ file: TS3DownloadedFileSummary) {
+        do {
+            downloadedFileDocument = TS3DownloadedFileDocument(data: try Data(contentsOf: file.url))
+            downloadedFileExportName = file.name
+            isExportingDownloadedFile = true
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 
@@ -2980,6 +3021,25 @@ struct FileBrowserSheet: View {
                 }
             }
         )
+    }
+}
+
+struct TS3DownloadedFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.data] }
+    static var writableContentTypes: [UTType] { [.data] }
+
+    var data: Data
+
+    init(data: Data = Data()) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 
