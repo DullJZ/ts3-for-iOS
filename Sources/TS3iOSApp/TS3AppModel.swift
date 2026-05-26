@@ -2073,6 +2073,30 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func addBan(ip: String, name: String, uniqueIdentifier: String, durationSeconds: Int?, reason: String) {
+        let ip = ip.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !ip.isEmpty || !name.isEmpty || !uniqueIdentifier.isEmpty else {
+            lastError = "Enter an IP address, name, or unique id for the ban rule."
+            return
+        }
+        runClientCommand { client in
+            try await client.addBan(
+                ip: ip.isEmpty ? nil : ip,
+                name: name.isEmpty ? nil : name,
+                uniqueIdentifier: uniqueIdentifier.isEmpty ? nil : uniqueIdentifier,
+                durationSeconds: durationSeconds,
+                reason: reason.isEmpty ? nil : reason
+            )
+            let entries = try await client.refreshBanList()
+            await MainActor.run {
+                self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
+            }
+        }
+    }
+
     func deleteBan(_ entry: TS3BanEntrySummary) {
         runClientCommand { client in
             try await client.deleteBan(banId: entry.id)

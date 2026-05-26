@@ -625,6 +625,22 @@ public final class TS3Client {
         _ = try await execute(TS3SingleCommand(name: "banclient", parameters: params))
     }
 
+    /// Adds a manual ban rule by IP address, nickname pattern, or client unique identifier.
+    public func addBan(ip: String? = nil, name: String? = nil, uniqueIdentifier: String? = nil, durationSeconds: Int? = nil, reason: String? = nil) async throws {
+        var params: [TS3CommandParameter] = []
+        appendParameter(&params, name: "ip", value: trimmedNonEmpty(ip))
+        appendParameter(&params, name: "name", value: trimmedNonEmpty(name))
+        appendParameter(&params, name: "uid", value: trimmedNonEmpty(uniqueIdentifier))
+        appendParameter(&params, name: "banreason", value: trimmedNonEmpty(reason))
+        if let durationSeconds {
+            params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
+        }
+        guard params.contains(where: { ["ip", "name", "uid"].contains($0.name) }) else {
+            throw TS3Error.invalidCommand
+        }
+        _ = try await execute(TS3SingleCommand(name: "banadd", parameters: params))
+    }
+
     public func refreshBanList() async throws -> [TS3BanEntry] {
         let responses = try await execute(TS3SingleCommand(name: "banlist"))
         return responses.compactMap { banEntry(from: $0) }
@@ -2460,6 +2476,12 @@ private extension TS3Client {
     func appendParameter(_ params: inout [TS3CommandParameter], name: String, value: String?) {
         guard let value else { return }
         params.append(TS3CommandSingleParameter(name: name, value: value))
+    }
+
+    func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     func intValue(_ command: TS3SingleCommand, _ name: String) -> Int? {

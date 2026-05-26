@@ -3356,10 +3356,48 @@ struct BanListSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isConfirmingDeleteAll = false
+    @State private var ip = ""
+    @State private var name = ""
+    @State private var uniqueIdentifier = ""
+    @State private var reason = ""
+    @State private var duration: TS3BanDuration = .permanent
+    @State private var customBanMinutes = "60"
 
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Add Ban")) {
+                    TextField("IP Address", text: $ip)
+                        .ts3PlainTextField()
+                    TextField("Name", text: $name)
+                        .ts3PlainTextField()
+                    TextField("Unique ID", text: $uniqueIdentifier)
+                        .ts3PlainTextField()
+                    TextField("Reason", text: $reason)
+                        .ts3PlainTextField()
+                    Picker("Duration", selection: $duration) {
+                        ForEach(TS3BanDuration.allCases) { duration in
+                            Text(duration.title).tag(duration)
+                        }
+                    }
+                    if duration == .custom {
+                        TextField("Minutes", text: $customBanMinutes)
+                            .ts3PlainTextField()
+                            .ts3NumericKeyboard()
+                    }
+                    Button("Add Ban Rule") {
+                        model.addBan(
+                            ip: ip,
+                            name: name,
+                            uniqueIdentifier: uniqueIdentifier,
+                            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+                            reason: reason
+                        )
+                        clearForm()
+                    }
+                    .disabled(isAddDisabled)
+                }
+
                 if model.banEntries.isEmpty {
                     Text("No bans")
                         .foregroundColor(.secondary)
@@ -3404,6 +3442,25 @@ struct BanListSheet: View {
                 )
             }
         }
+    }
+
+    private var isAddDisabled: Bool {
+        let hasTarget = !ip.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if duration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil {
+            return true
+        }
+        return !hasTarget
+    }
+
+    private func clearForm() {
+        ip = ""
+        name = ""
+        uniqueIdentifier = ""
+        reason = ""
+        duration = .permanent
+        customBanMinutes = "60"
     }
 }
 
