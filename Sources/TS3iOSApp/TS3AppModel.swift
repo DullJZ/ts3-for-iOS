@@ -13,19 +13,42 @@ enum UIConnectionState {
     case connected
 }
 
+enum TS3ChannelType: String, CaseIterable, Identifiable {
+    case temporary
+    case semiPermanent
+    case permanent
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .temporary:
+            return "Temporary"
+        case .semiPermanent:
+            return "Semi-Permanent"
+        case .permanent:
+            return "Permanent"
+        }
+    }
+}
+
 struct TS3ChannelSummary: Identifiable {
     let id: Int
     let parentId: Int?
     let order: Int?
     var name: String
+    var phoneticName: String?
     var topic: String?
     var description: String?
     var isDefault: Bool
     var isPasswordProtected: Bool
     var isPermanent: Bool
+    var isSemiPermanent: Bool?
     var neededTalkPower: Int?
+    var neededSubscribePower: Int?
     var codec: Int?
     var codecQuality: Int?
+    var deleteDelaySeconds: Int?
     var maxClients: Int?
     var maxFamilyClients: Int?
     var maxClientsUnlimited: Bool?
@@ -668,14 +691,18 @@ final class TS3AppModel: ObservableObject {
                 parentId: nil,
                 order: nil,
                 name: name,
+                phoneticName: nil,
                 topic: topic,
                 description: nil,
                 isDefault: false,
                 isPasswordProtected: false,
                 isPermanent: false,
+                isSemiPermanent: nil,
                 neededTalkPower: nil,
+                neededSubscribePower: nil,
                 codec: nil,
                 codecQuality: nil,
+                deleteDelaySeconds: nil,
                 maxClients: nil,
                 maxFamilyClients: nil,
                 maxClientsUnlimited: nil,
@@ -683,6 +710,7 @@ final class TS3AppModel: ObservableObject {
                 maxFamilyClientsInherited: nil,
                 iconId: nil,
                 iconURL: nil,
+                isSubscribed: nil,
                 isCurrent: true
             ))
             channels.sort { $0.id < $1.id }
@@ -1771,7 +1799,25 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func createChannel(name: String, parentId: Int?, password: String?, permanent: Bool) {
+    func createChannel(
+        name: String,
+        parentId: Int?,
+        password: String?,
+        channelType: TS3ChannelType,
+        phoneticName: String,
+        topic: String,
+        description: String,
+        neededTalkPower: Int?,
+        neededSubscribePower: Int?,
+        codec: Int?,
+        codecQuality: Int?,
+        deleteDelaySeconds: Int?,
+        maxClients: Int?,
+        maxFamilyClients: Int?,
+        maxClientsUnlimited: Bool,
+        maxFamilyClientsUnlimited: Bool,
+        maxFamilyClientsInherited: Bool
+    ) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         runClientCommand { client in
@@ -1779,7 +1825,21 @@ final class TS3AppModel: ObservableObject {
                 name: trimmed,
                 parentId: parentId,
                 password: password?.isEmpty == true ? nil : password,
-                permanent: permanent
+                permanent: channelType == .permanent,
+                semiPermanent: channelType == .semiPermanent,
+                phoneticName: phoneticName.isEmpty ? nil : phoneticName,
+                topic: topic.isEmpty ? nil : topic,
+                description: description.isEmpty ? nil : description,
+                codec: codec,
+                codecQuality: codecQuality,
+                neededTalkPower: neededTalkPower,
+                neededSubscribePower: neededSubscribePower,
+                deleteDelaySeconds: deleteDelaySeconds,
+                maxClients: maxClientsUnlimited ? nil : maxClients,
+                maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
+                maxClientsUnlimited: maxClientsUnlimited,
+                maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+                maxFamilyClientsInherited: maxFamilyClientsInherited
             )
         }
     }
@@ -1787,11 +1847,17 @@ final class TS3AppModel: ObservableObject {
     func editChannel(
         _ channel: TS3ChannelSummary,
         name: String,
+        phoneticName: String,
         topic: String,
         description: String,
         password: String?,
+        isDefault: Bool,
+        channelType: TS3ChannelType,
         neededTalkPower: Int?,
+        neededSubscribePower: Int?,
+        codec: Int?,
         codecQuality: Int?,
+        deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
         maxClientsUnlimited: Bool,
@@ -1802,11 +1868,18 @@ final class TS3AppModel: ObservableObject {
             try await client.editChannel(
                 channelId: channel.id,
                 name: name.isEmpty ? nil : name,
+                phoneticName: phoneticName.isEmpty ? nil : phoneticName,
                 topic: topic.isEmpty ? nil : topic,
                 description: description.isEmpty ? nil : description,
                 password: password?.isEmpty == true ? nil : password,
+                isDefault: isDefault,
+                isPermanent: channelType == .permanent,
+                isSemiPermanent: channelType == .semiPermanent,
                 neededTalkPower: neededTalkPower,
+                neededSubscribePower: neededSubscribePower,
+                codec: codec,
                 codecQuality: codecQuality,
+                deleteDelaySeconds: deleteDelaySeconds,
                 maxClients: maxClientsUnlimited ? nil : maxClients,
                 maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
                 maxClientsUnlimited: maxClientsUnlimited,
@@ -2561,14 +2634,18 @@ extension TS3AppModel: TS3ClientDelegate {
                     parentId: channel.parentId,
                     order: channel.order,
                     name: channel.name,
+                    phoneticName: channel.phoneticName,
                     topic: channel.topic,
                     description: channel.description,
                     isDefault: channel.isDefault,
                     isPasswordProtected: channel.isPasswordProtected,
                     isPermanent: channel.isPermanent,
+                    isSemiPermanent: channel.isSemiPermanent,
                     neededTalkPower: channel.neededTalkPower,
+                    neededSubscribePower: channel.neededSubscribePower,
                     codec: channel.codec,
                     codecQuality: channel.codecQuality,
+                    deleteDelaySeconds: channel.deleteDelaySeconds,
                     maxClients: channel.maxClients,
                     maxFamilyClients: channel.maxFamilyClients,
                     maxClientsUnlimited: channel.maxClientsUnlimited,

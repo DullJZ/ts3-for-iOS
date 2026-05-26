@@ -3572,12 +3572,17 @@ struct ChannelEditorSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let mode: ChannelEditorMode
     @State private var name = ""
+    @State private var phoneticName = ""
     @State private var topic = ""
     @State private var description = ""
     @State private var password = ""
-    @State private var permanent = true
+    @State private var channelType: TS3ChannelType = .permanent
+    @State private var isDefault = false
     @State private var neededTalkPower = ""
+    @State private var neededSubscribePower = ""
+    @State private var codec = ""
     @State private var codecQuality = ""
+    @State private var deleteDelaySeconds = ""
     @State private var maxClients = ""
     @State private var maxFamilyClients = ""
     @State private var maxClientsUnlimited = true
@@ -3596,33 +3601,45 @@ struct ChannelEditorSheet: View {
             Form {
                 Section(header: Text("Channel")) {
                     TextField("Name", text: $name)
+                    TextField("Phonetic Name", text: $phoneticName)
                     TextField("Topic", text: $topic)
                     TextField("Description", text: $description)
                     SecureField("Password", text: $password)
-                    if case .create = mode {
-                        Toggle("Permanent", isOn: $permanent)
+                    Picker("Type", selection: $channelType) {
+                        ForEach(TS3ChannelType.allCases) { type in
+                            Text(type.title).tag(type)
+                        }
+                    }
+                    if case .edit = mode {
+                        Toggle("Default Channel", isOn: $isDefault)
                     }
                 }
-                if case .edit = mode {
-                    Section(header: Text("Voice")) {
-                        TextField("Needed Talk Power", text: $neededTalkPower)
-                            .ts3NumericKeyboard()
-                        TextField("Codec Quality", text: $codecQuality)
+
+                Section(header: Text("Voice")) {
+                    TextField("Codec", text: $codec)
+                        .ts3NumericKeyboard()
+                    TextField("Codec Quality", text: $codecQuality)
+                        .ts3NumericKeyboard()
+                    TextField("Needed Talk Power", text: $neededTalkPower)
+                        .ts3NumericKeyboard()
+                    TextField("Needed Subscribe Power", text: $neededSubscribePower)
+                        .ts3NumericKeyboard()
+                    TextField("Delete Delay Seconds", text: $deleteDelaySeconds)
+                        .ts3NumericKeyboard()
+                }
+
+                Section(header: Text("Limits")) {
+                    Toggle("Unlimited Clients", isOn: $maxClientsUnlimited)
+                    if !maxClientsUnlimited {
+                        TextField("Max Clients", text: $maxClients)
                             .ts3NumericKeyboard()
                     }
-                    Section(header: Text("Limits")) {
-                        Toggle("Unlimited Clients", isOn: $maxClientsUnlimited)
-                        if !maxClientsUnlimited {
-                            TextField("Max Clients", text: $maxClients)
+                    Toggle("Inherit Family Limit", isOn: $maxFamilyClientsInherited)
+                    if !maxFamilyClientsInherited {
+                        Toggle("Unlimited Family Clients", isOn: $maxFamilyClientsUnlimited)
+                        if !maxFamilyClientsUnlimited {
+                            TextField("Max Family Clients", text: $maxFamilyClients)
                                 .ts3NumericKeyboard()
-                        }
-                        Toggle("Inherit Family Limit", isOn: $maxFamilyClientsInherited)
-                        if !maxFamilyClientsInherited {
-                            Toggle("Unlimited Family Clients", isOn: $maxFamilyClientsUnlimited)
-                            if !maxFamilyClientsUnlimited {
-                                TextField("Max Family Clients", text: $maxFamilyClients)
-                                    .ts3NumericKeyboard()
-                            }
                         }
                     }
                 }
@@ -3634,17 +3651,36 @@ struct ChannelEditorSheet: View {
                                 name: name,
                                 parentId: parent?.id,
                                 password: password.isEmpty ? nil : password,
-                                permanent: permanent
+                                channelType: channelType,
+                                phoneticName: phoneticName,
+                                topic: topic,
+                                description: description,
+                                neededTalkPower: parsedOptionalInt(neededTalkPower),
+                                neededSubscribePower: parsedOptionalInt(neededSubscribePower),
+                                codec: parsedOptionalInt(codec),
+                                codecQuality: parsedOptionalInt(codecQuality),
+                                deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
+                                maxClients: parsedOptionalInt(maxClients),
+                                maxFamilyClients: parsedOptionalInt(maxFamilyClients),
+                                maxClientsUnlimited: maxClientsUnlimited,
+                                maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+                                maxFamilyClientsInherited: maxFamilyClientsInherited
                             )
                         case let .edit(channel):
                             model.editChannel(
                                 channel,
                                 name: name,
+                                phoneticName: phoneticName,
                                 topic: topic,
                                 description: description,
                                 password: password.isEmpty ? nil : password,
+                                isDefault: isDefault,
+                                channelType: channelType,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
+                                neededSubscribePower: parsedOptionalInt(neededSubscribePower),
+                                codec: parsedOptionalInt(codec),
                                 codecQuality: parsedOptionalInt(codecQuality),
+                                deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
                                 maxClientsUnlimited: maxClientsUnlimited,
@@ -3662,11 +3698,16 @@ struct ChannelEditorSheet: View {
             .onAppear {
                 if case let .edit(channel) = mode {
                     name = channel.name
+                    phoneticName = channel.phoneticName ?? ""
                     topic = channel.topic ?? ""
                     description = channel.description ?? ""
-                    permanent = channel.isPermanent
+                    channelType = channelType(for: channel)
+                    isDefault = channel.isDefault
                     neededTalkPower = channel.neededTalkPower.map(String.init) ?? ""
+                    neededSubscribePower = channel.neededSubscribePower.map(String.init) ?? ""
+                    codec = channel.codec.map(String.init) ?? ""
                     codecQuality = channel.codecQuality.map(String.init) ?? ""
+                    deleteDelaySeconds = channel.deleteDelaySeconds.map(String.init) ?? ""
                     maxClients = channel.maxClients.map(String.init) ?? ""
                     maxFamilyClients = channel.maxFamilyClients.map(String.init) ?? ""
                     maxClientsUnlimited = channel.maxClientsUnlimited ?? true
@@ -3687,9 +3728,22 @@ struct ChannelEditorSheet: View {
     private var canSubmit: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(neededTalkPower)
+            && isOptionalInt(neededSubscribePower)
+            && isOptionalInt(codec)
             && isOptionalInt(codecQuality)
+            && isOptionalInt(deleteDelaySeconds)
             && (maxClientsUnlimited || isRequiredInt(maxClients))
             && (maxFamilyClientsInherited || maxFamilyClientsUnlimited || isRequiredInt(maxFamilyClients))
+    }
+
+    private func channelType(for channel: TS3ChannelSummary) -> TS3ChannelType {
+        if channel.isPermanent {
+            return .permanent
+        }
+        if channel.isSemiPermanent == true {
+            return .semiPermanent
+        }
+        return .temporary
     }
 
     private func parsedOptionalInt(_ text: String) -> Int? {

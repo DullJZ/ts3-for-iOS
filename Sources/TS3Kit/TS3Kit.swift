@@ -296,15 +296,23 @@ public struct TS3Channel: Identifiable {
     public let parentId: Int?
     public let order: Int?
     public let name: String
+    /// The phonetic channel name used by clients with text-to-speech support.
+    public let phoneticName: String?
     public let topic: String?
     public let description: String?
     public let isDefault: Bool
     public let isPasswordProtected: Bool
     public let isPermanent: Bool
+    /// Whether the channel is semi-permanent.
+    public let isSemiPermanent: Bool?
     public let neededTalkPower: Int?
+    /// The subscribe power required to receive channel updates.
+    public let neededSubscribePower: Int?
     public let codec: Int?
     /// The configured codec quality, when reported by the server.
     public let codecQuality: Int?
+    /// The channel delete delay in seconds.
+    public let deleteDelaySeconds: Int?
     /// The maximum number of clients allowed in the channel.
     public let maxClients: Int?
     /// The maximum number of clients allowed in the channel family.
@@ -326,14 +334,18 @@ public struct TS3Channel: Identifiable {
         parentId: Int? = nil,
         order: Int? = nil,
         name: String,
+        phoneticName: String? = nil,
         topic: String?,
         description: String? = nil,
         isDefault: Bool = false,
         isPasswordProtected: Bool = false,
         isPermanent: Bool = false,
+        isSemiPermanent: Bool? = nil,
         neededTalkPower: Int? = nil,
+        neededSubscribePower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
+        deleteDelaySeconds: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
         maxClientsUnlimited: Bool? = nil,
@@ -346,14 +358,18 @@ public struct TS3Channel: Identifiable {
         self.parentId = parentId
         self.order = order
         self.name = name
+        self.phoneticName = phoneticName
         self.topic = topic
         self.description = description
         self.isDefault = isDefault
         self.isPasswordProtected = isPasswordProtected
         self.isPermanent = isPermanent
+        self.isSemiPermanent = isSemiPermanent
         self.neededTalkPower = neededTalkPower
+        self.neededSubscribePower = neededSubscribePower
         self.codec = codec
         self.codecQuality = codecQuality
+        self.deleteDelaySeconds = deleteDelaySeconds
         self.maxClients = maxClients
         self.maxFamilyClients = maxFamilyClients
         self.maxClientsUnlimited = maxClientsUnlimited
