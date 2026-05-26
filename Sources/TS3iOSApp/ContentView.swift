@@ -1779,6 +1779,12 @@ struct ServerToolsSheet: View {
                     Button("Refresh Channels and Clients") {
                         model.refreshServerView()
                     }
+                    Button("Subscribe All Channels") {
+                        model.setAllChannelsSubscribed(true)
+                    }
+                    Button("Unsubscribe All Channels") {
+                        model.setAllChannelsSubscribed(false)
+                    }
                     Button("Refresh Server Info") {
                         model.refreshServerInfo()
                     }

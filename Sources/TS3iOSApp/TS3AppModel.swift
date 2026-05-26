@@ -2209,6 +2209,12 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setAllChannelsSubscribed(_ isSubscribed: Bool) {
+        runClientCommand { client in
+            try await client.setAllChannelsSubscribed(isSubscribed)
+        }
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)

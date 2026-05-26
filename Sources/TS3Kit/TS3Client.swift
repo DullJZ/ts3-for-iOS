@@ -630,6 +630,12 @@ public final class TS3Client {
         updateChannelSubscription(channelId: channelId, isSubscribed: isSubscribed)
     }
 
+    /// Subscribes or unsubscribes the current client from updates for all channels.
+    public func setAllChannelsSubscribed(_ isSubscribed: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: isSubscribed ? "channelsubscribeall" : "channelunsubscribeall"))
+        updateAllChannelSubscriptions(isSubscribed: isSubscribed)
+    }
+
     public func moveClient(clientId targetClientId: Int, to channelId: Int, password: String?) async throws {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
@@ -2263,6 +2269,11 @@ private extension TS3Client {
             return
         }
         channelCache[channelId] = copyChannel(existing, isSubscribed: isSubscribed)
+        publishChannels()
+    }
+
+    func updateAllChannelSubscriptions(isSubscribed: Bool) {
+        channelCache = channelCache.mapValues { copyChannel($0, isSubscribed: isSubscribed) }
         publishChannels()
     }
 
