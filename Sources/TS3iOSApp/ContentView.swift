@@ -4271,6 +4271,10 @@ struct BanEntryRow: View {
 struct WhisperSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var groupWhisperType: TS3GroupWhisperType = .allClients
+    @State private var groupWhisperTarget: TS3GroupWhisperTarget = .currentChannel
+    @State private var selectedServerGroupId = 0
+    @State private var selectedChannelGroupId = 0
 
     var body: some View {
         NavigationView {
@@ -4287,6 +4291,43 @@ struct WhisperSheet: View {
                     Button("Voice to Current Channel") {
                         model.disableWhisper()
                     }
+                }
+
+                Section(header: Text("Group Whisper")) {
+                    Picker("Type", selection: $groupWhisperType) {
+                        ForEach(Self.groupWhisperTypes, id: \.rawValue) { type in
+                            Text(type.title).tag(type)
+                        }
+                    }
+                    Picker("Scope", selection: $groupWhisperTarget) {
+                        ForEach(Self.groupWhisperTargets, id: \.rawValue) { target in
+                            Text(target.title).tag(target)
+                        }
+                    }
+                    if groupWhisperType == .serverGroup {
+                        Picker("Server Group", selection: $selectedServerGroupId) {
+                            ForEach(model.serverGroups) { group in
+                                Text(group.name).tag(group.id)
+                            }
+                        }
+                        .disabled(model.serverGroups.isEmpty)
+                    }
+                    if groupWhisperType == .channelGroup {
+                        Picker("Channel Group", selection: $selectedChannelGroupId) {
+                            ForEach(model.channelGroups) { group in
+                                Text(group.name).tag(group.id)
+                            }
+                        }
+                        .disabled(model.channelGroups.isEmpty)
+                    }
+                    Button("Enable Group Whisper") {
+                        model.enableGroupWhisper(
+                            type: groupWhisperType,
+                            target: groupWhisperTarget,
+                            targetId: selectedGroupWhisperTargetId
+                        )
+                    }
+                    .disabled(!canEnableGroupWhisper)
                 }
 
                 if !model.channels.isEmpty {
@@ -4311,6 +4352,16 @@ struct WhisperSheet: View {
             }
             .navigationTitle("Whisper")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshGroups()
+                updateSelectedGroups()
+            }
+            .onChange(of: model.serverGroups.map(\.id)) { _ in
+                updateSelectedGroups()
+            }
+            .onChange(of: model.channelGroups.map(\.id)) { _ in
+                updateSelectedGroups()
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -4318,6 +4369,90 @@ struct WhisperSheet: View {
                     }
                 }
             }
+        }
+    }
+
+    private static let groupWhisperTypes: [TS3GroupWhisperType] = [
+        .allClients,
+        .channelCommander,
+        .serverGroup,
+        .channelGroup
+    ]
+
+    private static let groupWhisperTargets: [TS3GroupWhisperTarget] = [
+        .allChannels,
+        .currentChannel,
+        .parentChannel,
+        .allParentChannels,
+        .channelFamily,
+        .completeChannelFamily,
+        .subchannels
+    ]
+
+    private var selectedGroupWhisperTargetId: Int {
+        switch groupWhisperType {
+        case .serverGroup:
+            return selectedServerGroupId
+        case .channelGroup:
+            return selectedChannelGroupId
+        case .channelCommander, .allClients:
+            return 0
+        }
+    }
+
+    private var canEnableGroupWhisper: Bool {
+        switch groupWhisperType {
+        case .serverGroup:
+            return selectedServerGroupId != 0
+        case .channelGroup:
+            return selectedChannelGroupId != 0
+        case .channelCommander, .allClients:
+            return true
+        }
+    }
+
+    private func updateSelectedGroups() {
+        if selectedServerGroupId == 0 || !model.serverGroups.contains(where: { $0.id == selectedServerGroupId }) {
+            selectedServerGroupId = model.serverGroups.first?.id ?? 0
+        }
+        if selectedChannelGroupId == 0 || !model.channelGroups.contains(where: { $0.id == selectedChannelGroupId }) {
+            selectedChannelGroupId = model.channelGroups.first?.id ?? 0
+        }
+    }
+}
+
+extension TS3GroupWhisperType {
+    var title: String {
+        switch self {
+        case .serverGroup:
+            return "Server Group"
+        case .channelGroup:
+            return "Channel Group"
+        case .channelCommander:
+            return "Channel Commander"
+        case .allClients:
+            return "All Clients"
+        }
+    }
+}
+
+extension TS3GroupWhisperTarget {
+    var title: String {
+        switch self {
+        case .allChannels:
+            return "All Channels"
+        case .currentChannel:
+            return "Current Channel"
+        case .parentChannel:
+            return "Parent Channel"
+        case .allParentChannels:
+            return "All Parent Channels"
+        case .channelFamily:
+            return "Channel Family"
+        case .completeChannelFamily:
+            return "Complete Channel Family"
+        case .subchannels:
+            return "Subchannels"
         }
     }
 }

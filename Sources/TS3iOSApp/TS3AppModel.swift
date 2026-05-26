@@ -633,6 +633,7 @@ enum TS3WhisperRoute: Equatable {
     case server
     case channel(Int)
     case client(Int)
+    case group(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int)
 }
 
 struct MicrophonePermissionPrompt: Identifiable {
@@ -2933,6 +2934,11 @@ final class TS3AppModel: ObservableObject {
         client?.startWhisperToChannel(id)
     }
 
+    func enableGroupWhisper(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int) {
+        whisperRoute = .group(type: type, target: target, targetId: targetId)
+        client?.startWhisper(target: .group(type: type, target: target, targetId: UInt64(max(targetId, 0))))
+    }
+
     var whisperRouteDescription: String {
         switch whisperRoute {
         case .none:
@@ -2945,6 +2951,22 @@ final class TS3AppModel: ObservableObject {
         case let .client(clientId):
             let user = clients.first { $0.id == clientId }?.nickname ?? "Client \(clientId)"
             return "Whisper to \(user)"
+        case let .group(type, target, targetId):
+            let group = whisperGroupName(type: type, targetId: targetId)
+            return "Whisper to \(group) in \(target.title.lowercased())"
+        }
+    }
+
+    private func whisperGroupName(type: TS3GroupWhisperType, targetId: Int) -> String {
+        switch type {
+        case .serverGroup:
+            return TS3GroupSummary.name(for: targetId, in: serverGroups)
+        case .channelGroup:
+            return TS3GroupSummary.name(for: targetId, in: channelGroups)
+        case .channelCommander:
+            return "channel commanders"
+        case .allClients:
+            return "all clients"
         }
     }
 
