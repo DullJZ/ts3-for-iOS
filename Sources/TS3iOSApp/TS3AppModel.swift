@@ -82,6 +82,7 @@ struct TS3UserSummary: Identifiable {
     let description: String?
     let avatarHash: String?
     let avatarURL: URL?
+    let iconId: Int?
     let version: String?
     let platform: String?
     let country: String?
@@ -477,6 +478,7 @@ struct TS3ServerInfoSummary {
     var hostButtonTooltip: String?
     var hostButtonURL: String?
     var hostButtonGraphicsURL: String?
+    var iconId: Int?
 
     static let empty = TS3ServerInfoSummary(
         name: "",
@@ -524,7 +526,8 @@ struct TS3ServerInfoSummary {
         hostBannerGraphicsURL: nil,
         hostButtonTooltip: nil,
         hostButtonURL: nil,
-        hostButtonGraphicsURL: nil
+        hostButtonGraphicsURL: nil,
+        iconId: nil
     )
 }
 
@@ -1372,7 +1375,8 @@ final class TS3AppModel: ObservableObject {
         hostBannerGraphicsURL: String,
         hostButtonTooltip: String,
         hostButtonURL: String,
-        hostButtonGraphicsURL: String
+        hostButtonGraphicsURL: String,
+        iconId: Int?
     ) {
         let edit = TS3ServerEdit(
             name: trimmedValue(name),
@@ -1386,7 +1390,8 @@ final class TS3AppModel: ObservableObject {
             hostBannerGraphicsURL: hostBannerGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonTooltip: hostButtonTooltip.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonURL: hostButtonURL.trimmingCharacters(in: .whitespacesAndNewlines),
-            hostButtonGraphicsURL: hostButtonGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            hostButtonGraphicsURL: hostButtonGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
+            iconId: iconId
         )
         runClientCommand { client in
             try await client.editServer(edit)
@@ -1954,6 +1959,17 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setSelfIcon(iconId: Int?) {
+        runClientCommand { client in
+            try await client.setClientIcon(iconId: iconId ?? 0)
+        } onSuccess: {
+            guard let ownClient = self.clients.first(where: { $0.isCurrentUser }) else { return }
+            self.updateUser(clientId: ownClient.id) { existing in
+                self.copyUser(existing, iconId: iconId ?? 0)
+            }
+        }
+    }
+
     func createChannel(
         name: String,
         parentId: Int?,
@@ -1971,7 +1987,8 @@ final class TS3AppModel: ObservableObject {
         maxFamilyClients: Int?,
         maxClientsUnlimited: Bool,
         maxFamilyClientsUnlimited: Bool,
-        maxFamilyClientsInherited: Bool
+        maxFamilyClientsInherited: Bool,
+        iconId: Int?
     ) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -1994,7 +2011,8 @@ final class TS3AppModel: ObservableObject {
                 maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
                 maxClientsUnlimited: maxClientsUnlimited,
                 maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
-                maxFamilyClientsInherited: maxFamilyClientsInherited
+                maxFamilyClientsInherited: maxFamilyClientsInherited,
+                iconId: iconId
             )
         }
     }
@@ -2017,7 +2035,8 @@ final class TS3AppModel: ObservableObject {
         maxFamilyClients: Int?,
         maxClientsUnlimited: Bool,
         maxFamilyClientsUnlimited: Bool,
-        maxFamilyClientsInherited: Bool
+        maxFamilyClientsInherited: Bool,
+        iconId: Int?
     ) {
         runClientCommand { client in
             try await client.editChannel(
@@ -2039,7 +2058,8 @@ final class TS3AppModel: ObservableObject {
                 maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
                 maxClientsUnlimited: maxClientsUnlimited,
                 maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
-                maxFamilyClientsInherited: maxFamilyClientsInherited
+                maxFamilyClientsInherited: maxFamilyClientsInherited,
+                iconId: iconId
             )
         }
     }
@@ -2366,6 +2386,7 @@ final class TS3AppModel: ObservableObject {
         description: String? = nil,
         avatarHash: String? = nil,
         avatarURL: URL? = nil,
+        iconId: Int? = nil,
         version: String? = nil,
         platform: String? = nil,
         country: String? = nil,
@@ -2398,6 +2419,7 @@ final class TS3AppModel: ObservableObject {
             description: description ?? user.description,
             avatarHash: avatarHash ?? user.avatarHash,
             avatarURL: avatarURL ?? user.avatarURL,
+            iconId: iconId ?? user.iconId,
             version: version ?? user.version,
             platform: platform ?? user.platform,
             country: country ?? user.country,
@@ -2931,7 +2953,8 @@ extension TS3AppModel: TS3ClientDelegate {
                 hostBannerGraphicsURL: info.hostBannerGraphicsURL,
                 hostButtonTooltip: info.hostButtonTooltip,
                 hostButtonURL: info.hostButtonURL,
-                hostButtonGraphicsURL: info.hostButtonGraphicsURL
+                hostButtonGraphicsURL: info.hostButtonGraphicsURL,
+                iconId: info.iconId
             )
         }
     }
@@ -2966,6 +2989,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     description: client.description,
                     avatarHash: client.avatarHash,
                     avatarURL: avatarURL,
+                    iconId: client.iconId,
                     version: client.version,
                     platform: client.platform,
                     country: client.country,

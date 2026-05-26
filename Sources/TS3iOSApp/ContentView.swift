@@ -2534,6 +2534,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var hostButtonTooltip = ""
     @State private var hostButtonURL = ""
     @State private var hostButtonGraphicsURL = ""
+    @State private var iconId = ""
 
     var body: some View {
         NavigationView {
@@ -2552,6 +2553,9 @@ struct ServerSettingsEditorSheet: View {
                     Toggle("Clear Server Password", isOn: $clearPassword)
                     SecureField("New Server Password", text: $password)
                         .disabled(clearPassword)
+                    TextField("Icon ID", text: $iconId)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
                 }
 
                 Section(header: Text("Host Message")) {
@@ -2620,6 +2624,7 @@ struct ServerSettingsEditorSheet: View {
         hostButtonTooltip = model.serverInfo.hostButtonTooltip ?? ""
         hostButtonURL = model.serverInfo.hostButtonURL ?? ""
         hostButtonGraphicsURL = model.serverInfo.hostButtonGraphicsURL ?? ""
+        iconId = model.serverInfo.iconId.map(String.init) ?? ""
     }
 
     private func save() {
@@ -2635,7 +2640,8 @@ struct ServerSettingsEditorSheet: View {
             hostBannerGraphicsURL: hostBannerGraphicsURL,
             hostButtonTooltip: hostButtonTooltip,
             hostButtonURL: hostButtonURL,
-            hostButtonGraphicsURL: hostButtonGraphicsURL
+            hostButtonGraphicsURL: hostButtonGraphicsURL,
+            iconId: Int(iconId.trimmingCharacters(in: .whitespacesAndNewlines))
         )
     }
 }
@@ -3929,6 +3935,7 @@ struct ChannelEditorSheet: View {
     @State private var maxClientsUnlimited = true
     @State private var maxFamilyClientsUnlimited = true
     @State private var maxFamilyClientsInherited = false
+    @State private var iconId = ""
 
     var title: String {
         switch mode {
@@ -3954,6 +3961,8 @@ struct ChannelEditorSheet: View {
                     if case .edit = mode {
                         Toggle("Default Channel", isOn: $isDefault)
                     }
+                    TextField("Icon ID", text: $iconId)
+                        .ts3NumericKeyboard()
                 }
 
                 Section(header: Text("Voice")) {
@@ -4005,7 +4014,8 @@ struct ChannelEditorSheet: View {
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
                                 maxClientsUnlimited: maxClientsUnlimited,
                                 maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
-                                maxFamilyClientsInherited: maxFamilyClientsInherited
+                                maxFamilyClientsInherited: maxFamilyClientsInherited,
+                                iconId: parsedOptionalInt(iconId)
                             )
                         case let .edit(channel):
                             model.editChannel(
@@ -4026,7 +4036,8 @@ struct ChannelEditorSheet: View {
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
                                 maxClientsUnlimited: maxClientsUnlimited,
                                 maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
-                                maxFamilyClientsInherited: maxFamilyClientsInherited
+                                maxFamilyClientsInherited: maxFamilyClientsInherited,
+                                iconId: parsedOptionalInt(iconId)
                             )
                         }
                         presentationMode.wrappedValue.dismiss()
@@ -4054,6 +4065,7 @@ struct ChannelEditorSheet: View {
                     maxClientsUnlimited = channel.maxClientsUnlimited ?? true
                     maxFamilyClientsUnlimited = channel.maxFamilyClientsUnlimited ?? true
                     maxFamilyClientsInherited = channel.maxFamilyClientsInherited ?? false
+                    iconId = channel.iconId.map(String.init) ?? ""
                 }
             }
             .toolbar {
@@ -4073,6 +4085,7 @@ struct ChannelEditorSheet: View {
             && isOptionalInt(codec)
             && isOptionalInt(codecQuality)
             && isOptionalInt(deleteDelaySeconds)
+            && isOptionalInt(iconId)
             && (maxClientsUnlimited || isRequiredInt(maxClients))
             && (maxFamilyClientsInherited || maxFamilyClientsUnlimited || isRequiredInt(maxFamilyClients))
     }
@@ -4207,6 +4220,7 @@ struct SelfStatusSheet: View {
     @State private var isOutputMuted = false
     @State private var isChannelCommander = false
     @State private var talkRequestMessage = ""
+    @State private var selfIconId = ""
 
     var body: some View {
         NavigationView {
@@ -4238,6 +4252,12 @@ struct SelfStatusSheet: View {
 
                 Section(header: Text("Role")) {
                     Toggle("Channel Commander", isOn: channelCommanderBinding)
+                    TextField("Icon ID", text: $selfIconId)
+                        .ts3NumericKeyboard()
+                    Button("Set Client Icon") {
+                        model.setSelfIcon(iconId: Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)))
+                    }
+                    .disabled(!selfIconId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)) == nil)
                 }
 
                 Section(header: Text("Talk Power")) {
@@ -4266,6 +4286,7 @@ struct SelfStatusSheet: View {
                 isOutputMuted = model.isOutputMuted
                 isChannelCommander = model.isChannelCommander
                 talkRequestMessage = model.talkRequestMessage
+                selfIconId = model.clients.first(where: { $0.isCurrentUser })?.iconId.map(String.init) ?? ""
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {

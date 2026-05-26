@@ -129,6 +129,8 @@ public struct TS3ServerInfo {
     public let hostButtonTooltip: String?
     public let hostButtonURL: String?
     public let hostButtonGraphicsURL: String?
+    /// The virtual server icon id reported by the server.
+    public let iconId: Int?
 
     /// Creates a virtual server information snapshot.
     public init(
@@ -177,7 +179,8 @@ public struct TS3ServerInfo {
         hostBannerGraphicsURL: String? = nil,
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
-        hostButtonGraphicsURL: String? = nil
+        hostButtonGraphicsURL: String? = nil,
+        iconId: Int? = nil
     ) {
         self.uniqueIdentifier = uniqueIdentifier
         self.name = name
@@ -225,6 +228,7 @@ public struct TS3ServerInfo {
         self.hostButtonTooltip = hostButtonTooltip
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
+        self.iconId = iconId
     }
 }
 
@@ -260,6 +264,7 @@ public struct TS3ServerEdit {
     public var hostButtonTooltip: String?
     public var hostButtonURL: String?
     public var hostButtonGraphicsURL: String?
+    public var iconId: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
     public init(
@@ -274,7 +279,8 @@ public struct TS3ServerEdit {
         hostBannerGraphicsURL: String? = nil,
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
-        hostButtonGraphicsURL: String? = nil
+        hostButtonGraphicsURL: String? = nil,
+        iconId: Int? = nil
     ) {
         self.name = name
         self.welcomeMessage = welcomeMessage
@@ -288,6 +294,7 @@ public struct TS3ServerEdit {
         self.hostButtonTooltip = hostButtonTooltip
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
+        self.iconId = iconId
     }
 }
 
@@ -406,6 +413,8 @@ public struct TS3ServerClient: Identifiable {
     public let serverGroups: [Int]
     public let description: String?
     public let avatarHash: String?
+    /// The client icon id reported by the server.
+    public let iconId: Int?
     /// The client application version reported by `clientinfo`.
     public let version: String?
     /// The client platform reported by `clientinfo`.
@@ -447,6 +456,7 @@ public struct TS3ServerClient: Identifiable {
         serverGroups: [Int] = [],
         description: String? = nil,
         avatarHash: String? = nil,
+        iconId: Int? = nil,
         version: String? = nil,
         platform: String? = nil,
         country: String? = nil,
@@ -477,6 +487,7 @@ public struct TS3ServerClient: Identifiable {
         self.serverGroups = serverGroups
         self.description = description
         self.avatarHash = avatarHash
+        self.iconId = iconId
         self.version = version
         self.platform = platform
         self.country = country

@@ -240,6 +240,7 @@ public final class TS3Client {
         appendParameter(&params, name: "virtualserver_hostbutton_tooltip", value: edit.hostButtonTooltip)
         appendParameter(&params, name: "virtualserver_hostbutton_url", value: edit.hostButtonURL)
         appendParameter(&params, name: "virtualserver_hostbutton_gfx_url", value: edit.hostButtonGraphicsURL)
+        appendParameter(&params, name: "virtualserver_icon_id", value: edit.iconId.map(String.init))
         guard !params.isEmpty else { return }
         _ = try await execute(TS3SingleCommand(name: "serveredit", parameters: params))
         try await refreshServerInfo()
@@ -436,6 +437,17 @@ public final class TS3Client {
         }
     }
 
+    /// Sets the current client's icon id.
+    public func setClientIcon(iconId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_icon_id", value: String(iconId))
+        ]))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(existing, iconId: iconId)
+            publishClients()
+        }
+    }
+
     public func createChannel(
         name: String,
         parentId: Int?,
@@ -454,7 +466,8 @@ public final class TS3Client {
         maxFamilyClients: Int? = nil,
         maxClientsUnlimited: Bool? = nil,
         maxFamilyClientsUnlimited: Bool? = nil,
-        maxFamilyClientsInherited: Bool? = nil
+        maxFamilyClientsInherited: Bool? = nil,
+        iconId: Int? = nil
     ) async throws -> Int? {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "channel_name", value: name)
@@ -498,6 +511,9 @@ public final class TS3Client {
         if let maxFamilyClientsInherited {
             params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_inherited", value: maxFamilyClientsInherited ? "1" : "0"))
         }
+        if let iconId {
+            params.append(TS3CommandSingleParameter(name: "channel_icon_id", value: String(iconId)))
+        }
         if permanent {
             params.append(TS3CommandSingleParameter(name: "channel_flag_permanent", value: "1"))
         } else if semiPermanent == true {
@@ -530,7 +546,8 @@ public final class TS3Client {
         maxFamilyClients: Int? = nil,
         maxClientsUnlimited: Bool? = nil,
         maxFamilyClientsUnlimited: Bool? = nil,
-        maxFamilyClientsInherited: Bool? = nil
+        maxFamilyClientsInherited: Bool? = nil,
+        iconId: Int? = nil
     ) async throws {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "cid", value: String(channelId))
@@ -578,6 +595,9 @@ public final class TS3Client {
         }
         if let maxFamilyClientsInherited {
             params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_inherited", value: maxFamilyClientsInherited ? "1" : "0"))
+        }
+        if let iconId {
+            params.append(TS3CommandSingleParameter(name: "channel_icon_id", value: String(iconId)))
         }
         _ = try await execute(TS3SingleCommand(name: "channeledit", parameters: params))
         try? await refreshServerView()
@@ -2571,6 +2591,7 @@ private extension TS3Client {
             serverGroups: serverGroupIds(from: command),
             description: command.get("client_description")?.value,
             avatarHash: command.get("client_base64HashClientUID")?.value,
+            iconId: intValue(command, "client_icon_id"),
             version: command.get("client_version")?.value,
             platform: command.get("client_platform")?.value,
             country: command.get("client_country")?.value,
@@ -2610,6 +2631,7 @@ private extension TS3Client {
             serverGroups: serverGroupIds(from: command),
             description: command.get("client_description")?.value ?? existing?.description,
             avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash,
+            iconId: intValue(command, "client_icon_id") ?? existing?.iconId,
             version: command.get("client_version")?.value ?? existing?.version,
             platform: command.get("client_platform")?.value ?? existing?.platform,
             country: command.get("client_country")?.value ?? existing?.country,
@@ -2650,6 +2672,7 @@ private extension TS3Client {
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
             description: command.get("client_description")?.value ?? existing.description,
             avatarHash: command.get("client_base64HashClientUID")?.value ?? existing.avatarHash,
+            iconId: intValue(command, "client_icon_id") ?? existing.iconId,
             version: command.get("client_version")?.value ?? existing.version,
             platform: command.get("client_platform")?.value ?? existing.platform,
             country: command.get("client_country")?.value ?? existing.country,
@@ -2690,6 +2713,7 @@ private extension TS3Client {
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
             description: command.get("client_description")?.value ?? existing?.description,
             avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash,
+            iconId: intValue(command, "client_icon_id") ?? existing?.iconId,
             version: command.get("client_version")?.value ?? existing?.version,
             platform: command.get("client_platform")?.value ?? existing?.platform,
             country: command.get("client_country")?.value ?? existing?.country,
@@ -2718,7 +2742,8 @@ private extension TS3Client {
         isRequestingTalkPower: Bool? = nil,
         talkRequestMessage: String? = nil,
         description: String? = nil,
-        avatarHash: String? = nil
+        avatarHash: String? = nil,
+        iconId: Int? = nil
     ) -> TS3ServerClient {
         TS3ServerClient(
             id: client.id,
@@ -2741,6 +2766,7 @@ private extension TS3Client {
             serverGroups: client.serverGroups,
             description: description ?? client.description,
             avatarHash: avatarHash ?? client.avatarHash,
+            iconId: iconId ?? client.iconId,
             version: client.version,
             platform: client.platform,
             country: client.country,
@@ -2833,7 +2859,8 @@ private extension TS3Client {
             hostBannerGraphicsURL: command.get("virtualserver_hostbanner_gfx_url")?.value,
             hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
             hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
-            hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value
+            hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,
+            iconId: intValue(command, "virtualserver_icon_id")
         )
     }
 
