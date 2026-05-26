@@ -2724,6 +2724,7 @@ struct FileBrowserSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var directoryName = ""
+    @State private var pathText = "/"
     @State private var isShowingFileImporter = false
 
     var selectedChannel: TS3ChannelSummary? {
@@ -2741,6 +2742,19 @@ struct FileBrowserSheet: View {
                                 Text(channel.name).tag(channel.id)
                             }
                         }
+                    }
+                }
+
+                Section(header: Text("Path")) {
+                    HStack {
+                        TextField("/", text: $pathText)
+                            .ts3PlainTextField()
+                        Button("Go") {
+                            model.jumpToFileDirectory(pathText)
+                            pathText = model.fileBrowserPath
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(pathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
@@ -2798,6 +2812,10 @@ struct FileBrowserSheet: View {
                 } else {
                     model.refreshFileList()
                 }
+                pathText = model.fileBrowserPath
+            }
+            .onChange(of: model.fileBrowserPath) { newPath in
+                pathText = newPath
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {

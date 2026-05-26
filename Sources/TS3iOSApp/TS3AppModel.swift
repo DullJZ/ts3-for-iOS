@@ -1472,6 +1472,11 @@ final class TS3AppModel: ObservableObject {
         refreshFileList()
     }
 
+    func jumpToFileDirectory(_ path: String) {
+        fileBrowserPath = normalizedFileDirectoryPath(path)
+        refreshFileList()
+    }
+
     func createFileDirectory(named name: String) {
         guard let channelId = fileBrowserChannelId else {
             lastError = "No channel is selected for file browsing."
