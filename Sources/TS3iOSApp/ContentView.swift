@@ -2859,6 +2859,9 @@ struct FileBrowserSheet: View {
     @State private var isExportingDownloadedFile = false
     @State private var downloadedFileDocument = TS3DownloadedFileDocument()
     @State private var downloadedFileExportName = "download"
+    @State private var pendingUploadURLs: [URL] = []
+    @State private var uploadOverwriteNames: [String] = []
+    @State private var isConfirmingUploadOverwrite = false
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -2923,7 +2926,7 @@ struct FileBrowserSheet: View {
                     Button {
                         isShowingFileImporter = true
                     } label: {
-                        Label("Upload File", systemImage: "square.and.arrow.up")
+                        Label("Upload Files", systemImage: "square.and.arrow.up")
                     }
                     .disabled(model.fileBrowserChannelId == nil)
 
@@ -2983,10 +2986,10 @@ struct FileBrowserSheet: View {
             .fileImporter(
                 isPresented: $isShowingFileImporter,
                 allowedContentTypes: [.data],
-                allowsMultipleSelection: false
+                allowsMultipleSelection: true
             ) { result in
-                if case .success(let urls) = result, let url = urls.first {
-                    model.uploadFile(from: url)
+                if case .success(let urls) = result {
+                    handleSelectedUploadFiles(urls)
                 }
             }
             .fileExporter(
@@ -2999,6 +3002,45 @@ struct FileBrowserSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .alert(isPresented: $isConfirmingUploadOverwrite) {
+                Alert(
+                    title: Text("Overwrite Remote Files?"),
+                    message: Text(uploadOverwriteMessage),
+                    primaryButton: .destructive(Text("Overwrite")) {
+                        model.uploadFiles(pendingUploadURLs, overwrite: true)
+                        pendingUploadURLs = []
+                        uploadOverwriteNames = []
+                    },
+                    secondaryButton: .cancel {
+                        pendingUploadURLs = []
+                        uploadOverwriteNames = []
+                    }
+                )
+            }
+        }
+    }
+
+    private var uploadOverwriteMessage: String {
+        let names = uploadOverwriteNames.prefix(5).joined(separator: ", ")
+        if uploadOverwriteNames.count > 5 {
+            return "\(names), and \(uploadOverwriteNames.count - 5) more already exist in this channel directory."
+        }
+        return "\(names) already exist in this channel directory."
+    }
+
+    private func handleSelectedUploadFiles(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        let existingNames = Set(model.fileEntries.map { $0.name })
+        let conflicts = urls
+            .map(\.lastPathComponent)
+            .filter { existingNames.contains($0) }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        if conflicts.isEmpty {
+            model.uploadFiles(urls)
+        } else {
+            pendingUploadURLs = urls
+            uploadOverwriteNames = conflicts
+            isConfirmingUploadOverwrite = true
         }
     }
 

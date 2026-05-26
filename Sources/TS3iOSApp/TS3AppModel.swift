@@ -1571,7 +1571,14 @@ final class TS3AppModel: ObservableObject {
         TS3PlatformSupport.openURL(file.url)
     }
 
-    func uploadFile(from source: URL) {
+    func uploadFiles(_ sources: [URL], overwrite: Bool = false) {
+        guard !sources.isEmpty else { return }
+        for source in sources {
+            uploadFile(from: source, overwrite: overwrite)
+        }
+    }
+
+    func uploadFile(from source: URL, overwrite: Bool = false) {
         guard let channelId = fileBrowserChannelId else {
             lastError = "No channel is selected for file browsing."
             return
@@ -1600,7 +1607,7 @@ final class TS3AppModel: ObservableObject {
                     channelId: channelId,
                     path: remotePath,
                     size: size,
-                    overwrite: true
+                    overwrite: overwrite
                 )
                 try await TS3FileTransfer.upload(parameters: parameters, from: source) { sent, total in
                     Task { @MainActor in
