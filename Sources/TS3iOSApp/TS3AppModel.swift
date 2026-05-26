@@ -33,6 +33,7 @@ struct TS3ChannelSummary: Identifiable {
     var maxFamilyClientsInherited: Bool?
     var iconId: Int?
     var iconURL: URL?
+    var isSubscribed: Bool?
     var isCurrent: Bool
 }
 
@@ -1800,6 +1801,12 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setChannelSubscribed(_ channel: TS3ChannelSummary, isSubscribed: Bool) {
+        runClientCommand { client in
+            try await client.setChannelSubscribed(channelId: channel.id, isSubscribed: isSubscribed)
+        }
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -2530,6 +2537,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
                     iconId: channel.iconId,
                     iconURL: channel.iconId.flatMap { self.channelIconURLs[$0] },
+                    isSubscribed: channel.isSubscribed,
                     isCurrent: channel.id == client.currentChannelId
                 )
             }

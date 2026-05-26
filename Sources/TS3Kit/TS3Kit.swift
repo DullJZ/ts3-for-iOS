@@ -317,6 +317,8 @@ public struct TS3Channel: Identifiable {
     public let maxFamilyClientsInherited: Bool?
     /// The channel icon id reported by the server.
     public let iconId: Int?
+    /// Whether the current client is subscribed to channel events, when reported by the server.
+    public let isSubscribed: Bool?
 
     /// Creates a channel snapshot from server-provided metadata.
     public init(
@@ -337,7 +339,8 @@ public struct TS3Channel: Identifiable {
         maxClientsUnlimited: Bool? = nil,
         maxFamilyClientsUnlimited: Bool? = nil,
         maxFamilyClientsInherited: Bool? = nil,
-        iconId: Int? = nil
+        iconId: Int? = nil,
+        isSubscribed: Bool? = nil
     ) {
         self.id = id
         self.parentId = parentId
@@ -357,6 +360,7 @@ public struct TS3Channel: Identifiable {
         self.maxFamilyClientsUnlimited = maxFamilyClientsUnlimited
         self.maxFamilyClientsInherited = maxFamilyClientsInherited
         self.iconId = iconId
+        self.isSubscribed = isSubscribed
     }
 }
 

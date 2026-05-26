@@ -569,6 +569,10 @@ struct ChannelRow: View {
                             Image(systemName: "lock.fill")
                                 .foregroundColor(.secondary)
                         }
+                        if channel.isSubscribed == false {
+                            Image(systemName: "bell.slash")
+                                .foregroundColor(.secondary)
+                        }
                     }
                     HStack(spacing: 6) {
                         Text("\(members.count) user\(members.count == 1 ? "" : "s")")
@@ -611,6 +615,15 @@ struct ChannelRow: View {
                     .buttonStyle(TS3BorderedButtonStyle())
                 }
                 Menu {
+                    if let isSubscribed = channel.isSubscribed {
+                        Button(isSubscribed ? "Unsubscribe Channel" : "Subscribe Channel") {
+                            model.setChannelSubscribed(channel, isSubscribed: !isSubscribed)
+                        }
+                    } else {
+                        Button("Subscribe Channel") {
+                            model.setChannelSubscribed(channel, isSubscribed: true)
+                        }
+                    }
                     Button("Edit Channel") {
                         isShowingEdit = true
                     }

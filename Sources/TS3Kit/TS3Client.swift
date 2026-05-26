@@ -482,6 +482,14 @@ public final class TS3Client {
         publishChannels()
     }
 
+    /// Subscribes or unsubscribes the current client from updates for a single channel.
+    public func setChannelSubscribed(channelId: Int, isSubscribed: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: isSubscribed ? "channelsubscribe" : "channelunsubscribe", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId))
+        ]))
+        updateChannelSubscription(channelId: channelId, isSubscribed: isSubscribed)
+    }
+
     public func moveClient(clientId targetClientId: Int, to channelId: Int, password: String?) async throws {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
@@ -1828,6 +1836,19 @@ private extension TS3Client {
             if let channel = channelFromCommand(command) {
                 channelCache[channel.id] = channel
                 publishChannels()
+            } else if command.name == "notifychannelsubscribed",
+                      let cidValue = command.get("cid")?.value,
+                      let cid = Int(cidValue) {
+                updateChannelSubscription(channelId: cid, isSubscribed: true)
+            } else {
+                Task { try? await refreshServerView() }
+            }
+            return
+        }
+
+        if command.name == "notifychannelunsubscribed" {
+            if let cidValue = command.get("cid")?.value, let cid = Int(cidValue) {
+                updateChannelSubscription(channelId: cid, isSubscribed: false)
             } else {
                 Task { try? await refreshServerView() }
             }
@@ -1996,7 +2017,41 @@ private extension TS3Client {
             maxClientsUnlimited: optionalBoolValue(command, "channel_flag_maxclients_unlimited"),
             maxFamilyClientsUnlimited: optionalBoolValue(command, "channel_flag_maxfamilyclients_unlimited"),
             maxFamilyClientsInherited: optionalBoolValue(command, "channel_flag_maxfamilyclients_inherited"),
-            iconId: intValue(command, "channel_icon_id")
+            iconId: intValue(command, "channel_icon_id"),
+            isSubscribed: optionalBoolValue(command, "channel_flag_are_subscribed")
+        )
+    }
+
+    func updateChannelSubscription(channelId: Int, isSubscribed: Bool) {
+        guard let existing = channelCache[channelId] else {
+            Task { try? await refreshServerView() }
+            return
+        }
+        channelCache[channelId] = copyChannel(existing, isSubscribed: isSubscribed)
+        publishChannels()
+    }
+
+    func copyChannel(_ channel: TS3Channel, isSubscribed: Bool? = nil) -> TS3Channel {
+        TS3Channel(
+            id: channel.id,
+            parentId: channel.parentId,
+            order: channel.order,
+            name: channel.name,
+            topic: channel.topic,
+            description: channel.description,
+            isDefault: channel.isDefault,
+            isPasswordProtected: channel.isPasswordProtected,
+            isPermanent: channel.isPermanent,
+            neededTalkPower: channel.neededTalkPower,
+            codec: channel.codec,
+            codecQuality: channel.codecQuality,
+            maxClients: channel.maxClients,
+            maxFamilyClients: channel.maxFamilyClients,
+            maxClientsUnlimited: channel.maxClientsUnlimited,
+            maxFamilyClientsUnlimited: channel.maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
+            iconId: channel.iconId,
+            isSubscribed: isSubscribed ?? channel.isSubscribed
         )
     }
 }
