@@ -892,6 +892,49 @@ public final class TS3Client {
         ]))
     }
 
+    /// Adds or updates a permission override for one client in one channel.
+    public func addChannelClientPermission(channelId: Int, clientDatabaseId: Int, permissionName: String, value: Int, skip: Bool = false) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelclientaddperm", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName),
+            TS3CommandSingleParameter(name: "permvalue", value: String(value)),
+            TS3CommandSingleParameter(name: "permskip", value: skip ? "1" : "0")
+        ]))
+    }
+
+    /// Deletes a permission override for one client in one channel.
+    public func deleteChannelClientPermission(channelId: Int, clientDatabaseId: Int, permissionName: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelclientdelperm", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "permsid", value: permissionName)
+        ]))
+    }
+
+    /// Grants or removes priority speaker status for a client in its current channel.
+    public func setPrioritySpeaker(_ isPrioritySpeaker: Bool, channelId: Int, clientDatabaseId: Int) async throws {
+        let permissionName = "b_client_is_priority_speaker"
+        if isPrioritySpeaker {
+            try await addChannelClientPermission(
+                channelId: channelId,
+                clientDatabaseId: clientDatabaseId,
+                permissionName: permissionName,
+                value: 1
+            )
+        } else {
+            try await deleteChannelClientPermission(
+                channelId: channelId,
+                clientDatabaseId: clientDatabaseId,
+                permissionName: permissionName
+            )
+        }
+        if let existing = clientCache.values.first(where: { $0.channelId == channelId && $0.databaseId == clientDatabaseId }) {
+            clientCache[UInt16(existing.id)] = copyClient(existing, isPrioritySpeaker: isPrioritySpeaker)
+            publishClients()
+        }
+    }
+
     public func refreshFileList(channelId: Int, path: String, password: String? = nil) async throws -> [TS3FileEntry] {
         var params: [TS3CommandParameter] = [
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),
@@ -2453,6 +2496,7 @@ private extension TS3Client {
             isAway: boolValue(command, "client_away"),
             awayMessage: command.get("client_away_message")?.value,
             isChannelCommander: boolValue(command, "client_is_channel_commander"),
+            isPrioritySpeaker: boolValue(command, "client_is_priority_speaker"),
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
@@ -2488,6 +2532,7 @@ private extension TS3Client {
             isAway: boolValue(command, "client_away"),
             awayMessage: command.get("client_away_message")?.value,
             isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
+            isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing?.isPrioritySpeaker ?? false,
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
@@ -2524,6 +2569,7 @@ private extension TS3Client {
             isAway: command.has("client_away") ? boolValue(command, "client_away") : existing.isAway,
             awayMessage: command.get("client_away_message")?.value ?? existing.awayMessage,
             isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing.isChannelCommander,
+            isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing.isPrioritySpeaker,
             talkPower: intValue(command, "client_talk_power") ?? existing.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
@@ -2560,6 +2606,7 @@ private extension TS3Client {
             isAway: command.has("client_away") ? boolValue(command, "client_away") : existing?.isAway ?? false,
             awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
             isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
+            isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing?.isPrioritySpeaker ?? false,
             talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
@@ -2588,6 +2635,7 @@ private extension TS3Client {
         isAway: Bool? = nil,
         awayMessage: String? = nil,
         isChannelCommander: Bool? = nil,
+        isPrioritySpeaker: Bool? = nil,
         description: String? = nil,
         avatarHash: String? = nil
     ) -> TS3ServerClient {
@@ -2603,6 +2651,7 @@ private extension TS3Client {
             isAway: isAway ?? client.isAway,
             awayMessage: awayMessage ?? client.awayMessage,
             isChannelCommander: isChannelCommander ?? client.isChannelCommander,
+            isPrioritySpeaker: isPrioritySpeaker ?? client.isPrioritySpeaker,
             talkPower: client.talkPower,
             channelGroupId: client.channelGroupId,
             serverGroups: client.serverGroups,

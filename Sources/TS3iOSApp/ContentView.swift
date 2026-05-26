@@ -982,6 +982,9 @@ struct ChannelMemberRow: View {
                     if member.isChannelCommander {
                         Text("Commander")
                     }
+                    if member.isPrioritySpeaker {
+                        Text("Priority")
+                    }
                     if let power = member.talkPower {
                         Text("Talk \(power)")
                     }
@@ -1043,6 +1046,15 @@ struct ChannelMemberRow: View {
                 }
                 Button("Edit Description") {
                     actionMode = .editDescription
+                }
+                if member.isPrioritySpeaker {
+                    Button("Remove Priority Speaker") {
+                        model.setPrioritySpeaker(false, for: member)
+                    }
+                } else {
+                    Button("Grant Priority Speaker") {
+                        model.setPrioritySpeaker(true, for: member)
+                    }
                 }
                 Menu("Move To") {
                     ForEach(model.channels) { channel in
@@ -1281,6 +1293,12 @@ struct UserInfoRows: View {
         Section(header: Text("Application")) {
             ServerInfoDetailRow(label: "Platform", value: user.platform)
             ServerInfoDetailRow(label: "Version", value: user.version)
+        }
+
+        Section(header: Text("Status")) {
+            ServerInfoDetailRow(label: "Channel Commander", value: user.isChannelCommander ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Priority Speaker", value: user.isPrioritySpeaker ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
         }
 
         Section(header: Text("Activity")) {

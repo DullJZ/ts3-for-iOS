@@ -72,6 +72,7 @@ struct TS3UserSummary: Identifiable {
     let isAway: Bool
     let awayMessage: String?
     let isChannelCommander: Bool
+    let isPrioritySpeaker: Bool
     let talkPower: Int?
     let channelGroupId: Int?
     let serverGroups: [Int]
@@ -2178,6 +2179,18 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setPrioritySpeaker(_ isPrioritySpeaker: Bool, for user: TS3UserSummary) {
+        runClientCommand { client in
+            let databaseId = try await self.databaseId(for: user, using: client)
+            try await client.setPrioritySpeaker(isPrioritySpeaker, channelId: user.channelId, clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.updateUser(clientId: user.id) { existing in
+                    self.copyUser(existing, isPrioritySpeaker: isPrioritySpeaker)
+                }
+            }
+        }
+    }
+
     private func upsertServerGroup(_ groupId: Int, forClientId clientId: Int) {
         updateUser(clientId: clientId) { user in
             if user.serverGroups.contains(groupId) {
@@ -2208,6 +2221,7 @@ final class TS3AppModel: ObservableObject {
 
     private func copyUser(
         _ user: TS3UserSummary,
+        isPrioritySpeaker: Bool? = nil,
         channelGroupId: Int? = nil,
         serverGroups: [Int]? = nil,
         description: String? = nil,
@@ -2235,6 +2249,7 @@ final class TS3AppModel: ObservableObject {
             isAway: user.isAway,
             awayMessage: user.awayMessage,
             isChannelCommander: user.isChannelCommander,
+            isPrioritySpeaker: isPrioritySpeaker ?? user.isPrioritySpeaker,
             talkPower: user.talkPower,
             channelGroupId: channelGroupId ?? user.channelGroupId,
             serverGroups: serverGroups ?? user.serverGroups,
@@ -2799,6 +2814,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     isAway: client.isAway,
                     awayMessage: client.awayMessage,
                     isChannelCommander: client.isChannelCommander,
+                    isPrioritySpeaker: client.isPrioritySpeaker,
                     talkPower: client.talkPower,
                     channelGroupId: client.channelGroupId,
                     serverGroups: client.serverGroups,
