@@ -892,6 +892,16 @@ public final class TS3Client {
         ]))
     }
 
+    /// Returns permission overrides for one client in one channel.
+    public func refreshChannelClientPermissions(channelId: Int, clientDatabaseId: Int) async throws -> [TS3Permission] {
+        let responses = try await execute(TS3SingleCommand(name: "channelclientpermlist", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandOption(name: "permsid")
+        ]))
+        return responses.compactMap { permission(from: $0) }
+    }
+
     /// Adds or updates a permission override for one client in one channel.
     public func addChannelClientPermission(channelId: Int, clientDatabaseId: Int, permissionName: String, value: Int, skip: Bool = false) async throws {
         _ = try await execute(TS3SingleCommand(name: "channelclientaddperm", parameters: [

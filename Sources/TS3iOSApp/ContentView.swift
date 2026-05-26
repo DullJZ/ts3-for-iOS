@@ -2951,6 +2951,31 @@ struct PermissionsSheet: View {
                             }
                         }
                     }
+                    if model.permissionEditScope == .channelClient {
+                        Picker("Channel", selection: Binding(
+                            get: { model.selectedChannelClientPermissionChannelId ?? model.currentChannel?.id ?? model.channels.first?.id ?? 0 },
+                            set: {
+                                model.selectedChannelClientPermissionChannelId = $0
+                                model.selectedChannelClientPermissionClientId = model.members(in: $0).first?.id
+                                model.refreshSelectedPermissions()
+                            }
+                        )) {
+                            ForEach(model.channels) { channel in
+                                Text(channel.name).tag(channel.id)
+                            }
+                        }
+                        Picker("Client", selection: Binding(
+                            get: { model.selectedChannelClientPermissionClientId ?? model.channelClientPermissionMembers().first?.id ?? 0 },
+                            set: {
+                                model.selectedChannelClientPermissionClientId = $0
+                                model.refreshSelectedPermissions()
+                            }
+                        )) {
+                            ForEach(model.channelClientPermissionMembers()) { member in
+                                Text(member.nickname).tag(member.id)
+                            }
+                        }
+                    }
                 }
 
                 Section(header: Text("\(model.permissionEditScope.title) Permissions")) {
@@ -2973,7 +2998,7 @@ struct PermissionsSheet: View {
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     Toggle("Negated", isOn: $permissionNegated)
-                        .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .channel)
+                        .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .channel || model.permissionEditScope == .channelClient)
                     Toggle("Skip", isOn: $permissionSkip)
                         .disabled(model.permissionEditScope == .channel)
                     Button("Add or Update Permission") {
