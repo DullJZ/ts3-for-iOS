@@ -361,6 +361,10 @@ struct ServerHeaderView: View {
                     .lineLimit(3)
             }
 
+            if let bannerImageURL {
+                ServerBannerImageView(url: bannerImageURL, linkURL: bannerLinkURL)
+            }
+
             if !linkActions.isEmpty {
                 HStack(spacing: 8) {
                     ForEach(linkActions) { action in
@@ -412,6 +416,14 @@ struct ServerHeaderView: View {
         nonEmpty(model.serverInfo.hostMessage)
     }
 
+    private var bannerImageURL: URL? {
+        parsedURL(model.serverInfo.hostBannerGraphicsURL)
+    }
+
+    private var bannerLinkURL: URL? {
+        parsedURL(model.serverInfo.hostBannerURL)
+    }
+
     private var linkActions: [ServerHeaderLinkAction] {
         var actions: [ServerHeaderLinkAction] = []
         if let url = parsedURL(model.serverInfo.hostBannerURL) {
@@ -437,6 +449,52 @@ struct ServerHeaderView: View {
     private func parsedURL(_ value: String?) -> URL? {
         guard let text = nonEmpty(value) else { return nil }
         return URL(string: text)
+    }
+}
+
+struct ServerBannerImageView: View {
+    let url: URL
+    let linkURL: URL?
+    @State private var image: TS3PlatformImage?
+    @State private var requestedURL: URL?
+
+    var body: some View {
+        Group {
+            if let image {
+                Button {
+                    if let linkURL {
+                        TS3PlatformSupport.openURL(linkURL)
+                    }
+                } label: {
+                    Image(ts3PlatformImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxHeight: 90)
+                }
+                .buttonStyle(.plain)
+                .disabled(linkURL == nil)
+                .accessibilityLabel("Server banner")
+            }
+        }
+        .onAppear(perform: loadImage)
+        .onChange(of: url) { _ in
+            image = nil
+            loadImage()
+        }
+    }
+
+    private func loadImage() {
+        guard requestedURL != url else { return }
+        requestedURL = url
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data, let loadedImage = TS3PlatformImage(data: data) else { return }
+            DispatchQueue.main.async {
+                if requestedURL == url {
+                    image = loadedImage
+                }
+            }
+        }.resume()
     }
 }
 
