@@ -83,6 +83,7 @@ struct TS3UserSummary: Identifiable {
     let avatarHash: String?
     let avatarURL: URL?
     let iconId: Int?
+    let iconURL: URL?
     let version: String?
     let platform: String?
     let country: String?
@@ -479,6 +480,7 @@ struct TS3ServerInfoSummary {
     var hostButtonURL: String?
     var hostButtonGraphicsURL: String?
     var iconId: Int?
+    var iconURL: URL?
 
     static let empty = TS3ServerInfoSummary(
         name: "",
@@ -527,7 +529,8 @@ struct TS3ServerInfoSummary {
         hostButtonTooltip: nil,
         hostButtonURL: nil,
         hostButtonGraphicsURL: nil,
-        iconId: nil
+        iconId: nil,
+        iconURL: nil
     )
 }
 
@@ -648,9 +651,9 @@ final class TS3AppModel: ObservableObject {
     @Published var awayMessage = ""
 
     private var client: TS3Client?
-    private var channelIconURLs: [Int: URL] = [:]
-    private var channelIconDownloads: Set<Int> = []
-    private var failedChannelIconIds: Set<Int> = []
+    private var iconURLs: [Int: URL] = [:]
+    private var iconDownloads: Set<Int> = []
+    private var failedIconIds: Set<Int> = []
 
     init() {
         loadBookmarks()
@@ -891,9 +894,9 @@ final class TS3AppModel: ObservableObject {
         talkRequestMessage = ""
         whisperRoute = .none
         microphonePermissionPrompt = nil
-        channelIconURLs = [:]
-        channelIconDownloads = []
-        failedChannelIconIds = []
+        iconURLs = [:]
+        iconDownloads = []
+        failedIconIds = []
     }
 
     func updatePlaybackVolume(_ volume: Double) {
@@ -1628,12 +1631,16 @@ final class TS3AppModel: ObservableObject {
                         self.fileTransferStatus = "Uploading icon \(iconId): \(Self.transferProgressText(sent, total: total))"
                     }
                 }
+                let destination = try iconDestination(for: iconId)
+                try data.write(to: destination, options: .atomic)
                 try await apply(client, iconId)
                 await MainActor.run {
+                    self.iconURLs[iconId] = destination
+                    onSuccess(iconId)
+                    self.applyIconURL(destination, for: iconId)
                     self.fileTransferProgress = 1
                     self.fileTransferStatus = "Uploaded icon \(iconId)"
                     self.lastError = nil
-                    onSuccess(iconId)
                 }
             } catch {
                 await MainActor.run {
@@ -1691,7 +1698,7 @@ final class TS3AppModel: ObservableObject {
         return directory.appendingPathComponent(fileName)
     }
 
-    private func channelIconDestination(for iconId: Int) throws -> URL {
+    private func iconDestination(for iconId: Int) throws -> URL {
         let caches = try FileManager.default.url(
             for: .cachesDirectory,
             in: .userDomainMask,
@@ -1703,45 +1710,56 @@ final class TS3AppModel: ObservableObject {
         return directory.appendingPathComponent("icon_\(iconId)")
     }
 
-    private func refreshMissingChannelIcons() {
+    private func refreshMissingIcons() {
         guard let client else { return }
-        let iconIds = Set(channels.compactMap { channel -> Int? in
-            guard let iconId = channel.iconId, iconId != 0 else { return nil }
-            return iconId
-        })
-        for iconId in iconIds where channelIconURLs[iconId] == nil
-            && !channelIconDownloads.contains(iconId)
-            && !failedChannelIconIds.contains(iconId) {
-            downloadChannelIcon(iconId, using: client)
+        let channelIconIds = channels.compactMap(\.iconId)
+        let clientIconIds = clients.compactMap(\.iconId)
+        let serverIconIds = [serverInfo.iconId].compactMap { $0 }
+        let iconIds = Set((serverIconIds + channelIconIds + clientIconIds).filter { $0 != 0 })
+        for iconId in iconIds where iconURLs[iconId] == nil
+            && !iconDownloads.contains(iconId)
+            && !failedIconIds.contains(iconId) {
+            downloadIcon(iconId, using: client)
         }
     }
 
-    private func downloadChannelIcon(_ iconId: Int, using client: TS3Client) {
-        channelIconDownloads.insert(iconId)
+    private func downloadIcon(_ iconId: Int, using client: TS3Client) {
+        iconDownloads.insert(iconId)
         Task {
             do {
-                let destination = try channelIconDestination(for: iconId)
+                let destination = try iconDestination(for: iconId)
                 if !FileManager.default.fileExists(atPath: destination.path) {
                     let parameters = try await client.initIconDownload(iconId: iconId)
                     try await TS3FileTransfer.download(parameters: parameters, to: destination)
                 }
                 await MainActor.run {
-                    self.channelIconDownloads.remove(iconId)
-                    self.channelIconURLs[iconId] = destination
-                    self.channels = self.channels.map { channel in
-                        var updated = channel
-                        if channel.iconId == iconId {
-                            updated.iconURL = destination
-                        }
-                        return updated
-                    }
+                    self.iconDownloads.remove(iconId)
+                    self.iconURLs[iconId] = destination
+                    self.applyIconURL(destination, for: iconId)
                 }
             } catch {
                 await MainActor.run {
-                    self.channelIconDownloads.remove(iconId)
-                    self.failedChannelIconIds.insert(iconId)
+                    self.iconDownloads.remove(iconId)
+                    self.failedIconIds.insert(iconId)
                 }
             }
+        }
+    }
+
+    private func applyIconURL(_ url: URL, for iconId: Int) {
+        channels = channels.map { channel in
+            var updated = channel
+            if channel.iconId == iconId {
+                updated.iconURL = url
+            }
+            return updated
+        }
+        if serverInfo.iconId == iconId {
+            serverInfo.iconURL = url
+        }
+        clients = clients.map { user in
+            guard user.iconId == iconId else { return user }
+            return copyUser(user, iconURL: url)
         }
     }
 
@@ -2024,8 +2042,9 @@ final class TS3AppModel: ObservableObject {
         } onSuccess: {
             guard let ownClient = self.clients.first(where: { $0.isCurrentUser }) else { return }
             self.updateUser(clientId: ownClient.id) { existing in
-                self.copyUser(existing, iconId: iconId ?? 0)
+                self.copyUser(existing, iconId: iconId ?? 0, resetIconURL: true)
             }
+            self.refreshMissingIcons()
         }
     }
 
@@ -2036,7 +2055,7 @@ final class TS3AppModel: ObservableObject {
             updateDraft?(iconId)
             guard let ownClient = self.clients.first(where: { $0.isCurrentUser }) else { return }
             self.updateUser(clientId: ownClient.id) { existing in
-                self.copyUser(existing, iconId: iconId)
+                self.copyUser(existing, iconId: iconId, resetIconURL: true)
             }
         }
     }
@@ -2152,11 +2171,11 @@ final class TS3AppModel: ObservableObject {
                 var updated = existing
                 if existing.id == channel.id {
                     updated.iconId = iconId
-                    updated.iconURL = self.channelIconURLs[iconId]
+                    updated.iconURL = self.iconURLs[iconId]
                 }
                 return updated
             }
-            self.refreshMissingChannelIcons()
+            self.refreshMissingIcons()
         }
     }
 
@@ -2490,6 +2509,8 @@ final class TS3AppModel: ObservableObject {
         avatarHash: String? = nil,
         avatarURL: URL? = nil,
         iconId: Int? = nil,
+        iconURL: URL? = nil,
+        resetIconURL: Bool = false,
         version: String? = nil,
         platform: String? = nil,
         country: String? = nil,
@@ -2523,6 +2544,7 @@ final class TS3AppModel: ObservableObject {
             avatarHash: avatarHash ?? user.avatarHash,
             avatarURL: avatarURL ?? user.avatarURL,
             iconId: iconId ?? user.iconId,
+            iconURL: resetIconURL ? nil : (iconURL ?? user.iconURL),
             version: version ?? user.version,
             platform: platform ?? user.platform,
             country: country ?? user.country,
@@ -2999,12 +3021,12 @@ extension TS3AppModel: TS3ClientDelegate {
                     maxFamilyClientsUnlimited: channel.maxFamilyClientsUnlimited,
                     maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
                     iconId: channel.iconId,
-                    iconURL: channel.iconId.flatMap { self.channelIconURLs[$0] },
+                    iconURL: channel.iconId.flatMap { self.iconURLs[$0] },
                     isSubscribed: channel.isSubscribed,
                     isCurrent: channel.id == client.currentChannelId
                 )
             }
-            self.refreshMissingChannelIcons()
+            self.refreshMissingIcons()
         }
     }
 
@@ -3057,8 +3079,10 @@ extension TS3AppModel: TS3ClientDelegate {
                 hostButtonTooltip: info.hostButtonTooltip,
                 hostButtonURL: info.hostButtonURL,
                 hostButtonGraphicsURL: info.hostButtonGraphicsURL,
-                iconId: info.iconId
+                iconId: info.iconId,
+                iconURL: info.iconId.flatMap { self.iconURLs[$0] }
             )
+            self.refreshMissingIcons()
         }
     }
 
@@ -3093,6 +3117,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     avatarHash: client.avatarHash,
                     avatarURL: avatarURL,
                     iconId: client.iconId,
+                    iconURL: client.iconId.flatMap { self.iconURLs[$0] },
                     version: client.version,
                     platform: client.platform,
                     country: client.country,
@@ -3104,6 +3129,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     connectedSeconds: client.connectedSeconds
                 )
             }
+            self.refreshMissingIcons()
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {
                 self.nickname = ownClient.nickname
                 self.isInputMuted = ownClient.isInputMuted

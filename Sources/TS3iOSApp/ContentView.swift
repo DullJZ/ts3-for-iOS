@@ -332,8 +332,7 @@ struct ServerHeaderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: model.serverInfo.passwordProtected ? "lock.shield" : "server.rack")
-                    .foregroundColor(.accentColor)
+                ServerIconView(server: model.serverInfo)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(serverName)
                         .font(.headline)
@@ -438,6 +437,32 @@ struct ServerHeaderView: View {
     private func parsedURL(_ value: String?) -> URL? {
         guard let text = nonEmpty(value) else { return nil }
         return URL(string: text)
+    }
+}
+
+struct ServerIconView: View {
+    let server: TS3ServerInfoSummary
+
+    var body: some View {
+        Group {
+            if let image = platformImage {
+                Image(ts3PlatformImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: server.passwordProtected ? "lock.shield" : "server.rack")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundColor(.accentColor)
+            }
+        }
+        .frame(width: 24, height: 24)
+        .accessibilityLabel("Server icon")
+    }
+
+    private var platformImage: TS3PlatformImage? {
+        guard let iconURL = server.iconURL else { return nil }
+        return TS3PlatformImage(contentsOfFile: iconURL.path)
     }
 }
 
@@ -966,9 +991,12 @@ struct ChannelMemberRow: View {
         HStack(spacing: 10) {
             UserAvatarView(user: member)
             VStack(alignment: .leading, spacing: 2) {
-                Text(member.nickname)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                HStack(spacing: 4) {
+                    Text(member.nickname)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                    UserIconView(user: member)
+                }
                 HStack(spacing: 8) {
                     if member.isAway {
                         Text(member.awayMessage?.isEmpty == false ? "Away: \(member.awayMessage!)" : "Away")
@@ -1300,6 +1328,7 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Client ID", value: String(user.id))
             ServerInfoDetailRow(label: "Database ID", value: user.databaseId.map(String.init))
             ServerInfoDetailRow(label: "Unique ID", value: user.uniqueIdentifier, monospaced: true)
+            ServerInfoDetailRow(label: "Icon ID", value: user.iconId.map(String.init))
             ServerInfoDetailRow(label: "Channel", value: String(user.channelId))
             ServerInfoDetailRow(label: "Country", value: user.country)
             ServerInfoDetailRow(label: "IP Address", value: user.ipAddress)
@@ -1352,6 +1381,33 @@ struct UserInfoRows: View {
         if hours < 24 { return "\(hours)h \(minutes % 60)m" }
         let days = hours / 24
         return "\(days)d \(hours % 24)h"
+    }
+}
+
+struct UserIconView: View {
+    let user: TS3UserSummary
+
+    @ViewBuilder
+    var body: some View {
+        if let image = platformImage {
+            Image(ts3PlatformImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .accessibilityLabel("Client icon")
+        } else if user.iconId != nil && user.iconId != 0 {
+            Image(systemName: "seal")
+                .resizable()
+                .scaledToFit()
+                .foregroundColor(.secondary)
+                .frame(width: 14, height: 14)
+                .accessibilityLabel("Client icon")
+        }
+    }
+
+    private var platformImage: TS3PlatformImage? {
+        guard let iconURL = user.iconURL else { return nil }
+        return TS3PlatformImage(contentsOfFile: iconURL.path)
     }
 }
 
@@ -1901,6 +1957,7 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Status", value: model.serverInfo.status)
                     ServerInfoDetailRow(label: "Unique ID", value: model.serverInfo.uniqueIdentifier, monospaced: true)
                     ServerInfoDetailRow(label: "Machine ID", value: model.serverInfo.machineId, monospaced: true)
+                    ServerInfoDetailRow(label: "Icon ID", value: model.serverInfo.iconId.map(String.init))
                     ServerInfoDetailRow(label: "Platform", value: model.serverInfo.platform)
                     ServerInfoDetailRow(label: "Version", value: model.serverInfo.version)
                     ServerInfoDetailRow(label: "Created", value: model.serverInfo.createdAt.map(Self.dateText))
