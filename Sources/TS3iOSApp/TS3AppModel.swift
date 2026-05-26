@@ -363,6 +363,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     var serverPassword: String
     var defaultChannel: String
     var defaultChannelPassword: String
+    var privilegeKey: String
 
     init(
         id: UUID = UUID(),
@@ -372,7 +373,8 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         nickname: String,
         serverPassword: String,
         defaultChannel: String,
-        defaultChannelPassword: String
+        defaultChannelPassword: String,
+        privilegeKey: String
     ) {
         self.id = id
         self.name = name
@@ -382,6 +384,32 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         self.serverPassword = serverPassword
         self.defaultChannel = defaultChannel
         self.defaultChannelPassword = defaultChannelPassword
+        self.privilegeKey = privilegeKey
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case host
+        case port
+        case nickname
+        case serverPassword
+        case defaultChannel
+        case defaultChannelPassword
+        case privilegeKey
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        host = try container.decode(String.self, forKey: .host)
+        port = try container.decode(String.self, forKey: .port)
+        nickname = try container.decode(String.self, forKey: .nickname)
+        serverPassword = try container.decode(String.self, forKey: .serverPassword)
+        defaultChannel = try container.decode(String.self, forKey: .defaultChannel)
+        defaultChannelPassword = try container.decode(String.self, forKey: .defaultChannelPassword)
+        privilegeKey = try container.decodeIfPresent(String.self, forKey: .privilegeKey) ?? ""
     }
 }
 
@@ -761,6 +789,7 @@ final class TS3AppModel: ObservableObject {
         serverPassword = bookmark.serverPassword
         defaultChannel = bookmark.defaultChannel
         defaultChannelPassword = bookmark.defaultChannelPassword
+        privilegeKey = bookmark.privilegeKey
     }
 
     func saveCurrentBookmark(name: String) {
@@ -774,10 +803,28 @@ final class TS3AppModel: ObservableObject {
             nickname: nickname,
             serverPassword: serverPassword,
             defaultChannel: defaultChannel,
-            defaultChannelPassword: defaultChannelPassword
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey
         )
         bookmarks.removeAll { $0.host == bookmark.host && $0.port == bookmark.port }
         bookmarks.insert(bookmark, at: 0)
+        saveBookmarks()
+    }
+
+    func updateBookmark(_ bookmark: TS3BookmarkSummary) {
+        let trimmedName = bookmark.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedHost = bookmark.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty, !trimmedHost.isEmpty else { return }
+        var updated = bookmark
+        updated.name = trimmedName
+        updated.host = trimmedHost
+        updated.port = bookmark.port.trimmingCharacters(in: .whitespacesAndNewlines)
+        updated.nickname = bookmark.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let index = bookmarks.firstIndex(where: { $0.id == bookmark.id }) {
+            bookmarks[index] = updated
+        } else {
+            bookmarks.insert(updated, at: 0)
+        }
         saveBookmarks()
     }
 

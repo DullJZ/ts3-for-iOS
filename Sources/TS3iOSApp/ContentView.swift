@@ -70,6 +70,7 @@ struct ConnectingView: View {
 struct ConnectView: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var bookmarkName = ""
+    @State private var editingBookmark: TS3BookmarkSummary?
     @State private var isShowingIdentity = false
 
     var body: some View {
@@ -90,6 +91,12 @@ struct ConnectView: View {
                             }
                             .buttonStyle(.borderless)
                             Spacer()
+                            Button {
+                                editingBookmark = bookmark
+                            } label: {
+                                Image(systemName: "pencil")
+                            }
+                            .buttonStyle(.borderless)
                             Button {
                                 model.deleteBookmark(bookmark)
                             } label: {
@@ -156,6 +163,75 @@ struct ConnectView: View {
             IdentityManagementSheet()
                 .environmentObject(model)
         }
+        .sheet(item: $editingBookmark) { bookmark in
+            BookmarkEditorSheet(bookmark: bookmark)
+                .environmentObject(model)
+        }
+    }
+}
+
+struct BookmarkEditorSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var bookmark: TS3BookmarkSummary
+
+    init(bookmark: TS3BookmarkSummary) {
+        _bookmark = State(initialValue: bookmark)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Bookmark")) {
+                    TextField("Name", text: $bookmark.name)
+                        .ts3PlainTextField()
+                    TextField("Host", text: $bookmark.host)
+                        .ts3URLTextField()
+                    TextField("Port", text: $bookmark.port)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                }
+
+                Section(header: Text("Profile")) {
+                    TextField("Nickname", text: $bookmark.nickname)
+                        .ts3PlainTextField()
+                    SecureField("Server Password", text: $bookmark.serverPassword)
+                    TextField("Default Channel", text: $bookmark.defaultChannel)
+                        .ts3PlainTextField()
+                    SecureField("Channel Password", text: $bookmark.defaultChannelPassword)
+                    SecureField("Privilege Key", text: $bookmark.privilegeKey)
+                }
+            }
+            .navigationTitle("Edit Bookmark")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Apply") {
+                        model.applyBookmark(bookmark)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canSubmit)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Save") {
+                        model.updateBookmark(bookmark)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canSubmit)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var canSubmit: Bool {
+        !bookmark.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !bookmark.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && Int(bookmark.port.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
     }
 }
 
