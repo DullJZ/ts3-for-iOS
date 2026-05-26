@@ -362,7 +362,21 @@ struct ServerHeaderView: View {
             }
 
             if let bannerImageURL {
-                ServerBannerImageView(url: bannerImageURL, linkURL: bannerLinkURL)
+                ServerRemoteImageLinkView(
+                    url: bannerImageURL,
+                    linkURL: bannerLinkURL,
+                    maxHeight: 90,
+                    accessibilityLabel: "Server banner"
+                )
+            }
+
+            if let hostButtonImageURL {
+                ServerRemoteImageLinkView(
+                    url: hostButtonImageURL,
+                    linkURL: hostButtonLinkURL,
+                    maxHeight: 32,
+                    accessibilityLabel: hostButtonTitle
+                )
             }
 
             if !linkActions.isEmpty {
@@ -424,6 +438,18 @@ struct ServerHeaderView: View {
         parsedURL(model.serverInfo.hostBannerURL)
     }
 
+    private var hostButtonImageURL: URL? {
+        parsedURL(model.serverInfo.hostButtonGraphicsURL)
+    }
+
+    private var hostButtonLinkURL: URL? {
+        parsedURL(model.serverInfo.hostButtonURL)
+    }
+
+    private var hostButtonTitle: String {
+        nonEmpty(model.serverInfo.hostButtonTooltip) ?? "Host button"
+    }
+
     private var linkActions: [ServerHeaderLinkAction] {
         var actions: [ServerHeaderLinkAction] = []
         if let url = parsedURL(model.serverInfo.hostBannerURL) {
@@ -452,9 +478,11 @@ struct ServerHeaderView: View {
     }
 }
 
-struct ServerBannerImageView: View {
+struct ServerRemoteImageLinkView: View {
     let url: URL
     let linkURL: URL?
+    let maxHeight: CGFloat
+    let accessibilityLabel: String
     @State private var image: TS3PlatformImage?
     @State private var requestedURL: URL?
 
@@ -470,11 +498,11 @@ struct ServerBannerImageView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(maxHeight: 90)
+                        .frame(maxHeight: maxHeight)
                 }
                 .buttonStyle(.plain)
                 .disabled(linkURL == nil)
-                .accessibilityLabel("Server banner")
+                .accessibilityLabel(accessibilityLabel)
             }
         }
         .onAppear(perform: loadImage)
