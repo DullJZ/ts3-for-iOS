@@ -19,7 +19,7 @@ struct TS3CommandSingleParameter: TS3CommandParameter {
 
     func build() -> String {
         if let value {
-            return "\(name)=\(TS3String.escape(value.trimmingCharacters(in: .whitespacesAndNewlines)))"
+            return "\(name)=\(TS3String.escape(value))"
         }
         return ""
     }
@@ -142,7 +142,7 @@ struct TS3MultiCommand: TS3Command {
                     let name = String(trimmed.dropFirst())
                     params.append(TS3CommandOption(name: name))
                 } else {
-                    let parts = trimmed.split(separator: "=", maxSplits: 1).map(String.init)
+                    let parts = trimmed.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
                     let key = parts[0].lowercased()
                     let value = parts.count > 1 ? try TS3String.unescape(parts[1]) : nil
                     params.append(TS3CommandSingleParameter(name: key, value: value))
