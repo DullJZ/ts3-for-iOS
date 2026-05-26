@@ -540,6 +540,7 @@ struct ChannelRow: View {
     @State private var joinPassword = ""
     @State private var isShowingJoinPassword = false
     @State private var isShowingEdit = false
+    @State private var isShowingMove = false
     @State private var isConfirmingDelete = false
 
     var body: some View {
@@ -627,6 +628,9 @@ struct ChannelRow: View {
                     Button("Edit Channel") {
                         isShowingEdit = true
                     }
+                    Button("Move Channel") {
+                        isShowingMove = true
+                    }
                     Button("Whisper to Channel") {
                         model.enableWhisperToChannel(id: channel.id)
                     }
@@ -659,6 +663,10 @@ struct ChannelRow: View {
             ChannelEditorSheet(mode: .edit(channel))
                 .environmentObject(model)
         }
+        .sheet(isPresented: $isShowingMove) {
+            MoveChannelSheet(channel: channel)
+                .environmentObject(model)
+        }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text("Delete Channel"),
@@ -685,6 +693,139 @@ struct ChannelRow: View {
             return "Family \(maxFamilyClients)"
         }
         return nil
+    }
+}
+
+struct MoveChannelSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let channel: TS3ChannelSummary
+    @State private var selectedParentId: Int?
+    @State private var selectedOrderId: Int?
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    Picker("Parent", selection: $selectedParentId) {
+                        Text("Root").tag(Optional<Int>.none)
+                        ForEach(parentOptions) { parent in
+                            Text(parent.name).tag(Optional(parent.id))
+                        }
+                    }
+                    Picker("Position", selection: $selectedOrderId) {
+                        Text("First").tag(Optional<Int>.none)
+                        ForEach(siblingOptions) { sibling in
+                            Text("After \(sibling.name)").tag(Optional(sibling.id))
+                        }
+                    }
+                }
+                Section {
+                    Button("Move Channel") {
+                        model.moveChannel(channel, toParentId: selectedParentId, order: selectedOrderId)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canSubmit)
+                }
+            }
+            .navigationTitle("Move Channel")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                selectedParentId = normalizedParentId(channel.parentId)
+                selectedOrderId = normalizedOrderId(channel.order)
+            }
+            .onChange(of: selectedParentId) { _ in
+                selectedOrderId = nil
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var parentOptions: [TS3ChannelSummary] {
+        ChannelTreeItem.flatten(channels: model.channels)
+            .map(\.channel)
+            .filter { candidate in
+                candidate.id != channel.id && !isDescendant(candidate, of: channel)
+            }
+    }
+
+    private var siblingOptions: [TS3ChannelSummary] {
+        orderedSiblings(
+            model.channels.filter { candidate in
+                candidate.id != channel.id
+                    && normalizedParentId(candidate.parentId) == selectedParentId
+            }
+        )
+    }
+
+    private var canSubmit: Bool {
+        selectedParentId == nil || parentOptions.contains { $0.id == selectedParentId }
+    }
+
+    private func isDescendant(_ candidate: TS3ChannelSummary, of channel: TS3ChannelSummary) -> Bool {
+        var parent = normalizedParentId(candidate.parentId)
+        while let parentId = parent {
+            if parentId == channel.id {
+                return true
+            }
+            parent = normalizedParentId(model.channels.first { $0.id == parentId }?.parentId)
+        }
+        return false
+    }
+
+    private func normalizedParentId(_ parentId: Int?) -> Int? {
+        guard let parentId, parentId > 0 else { return nil }
+        return parentId
+    }
+
+    private func normalizedOrderId(_ orderId: Int?) -> Int? {
+        guard let orderId, orderId > 0 else { return nil }
+        return orderId
+    }
+
+    private func orderedSiblings(_ channels: [TS3ChannelSummary]) -> [TS3ChannelSummary] {
+        let ids = Set(channels.map(\.id))
+        let byPreviousId = Dictionary(grouping: channels) { channel -> Int? in
+            guard let previousId = channel.order, ids.contains(previousId) else { return nil }
+            return previousId
+        }
+        var visited: Set<Int> = []
+        var result: [TS3ChannelSummary] = []
+
+        func stableSort(_ lhs: TS3ChannelSummary, _ rhs: TS3ChannelSummary) -> Bool {
+            if lhs.order != rhs.order {
+                return (lhs.order ?? Int.min) < (rhs.order ?? Int.min)
+            }
+            if lhs.name != rhs.name {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.id < rhs.id
+        }
+
+        func appendChain(startingAt channel: TS3ChannelSummary) {
+            var current: TS3ChannelSummary? = channel
+            while let channel = current, !visited.contains(channel.id) {
+                visited.insert(channel.id)
+                result.append(channel)
+                current = byPreviousId[channel.id]?.sorted(by: stableSort).first {
+                    !visited.contains($0.id)
+                }
+            }
+        }
+
+        for channel in (byPreviousId[nil] ?? []).sorted(by: stableSort) {
+            appendChain(startingAt: channel)
+        }
+        for channel in channels.sorted(by: stableSort) where !visited.contains(channel.id) {
+            appendChain(startingAt: channel)
+        }
+        return result
     }
 }
 

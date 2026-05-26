@@ -1895,6 +1895,12 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func moveChannel(_ channel: TS3ChannelSummary, toParentId parentId: Int?, order: Int?) {
+        runClientCommand { client in
+            try await client.moveChannel(channelId: channel.id, parentId: parentId, order: order)
+        }
+    }
+
     func setChannelSubscribed(_ channel: TS3ChannelSummary, isSubscribed: Bool) {
         runClientCommand { client in
             try await client.setChannelSubscribed(channelId: channel.id, isSubscribed: isSubscribed)

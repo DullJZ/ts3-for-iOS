@@ -564,6 +564,16 @@ public final class TS3Client {
         publishChannels()
     }
 
+    /// Moves a channel to a new parent and sort position.
+    public func moveChannel(channelId: Int, parentId: Int?, order: Int?) async throws {
+        _ = try await execute(TS3SingleCommand(name: "channelmove", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "cpid", value: String(parentId ?? 0)),
+            TS3CommandSingleParameter(name: "order", value: String(order ?? 0))
+        ]))
+        try? await refreshServerView()
+    }
+
     /// Subscribes or unsubscribes the current client from updates for a single channel.
     public func setChannelSubscribed(channelId: Int, isSubscribed: Bool) async throws {
         _ = try await execute(TS3SingleCommand(name: isSubscribed ? "channelsubscribe" : "channelunsubscribe", parameters: [
