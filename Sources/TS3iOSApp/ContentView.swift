@@ -2534,6 +2534,8 @@ struct ClientDatabaseSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var isShowingDescriptionEditor = false
+    @State private var isConfirmingDelete = false
 
     var displayedRecords: [TS3DatabaseClientSummary] {
         model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
@@ -2573,6 +2575,12 @@ struct ClientDatabaseSheet: View {
                             model.resolveDatabaseIdForSelectedClient()
                         }
                         .disabled(selected.uniqueIdentifier == nil)
+                        Button("Edit Description") {
+                            isShowingDescriptionEditor = true
+                        }
+                        Button("Delete Database Record") {
+                            isConfirmingDelete = true
+                        }
                     }
                 }
 
@@ -2598,6 +2606,64 @@ struct ClientDatabaseSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingDescriptionEditor) {
+                if let selected = model.selectedDatabaseClient {
+                    DatabaseClientDescriptionSheet(record: selected) { description in
+                        model.editDatabaseClientDescription(selected, description: description)
+                    }
+                }
+            }
+            .alert(isPresented: $isConfirmingDelete) {
+                Alert(
+                    title: Text("Delete Database Record?"),
+                    message: Text(model.selectedDatabaseClient?.nickname ?? "Selected client"),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if let selected = model.selectedDatabaseClient {
+                            model.deleteDatabaseClient(selected)
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        }
+    }
+}
+
+struct DatabaseClientDescriptionSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let record: TS3DatabaseClientSummary
+    let submit: (String) -> Void
+    @State private var description: String
+
+    init(record: TS3DatabaseClientSummary, submit: @escaping (String) -> Void) {
+        self.record = record
+        self.submit = submit
+        _description = State(initialValue: record.description ?? "")
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(record.nickname)) {
+                    TextField("Description", text: $description)
+                        .ts3PlainTextField()
+                }
+            }
+            .navigationTitle("Edit Description")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Save") {
+                        submit(description)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }

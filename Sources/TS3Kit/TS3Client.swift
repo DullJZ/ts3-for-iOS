@@ -306,6 +306,21 @@ public final class TS3Client {
         return responses.compactMap { databaseClient(from: $0) }
     }
 
+    /// Updates the stored description for a client database record.
+    public func editDatabaseClientDescription(clientDatabaseId: Int, description: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientdbedit", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "client_description", value: description)
+        ]))
+    }
+
+    /// Deletes a client database record from the virtual server.
+    public func deleteDatabaseClient(clientDatabaseId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientdbdelete", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ]))
+    }
+
     public func onlineClientIds(forNamePattern pattern: String) async throws -> [TS3ClientLocation] {
         let responses = try await execute(TS3SingleCommand(name: "clientfind", parameters: [
             TS3CommandSingleParameter(name: "pattern", value: pattern)

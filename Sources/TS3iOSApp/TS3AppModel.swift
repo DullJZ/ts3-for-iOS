@@ -205,6 +205,39 @@ struct TS3DatabaseClientSummary: Identifiable {
         self.description = client.description
         self.lastIP = client.lastIP
     }
+
+    func copy(description: String?) -> TS3DatabaseClientSummary {
+        TS3DatabaseClientSummary(
+            id: id,
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            createdAt: createdAt,
+            lastConnectedAt: lastConnectedAt,
+            totalConnections: totalConnections,
+            description: description,
+            lastIP: lastIP
+        )
+    }
+
+    private init(
+        id: Int,
+        uniqueIdentifier: String?,
+        nickname: String,
+        createdAt: Date?,
+        lastConnectedAt: Date?,
+        totalConnections: Int?,
+        description: String?,
+        lastIP: String?
+    ) {
+        self.id = id
+        self.uniqueIdentifier = uniqueIdentifier
+        self.nickname = nickname
+        self.createdAt = createdAt
+        self.lastConnectedAt = lastConnectedAt
+        self.totalConnections = totalConnections
+        self.description = description
+        self.lastIP = lastIP
+    }
 }
 
 struct TS3ClientLocationSummary: Identifiable {
@@ -1383,6 +1416,35 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func editDatabaseClientDescription(_ record: TS3DatabaseClientSummary, description: String) {
+        runClientCommand { client in
+            try await client.editDatabaseClientDescription(clientDatabaseId: record.id, description: description)
+            let detailed = try await client.databaseClientInfo(clientDatabaseId: record.id)
+            await MainActor.run {
+                let updated = detailed.map { TS3DatabaseClientSummary(client: $0) }
+                    ?? record.copy(description: description.trimmingCharacters(in: .whitespacesAndNewlines))
+                self.replaceDatabaseClient(updated)
+                if self.selectedDatabaseClient?.id == record.id {
+                    self.selectedDatabaseClient = updated
+                }
+            }
+        }
+    }
+
+    func deleteDatabaseClient(_ record: TS3DatabaseClientSummary) {
+        runClientCommand { client in
+            try await client.deleteDatabaseClient(clientDatabaseId: record.id)
+            await MainActor.run {
+                self.databaseClients.removeAll { $0.id == record.id }
+                self.databaseSearchResults.removeAll { $0.id == record.id }
+                if self.selectedDatabaseClient?.id == record.id {
+                    self.selectedDatabaseClient = nil
+                    self.clientLocations = []
+                }
+            }
+        }
+    }
+
     func editServerSettings(
         name: String,
         welcomeMessage: String,
@@ -2536,6 +2598,17 @@ final class TS3AppModel: ObservableObject {
     private func updateUser(clientId: Int, transform: (TS3UserSummary) -> TS3UserSummary) {
         guard let index = clients.firstIndex(where: { $0.id == clientId }) else { return }
         clients[index] = transform(clients[index])
+    }
+
+    private func replaceDatabaseClient(_ record: TS3DatabaseClientSummary) {
+        func replace(in records: inout [TS3DatabaseClientSummary]) {
+            guard let index = records.firstIndex(where: { $0.id == record.id }) else { return }
+            records[index] = record
+            records.sort { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+        }
+
+        replace(in: &databaseClients)
+        replace(in: &databaseSearchResults)
     }
 
     private func copyUser(
