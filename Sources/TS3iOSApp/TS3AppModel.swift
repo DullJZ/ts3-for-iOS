@@ -1304,6 +1304,16 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func addServerLogEntry(level: TS3LogLevel, message: String, limit: Int = 100, reverse: Bool = true, instance: Bool = false) {
+        runClientCommand { client in
+            try await client.addServerLogEntry(level: level, message: message)
+            let entries = try await client.serverLogEntries(limit: limit, reverse: reverse, instance: instance)
+            await MainActor.run {
+                self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
+            }
+        }
+    }
+
     func refreshClientDatabase(limit: Int = 100) {
         runClientCommand { client in
             let records = try await client.refreshClientDatabase(start: 0, duration: limit)

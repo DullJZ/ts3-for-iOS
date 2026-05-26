@@ -1941,6 +1941,8 @@ struct ServerLogsSheet: View {
     @State private var lineLimit = "100"
     @State private var reverseOrder = true
     @State private var instanceLogs = false
+    @State private var newLogLevel: TS3LogLevel = .info
+    @State private var newLogMessage = ""
 
     var body: some View {
         NavigationView {
@@ -1953,11 +1955,32 @@ struct ServerLogsSheet: View {
                     Toggle("Instance Logs", isOn: $instanceLogs)
                     Button("Refresh") {
                         model.refreshServerLogs(
-                            limit: Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100,
+                            limit: parsedLineLimit,
                             reverse: reverseOrder,
                             instance: instanceLogs
                         )
                     }
+                }
+
+                Section(header: Text("Add Entry")) {
+                    Picker("Level", selection: $newLogLevel) {
+                        ForEach(Self.logLevels, id: \.self) { level in
+                            Text(Self.logLevelTitle(level)).tag(level)
+                        }
+                    }
+                    TextField("Message", text: $newLogMessage)
+                        .ts3PlainTextField()
+                    Button("Write Server Log Entry") {
+                        model.addServerLogEntry(
+                            level: newLogLevel,
+                            message: newLogMessage,
+                            limit: parsedLineLimit,
+                            reverse: reverseOrder,
+                            instance: instanceLogs
+                        )
+                        newLogMessage = ""
+                    }
+                    .disabled(newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Section(header: Text("Server Log")) {
@@ -1977,7 +2000,7 @@ struct ServerLogsSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Refresh") {
                         model.refreshServerLogs(
-                            limit: Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100,
+                            limit: parsedLineLimit,
                             reverse: reverseOrder,
                             instance: instanceLogs
                         )
@@ -1991,11 +2014,26 @@ struct ServerLogsSheet: View {
             }
             .onAppear {
                 model.refreshServerLogs(
-                    limit: Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100,
+                    limit: parsedLineLimit,
                     reverse: reverseOrder,
                     instance: instanceLogs
                 )
             }
+        }
+    }
+
+    private var parsedLineLimit: Int {
+        Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100
+    }
+
+    private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]
+
+    private static func logLevelTitle(_ level: TS3LogLevel) -> String {
+        switch level {
+        case .debug: return "Debug"
+        case .info: return "Info"
+        case .warning: return "Warning"
+        case .error: return "Error"
         }
     }
 }

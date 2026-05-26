@@ -257,6 +257,18 @@ public final class TS3Client {
         }
     }
 
+    /// Writes a message to the virtual server log.
+    public func addServerLogEntry(level: TS3LogLevel, message: String) async throws {
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedMessage.isEmpty else {
+            throw TS3Error.invalidCommand
+        }
+        _ = try await execute(TS3SingleCommand(name: "logadd", parameters: [
+            TS3CommandSingleParameter(name: "loglevel", value: String(level.serverQueryLogLevel)),
+            TS3CommandSingleParameter(name: "logmsg", value: trimmedMessage)
+        ]))
+    }
+
     public func refreshClientDetails(clientId targetClientId: Int) async throws -> TS3ServerClient? {
         let responses = try await execute(TS3SingleCommand(name: "clientinfo", parameters: [
             TS3CommandSingleParameter(name: "clid", value: String(targetClientId))
@@ -3305,6 +3317,17 @@ private extension TS3Client {
 
     func base64String(_ bytes: [UInt8]) -> String {
         Data(bytes).base64EncodedString()
+    }
+}
+
+private extension TS3LogLevel {
+    var serverQueryLogLevel: Int {
+        switch self {
+        case .error: return 1
+        case .warning: return 2
+        case .debug: return 3
+        case .info: return 4
+        }
     }
 }
 
