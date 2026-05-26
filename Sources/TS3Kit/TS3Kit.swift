@@ -395,6 +395,12 @@ public struct TS3ServerClient: Identifiable {
     public let isChannelCommander: Bool
     /// Whether the client is marked as a priority speaker in the current channel.
     public let isPrioritySpeaker: Bool
+    /// Whether the client is currently allowed to talk in a moderated channel.
+    public let isTalker: Bool
+    /// Whether the client has requested talk power from channel moderators.
+    public let isRequestingTalkPower: Bool
+    /// The optional message supplied with the talk power request.
+    public let talkRequestMessage: String?
     public let talkPower: Int?
     public let channelGroupId: Int?
     public let serverGroups: [Int]
@@ -433,6 +439,9 @@ public struct TS3ServerClient: Identifiable {
         awayMessage: String? = nil,
         isChannelCommander: Bool = false,
         isPrioritySpeaker: Bool = false,
+        isTalker: Bool = false,
+        isRequestingTalkPower: Bool = false,
+        talkRequestMessage: String? = nil,
         talkPower: Int? = nil,
         channelGroupId: Int? = nil,
         serverGroups: [Int] = [],
@@ -460,6 +469,9 @@ public struct TS3ServerClient: Identifiable {
         self.awayMessage = awayMessage
         self.isChannelCommander = isChannelCommander
         self.isPrioritySpeaker = isPrioritySpeaker
+        self.isTalker = isTalker
+        self.isRequestingTalkPower = isRequestingTalkPower
+        self.talkRequestMessage = talkRequestMessage
         self.talkPower = talkPower
         self.channelGroupId = channelGroupId
         self.serverGroups = serverGroups

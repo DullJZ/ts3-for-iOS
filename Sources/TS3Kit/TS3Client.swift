@@ -419,6 +419,23 @@ public final class TS3Client {
         }
     }
 
+    /// Requests or cancels talk power for the current client.
+    public func setTalkRequest(_ isRequesting: Bool, message: String? = nil) async throws {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "client_talk_request", value: isRequesting ? "1" : "0")
+        ]
+        params.append(TS3CommandSingleParameter(name: "client_talk_request_msg", value: isRequesting ? (message ?? "") : ""))
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: params))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(
+                existing,
+                isRequestingTalkPower: isRequesting,
+                talkRequestMessage: isRequesting ? message : ""
+            )
+            publishClients()
+        }
+    }
+
     public func createChannel(
         name: String,
         parentId: Int?,
@@ -698,6 +715,23 @@ public final class TS3Client {
         ]))
         if let existing = clientCache[UInt16(targetClientId)] {
             clientCache[UInt16(targetClientId)] = copyClient(existing, description: description)
+            publishClients()
+        }
+    }
+
+    /// Grants or removes talker status for an online client.
+    public func setClientTalker(_ isTalker: Bool, clientId targetClientId: Int) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientedit", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
+            TS3CommandSingleParameter(name: "client_is_talker", value: isTalker ? "1" : "0")
+        ]))
+        if let existing = clientCache[UInt16(targetClientId)] {
+            clientCache[UInt16(targetClientId)] = copyClient(
+                existing,
+                isTalker: isTalker,
+                isRequestingTalkPower: isTalker ? false : existing.isRequestingTalkPower,
+                talkRequestMessage: isTalker ? "" : existing.talkRequestMessage
+            )
             publishClients()
         }
     }
@@ -2529,6 +2563,9 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value,
             isChannelCommander: boolValue(command, "client_is_channel_commander"),
             isPrioritySpeaker: boolValue(command, "client_is_priority_speaker"),
+            isTalker: boolValue(command, "client_is_talker"),
+            isRequestingTalkPower: boolValue(command, "client_talk_request"),
+            talkRequestMessage: command.get("client_talk_request_msg")?.value,
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
@@ -2565,6 +2602,9 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value,
             isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
             isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing?.isPrioritySpeaker ?? false,
+            isTalker: command.has("client_is_talker") ? boolValue(command, "client_is_talker") : existing?.isTalker ?? false,
+            isRequestingTalkPower: command.has("client_talk_request") ? boolValue(command, "client_talk_request") : existing?.isRequestingTalkPower ?? false,
+            talkRequestMessage: command.get("client_talk_request_msg")?.value ?? existing?.talkRequestMessage,
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
@@ -2602,6 +2642,9 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value ?? existing.awayMessage,
             isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing.isChannelCommander,
             isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing.isPrioritySpeaker,
+            isTalker: command.has("client_is_talker") ? boolValue(command, "client_is_talker") : existing.isTalker,
+            isRequestingTalkPower: command.has("client_talk_request") ? boolValue(command, "client_talk_request") : existing.isRequestingTalkPower,
+            talkRequestMessage: command.get("client_talk_request_msg")?.value ?? existing.talkRequestMessage,
             talkPower: intValue(command, "client_talk_power") ?? existing.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
@@ -2639,6 +2682,9 @@ private extension TS3Client {
             awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
             isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
             isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing?.isPrioritySpeaker ?? false,
+            isTalker: command.has("client_is_talker") ? boolValue(command, "client_is_talker") : existing?.isTalker ?? false,
+            isRequestingTalkPower: command.has("client_talk_request") ? boolValue(command, "client_talk_request") : existing?.isRequestingTalkPower ?? false,
+            talkRequestMessage: command.get("client_talk_request_msg")?.value ?? existing?.talkRequestMessage,
             talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
@@ -2668,6 +2714,9 @@ private extension TS3Client {
         awayMessage: String? = nil,
         isChannelCommander: Bool? = nil,
         isPrioritySpeaker: Bool? = nil,
+        isTalker: Bool? = nil,
+        isRequestingTalkPower: Bool? = nil,
+        talkRequestMessage: String? = nil,
         description: String? = nil,
         avatarHash: String? = nil
     ) -> TS3ServerClient {
@@ -2684,6 +2733,9 @@ private extension TS3Client {
             awayMessage: awayMessage ?? client.awayMessage,
             isChannelCommander: isChannelCommander ?? client.isChannelCommander,
             isPrioritySpeaker: isPrioritySpeaker ?? client.isPrioritySpeaker,
+            isTalker: isTalker ?? client.isTalker,
+            isRequestingTalkPower: isRequestingTalkPower ?? client.isRequestingTalkPower,
+            talkRequestMessage: talkRequestMessage ?? client.talkRequestMessage,
             talkPower: client.talkPower,
             channelGroupId: client.channelGroupId,
             serverGroups: client.serverGroups,

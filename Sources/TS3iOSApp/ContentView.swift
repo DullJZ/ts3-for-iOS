@@ -985,6 +985,12 @@ struct ChannelMemberRow: View {
                     if member.isPrioritySpeaker {
                         Text("Priority")
                     }
+                    if member.isTalker {
+                        Text("Talker")
+                    }
+                    if member.isRequestingTalkPower {
+                        Text("Wants Talk")
+                    }
                     if let power = member.talkPower {
                         Text("Talk \(power)")
                     }
@@ -1054,6 +1060,15 @@ struct ChannelMemberRow: View {
                 } else {
                     Button("Grant Priority Speaker") {
                         model.setPrioritySpeaker(true, for: member)
+                    }
+                }
+                if member.isTalker {
+                    Button("Remove Talk Power") {
+                        model.setTalker(false, for: member)
+                    }
+                } else {
+                    Button(member.isRequestingTalkPower ? "Grant Talk Power" : "Mark As Talker") {
+                        model.setTalker(true, for: member)
                     }
                 }
                 Menu("Move To") {
@@ -1298,6 +1313,9 @@ struct UserInfoRows: View {
         Section(header: Text("Status")) {
             ServerInfoDetailRow(label: "Channel Commander", value: user.isChannelCommander ? "Yes" : "No")
             ServerInfoDetailRow(label: "Priority Speaker", value: user.isPrioritySpeaker ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Talker", value: user.isTalker ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Requests Talk Power", value: user.isRequestingTalkPower ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Talk Request", value: user.talkRequestMessage?.isEmpty == false ? user.talkRequestMessage : nil)
             ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
         }
 
@@ -1314,6 +1332,8 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Input Muted", value: user.isInputMuted ? "Yes" : "No")
             ServerInfoDetailRow(label: "Output Muted", value: user.isOutputMuted ? "Yes" : "No")
             ServerInfoDetailRow(label: "Channel Commander", value: user.isChannelCommander ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Talker", value: user.isTalker ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Requests Talk Power", value: user.isRequestingTalkPower ? "Yes" : "No")
             ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
         }
     }
@@ -4186,6 +4206,7 @@ struct SelfStatusSheet: View {
     @State private var isInputMuted = false
     @State private var isOutputMuted = false
     @State private var isChannelCommander = false
+    @State private var talkRequestMessage = ""
 
     var body: some View {
         NavigationView {
@@ -4218,6 +4239,22 @@ struct SelfStatusSheet: View {
                 Section(header: Text("Role")) {
                     Toggle("Channel Commander", isOn: channelCommanderBinding)
                 }
+
+                Section(header: Text("Talk Power")) {
+                    TextField("Request Message", text: $talkRequestMessage)
+                        .ts3PlainTextField()
+                        .disabled(model.isRequestingTalkPower)
+                    if model.isRequestingTalkPower {
+                        Button("Cancel Talk Request") {
+                            model.setTalkRequest(false, message: "")
+                        }
+                    } else {
+                        Button("Request Talk Power") {
+                            model.setTalkRequest(true, message: talkRequestMessage)
+                        }
+                        .disabled(talkRequestMessage.count > 50)
+                    }
+                }
             }
             .navigationTitle("Self Status")
             .ts3InlineNavigationTitle()
@@ -4228,6 +4265,7 @@ struct SelfStatusSheet: View {
                 isInputMuted = model.isInputMuted
                 isOutputMuted = model.isOutputMuted
                 isChannelCommander = model.isChannelCommander
+                talkRequestMessage = model.talkRequestMessage
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {

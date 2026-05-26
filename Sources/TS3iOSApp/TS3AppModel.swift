@@ -73,6 +73,9 @@ struct TS3UserSummary: Identifiable {
     let awayMessage: String?
     let isChannelCommander: Bool
     let isPrioritySpeaker: Bool
+    let isTalker: Bool
+    let isRequestingTalkPower: Bool
+    let talkRequestMessage: String?
     let talkPower: Int?
     let channelGroupId: Int?
     let serverGroups: [Int]
@@ -619,6 +622,8 @@ final class TS3AppModel: ObservableObject {
     @Published var isInputMuted = false
     @Published var isOutputMuted = false
     @Published var isChannelCommander = false
+    @Published var isRequestingTalkPower = false
+    @Published var talkRequestMessage = ""
     @Published var whisperRoute: TS3WhisperRoute = .none
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
@@ -879,6 +884,8 @@ final class TS3AppModel: ObservableObject {
         isInputMuted = false
         isOutputMuted = false
         isChannelCommander = false
+        isRequestingTalkPower = false
+        talkRequestMessage = ""
         whisperRoute = .none
         microphonePermissionPrompt = nil
         channelIconURLs = [:]
@@ -1937,6 +1944,16 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setTalkRequest(_ isRequesting: Bool, message: String) {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        runClientCommand { client in
+            try await client.setTalkRequest(isRequesting, message: trimmed)
+        } onSuccess: {
+            self.isRequestingTalkPower = isRequesting
+            self.talkRequestMessage = isRequesting ? trimmed : ""
+        }
+    }
+
     func createChannel(
         name: String,
         parentId: Int?,
@@ -2294,6 +2311,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setTalker(_ isTalker: Bool, for user: TS3UserSummary) {
+        runClientCommand { client in
+            try await client.setClientTalker(isTalker, clientId: user.id)
+            await MainActor.run {
+                self.updateUser(clientId: user.id) { existing in
+                    self.copyUser(
+                        existing,
+                        isTalker: isTalker,
+                        isRequestingTalkPower: isTalker ? false : existing.isRequestingTalkPower,
+                        talkRequestMessage: isTalker ? "" : existing.talkRequestMessage
+                    )
+                }
+            }
+        }
+    }
+
     private func upsertServerGroup(_ groupId: Int, forClientId clientId: Int) {
         updateUser(clientId: clientId) { user in
             if user.serverGroups.contains(groupId) {
@@ -2325,6 +2358,9 @@ final class TS3AppModel: ObservableObject {
     private func copyUser(
         _ user: TS3UserSummary,
         isPrioritySpeaker: Bool? = nil,
+        isTalker: Bool? = nil,
+        isRequestingTalkPower: Bool? = nil,
+        talkRequestMessage: String? = nil,
         channelGroupId: Int? = nil,
         serverGroups: [Int]? = nil,
         description: String? = nil,
@@ -2353,6 +2389,9 @@ final class TS3AppModel: ObservableObject {
             awayMessage: user.awayMessage,
             isChannelCommander: user.isChannelCommander,
             isPrioritySpeaker: isPrioritySpeaker ?? user.isPrioritySpeaker,
+            isTalker: isTalker ?? user.isTalker,
+            isRequestingTalkPower: isRequestingTalkPower ?? user.isRequestingTalkPower,
+            talkRequestMessage: talkRequestMessage ?? user.talkRequestMessage,
             talkPower: user.talkPower,
             channelGroupId: channelGroupId ?? user.channelGroupId,
             serverGroups: serverGroups ?? user.serverGroups,
@@ -2918,6 +2957,9 @@ extension TS3AppModel: TS3ClientDelegate {
                     awayMessage: client.awayMessage,
                     isChannelCommander: client.isChannelCommander,
                     isPrioritySpeaker: client.isPrioritySpeaker,
+                    isTalker: client.isTalker,
+                    isRequestingTalkPower: client.isRequestingTalkPower,
+                    talkRequestMessage: client.talkRequestMessage,
                     talkPower: client.talkPower,
                     channelGroupId: client.channelGroupId,
                     serverGroups: client.serverGroups,
@@ -2941,6 +2983,8 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.isOutputMuted = ownClient.isOutputMuted
                 self.isAway = ownClient.isAway
                 self.isChannelCommander = ownClient.isChannelCommander
+                self.isRequestingTalkPower = ownClient.isRequestingTalkPower
+                self.talkRequestMessage = ownClient.talkRequestMessage ?? self.talkRequestMessage
                 self.awayMessage = ownClient.awayMessage ?? self.awayMessage
             }
         }
