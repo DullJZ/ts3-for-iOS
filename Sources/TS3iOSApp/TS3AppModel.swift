@@ -71,6 +71,7 @@ struct TS3UserSummary: Identifiable {
     let isOutputMuted: Bool
     let isAway: Bool
     let awayMessage: String?
+    let isChannelCommander: Bool
     let talkPower: Int?
     let channelGroupId: Int?
     let serverGroups: [Int]
@@ -611,6 +612,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isAway = false
     @Published var isInputMuted = false
     @Published var isOutputMuted = false
+    @Published var isChannelCommander = false
     @Published var whisperRoute: TS3WhisperRoute = .none
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
@@ -870,6 +872,7 @@ final class TS3AppModel: ObservableObject {
         isAway = false
         isInputMuted = false
         isOutputMuted = false
+        isChannelCommander = false
         whisperRoute = .none
         microphonePermissionPrompt = nil
         channelIconURLs = [:]
@@ -1846,6 +1849,14 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setChannelCommander(_ newValue: Bool) {
+        runClientCommand { client in
+            try await client.setChannelCommander(newValue)
+        } onSuccess: {
+            self.isChannelCommander = newValue
+        }
+    }
+
     func createChannel(
         name: String,
         parentId: Int?,
@@ -2223,6 +2234,7 @@ final class TS3AppModel: ObservableObject {
             isOutputMuted: user.isOutputMuted,
             isAway: user.isAway,
             awayMessage: user.awayMessage,
+            isChannelCommander: user.isChannelCommander,
             talkPower: user.talkPower,
             channelGroupId: channelGroupId ?? user.channelGroupId,
             serverGroups: serverGroups ?? user.serverGroups,
@@ -2786,6 +2798,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     isOutputMuted: client.isOutputMuted,
                     isAway: client.isAway,
                     awayMessage: client.awayMessage,
+                    isChannelCommander: client.isChannelCommander,
                     talkPower: client.talkPower,
                     channelGroupId: client.channelGroupId,
                     serverGroups: client.serverGroups,
@@ -2808,6 +2821,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.isInputMuted = ownClient.isInputMuted
                 self.isOutputMuted = ownClient.isOutputMuted
                 self.isAway = ownClient.isAway
+                self.isChannelCommander = ownClient.isChannelCommander
                 self.awayMessage = ownClient.awayMessage ?? self.awayMessage
             }
         }

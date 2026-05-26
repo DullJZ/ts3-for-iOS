@@ -408,6 +408,17 @@ public final class TS3Client {
         }
     }
 
+    /// Marks or unmarks the current client as channel commander.
+    public func setChannelCommander(_ isChannelCommander: Bool) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_is_channel_commander", value: isChannelCommander ? "1" : "0")
+        ]))
+        if let existing = clientCache[clientId] {
+            clientCache[clientId] = copyClient(existing, isChannelCommander: isChannelCommander)
+            publishClients()
+        }
+    }
+
     public func createChannel(
         name: String,
         parentId: Int?,
@@ -2441,6 +2452,7 @@ private extension TS3Client {
             isOutputMuted: boolValue(command, "client_output_muted"),
             isAway: boolValue(command, "client_away"),
             awayMessage: command.get("client_away_message")?.value,
+            isChannelCommander: boolValue(command, "client_is_channel_commander"),
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
@@ -2475,6 +2487,7 @@ private extension TS3Client {
             isOutputMuted: boolValue(command, "client_output_muted"),
             isAway: boolValue(command, "client_away"),
             awayMessage: command.get("client_away_message")?.value,
+            isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
             talkPower: intValue(command, "client_talk_power"),
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
@@ -2510,6 +2523,7 @@ private extension TS3Client {
             isOutputMuted: command.has("client_output_muted") ? boolValue(command, "client_output_muted") : existing.isOutputMuted,
             isAway: command.has("client_away") ? boolValue(command, "client_away") : existing.isAway,
             awayMessage: command.get("client_away_message")?.value ?? existing.awayMessage,
+            isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing.isChannelCommander,
             talkPower: intValue(command, "client_talk_power") ?? existing.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
@@ -2545,6 +2559,7 @@ private extension TS3Client {
             isOutputMuted: command.has("client_output_muted") ? boolValue(command, "client_output_muted") : existing?.isOutputMuted ?? false,
             isAway: command.has("client_away") ? boolValue(command, "client_away") : existing?.isAway ?? false,
             awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
+            isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
             talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
@@ -2572,6 +2587,7 @@ private extension TS3Client {
         isOutputMuted: Bool? = nil,
         isAway: Bool? = nil,
         awayMessage: String? = nil,
+        isChannelCommander: Bool? = nil,
         description: String? = nil,
         avatarHash: String? = nil
     ) -> TS3ServerClient {
@@ -2586,6 +2602,7 @@ private extension TS3Client {
             isOutputMuted: isOutputMuted ?? client.isOutputMuted,
             isAway: isAway ?? client.isAway,
             awayMessage: awayMessage ?? client.awayMessage,
+            isChannelCommander: isChannelCommander ?? client.isChannelCommander,
             talkPower: client.talkPower,
             channelGroupId: client.channelGroupId,
             serverGroups: client.serverGroups,

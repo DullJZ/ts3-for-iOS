@@ -979,6 +979,9 @@ struct ChannelMemberRow: View {
                     if member.isOutputMuted {
                         Text("Sound muted")
                     }
+                    if member.isChannelCommander {
+                        Text("Commander")
+                    }
                     if let power = member.talkPower {
                         Text("Talk \(power)")
                     }
@@ -1292,6 +1295,7 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Away", value: user.isAway ? (user.awayMessage?.isEmpty == false ? user.awayMessage : "Yes") : "No")
             ServerInfoDetailRow(label: "Input Muted", value: user.isInputMuted ? "Yes" : "No")
             ServerInfoDetailRow(label: "Output Muted", value: user.isOutputMuted ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Channel Commander", value: user.isChannelCommander ? "Yes" : "No")
             ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
         }
     }
@@ -4081,6 +4085,7 @@ struct SelfStatusSheet: View {
     @State private var awayMessage = ""
     @State private var isInputMuted = false
     @State private var isOutputMuted = false
+    @State private var isChannelCommander = false
 
     var body: some View {
         NavigationView {
@@ -4109,6 +4114,10 @@ struct SelfStatusSheet: View {
                     Toggle("Microphone Muted", isOn: inputMutedBinding)
                     Toggle("Output Muted", isOn: outputMutedBinding)
                 }
+
+                Section(header: Text("Role")) {
+                    Toggle("Channel Commander", isOn: channelCommanderBinding)
+                }
             }
             .navigationTitle("Self Status")
             .ts3InlineNavigationTitle()
@@ -4118,6 +4127,7 @@ struct SelfStatusSheet: View {
                 awayMessage = model.awayMessage
                 isInputMuted = model.isInputMuted
                 isOutputMuted = model.isOutputMuted
+                isChannelCommander = model.isChannelCommander
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -4145,6 +4155,16 @@ struct SelfStatusSheet: View {
             set: { value in
                 isOutputMuted = value
                 model.setOutputMuted(value)
+            }
+        )
+    }
+
+    private var channelCommanderBinding: Binding<Bool> {
+        Binding(
+            get: { isChannelCommander },
+            set: { value in
+                isChannelCommander = value
+                model.setChannelCommander(value)
             }
         )
     }

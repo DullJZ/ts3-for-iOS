@@ -391,6 +391,8 @@ public struct TS3ServerClient: Identifiable {
     public let isOutputMuted: Bool
     public let isAway: Bool
     public let awayMessage: String?
+    /// Whether the client is marked as channel commander.
+    public let isChannelCommander: Bool
     public let talkPower: Int?
     public let channelGroupId: Int?
     public let serverGroups: [Int]
@@ -427,6 +429,7 @@ public struct TS3ServerClient: Identifiable {
         isOutputMuted: Bool = false,
         isAway: Bool = false,
         awayMessage: String? = nil,
+        isChannelCommander: Bool = false,
         talkPower: Int? = nil,
         channelGroupId: Int? = nil,
         serverGroups: [Int] = [],
@@ -452,6 +455,7 @@ public struct TS3ServerClient: Identifiable {
         self.isOutputMuted = isOutputMuted
         self.isAway = isAway
         self.awayMessage = awayMessage
+        self.isChannelCommander = isChannelCommander
         self.talkPower = talkPower
         self.channelGroupId = channelGroupId
         self.serverGroups = serverGroups
