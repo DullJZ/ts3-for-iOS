@@ -1856,6 +1856,7 @@ struct ChatSheet: View {
     @State private var message = ""
     @State private var target: TS3TextMessageTargetMode = .channel
     @State private var isShowingOfflineMessages = false
+    @State private var isConfirmingClearHistory = false
 
     var body: some View {
         NavigationView {
@@ -1901,11 +1902,15 @@ struct ChatSheet: View {
             .navigationTitle("Chat")
             .ts3InlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                ToolbarItemGroup(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Inbox") {
                         model.refreshOfflineMessages()
                         isShowingOfflineMessages = true
                     }
+                    Button("Clear") {
+                        isConfirmingClearHistory = true
+                    }
+                    .disabled(model.chatMessages.isEmpty)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -1916,6 +1921,16 @@ struct ChatSheet: View {
             .sheet(isPresented: $isShowingOfflineMessages) {
                 OfflineMessagesSheet()
                     .environmentObject(model)
+            }
+            .alert(isPresented: $isConfirmingClearHistory) {
+                Alert(
+                    title: Text("Clear chat history?"),
+                    message: Text("This removes locally saved chat messages from this device."),
+                    primaryButton: .destructive(Text("Clear History")) {
+                        model.clearChatHistory()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }

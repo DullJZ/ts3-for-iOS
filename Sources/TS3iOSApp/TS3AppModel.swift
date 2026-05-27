@@ -95,7 +95,7 @@ struct TS3UserSummary: Identifiable {
     let connectedSeconds: Int?
 }
 
-struct TS3ChatMessageSummary: Identifiable {
+struct TS3ChatMessageSummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date
     let targetMode: TS3TextMessageTargetMode
@@ -104,6 +104,62 @@ struct TS3ChatMessageSummary: Identifiable {
     let senderName: String
     let message: String
     let isOwnMessage: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case timestamp
+        case targetMode
+        case targetId
+        case senderId
+        case senderName
+        case message
+        case isOwnMessage
+    }
+
+    init(
+        id: UUID,
+        timestamp: Date,
+        targetMode: TS3TextMessageTargetMode,
+        targetId: Int?,
+        senderId: Int?,
+        senderName: String,
+        message: String,
+        isOwnMessage: Bool
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.targetMode = targetMode
+        self.targetId = targetId
+        self.senderId = senderId
+        self.senderName = senderName
+        self.message = message
+        self.isOwnMessage = isOwnMessage
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        let rawTargetMode = try container.decode(Int.self, forKey: .targetMode)
+        targetMode = TS3TextMessageTargetMode(rawValue: rawTargetMode) ?? .channel
+        targetId = try container.decodeIfPresent(Int.self, forKey: .targetId)
+        senderId = try container.decodeIfPresent(Int.self, forKey: .senderId)
+        senderName = try container.decode(String.self, forKey: .senderName)
+        message = try container.decode(String.self, forKey: .message)
+        isOwnMessage = try container.decode(Bool.self, forKey: .isOwnMessage)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(targetMode.rawValue, forKey: .targetMode)
+        try container.encodeIfPresent(targetId, forKey: .targetId)
+        try container.encodeIfPresent(senderId, forKey: .senderId)
+        try container.encode(senderName, forKey: .senderName)
+        try container.encode(message, forKey: .message)
+        try container.encode(isOwnMessage, forKey: .isOwnMessage)
+    }
 }
 
 enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
@@ -785,10 +841,12 @@ final class TS3AppModel: ObservableObject {
     private var iconURLs: [Int: URL] = [:]
     private var iconDownloads: Set<Int> = []
     private var failedIconIds: Set<Int> = []
+    private let chatHistoryLimit = 500
 
     init() {
         loadBookmarks()
         loadContacts()
+        loadChatHistory()
         Task { @MainActor in
             await refreshIdentitySummary()
         }
@@ -1143,7 +1201,6 @@ final class TS3AppModel: ObservableObject {
     private func clearConnectionState(keepLastConnection: Bool) {
         channels = []
         clients = []
-        chatMessages = []
         offlineMessages = []
         banEntries = []
         complaintEntries = []
@@ -3070,6 +3127,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-contacts.json")
     }
 
+    private var chatHistoryURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-chat-history.json")
+    }
+
     private func loadBookmarks() {
         guard let data = try? Data(contentsOf: bookmarksURL),
               let decoded = try? JSONDecoder().decode([TS3BookmarkSummary].self, from: data) else {
@@ -3108,6 +3170,31 @@ final class TS3AppModel: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func loadChatHistory() {
+        guard let data = try? Data(contentsOf: chatHistoryURL),
+              let decoded = try? JSONDecoder().decode([TS3ChatMessageSummary].self, from: data) else {
+            chatMessages = []
+            return
+        }
+        chatMessages = Array(decoded.suffix(chatHistoryLimit))
+    }
+
+    private func saveChatHistory() {
+        do {
+            let directory = chatHistoryURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(Array(chatMessages.suffix(chatHistoryLimit)))
+            try data.write(to: chatHistoryURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func clearChatHistory() {
+        chatMessages = []
+        saveChatHistory()
     }
 
     func toggleTalking() {
@@ -3637,9 +3724,10 @@ extension TS3AppModel: TS3ClientDelegate {
                 message: message.message,
                 isOwnMessage: message.isOwnMessage
             ))
-            if self.chatMessages.count > 200 {
-                self.chatMessages.removeFirst(self.chatMessages.count - 200)
+            if self.chatMessages.count > self.chatHistoryLimit {
+                self.chatMessages.removeFirst(self.chatMessages.count - self.chatHistoryLimit)
             }
+            self.saveChatHistory()
         }
     }
 
