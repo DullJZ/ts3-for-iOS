@@ -1374,6 +1374,10 @@ struct ChannelMemberRow: View {
                     if member.isRequestingTalkPower {
                         Text("Wants Talk")
                     }
+                    if let talkRequestMessage = member.talkRequestMessage, !talkRequestMessage.isEmpty {
+                        Text("Request: \(talkRequestMessage)")
+                            .lineLimit(2)
+                    }
                     if let power = member.talkPower {
                         Text("Talk \(power)")
                     }
