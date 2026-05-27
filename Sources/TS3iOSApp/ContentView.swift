@@ -1777,6 +1777,7 @@ struct ContactsSheet: View {
 struct ContactRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let contact: TS3ContactEntry
+    @State private var isEditing = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -1800,12 +1801,72 @@ struct ContactRow: View {
                 }
             }
             Spacer()
-            Button {
-                model.deleteContact(contact)
+            Menu {
+                Button("Edit Contact") {
+                    isEditing = true
+                }
+                ForEach(TS3ContactStatus.allCases) { status in
+                    Button("Set \(status.title)") {
+                        model.updateContact(contact, status: status, note: contact.note)
+                    }
+                    .disabled(contact.status == status)
+                }
+                Button("Delete Contact") {
+                    model.deleteContact(contact)
+                }
             } label: {
-                Image(systemName: "trash")
+                Image(systemName: "ellipsis.circle")
             }
             .buttonStyle(.borderless)
+        }
+        .sheet(isPresented: $isEditing) {
+            ContactEditorSheet(contact: contact)
+                .environmentObject(model)
+        }
+    }
+}
+
+struct ContactEditorSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let contact: TS3ContactEntry
+    @State private var status: TS3ContactStatus
+    @State private var note: String
+
+    init(contact: TS3ContactEntry) {
+        self.contact = contact
+        _status = State(initialValue: contact.status)
+        _note = State(initialValue: contact.note)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(contact.nickname)) {
+                    Picker("Status", selection: $status) {
+                        ForEach(TS3ContactStatus.allCases) { status in
+                            Text(status.title).tag(status)
+                        }
+                    }
+                    TextField("Note", text: $note)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button("Save") {
+                        model.updateContact(contact, status: status, note: note)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Edit Contact")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
 }
