@@ -1855,33 +1855,54 @@ struct ChatSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var message = ""
     @State private var target: TS3TextMessageTargetMode = .channel
+    @State private var filter: ChatMessageFilter = .all
+    @State private var searchText = ""
     @State private var isShowingOfflineMessages = false
     @State private var isConfirmingClearHistory = false
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                Picker("Target", selection: $target) {
-                    Text("Channel").tag(TS3TextMessageTargetMode.channel)
-                    Text("Server").tag(TS3TextMessageTargetMode.server)
+                VStack(spacing: 8) {
+                    Picker("Target", selection: $target) {
+                        Text("Channel").tag(TS3TextMessageTargetMode.channel)
+                        Text("Server").tag(TS3TextMessageTargetMode.server)
+                    }
+                    .pickerStyle(.segmented)
+
+                    Picker("Filter", selection: $filter) {
+                        ForEach(ChatMessageFilter.allCases) { item in
+                            Text(item.title).tag(item)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    TextField("Search chat", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
                 }
-                .pickerStyle(.segmented)
                 .padding()
 
-                List(model.chatMessages) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(item.senderName)
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text(item.targetMode == .server ? "Server" : item.targetMode == .channel ? "Channel" : "Private")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                List {
+                    if filteredMessages.isEmpty {
+                        Text(emptyMessageText)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(filteredMessages) { item in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(item.senderName)
+                                        .font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Text(targetModeText(item.targetMode))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Text(item.message)
+                                    .font(.body)
+                            }
+                            .listRowBackground(item.isOwnMessage ? Color.accentColor.opacity(0.08) : Color.clear)
                         }
-                        Text(item.message)
-                            .font(.body)
                     }
-                    .listRowBackground(item.isOwnMessage ? Color.accentColor.opacity(0.08) : Color.clear)
                 }
 
                 HStack(spacing: 8) {
@@ -1940,6 +1961,31 @@ struct ChatSheet: View {
             }
         }
     }
+
+    private var filteredMessages: [TS3ChatMessageSummary] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return model.chatMessages.filter { item in
+            filter.includes(item.targetMode)
+                && (query.isEmpty
+                    || item.senderName.localizedCaseInsensitiveContains(query)
+                    || item.message.localizedCaseInsensitiveContains(query))
+        }
+    }
+
+    private var emptyMessageText: String {
+        model.chatMessages.isEmpty ? "No chat messages" : "No matching messages"
+    }
+
+    private func targetModeText(_ mode: TS3TextMessageTargetMode) -> String {
+        switch mode {
+        case .server:
+            return "Server"
+        case .channel:
+            return "Channel"
+        case .client:
+            return "Private"
+        }
+    }
 }
 
 struct ChatButtonLabel: View {
@@ -1964,6 +2010,41 @@ struct ChatButtonLabel: View {
 
     private var unreadCountText: String {
         unreadCount > 99 ? "99+" : String(unreadCount)
+    }
+}
+
+enum ChatMessageFilter: String, CaseIterable, Identifiable {
+    case all
+    case channel
+    case server
+    case privateMessage
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "All"
+        case .channel:
+            return "Channel"
+        case .server:
+            return "Server"
+        case .privateMessage:
+            return "Private"
+        }
+    }
+
+    func includes(_ mode: TS3TextMessageTargetMode) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .channel:
+            return mode == .channel
+        case .server:
+            return mode == .server
+        case .privateMessage:
+            return mode == .client
+        }
     }
 }
 
