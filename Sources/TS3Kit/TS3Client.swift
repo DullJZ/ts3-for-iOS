@@ -210,7 +210,8 @@ public final class TS3Client {
             TS3CommandOption(name: "uid"),
             TS3CommandOption(name: "away"),
             TS3CommandOption(name: "voice"),
-            TS3CommandOption(name: "groups")
+            TS3CommandOption(name: "groups"),
+            TS3CommandOption(name: "info")
         ]))
         publishChannels()
         publishClients()
@@ -473,6 +474,13 @@ public final class TS3Client {
             clientCache[clientId] = copyClient(existing, iconId: iconId)
             publishClients()
         }
+    }
+
+    /// Sets the current client's avatar refresh flag after uploading the avatar file.
+    public func setClientAvatarFlag(_ avatarFlag: String) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_flag_avatar", value: avatarFlag)
+        ]))
     }
 
     public func createChannel(
@@ -1140,6 +1148,11 @@ public final class TS3Client {
     /// Initializes a virtual server avatar download for the provided avatar hash.
     public func initAvatarDownload(hash avatarHash: String) async throws -> TS3FileTransferParameters {
         try await initFileDownload(channelId: 0, path: "/avatar_\(avatarHash)")
+    }
+
+    /// Initializes a virtual server avatar upload and returns the socket transfer descriptor.
+    public func initAvatarUpload(hash avatarHash: String, size: Int64) async throws -> TS3FileTransferParameters {
+        try await initFileUpload(channelId: 0, path: "/avatar_\(avatarHash)", size: size, overwrite: true)
     }
 
     /// Initializes a virtual server icon download for the provided icon id.

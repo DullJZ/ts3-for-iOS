@@ -1,5 +1,6 @@
 import Foundation
 import TS3Kit
+import CryptoKit
 #if canImport(AVFoundation)
 import AVFoundation
 #endif
@@ -2703,6 +2704,77 @@ final class TS3AppModel: ObservableObject {
             guard let ownClient = self.clients.first(where: { $0.isCurrentUser }) else { return }
             self.updateUser(clientId: ownClient.id) { existing in
                 self.copyUser(existing, iconId: iconId, resetIconURL: true)
+            }
+        }
+    }
+
+    func uploadSelfAvatar(from source: URL) {
+        guard let client else {
+            lastError = "Connect to a server first."
+            return
+        }
+        guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
+            lastError = "Current client is not available."
+            return
+        }
+        Task {
+            let didAccess = source.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess {
+                    source.stopAccessingSecurityScopedResource()
+                }
+            }
+            do {
+                var avatarHash = ownClient.avatarHash ?? ""
+                if avatarHash.isEmpty,
+                   let updated = try await client.refreshClientDetails(clientId: ownClient.id),
+                   let updatedHash = updated.avatarHash {
+                    avatarHash = updatedHash
+                    await MainActor.run {
+                        self.updateUser(clientId: ownClient.id) { existing in
+                            self.copyUser(existing, avatarHash: updatedHash)
+                        }
+                    }
+                }
+                guard !avatarHash.isEmpty else {
+                    throw TS3Error.fileTransferFailed
+                }
+
+                let data = try Data(contentsOf: source)
+                let avatarFlag = Insecure.MD5.hash(data: data)
+                    .map { String(format: "%02x", $0) }
+                    .joined()
+                await MainActor.run {
+                    self.fileTransferStatus = "Preparing avatar upload: \(source.lastPathComponent)"
+                    self.fileTransferProgress = 0
+                }
+                let parameters = try await client.initAvatarUpload(hash: avatarHash, size: Int64(data.count))
+                try await TS3FileTransfer.upload(parameters: parameters, from: source) { sent, total in
+                    Task { @MainActor in
+                        if let total, total > 0 {
+                            self.fileTransferProgress = min(1, Double(sent) / Double(total))
+                        }
+                        self.fileTransferStatus = "Uploading avatar: \(Self.transferProgressText(sent, total: total))"
+                    }
+                }
+                try await client.setClientAvatarFlag(avatarFlag)
+                let destination = try avatarDestination(for: avatarHash)
+                try data.write(to: destination, options: .atomic)
+                await MainActor.run {
+                    self.updateUser(clientId: ownClient.id) { existing in
+                        self.copyUser(existing, avatarHash: avatarHash, avatarURL: destination)
+                    }
+                    self.fileTransferProgress = 1
+                    self.fileTransferStatus = "Uploaded avatar"
+                    self.avatarDownloadStatus = nil
+                    self.lastError = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.fileTransferProgress = nil
+                    self.fileTransferStatus = nil
+                    self.lastError = error.localizedDescription
+                }
             }
         }
     }

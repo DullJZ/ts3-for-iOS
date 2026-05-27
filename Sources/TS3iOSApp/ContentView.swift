@@ -6292,6 +6292,7 @@ struct SelfStatusSheet: View {
     @State private var talkRequestMessage = ""
     @State private var selfIconId = ""
     @State private var isShowingIconImporter = false
+    @State private var isShowingAvatarImporter = false
 
     var body: some View {
         NavigationView {
@@ -6333,6 +6334,11 @@ struct SelfStatusSheet: View {
                         isShowingIconImporter = true
                     } label: {
                         Label("Upload Client Icon", systemImage: "photo")
+                    }
+                    Button {
+                        isShowingAvatarImporter = true
+                    } label: {
+                        Label("Upload Avatar", systemImage: "person.crop.square")
                     }
                 }
 
@@ -6380,6 +6386,15 @@ struct SelfStatusSheet: View {
                     model.uploadSelfIcon(from: url) { uploadedIconId in
                         selfIconId = String(uploadedIconId)
                     }
+                }
+            }
+            .fileImporter(
+                isPresented: $isShowingAvatarImporter,
+                allowedContentTypes: [.image, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    model.uploadSelfAvatar(from: url)
                 }
             }
         }
