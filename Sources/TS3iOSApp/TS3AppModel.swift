@@ -774,6 +774,7 @@ final class TS3AppModel: ObservableObject {
     @Published var channels: [TS3ChannelSummary] = []
     @Published var clients: [TS3UserSummary] = []
     @Published var chatMessages: [TS3ChatMessageSummary] = []
+    @Published private(set) var unreadChatMessageCount = 0
     @Published var offlineMessages: [TS3OfflineMessageSummary] = []
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var complaintEntries: [TS3ComplaintSummary] = []
@@ -842,6 +843,7 @@ final class TS3AppModel: ObservableObject {
     private var iconDownloads: Set<Int> = []
     private var failedIconIds: Set<Int> = []
     private let chatHistoryLimit = 500
+    private var isViewingChat = false
 
     init() {
         loadBookmarks()
@@ -3194,7 +3196,17 @@ final class TS3AppModel: ObservableObject {
 
     func clearChatHistory() {
         chatMessages = []
+        unreadChatMessageCount = 0
         saveChatHistory()
+    }
+
+    func beginViewingChat() {
+        isViewingChat = true
+        unreadChatMessageCount = 0
+    }
+
+    func endViewingChat() {
+        isViewingChat = false
     }
 
     func toggleTalking() {
@@ -3726,6 +3738,9 @@ extension TS3AppModel: TS3ClientDelegate {
             ))
             if self.chatMessages.count > self.chatHistoryLimit {
                 self.chatMessages.removeFirst(self.chatMessages.count - self.chatHistoryLimit)
+            }
+            if !message.isOwnMessage && !self.isViewingChat {
+                self.unreadChatMessageCount += 1
             }
             self.saveChatHistory()
         }

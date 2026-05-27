@@ -269,7 +269,7 @@ struct ChannelListView: View {
                 Button {
                     isShowingChat = true
                 } label: {
-                    Label("Chat", systemImage: "message")
+                    ChatButtonLabel(unreadCount: model.unreadChatMessageCount)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button {
@@ -1922,6 +1922,12 @@ struct ChatSheet: View {
                 OfflineMessagesSheet()
                     .environmentObject(model)
             }
+            .onAppear {
+                model.beginViewingChat()
+            }
+            .onDisappear {
+                model.endViewingChat()
+            }
             .alert(isPresented: $isConfirmingClearHistory) {
                 Alert(
                     title: Text("Clear chat history?"),
@@ -1933,6 +1939,31 @@ struct ChatSheet: View {
                 )
             }
         }
+    }
+}
+
+struct ChatButtonLabel: View {
+    let unreadCount: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "message")
+            Text("Chat")
+            if unreadCount > 0 {
+                Text(unreadCountText)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.red)
+                    .clipShape(Capsule())
+                    .accessibilityLabel("\(unreadCount) unread messages")
+            }
+        }
+    }
+
+    private var unreadCountText: String {
+        unreadCount > 99 ? "99+" : String(unreadCount)
     }
 }
 
