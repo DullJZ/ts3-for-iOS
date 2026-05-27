@@ -630,6 +630,18 @@ public struct TS3ServerActivityEvent: Identifiable {
         case clientLeft
         /// A client moved between visible channels.
         case clientMoved
+        /// A channel was created.
+        case channelCreated
+        /// A channel was edited.
+        case channelEdited
+        /// A channel was deleted.
+        case channelDeleted
+        /// A channel was moved in the channel tree.
+        case channelMoved
+        /// A channel password changed.
+        case channelPasswordChanged
+        /// A channel description changed.
+        case channelDescriptionChanged
     }
 
     /// Stable local identifier for UI lists.
@@ -642,6 +654,10 @@ public struct TS3ServerActivityEvent: Identifiable {
     public let clientId: Int
     /// Display name for the affected client.
     public let clientName: String
+    /// Runtime channel ID for the affected channel, when this is a channel activity.
+    public let channelId: Int?
+    /// Display name for the affected channel, when known.
+    public let channelName: String?
     /// Source channel ID, when reported by the server.
     public let fromChannelId: Int?
     /// Destination channel ID, when reported by the server.
@@ -663,6 +679,8 @@ public struct TS3ServerActivityEvent: Identifiable {
         kind: Kind,
         clientId: Int,
         clientName: String,
+        channelId: Int? = nil,
+        channelName: String? = nil,
         fromChannelId: Int?,
         toChannelId: Int?,
         invokerId: Int?,
@@ -675,6 +693,8 @@ public struct TS3ServerActivityEvent: Identifiable {
         self.kind = kind
         self.clientId = clientId
         self.clientName = clientName
+        self.channelId = channelId
+        self.channelName = channelName
         self.fromChannelId = fromChannelId
         self.toChannelId = toChannelId
         self.invokerId = invokerId

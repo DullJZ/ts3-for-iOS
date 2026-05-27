@@ -188,6 +188,8 @@ struct TS3ActivitySummary: Identifiable {
     let kind: TS3ServerActivityEvent.Kind
     let clientId: Int
     let clientName: String
+    let channelId: Int?
+    let channelName: String?
     let fromChannelId: Int?
     let toChannelId: Int?
     let invokerName: String?
@@ -201,6 +203,8 @@ struct TS3ActivitySummary: Identifiable {
         kind = event.kind
         clientId = event.clientId
         clientName = event.clientName
+        channelId = event.channelId
+        channelName = event.channelName
         fromChannelId = event.fromChannelId
         toChannelId = event.toChannelId
         invokerName = event.invokerName

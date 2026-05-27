@@ -2134,7 +2134,7 @@ struct ActivityEventRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(event.clientName)
+                Text(titleText)
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(Self.dateText(event.timestamp))
@@ -2160,6 +2160,27 @@ struct ActivityEventRow: View {
             return "left \(channelText(event.fromChannelId))"
         case .clientMoved:
             return "moved from \(channelText(event.fromChannelId)) to \(channelText(event.toChannelId))"
+        case .channelCreated:
+            return "created \(affectedChannelText)"
+        case .channelEdited:
+            return "edited \(affectedChannelText)"
+        case .channelDeleted:
+            return "deleted \(affectedChannelText)"
+        case .channelMoved:
+            return "moved \(affectedChannelText) to \(channelText(event.toChannelId))"
+        case .channelPasswordChanged:
+            return "changed the password for \(affectedChannelText)"
+        case .channelDescriptionChanged:
+            return "changed the description for \(affectedChannelText)"
+        }
+    }
+
+    private var titleText: String {
+        switch event.kind {
+        case .clientEntered, .clientLeft, .clientMoved:
+            return event.clientName
+        case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
+            return event.invokerName?.isEmpty == false ? event.invokerName! : "Server"
         }
     }
 
@@ -2167,10 +2188,26 @@ struct ActivityEventRow: View {
         if let reason = event.reasonMessage, !reason.isEmpty {
             return reason
         }
-        if let invoker = event.invokerName, !invoker.isEmpty {
+        if let invoker = event.invokerName, !invoker.isEmpty, isClientEvent {
             return "by \(invoker)"
         }
         return nil
+    }
+
+    private var isClientEvent: Bool {
+        switch event.kind {
+        case .clientEntered, .clientLeft, .clientMoved:
+            return true
+        case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
+            return false
+        }
+    }
+
+    private var affectedChannelText: String {
+        if let name = event.channelName, !name.isEmpty {
+            return name
+        }
+        return channelText(event.channelId)
     }
 
     private func channelText(_ channelId: Int?) -> String {

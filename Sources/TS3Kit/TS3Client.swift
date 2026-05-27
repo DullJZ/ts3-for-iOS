@@ -2119,6 +2119,15 @@ private extension TS3Client {
             if let channel = channelFromCommand(command) {
                 channelCache[channel.id] = channel
                 publishChannels()
+                if command.name == "notifychannelcreated" || command.name == "notifychanneledited" {
+                    publishServerActivity(channelActivityEvent(
+                        from: command,
+                        kind: command.name == "notifychannelcreated" ? .channelCreated : .channelEdited,
+                        fallbackChannel: channel,
+                        fallbackFromChannelId: nil,
+                        fallbackToChannelId: nil
+                    ))
+                }
             } else if command.name == "notifychannelsubscribed",
                       let cidValue = command.get("cid")?.value,
                       let cid = Int(cidValue) {
@@ -2140,13 +2149,25 @@ private extension TS3Client {
 
         if command.name == "notifychanneldeleted" {
             if let cidValue = command.get("cid")?.value, let cid = Int(cidValue) {
+                let deleted = channelCache[cid]
                 channelCache.removeValue(forKey: cid)
                 publishChannels()
+                publishServerActivity(channelActivityEvent(
+                    from: command,
+                    kind: .channelDeleted,
+                    fallbackChannelId: cid,
+                    fallbackChannelName: deleted?.name,
+                    fallbackFromChannelId: deleted?.parentId,
+                    fallbackToChannelId: nil
+                ))
             }
             return
         }
 
         if command.name == "notifychannelmoved" || command.name == "notifychannelpasswordchanged" || command.name == "notifychanneldescriptionchanged" {
+            if let event = channelActivityEvent(fromChannelNotification: command) {
+                publishServerActivity(event)
+            }
             Task { try? await refreshServerView() }
             return
         }
@@ -3059,6 +3080,73 @@ private extension TS3Client {
             reasonId: intValue(command, "reasonid"),
             reasonMessage: command.get("reasonmsg")?.value,
             isOwnClient: UInt16(affectedClientId) == clientId
+        )
+    }
+
+    func channelActivityEvent(
+        from command: TS3SingleCommand,
+        kind: TS3ServerActivityEvent.Kind,
+        fallbackChannel: TS3Channel,
+        fallbackFromChannelId: Int?,
+        fallbackToChannelId: Int?
+    ) -> TS3ServerActivityEvent {
+        channelActivityEvent(
+            from: command,
+            kind: kind,
+            fallbackChannelId: fallbackChannel.id,
+            fallbackChannelName: fallbackChannel.name,
+            fallbackFromChannelId: fallbackFromChannelId,
+            fallbackToChannelId: fallbackToChannelId
+        )
+    }
+
+    func channelActivityEvent(
+        from command: TS3SingleCommand,
+        kind: TS3ServerActivityEvent.Kind,
+        fallbackChannelId: Int,
+        fallbackChannelName: String?,
+        fallbackFromChannelId: Int?,
+        fallbackToChannelId: Int?
+    ) -> TS3ServerActivityEvent {
+        let affectedChannelId = intValue(command, "cid") ?? fallbackChannelId
+        return TS3ServerActivityEvent(
+            timestamp: Date(),
+            kind: kind,
+            clientId: 0,
+            clientName: "",
+            channelId: affectedChannelId,
+            channelName: command.get("channel_name")?.value ?? fallbackChannelName,
+            fromChannelId: intValue(command, "cfid") ?? fallbackFromChannelId,
+            toChannelId: intValue(command, "ctid") ?? intValue(command, "cpid") ?? fallbackToChannelId,
+            invokerId: intValue(command, "invokerid"),
+            invokerName: command.get("invokername")?.value,
+            reasonId: nil,
+            reasonMessage: nil,
+            isOwnClient: false
+        )
+    }
+
+    func channelActivityEvent(fromChannelNotification command: TS3SingleCommand) -> TS3ServerActivityEvent? {
+        guard let cid = intValue(command, "cid") else { return nil }
+        let channel = channelCache[cid]
+        let kind: TS3ServerActivityEvent.Kind
+        switch command.name {
+        case "notifychannelmoved":
+            kind = .channelMoved
+        case "notifychannelpasswordchanged":
+            kind = .channelPasswordChanged
+        case "notifychanneldescriptionchanged":
+            kind = .channelDescriptionChanged
+        default:
+            return nil
+        }
+        return channelActivityEvent(
+            from: command,
+            kind: kind,
+            fallbackChannelId: cid,
+            fallbackChannelName: channel?.name,
+            fallbackFromChannelId: channel?.parentId,
+            fallbackToChannelId: intValue(command, "cpid")
         )
     }
 
