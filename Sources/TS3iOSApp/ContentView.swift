@@ -851,6 +851,7 @@ struct ChannelRow: View {
     let members: [TS3UserSummary]
     @State private var joinPassword = ""
     @State private var isShowingJoinPassword = false
+    @State private var isShowingInfo = false
     @State private var isShowingEdit = false
     @State private var isShowingMove = false
     @State private var isConfirmingDelete = false
@@ -928,6 +929,9 @@ struct ChannelRow: View {
                     .buttonStyle(TS3BorderedButtonStyle())
                 }
                 Menu {
+                    Button("Channel Info") {
+                        isShowingInfo = true
+                    }
                     if let isSubscribed = channel.isSubscribed {
                         Button(isSubscribed ? "Unsubscribe Channel" : "Subscribe Channel") {
                             model.setChannelSubscribed(channel, isSubscribed: !isSubscribed)
@@ -969,6 +973,10 @@ struct ChannelRow: View {
         .padding(.vertical, 4)
         .sheet(isPresented: $isShowingJoinPassword) {
             JoinChannelPasswordSheet(channel: channel, password: $joinPassword)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingInfo) {
+            ChannelInformationSheet(channel: channel, memberCount: members.count)
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingEdit) {
@@ -1138,6 +1146,99 @@ struct MoveChannelSheet: View {
             appendChain(startingAt: channel)
         }
         return result
+    }
+}
+
+struct ChannelInformationSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let channel: TS3ChannelSummary
+    let memberCount: Int
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    ServerInfoDetailRow(label: "Channel ID", value: String(channel.id))
+                    ServerInfoDetailRow(label: "Parent", value: parentName)
+                    ServerInfoDetailRow(label: "Order After", value: orderName)
+                    ServerInfoDetailRow(label: "Type", value: channelTypeText)
+                    ServerInfoDetailRow(label: "Default", value: yesNo(channel.isDefault))
+                    ServerInfoDetailRow(label: "Password", value: channel.isPasswordProtected ? "Protected" : "Not Protected")
+                    ServerInfoDetailRow(label: "Subscribed", value: channel.isSubscribed.map(yesNo))
+                    ServerInfoDetailRow(label: "Icon ID", value: channel.iconId.map(String.init))
+                    ServerInfoDetailRow(label: "Members", value: String(memberCount))
+                }
+
+                Section(header: Text("Text")) {
+                    ServerInfoDetailRow(label: "Phonetic Name", value: channel.phoneticName)
+                    ServerInfoDetailRow(label: "Topic", value: channel.topic)
+                    ServerInfoDetailRow(label: "Description", value: channel.description)
+                }
+
+                Section(header: Text("Audio")) {
+                    ServerInfoDetailRow(label: "Codec", value: channel.codec.map(String.init))
+                    ServerInfoDetailRow(label: "Codec Quality", value: channel.codecQuality.map(String.init))
+                    ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
+                    ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
+                }
+
+                Section(header: Text("Limits")) {
+                    ServerInfoDetailRow(label: "Max Clients", value: maxClientsText)
+                    ServerInfoDetailRow(label: "Max Family Clients", value: maxFamilyClientsText)
+                    ServerInfoDetailRow(label: "Delete Delay", value: channel.deleteDelaySeconds.map { "\($0)s" })
+                }
+            }
+            .navigationTitle("Channel Info")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var parentName: String {
+        guard let parentId = normalizedId(channel.parentId) else { return "Root" }
+        return model.channels.first { $0.id == parentId }?.name ?? "Channel \(parentId)"
+    }
+
+    private var orderName: String? {
+        guard let orderId = normalizedId(channel.order) else { return "First" }
+        return model.channels.first { $0.id == orderId }?.name ?? "Channel \(orderId)"
+    }
+
+    private var channelTypeText: String {
+        if channel.isPermanent {
+            return TS3ChannelType.permanent.title
+        }
+        if channel.isSemiPermanent == true {
+            return TS3ChannelType.semiPermanent.title
+        }
+        return TS3ChannelType.temporary.title
+    }
+
+    private var maxClientsText: String? {
+        if channel.maxClientsUnlimited == true { return "Unlimited" }
+        return channel.maxClients.map(String.init)
+    }
+
+    private var maxFamilyClientsText: String? {
+        if channel.maxFamilyClientsInherited == true { return "Inherited" }
+        if channel.maxFamilyClientsUnlimited == true { return "Unlimited" }
+        return channel.maxFamilyClients.map(String.init)
+    }
+
+    private func normalizedId(_ id: Int?) -> Int? {
+        guard let id, id > 0 else { return nil }
+        return id
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        value ? "Yes" : "No"
     }
 }
 
