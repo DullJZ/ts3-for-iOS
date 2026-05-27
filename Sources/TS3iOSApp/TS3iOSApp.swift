@@ -9,6 +9,9 @@ struct TS3iOSApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(model)
+                .onOpenURL { url in
+                    model.applyServerURL(url.absoluteString)
+                }
         }
     }
 }

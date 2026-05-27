@@ -20,6 +20,10 @@ targets:
       path: TS3iOSApp/Info.plist
       properties:
         CFBundleDisplayName: TS3iOS
+        CFBundleURLTypes:
+          - CFBundleURLName: TeamSpeak Server URL
+            CFBundleURLSchemes:
+              - ts3server
         LSRequiresIPhoneOS: true
         UILaunchScreen: {}
         UIApplicationSceneManifest:
