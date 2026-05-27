@@ -100,9 +100,39 @@ struct TS3ChatMessageSummary: Identifiable {
     let timestamp: Date
     let targetMode: TS3TextMessageTargetMode
     let targetId: Int?
+    let senderId: Int?
     let senderName: String
     let message: String
     let isOwnMessage: Bool
+}
+
+enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
+    case neutral
+    case friend
+    case blocked
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .neutral:
+            return "Neutral"
+        case .friend:
+            return "Friend"
+        case .blocked:
+            return "Blocked"
+        }
+    }
+}
+
+struct TS3ContactEntry: Identifiable, Codable {
+    let uniqueIdentifier: String
+    var nickname: String
+    var status: TS3ContactStatus
+    var note: String
+    var updatedAt: Date
+
+    var id: String { uniqueIdentifier }
 }
 
 struct TS3OfflineMessageSummary: Identifiable {
@@ -713,6 +743,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileTransferProgress: Double?
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
     @Published var bookmarks: [TS3BookmarkSummary] = []
+    @Published var contacts: [TS3ContactEntry] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
     @Published var isTalking = false
@@ -751,6 +782,7 @@ final class TS3AppModel: ObservableObject {
 
     init() {
         loadBookmarks()
+        loadContacts()
         Task { @MainActor in
             await refreshIdentitySummary()
         }
@@ -803,6 +835,18 @@ final class TS3AppModel: ObservableObject {
         channels.first { $0.isCurrent }
     }
 
+    var friendContacts: [TS3ContactEntry] {
+        contacts
+            .filter { $0.status == .friend }
+            .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+    }
+
+    var blockedContacts: [TS3ContactEntry] {
+        contacts
+            .filter { $0.status == .blocked }
+            .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+    }
+
     func members(in channelId: Int) -> [TS3UserSummary] {
         clients
             .filter { $0.channelId == channelId }
@@ -810,6 +854,67 @@ final class TS3AppModel: ObservableObject {
                 if $0.isCurrentUser != $1.isCurrentUser { return $0.isCurrentUser && !$1.isCurrentUser }
                 return $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending
             }
+    }
+
+    func contact(for user: TS3UserSummary) -> TS3ContactEntry? {
+        guard let uniqueIdentifier = user.uniqueIdentifier else { return nil }
+        return contacts.first { $0.uniqueIdentifier == uniqueIdentifier }
+    }
+
+    func contactStatus(for user: TS3UserSummary) -> TS3ContactStatus {
+        contact(for: user)?.status ?? .neutral
+    }
+
+    func contactNote(for user: TS3UserSummary) -> String? {
+        guard let note = contact(for: user)?.note, !note.isEmpty else { return nil }
+        return note
+    }
+
+    func setContactStatus(_ status: TS3ContactStatus, for user: TS3UserSummary) {
+        updateContact(for: user, status: status, note: contactNote(for: user) ?? "")
+    }
+
+    func setContactNote(_ note: String, for user: TS3UserSummary) {
+        updateContact(for: user, status: contactStatus(for: user), note: note)
+    }
+
+    func deleteContact(_ contact: TS3ContactEntry) {
+        contacts.removeAll { $0.uniqueIdentifier == contact.uniqueIdentifier }
+        saveContacts()
+    }
+
+    private func updateContact(for user: TS3UserSummary, status: TS3ContactStatus, note: String) {
+        guard let uniqueIdentifier = user.uniqueIdentifier else {
+            lastError = "The server did not provide a unique id for \(user.nickname)."
+            return
+        }
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if status == .neutral && trimmedNote.isEmpty {
+            contacts.removeAll { $0.uniqueIdentifier == uniqueIdentifier }
+        } else if let index = contacts.firstIndex(where: { $0.uniqueIdentifier == uniqueIdentifier }) {
+            contacts[index].nickname = user.nickname
+            contacts[index].status = status
+            contacts[index].note = trimmedNote
+            contacts[index].updatedAt = Date()
+        } else {
+            contacts.append(TS3ContactEntry(
+                uniqueIdentifier: uniqueIdentifier,
+                nickname: user.nickname,
+                status: status,
+                note: trimmedNote,
+                updatedAt: Date()
+            ))
+        }
+        saveContacts()
+    }
+
+    private func isBlockedMessage(_ message: TS3TextMessage) -> Bool {
+        guard !message.isOwnMessage,
+              let senderId = message.senderId,
+              let sender = clients.first(where: { $0.id == senderId }) else {
+            return false
+        }
+        return contactStatus(for: sender) == .blocked
     }
 
     private func setCurrentChannel(id: Int, name: String? = nil, topic: String? = nil) {
@@ -2913,6 +3018,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-bookmarks.json")
     }
 
+    private var contactsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-contacts.json")
+    }
+
     private func loadBookmarks() {
         guard let data = try? Data(contentsOf: bookmarksURL),
               let decoded = try? JSONDecoder().decode([TS3BookmarkSummary].self, from: data) else {
@@ -2928,6 +3038,26 @@ final class TS3AppModel: ObservableObject {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(bookmarks)
             try data.write(to: bookmarksURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func loadContacts() {
+        guard let data = try? Data(contentsOf: contactsURL),
+              let decoded = try? JSONDecoder().decode([TS3ContactEntry].self, from: data) else {
+            contacts = []
+            return
+        }
+        contacts = decoded
+    }
+
+    private func saveContacts() {
+        do {
+            let directory = contactsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(contacts)
+            try data.write(to: contactsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
         }
@@ -3441,11 +3571,13 @@ extension TS3AppModel: TS3ClientDelegate {
 
     nonisolated func ts3Client(_ client: TS3Client, didReceiveTextMessage message: TS3TextMessage) {
         Task { @MainActor in
+            guard !self.isBlockedMessage(message) else { return }
             self.chatMessages.append(TS3ChatMessageSummary(
                 id: message.id,
                 timestamp: message.timestamp,
                 targetMode: message.targetMode,
                 targetId: message.targetId,
+                senderId: message.senderId,
                 senderName: message.senderName,
                 message: message.message,
                 isOwnMessage: message.isOwnMessage

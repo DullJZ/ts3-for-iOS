@@ -1065,6 +1065,7 @@ enum UserActionMode: Identifiable {
     case offlineMessage
     case poke
     case editDescription
+    case contactNote
     case complain
     case kickChannel
     case kickServer
@@ -1077,6 +1078,7 @@ enum UserActionMode: Identifiable {
         case .offlineMessage: return "offlineMessage"
         case .poke: return "poke"
         case .editDescription: return "editDescription"
+        case .contactNote: return "contactNote"
         case .complain: return "complain"
         case .kickChannel: return "kickChannel"
         case .kickServer: return "kickServer"
@@ -1118,6 +1120,12 @@ struct ChannelMemberRow: View {
                     UserIconView(user: member)
                 }
                 HStack(spacing: 8) {
+                    if contactStatus == .friend {
+                        Text("Friend")
+                    }
+                    if contactStatus == .blocked {
+                        Text("Blocked")
+                    }
                     if member.isAway {
                         Text(member.awayMessage?.isEmpty == false ? "Away: \(member.awayMessage!)" : "Away")
                     }
@@ -1156,6 +1164,12 @@ struct ChannelMemberRow: View {
                 }
                 if let description = member.description, !description.isEmpty {
                     Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                if let note = model.contactNote(for: member) {
+                    Text("Note: \(note)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
@@ -1200,6 +1214,25 @@ struct ChannelMemberRow: View {
                 }
                 Button("Edit Description") {
                     actionMode = .editDescription
+                }
+                if member.uniqueIdentifier != nil {
+                    Menu("Contact") {
+                        Button("Mark as Friend") {
+                            model.setContactStatus(.friend, for: member)
+                        }
+                        .disabled(contactStatus == .friend)
+                        Button("Block Contact") {
+                            model.setContactStatus(.blocked, for: member)
+                        }
+                        .disabled(contactStatus == .blocked)
+                        Button("Set Neutral") {
+                            model.setContactStatus(.neutral, for: member)
+                        }
+                        .disabled(contactStatus == .neutral && model.contactNote(for: member) == nil)
+                        Button("Edit Note") {
+                            actionMode = .contactNote
+                        }
+                    }
                 }
                 if member.isPrioritySpeaker {
                     Button("Remove Priority Speaker") {
@@ -1287,6 +1320,10 @@ struct ChannelMemberRow: View {
             .map { TS3GroupSummary.name(for: $0, in: model.serverGroups) }
             .joined(separator: ", ")
     }
+
+    private var contactStatus: TS3ContactStatus {
+        model.contactStatus(for: member)
+    }
 }
 
 struct UserActionSheet: View {
@@ -1306,6 +1343,7 @@ struct UserActionSheet: View {
         case .offlineMessage: return "Offline Message"
         case .poke: return "Poke"
         case .editDescription: return "Edit Description"
+        case .contactNote: return "Contact Note"
         case .complain: return "Complain"
         case .kickChannel: return "Kick From Channel"
         case .kickServer: return "Kick From Server"
@@ -1320,6 +1358,7 @@ struct UserActionSheet: View {
         case .offlineMessage: return "Message"
         case .poke: return "Poke Message"
         case .editDescription: return "Description"
+        case .contactNote: return "Note"
         case .complain: return "Complaint"
         case .kickChannel, .kickServer, .ban: return "Reason"
         }
@@ -1332,6 +1371,7 @@ struct UserActionSheet: View {
         case .offlineMessage: return "Send"
         case .poke: return "Poke"
         case .editDescription: return "Save"
+        case .contactNote: return "Save"
         case .complain: return "Submit Complaint"
         case .kickChannel, .kickServer: return "Kick"
         case .ban: return "Ban"
@@ -1379,6 +1419,8 @@ struct UserActionSheet: View {
                                     model.pokeUser(user, message: text)
                                 case .editDescription:
                                     model.editUserDescription(user, description: text)
+                                case .contactNote:
+                                    model.setContactNote(text, for: user)
                                 case .complain:
                                     model.complainAboutUser(user, message: text)
                                 case .kickChannel:
@@ -1405,6 +1447,9 @@ struct UserActionSheet: View {
                 if mode == .editDescription {
                     text = user.description ?? ""
                 }
+                if mode == .contactNote {
+                    text = model.contactNote(for: user) ?? ""
+                }
                 if mode == .info {
                     model.refreshUserDetails(user)
                 }
@@ -1428,7 +1473,7 @@ struct UserActionSheet: View {
             return textIsEmpty
         case .offlineMessage:
             return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .editDescription, .kickChannel, .kickServer:
+        case .editDescription, .contactNote, .kickChannel, .kickServer:
             return false
         case .ban:
             return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
@@ -1441,6 +1486,7 @@ struct UserActionSheet: View {
 }
 
 struct UserInfoRows: View {
+    @EnvironmentObject private var model: TS3AppModel
     let user: TS3UserSummary
 
     var body: some View {
@@ -1452,6 +1498,11 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Channel", value: String(user.channelId))
             ServerInfoDetailRow(label: "Country", value: user.country)
             ServerInfoDetailRow(label: "IP Address", value: user.ipAddress)
+        }
+
+        Section(header: Text("Contact")) {
+            ServerInfoDetailRow(label: "Status", value: model.contactStatus(for: user).title)
+            ServerInfoDetailRow(label: "Note", value: model.contactNote(for: user))
         }
 
         Section(header: Text("Application")) {
@@ -1528,6 +1579,87 @@ struct UserIconView: View {
     private var platformImage: TS3PlatformImage? {
         guard let iconURL = user.iconURL else { return nil }
         return TS3PlatformImage(contentsOfFile: iconURL.path)
+    }
+}
+
+struct ContactsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    private var notedContacts: [TS3ContactEntry] {
+        model.contacts
+            .filter { !$0.note.isEmpty && $0.status == .neutral }
+            .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                contactSection(title: "Friends", contacts: model.friendContacts)
+                contactSection(title: "Blocked", contacts: model.blockedContacts)
+                contactSection(title: "Notes", contacts: notedContacts)
+            }
+            .navigationTitle("Contacts")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func contactSection(title: String, contacts: [TS3ContactEntry]) -> some View {
+        Section(header: Text(title)) {
+            if contacts.isEmpty {
+                Text("No contacts")
+                    .foregroundColor(.secondary)
+            } else {
+                ForEach(contacts) { contact in
+                    ContactRow(contact: contact)
+                        .environmentObject(model)
+                }
+            }
+        }
+    }
+}
+
+struct ContactRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let contact: TS3ContactEntry
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(contact.nickname)
+                        .font(.subheadline.weight(.semibold))
+                    Text(contact.status.title)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Text(contact.uniqueIdentifier)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                if !contact.note.isEmpty {
+                    Text(contact.note)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            Spacer()
+            Button {
+                model.deleteContact(contact)
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+        }
     }
 }
 
@@ -1804,6 +1936,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingServerLogs = false
     @State private var isShowingPrivilegeKeys = false
     @State private var isShowingGroupManagement = false
+    @State private var isShowingContacts = false
 
     var body: some View {
         NavigationView {
@@ -1852,6 +1985,9 @@ struct ServerToolsSheet: View {
                     Button("Browse Client Database") {
                         model.refreshClientDatabase()
                         isShowingClientDatabase = true
+                    }
+                    Button("Manage Contacts") {
+                        isShowingContacts = true
                     }
                     Button("Browse Channel Files") {
                         model.openFileBrowser()
@@ -1959,6 +2095,10 @@ struct ServerToolsSheet: View {
             }
             .sheet(isPresented: $isShowingClientDatabase) {
                 ClientDatabaseSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingContacts) {
+                ContactsSheet()
                     .environmentObject(model)
             }
             .sheet(isPresented: $isShowingServerLogs) {
