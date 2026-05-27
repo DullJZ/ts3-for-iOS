@@ -893,6 +893,24 @@ public final class TS3Client {
         try await refreshGroups()
     }
 
+    /// Returns the database clients assigned to a server group.
+    public func refreshServerGroupClients(groupId: Int) async throws -> [TS3GroupClient] {
+        let responses = try await execute(TS3SingleCommand(name: "servergroupclientlist", parameters: [
+            TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
+            TS3CommandOption(name: "names")
+        ]))
+        return responses.compactMap { groupClient(from: $0, includesChannelId: false) }
+    }
+
+    /// Returns the database clients assigned to a channel group.
+    public func refreshChannelGroupClients(groupId: Int) async throws -> [TS3GroupClient] {
+        let responses = try await execute(TS3SingleCommand(name: "channelgroupclientlist", parameters: [
+            TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
+            TS3CommandOption(name: "names")
+        ]))
+        return responses.compactMap { groupClient(from: $0, includesChannelId: true) }
+    }
+
     public func refreshPermissionList() async throws -> [TS3PermissionInfo] {
         let responses = try await execute(TS3SingleCommand(name: "permissionlist"))
         return responses.compactMap { permissionInfo(from: $0) }
@@ -3261,6 +3279,18 @@ private extension TS3Client {
             id: id,
             name: name,
             type: intValue(command, "type").flatMap(TS3PermissionGroupDatabaseType.init(rawValue:))
+        )
+    }
+
+    func groupClient(from command: TS3SingleCommand, includesChannelId: Bool) -> TS3GroupClient? {
+        guard let clientDatabaseId = intValue(command, "cldbid") else {
+            return nil
+        }
+        return TS3GroupClient(
+            clientDatabaseId: clientDatabaseId,
+            uniqueIdentifier: command.get("cluid")?.value,
+            nickname: command.get("name")?.value,
+            channelId: includesChannelId ? intValue(command, "cid") : nil
         )
     }
 

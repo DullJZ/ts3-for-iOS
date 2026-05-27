@@ -873,6 +873,27 @@ public enum TS3PermissionGroupType: Int {
     case channelClient = 4
 }
 
+public struct TS3GroupClient: Identifiable {
+    public var id: String { "\(clientDatabaseId):\(channelId ?? 0)" }
+    public let clientDatabaseId: Int
+    public let uniqueIdentifier: String?
+    public let nickname: String?
+    public let channelId: Int?
+
+    /// Creates a client membership entry for a permission group.
+    public init(
+        clientDatabaseId: Int,
+        uniqueIdentifier: String?,
+        nickname: String?,
+        channelId: Int?
+    ) {
+        self.clientDatabaseId = clientDatabaseId
+        self.uniqueIdentifier = uniqueIdentifier
+        self.nickname = nickname
+        self.channelId = channelId
+    }
+}
+
 public struct TS3PermissionAssignment: Identifiable {
     public let id = UUID()
     public let type: TS3PermissionGroupType?

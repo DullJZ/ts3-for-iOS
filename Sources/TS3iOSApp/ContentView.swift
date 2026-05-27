@@ -3123,6 +3123,7 @@ struct GroupManagementRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let group: TS3GroupSummary
     let target: TS3GroupManagementTarget
+    @State private var isShowingMembers = false
     @State private var isShowingRename = false
     @State private var isShowingCopy = false
     @State private var isConfirmingDelete = false
@@ -3144,6 +3145,10 @@ struct GroupManagementRow: View {
             }
             Spacer()
             Menu {
+                Button("View Members") {
+                    refreshMembers()
+                    isShowingMembers = true
+                }
                 Button("Rename") {
                     isShowingRename = true
                 }
@@ -3162,6 +3167,10 @@ struct GroupManagementRow: View {
             .buttonStyle(.borderless)
         }
         .padding(.vertical, 3)
+        .sheet(isPresented: $isShowingMembers) {
+            GroupClientListSheet()
+                .environmentObject(model)
+        }
         .sheet(isPresented: $isShowingRename) {
             GroupNameSheet(
                 title: "Rename Group",
@@ -3226,6 +3235,15 @@ struct GroupManagementRow: View {
         }
     }
 
+    private func refreshMembers() {
+        switch target {
+        case .server:
+            model.refreshServerGroupClients(group)
+        case .channel:
+            model.refreshChannelGroupClients(group)
+        }
+    }
+
     private func deleteGroup(force: Bool) {
         switch target {
         case .server:
@@ -3233,6 +3251,64 @@ struct GroupManagementRow: View {
         case .channel:
             model.deleteChannelGroup(group, force: force)
         }
+    }
+}
+
+struct GroupClientListSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        NavigationView {
+            List {
+                if model.groupClients.isEmpty {
+                    Text("No members")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(model.groupClients) { client in
+                        GroupClientRow(client: client)
+                            .environmentObject(model)
+                    }
+                }
+            }
+            .navigationTitle(model.groupClientListTitle)
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct GroupClientRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let client: TS3GroupClientSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(client.displayName)
+                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 8) {
+                Text("DB \(client.clientDatabaseId)")
+                if let channelId = client.channelId {
+                    Text(model.channelName(for: channelId) ?? "Channel \(channelId)")
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+            if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                Text(uniqueIdentifier)
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.vertical, 3)
     }
 }
 

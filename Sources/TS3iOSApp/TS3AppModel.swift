@@ -438,6 +438,26 @@ struct TS3GroupSummary: Identifiable {
     let type: TS3PermissionGroupDatabaseType?
 }
 
+struct TS3GroupClientSummary: Identifiable {
+    let id: String
+    let clientDatabaseId: Int
+    let uniqueIdentifier: String?
+    let nickname: String?
+    let channelId: Int?
+
+    var displayName: String {
+        nickname?.isEmpty == false ? nickname! : "Client \(clientDatabaseId)"
+    }
+
+    init(client: TS3GroupClient) {
+        self.id = client.id
+        self.clientDatabaseId = client.clientDatabaseId
+        self.uniqueIdentifier = client.uniqueIdentifier
+        self.nickname = client.nickname
+        self.channelId = client.channelId
+    }
+}
+
 extension TS3GroupSummary {
     static func name(for id: Int, in groups: [TS3GroupSummary]) -> String {
         groups.first { $0.id == id }?.name ?? "Group \(id)"
@@ -842,6 +862,8 @@ final class TS3AppModel: ObservableObject {
     @Published var serverLogEntries: [TS3ServerLogSummary] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
+    @Published var groupClients: [TS3GroupClientSummary] = []
+    @Published var groupClientListTitle = "Group Members"
     @Published var permissionInfos: [TS3PermissionInfoSummary] = []
     @Published var ownClientPermissions: [TS3PermissionSummary] = []
     @Published var ownClientDatabaseId: Int?
@@ -1383,6 +1405,19 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func refreshServerGroupClients(_ group: TS3GroupSummary) {
+        groupClientListTitle = "\(group.name) Members"
+        groupClients = []
+        runClientCommand { client in
+            let clients = try await client.refreshServerGroupClients(groupId: group.id)
+            await MainActor.run {
+                self.groupClients = clients
+                    .map { TS3GroupClientSummary(client: $0) }
+                    .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            }
+        }
+    }
+
     func createChannelGroup(name: String, type: TS3PermissionGroupDatabaseType) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
@@ -1410,6 +1445,19 @@ final class TS3AppModel: ObservableObject {
     func deleteChannelGroup(_ group: TS3GroupSummary, force: Bool) {
         runClientCommand { client in
             try await client.deleteChannelGroup(groupId: group.id, force: force)
+        }
+    }
+
+    func refreshChannelGroupClients(_ group: TS3GroupSummary) {
+        groupClientListTitle = "\(group.name) Members"
+        groupClients = []
+        runClientCommand { client in
+            let clients = try await client.refreshChannelGroupClients(groupId: group.id)
+            await MainActor.run {
+                self.groupClients = clients
+                    .map { TS3GroupClientSummary(client: $0) }
+                    .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            }
         }
     }
 
