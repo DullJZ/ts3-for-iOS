@@ -1267,6 +1267,32 @@ final class TS3AppModel: ObservableObject {
         privilegeKey = bookmark.privilegeKey
     }
 
+    func applyServerURL(_ rawValue: String) {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed) else {
+            lastError = "Invalid TeamSpeak server URL."
+            return
+        }
+        do {
+            let serverURL = try TS3ServerURL(url: url)
+            serverHost = serverURL.host
+            serverPort = serverURL.port.map(String.init) ?? serverPort
+            if let nickname = serverURL.nickname {
+                self.nickname = nickname
+            }
+            serverPassword = serverURL.serverPassword ?? ""
+            defaultChannel = serverURL.defaultChannel ?? ""
+            defaultChannelPassword = serverURL.defaultChannelPassword ?? ""
+            privilegeKey = serverURL.privilegeKey ?? ""
+            if let bookmarkName = serverURL.bookmarkName {
+                saveCurrentBookmark(name: bookmarkName)
+            }
+            lastError = nil
+        } catch {
+            lastError = "Invalid TeamSpeak server URL."
+        }
+    }
+
     func saveCurrentBookmark(name: String) {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = trimmedName.isEmpty ? serverHost : trimmedName

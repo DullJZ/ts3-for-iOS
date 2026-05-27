@@ -70,6 +70,7 @@ struct ConnectingView: View {
 struct ConnectView: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var bookmarkName = ""
+    @State private var serverURLText = ""
     @State private var editingBookmark: TS3BookmarkSummary?
     @State private var isShowingIdentity = false
 
@@ -106,6 +107,16 @@ struct ConnectView: View {
                         }
                     }
                 }
+            }
+
+            Section(header: Text("Invitation Link")) {
+                TextField("ts3server://host?nickname=...", text: $serverURLText)
+                    .ts3URLTextField()
+                Button("Import Link") {
+                    model.applyServerURL(serverURLText)
+                    serverURLText = ""
+                }
+                .disabled(serverURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
             Section(header: Text("Server")) {
