@@ -259,6 +259,7 @@ struct ChannelListView: View {
     @State private var isShowingEvents = false
     @State private var isShowingWhisper = false
     @State private var isShowingCreateChannel = false
+    @State private var channelSearchText = ""
 
     var body: some View {
         VStack(spacing: 12) {
@@ -304,12 +305,19 @@ struct ChannelListView: View {
             CurrentChannelCard()
                 .padding(.horizontal)
 
+            ChannelSearchField(text: $channelSearchText)
+                .padding(.horizontal)
+
             List {
-                Section(header: Text("Channels")) {
+                Section(header: Text(channelSectionTitle)) {
                     ForEach(channelTree) { item in
-                        ChannelRow(channel: item.channel, members: model.members(in: item.channel.id))
+                        ChannelRow(channel: item.channel, members: members(in: item.channel.id))
                             .padding(.leading, CGFloat(item.depth) * 18)
                             .listRowBackground(item.channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
+                    }
+                    if channelTree.isEmpty {
+                        Text("No matching channels or users")
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -350,7 +358,96 @@ struct ChannelListView: View {
     }
 
     private var channelTree: [ChannelTreeItem] {
-        ChannelTreeItem.flatten(channels: model.channels)
+        ChannelTreeItem.flatten(channels: filteredChannels)
+    }
+
+    private var channelSectionTitle: String {
+        isSearching ? "Search Results" : "Channels"
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var normalizedSearchText: String {
+        channelSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var filteredChannels: [TS3ChannelSummary] {
+        guard isSearching else { return model.channels }
+        let matchingChannelIds = Set(model.channels.filter(channelMatchesSearch).map(\.id))
+        let matchingMemberChannelIds = Set(model.clients.filter(userMatchesSearch).map(\.channelId))
+        var included = matchingChannelIds.union(matchingMemberChannelIds)
+
+        let channelsById = Dictionary(uniqueKeysWithValues: model.channels.map { ($0.id, $0) })
+        for channelId in included {
+            var parentId = normalizedParentId(channelsById[channelId]?.parentId)
+            while let id = parentId, let parent = channelsById[id] {
+                included.insert(id)
+                parentId = normalizedParentId(parent.parentId)
+            }
+        }
+
+        return model.channels.filter { included.contains($0.id) }
+    }
+
+    private func members(in channelId: Int) -> [TS3UserSummary] {
+        let members = model.members(in: channelId)
+        guard isSearching, !channelMatchesSearch(model.channels.first { $0.id == channelId }) else {
+            return members
+        }
+        return members.filter(userMatchesSearch)
+    }
+
+    private func channelMatchesSearch(_ channel: TS3ChannelSummary?) -> Bool {
+        guard let channel else { return false }
+        return containsSearch(channel.name)
+            || containsSearch(channel.topic)
+            || containsSearch(channel.description)
+            || containsSearch(channel.phoneticName)
+    }
+
+    private func userMatchesSearch(_ user: TS3UserSummary) -> Bool {
+        containsSearch(user.nickname)
+            || containsSearch(user.uniqueIdentifier)
+            || containsSearch(user.description)
+            || containsSearch(user.country)
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value else { return false }
+        return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func normalizedParentId(_ parentId: Int?) -> Int? {
+        guard let parentId, parentId > 0 else { return nil }
+        return parentId
+    }
+}
+
+struct ChannelSearchField: View {
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            TextField("Search channels or users", text: $text)
+                .ts3PlainTextField()
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.secondary.opacity(0.10))
+        .cornerRadius(8)
     }
 }
 
