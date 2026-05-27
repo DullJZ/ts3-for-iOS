@@ -3265,16 +3265,18 @@ struct ClientDatabaseSheet: View {
                     }
                 }
 
+                if !model.clientLocations.isEmpty {
+                    Section(header: Text("Online Locations")) {
+                        ForEach(model.clientLocations) { location in
+                            DatabaseClientLocationRow(location: location)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+
                 if let selected = model.selectedDatabaseClient {
                     Section(header: Text("Selected Client")) {
                         DatabaseClientDetailRows(record: selected)
-                        if !model.clientLocations.isEmpty {
-                            ForEach(model.clientLocations) { location in
-                                Text(location.nickname ?? "Client \(location.clientId)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
                         Button("Resolve Database ID From UID") {
                             model.resolveDatabaseIdForSelectedClient()
                         }
@@ -3359,6 +3361,54 @@ struct ClientDatabaseSheet: View {
                 )
             }
         }
+    }
+}
+
+struct DatabaseClientLocationRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let location: TS3ClientLocationSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(displayName)
+                        .font(.subheadline.weight(.semibold))
+                    Text("Client ID \(location.clientId)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if let channel {
+                    Button("Join") {
+                        model.joinChannel(channel)
+                    }
+                    .buttonStyle(TS3BorderedButtonStyle())
+                    .disabled(channel.isCurrent)
+                }
+            }
+            HStack(spacing: 6) {
+                Image(systemName: "location")
+                    .foregroundColor(.secondary)
+                Text(channel?.name ?? "Online, channel not visible")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var user: TS3UserSummary? {
+        model.clients.first { $0.id == location.clientId }
+    }
+
+    private var channel: TS3ChannelSummary? {
+        guard let channelId = user?.channelId else { return nil }
+        return model.channels.first { $0.id == channelId }
+    }
+
+    private var displayName: String {
+        user?.nickname ?? location.nickname ?? "Client \(location.clientId)"
     }
 }
 
