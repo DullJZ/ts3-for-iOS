@@ -1136,7 +1136,7 @@ struct ChannelMemberRow: View {
                     if member.isOutputMuted {
                         Text("Sound muted")
                     }
-                    if playbackPreference.isMuted {
+                    if isPlaybackMuted {
                         Text("Locally muted")
                     } else if playbackPreference.volume != 1 {
                         Text("Volume \(model.playbackVolumePercentText(for: member))")
@@ -1214,9 +1214,10 @@ struct ChannelMemberRow: View {
                 }
                 if !member.isCurrentUser {
                     Menu("Local Playback") {
-                        Button(playbackPreference.isMuted ? "Unmute Locally" : "Mute Locally") {
-                            model.setPlaybackMuted(!playbackPreference.isMuted, for: member)
+                        Button(isPlaybackMuted ? "Unmute Locally" : "Mute Locally") {
+                            model.setPlaybackMuted(!isPlaybackMuted, for: member)
                         }
+                        .disabled(contactStatus == .blocked)
                         Button("Adjust Volume") {
                             isShowingPlaybackSettings = true
                         }
@@ -1352,6 +1353,10 @@ struct ChannelMemberRow: View {
 
     private var playbackPreference: TS3UserPlaybackPreference {
         model.userPlaybackPreference(for: member)
+    }
+
+    private var isPlaybackMuted: Bool {
+        model.isPlaybackMuted(for: member)
     }
 }
 
@@ -1535,7 +1540,7 @@ struct UserInfoRows: View {
         }
 
         Section(header: Text("Local Playback")) {
-            ServerInfoDetailRow(label: "Muted", value: model.userPlaybackPreference(for: user).isMuted ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Muted", value: model.isPlaybackMuted(for: user) ? "Yes" : "No")
             ServerInfoDetailRow(label: "Volume", value: model.playbackVolumePercentText(for: user))
         }
 
@@ -1704,7 +1709,7 @@ struct UserPlaybackSheet: View {
 
     private var mutedBinding: Binding<Bool> {
         Binding(
-            get: { model.userPlaybackPreference(for: user).isMuted },
+            get: { model.isPlaybackMuted(for: user) },
             set: { model.setPlaybackMuted($0, for: user) }
         )
     }
@@ -1721,6 +1726,7 @@ struct UserPlaybackSheet: View {
             Form {
                 Section(header: Text(user.nickname)) {
                     Toggle("Mute Locally", isOn: mutedBinding)
+                        .disabled(model.contactStatus(for: user) == .blocked)
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text("Playback Volume")

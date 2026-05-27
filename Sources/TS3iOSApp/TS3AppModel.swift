@@ -837,13 +837,18 @@ final class TS3AppModel: ObservableObject {
         preference.volume = clamped
         userPlaybackPreferences[user.id] = preference
         client?.setPlaybackGain(Float(clamped), forClientId: user.id)
+        applyPlaybackMute(for: user)
     }
 
     func setPlaybackMuted(_ isMuted: Bool, for user: TS3UserSummary) {
         var preference = userPlaybackPreference(for: user)
         preference.isMuted = isMuted
         userPlaybackPreferences[user.id] = preference
-        client?.setPlaybackMuted(isMuted, forClientId: user.id)
+        applyPlaybackMute(for: user)
+    }
+
+    func isPlaybackMuted(for user: TS3UserSummary) -> Bool {
+        userPlaybackPreference(for: user).isMuted || contactStatus(for: user) == .blocked
     }
 
     var transmitButtonTitle: String {
@@ -910,6 +915,7 @@ final class TS3AppModel: ObservableObject {
     func deleteContact(_ contact: TS3ContactEntry) {
         contacts.removeAll { $0.uniqueIdentifier == contact.uniqueIdentifier }
         saveContacts()
+        syncBlockedContactPlayback()
     }
 
     private func updateContact(for user: TS3UserSummary, status: TS3ContactStatus, note: String) {
@@ -935,6 +941,7 @@ final class TS3AppModel: ObservableObject {
             ))
         }
         saveContacts()
+        applyPlaybackMute(for: user)
     }
 
     private func isBlockedMessage(_ message: TS3TextMessage) -> Bool {
@@ -944,6 +951,16 @@ final class TS3AppModel: ObservableObject {
             return false
         }
         return contactStatus(for: sender) == .blocked
+    }
+
+    private func applyPlaybackMute(for user: TS3UserSummary) {
+        client?.setPlaybackMuted(isPlaybackMuted(for: user), forClientId: user.id)
+    }
+
+    private func syncBlockedContactPlayback() {
+        for user in clients {
+            applyPlaybackMute(for: user)
+        }
     }
 
     private func setCurrentChannel(id: Int, name: String? = nil, topic: String? = nil) {
@@ -3265,6 +3282,9 @@ final class TS3AppModel: ObservableObject {
             client.setPlaybackGain(Float(preference.volume), forClientId: clientId)
             client.setPlaybackMuted(preference.isMuted, forClientId: clientId)
         }
+        for user in clients where contactStatus(for: user) == .blocked {
+            client.setPlaybackMuted(true, forClientId: user.id)
+        }
         client.setInputGain(Float(inputGain))
         client.setAudioTransmitMode(audioTransmitMode)
         client.setVoiceActivationThreshold(Float(voiceActivationThreshold))
@@ -3590,6 +3610,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 )
             }
             self.refreshMissingIcons()
+            self.syncBlockedContactPlayback()
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {
                 self.nickname = ownClient.nickname
                 self.isInputMuted = ownClient.isInputMuted
