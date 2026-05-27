@@ -1029,6 +1029,27 @@ final class TS3AppModel: ObservableObject {
             }
     }
 
+    func channelPath(for channel: TS3ChannelSummary) -> String {
+        var path: [String] = [channel.name]
+        var visited: Set<Int> = [channel.id]
+        var parentId = normalizedChannelId(channel.parentId)
+
+        while let id = parentId,
+              !visited.contains(id),
+              let parent = channels.first(where: { $0.id == id }) {
+            visited.insert(id)
+            path.insert(parent.name, at: 0)
+            parentId = normalizedChannelId(parent.parentId)
+        }
+
+        return path.joined(separator: "/")
+    }
+
+    func setDefaultChannel(_ channel: TS3ChannelSummary) {
+        defaultChannel = channelPath(for: channel)
+        defaultChannelPassword = ""
+    }
+
     func contact(for user: TS3UserSummary) -> TS3ContactEntry? {
         guard let uniqueIdentifier = user.uniqueIdentifier else { return nil }
         return contacts.first { $0.uniqueIdentifier == uniqueIdentifier }
@@ -1123,6 +1144,11 @@ final class TS3AppModel: ObservableObject {
         for user in clients {
             applyPlaybackMute(for: user)
         }
+    }
+
+    private func normalizedChannelId(_ id: Int?) -> Int? {
+        guard let id, id > 0 else { return nil }
+        return id
     }
 
     private func setCurrentChannel(id: Int, name: String? = nil, topic: String? = nil) {

@@ -822,6 +822,13 @@ struct CurrentChannelCard: View {
                         }
                     }
                     Spacer()
+                    Button {
+                        model.setDefaultChannel(channel)
+                    } label: {
+                        Image(systemName: "pin")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Set current channel as default")
                 }
             } else {
                 HStack(alignment: .top, spacing: 10) {
@@ -946,6 +953,9 @@ struct ChannelRow: View {
                     }
                     Button("Move Channel") {
                         isShowingMove = true
+                    }
+                    Button("Set as Default Channel") {
+                        model.setDefaultChannel(channel)
                     }
                     Button("Whisper to Channel") {
                         model.enableWhisperToChannel(id: channel.id)
