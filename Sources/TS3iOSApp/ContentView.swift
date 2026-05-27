@@ -3168,7 +3168,7 @@ struct GroupManagementRow: View {
         }
         .padding(.vertical, 3)
         .sheet(isPresented: $isShowingMembers) {
-            GroupClientListSheet()
+            GroupClientListSheet(group: group, target: target)
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingRename) {
@@ -3257,6 +3257,8 @@ struct GroupManagementRow: View {
 struct GroupClientListSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
 
     var body: some View {
         NavigationView {
@@ -3266,7 +3268,7 @@ struct GroupClientListSheet: View {
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(model.groupClients) { client in
-                        GroupClientRow(client: client)
+                        GroupClientRow(group: group, target: target, client: client)
                             .environmentObject(model)
                     }
                 }
@@ -3286,29 +3288,55 @@ struct GroupClientListSheet: View {
 
 struct GroupClientRow: View {
     @EnvironmentObject private var model: TS3AppModel
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
     let client: TS3GroupClientSummary
+    @State private var isConfirmingRemove = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(client.displayName)
-                .font(.subheadline.weight(.semibold))
-            HStack(spacing: 8) {
-                Text("DB \(client.clientDatabaseId)")
-                if let channelId = client.channelId {
-                    Text(model.channelName(for: channelId) ?? "Channel \(channelId)")
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(client.displayName)
+                    .font(.subheadline.weight(.semibold))
+                HStack(spacing: 8) {
+                    Text("DB \(client.clientDatabaseId)")
+                    if let channelId = client.channelId {
+                        Text(model.channelName(for: channelId) ?? "Channel \(channelId)")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                    Text(uniqueIdentifier)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
-            .font(.caption)
-            .foregroundColor(.secondary)
-            if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Text(uniqueIdentifier)
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            Spacer()
+            if target == .server {
+                Menu {
+                    Button("Remove From Group") {
+                        isConfirmingRemove = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .buttonStyle(.borderless)
             }
         }
         .padding(.vertical, 3)
+        .alert(isPresented: $isConfirmingRemove) {
+            Alert(
+                title: Text("Remove Member?"),
+                message: Text("\(client.displayName) from \(group.name)"),
+                primaryButton: .destructive(Text("Remove")) {
+                    model.removeServerGroup(group, from: client)
+                },
+                secondaryButton: .cancel()
+            )
+        }
     }
 }
 

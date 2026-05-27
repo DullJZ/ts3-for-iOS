@@ -3018,6 +3018,18 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func removeServerGroup(_ group: TS3GroupSummary, from member: TS3GroupClientSummary) {
+        runClientCommand { client in
+            try await client.removeServerGroup(groupId: group.id, fromClientDatabaseId: member.clientDatabaseId)
+            await MainActor.run {
+                self.groupClients.removeAll { $0.id == member.id }
+                for onlineClient in self.clients where onlineClient.databaseId == member.clientDatabaseId {
+                    self.removeServerGroup(group.id, fromClientId: onlineClient.id)
+                }
+            }
+        }
+    }
+
     func setChannelGroup(_ group: TS3GroupSummary, for user: TS3UserSummary, in channel: TS3ChannelSummary) {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
