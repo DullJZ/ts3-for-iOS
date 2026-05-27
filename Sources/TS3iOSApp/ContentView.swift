@@ -4029,6 +4029,8 @@ struct FileBrowserSheet: View {
                                 Text(channel.name).tag(channel.id)
                             }
                         }
+                        SecureField("File Password", text: $model.fileBrowserPassword)
+                            .ts3PlainTextField()
                     }
                 }
 

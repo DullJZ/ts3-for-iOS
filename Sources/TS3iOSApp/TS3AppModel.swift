@@ -879,6 +879,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileEntries: [TS3FileEntrySummary] = []
     @Published var fileBrowserChannelId: Int?
     @Published var fileBrowserPath = "/"
+    @Published var fileBrowserPassword = ""
     @Published var fileTransferStatus: String?
     @Published var fileTransferProgress: Double?
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
@@ -1309,6 +1310,7 @@ final class TS3AppModel: ObservableObject {
         fileEntries = []
         fileBrowserChannelId = nil
         fileBrowserPath = "/"
+        fileBrowserPassword = ""
         serverInfo = .empty
         isTalking = false
         isAway = false
@@ -1986,6 +1988,7 @@ final class TS3AppModel: ObservableObject {
     func selectFileBrowserChannel(_ channel: TS3ChannelSummary) {
         fileBrowserChannelId = channel.id
         fileBrowserPath = "/"
+        fileBrowserPassword = ""
         refreshFileList()
     }
 
@@ -1997,8 +2000,9 @@ final class TS3AppModel: ObservableObject {
         fileBrowserChannelId = channelId
         let path = normalizedFileDirectoryPath(fileBrowserPath)
         fileBrowserPath = path
+        let password = trimmedFileBrowserPassword
         runClientCommand { client in
-            let entries = try await client.refreshFileList(channelId: channelId, path: path)
+            let entries = try await client.refreshFileList(channelId: channelId, path: path, password: password)
             await MainActor.run {
                 self.fileEntries = entries
                     .map { TS3FileEntrySummary(entry: $0) }
@@ -2038,16 +2042,18 @@ final class TS3AppModel: ObservableObject {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         let path = joinedFilePath(parentPath: fileBrowserPath, name: name)
+        let password = trimmedFileBrowserPassword
         runClientCommand { client in
-            try await client.createFileDirectory(channelId: channelId, path: path)
+            try await client.createFileDirectory(channelId: channelId, path: path, password: password)
         } onSuccess: {
             self.refreshFileList()
         }
     }
 
     func deleteFileEntry(_ entry: TS3FileEntrySummary) {
+        let password = trimmedFileBrowserPassword
         runClientCommand { client in
-            try await client.deleteFile(channelId: entry.channelId, path: entry.path)
+            try await client.deleteFile(channelId: entry.channelId, path: entry.path, password: password)
         } onSuccess: {
             self.refreshFileList()
         }
@@ -2057,8 +2063,9 @@ final class TS3AppModel: ObservableObject {
         let newName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !newName.isEmpty, newName != entry.name else { return }
         let newPath = joinedFilePath(parentPath: entry.parentPath, name: newName)
+        let password = trimmedFileBrowserPassword
         runClientCommand { client in
-            try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath)
+            try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath, password: password)
         } onSuccess: {
             self.refreshFileList()
         }
@@ -2077,7 +2084,11 @@ final class TS3AppModel: ObservableObject {
                     self.fileTransferStatus = "Preparing download: \(entry.name)"
                     self.fileTransferProgress = 0
                 }
-                let parameters = try await client.initFileDownload(channelId: entry.channelId, path: entry.path)
+                let parameters = try await client.initFileDownload(
+                    channelId: entry.channelId,
+                    path: entry.path,
+                    password: self.trimmedFileBrowserPassword
+                )
                 try await TS3FileTransfer.download(parameters: parameters, to: destination) { received, total in
                     Task { @MainActor in
                         if let total, total > 0 {
@@ -2143,7 +2154,8 @@ final class TS3AppModel: ObservableObject {
                     channelId: channelId,
                     path: remotePath,
                     size: size,
-                    overwrite: overwrite
+                    overwrite: overwrite,
+                    password: self.trimmedFileBrowserPassword
                 )
                 try await TS3FileTransfer.upload(parameters: parameters, from: source) { sent, total in
                     Task { @MainActor in
@@ -2242,6 +2254,11 @@ final class TS3AppModel: ObservableObject {
             return name
         }
         return parentPath + name
+    }
+
+    private var trimmedFileBrowserPassword: String? {
+        let password = fileBrowserPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        return password.isEmpty ? nil : password
     }
 
     private func downloadDestination(for name: String) throws -> URL {
