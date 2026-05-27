@@ -2146,6 +2146,7 @@ struct ChatSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var message = ""
     @State private var target: TS3TextMessageTargetMode = .channel
+    @State private var selectedPrivateClientId = 0
     @State private var filter: ChatMessageFilter = .all
     @State private var searchText = ""
     @State private var isShowingOfflineMessages = false
@@ -2158,8 +2159,24 @@ struct ChatSheet: View {
                     Picker("Target", selection: $target) {
                         Text("Channel").tag(TS3TextMessageTargetMode.channel)
                         Text("Server").tag(TS3TextMessageTargetMode.server)
+                        Text("Private").tag(TS3TextMessageTargetMode.client)
                     }
                     .pickerStyle(.segmented)
+
+                    if target == .client {
+                        if privateMessageTargets.isEmpty {
+                            Text("No other users")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Picker("User", selection: $selectedPrivateClientId) {
+                                ForEach(privateMessageTargets) { user in
+                                    Text(user.nickname).tag(user.id)
+                                }
+                            }
+                        }
+                    }
 
                     Picker("Filter", selection: $filter) {
                         ForEach(ChatMessageFilter.allCases) { item in
@@ -2190,14 +2207,20 @@ struct ChatSheet: View {
                     TextField("Message", text: $message)
                         .textFieldStyle(.roundedBorder)
                     Button("Send") {
-                        if target == .server {
+                        switch target {
+                        case .server:
                             model.sendServerMessage(message)
-                        } else {
+                        case .channel:
                             model.sendChannelMessage(message)
+                        case .client:
+                            if let user = selectedPrivateClient {
+                                model.sendPrivateMessage(message, to: user)
+                            }
                         }
                         message = ""
                     }
                     .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
+                    .disabled(!canSendMessage)
                 }
                 .padding()
             }
@@ -2226,6 +2249,13 @@ struct ChatSheet: View {
             }
             .onAppear {
                 model.beginViewingChat()
+                selectDefaultPrivateClientIfNeeded()
+            }
+            .onChange(of: target) { _ in
+                selectDefaultPrivateClientIfNeeded()
+            }
+            .onChange(of: model.clients.map(\.id)) { _ in
+                selectDefaultPrivateClientIfNeeded()
             }
             .onDisappear {
                 model.endViewingChat()
@@ -2241,6 +2271,19 @@ struct ChatSheet: View {
                 )
             }
         }
+    }
+
+    private var privateMessageTargets: [TS3UserSummary] {
+        model.clients.filter { !$0.isCurrentUser }
+    }
+
+    private var selectedPrivateClient: TS3UserSummary? {
+        privateMessageTargets.first { $0.id == selectedPrivateClientId }
+    }
+
+    private var canSendMessage: Bool {
+        !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (target != .client || selectedPrivateClient != nil)
     }
 
     private var filteredMessages: [TS3ChatMessageSummary] {
@@ -2264,6 +2307,13 @@ struct ChatSheet: View {
             return nil
         }
         return model.clients.first { $0.id == senderId }
+    }
+
+    private func selectDefaultPrivateClientIfNeeded() {
+        guard target == .client else { return }
+        if !privateMessageTargets.contains(where: { $0.id == selectedPrivateClientId }) {
+            selectedPrivateClientId = privateMessageTargets.first?.id ?? 0
+        }
     }
 }
 
