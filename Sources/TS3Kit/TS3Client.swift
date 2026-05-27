@@ -2160,6 +2160,15 @@ private extension TS3Client {
             return
         }
 
+        if command.name == "notifyclientpoke" {
+            if let poke = clientPoke(from: command) {
+                DispatchQueue.main.async {
+                    self.delegate?.ts3Client(self, didReceiveClientPoke: poke)
+                }
+            }
+            return
+        }
+
         if command.name == "servergrouplist" || command.name == "notifyservergrouplist" {
             if command.name == "servergrouplist" {
                 recordPendingResponse(command)
@@ -2984,6 +2993,21 @@ private extension TS3Client {
             senderName: command.get("invokername")?.value ?? "Client \(senderId ?? 0)",
             message: message,
             isOwnMessage: UInt16(senderId ?? -1) == clientId
+        )
+    }
+
+    func clientPoke(from command: TS3SingleCommand) -> TS3ClientPoke? {
+        guard let message = command.get("msg")?.value else {
+            return nil
+        }
+        let senderId = intValue(command, "invokerid")
+        return TS3ClientPoke(
+            timestamp: Date(),
+            senderId: senderId,
+            senderName: command.get("invokername")?.value ?? "Client \(senderId ?? 0)",
+            senderUniqueIdentifier: command.get("invokeruid")?.value,
+            message: message,
+            isOwnPoke: UInt16(senderId ?? -1) == clientId
         )
     }
 

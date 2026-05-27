@@ -162,6 +162,26 @@ struct TS3ChatMessageSummary: Identifiable, Codable {
     }
 }
 
+struct TS3PokeSummary: Identifiable {
+    let id: UUID
+    let timestamp: Date
+    let senderId: Int?
+    let senderName: String
+    let senderUniqueIdentifier: String?
+    let message: String
+    let isOwnPoke: Bool
+
+    init(poke: TS3ClientPoke) {
+        id = poke.id
+        timestamp = poke.timestamp
+        senderId = poke.senderId
+        senderName = poke.senderName
+        senderUniqueIdentifier = poke.senderUniqueIdentifier
+        message = poke.message
+        isOwnPoke = poke.isOwnPoke
+    }
+}
+
 enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
     case neutral
     case friend
@@ -775,6 +795,8 @@ final class TS3AppModel: ObservableObject {
     @Published var clients: [TS3UserSummary] = []
     @Published var chatMessages: [TS3ChatMessageSummary] = []
     @Published private(set) var unreadChatMessageCount = 0
+    @Published private(set) var pokeEvents: [TS3PokeSummary] = []
+    @Published private(set) var unreadPokeCount = 0
     @Published var offlineMessages: [TS3OfflineMessageSummary] = []
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var complaintEntries: [TS3ComplaintSummary] = []
@@ -1203,6 +1225,8 @@ final class TS3AppModel: ObservableObject {
     private func clearConnectionState(keepLastConnection: Bool) {
         channels = []
         clients = []
+        pokeEvents = []
+        unreadPokeCount = 0
         offlineMessages = []
         banEntries = []
         complaintEntries = []
@@ -3209,6 +3233,10 @@ final class TS3AppModel: ObservableObject {
         isViewingChat = false
     }
 
+    func markPokesRead() {
+        unreadPokeCount = 0
+    }
+
     func toggleTalking() {
         guard !isInputMuted else {
             lastError = "Clear microphone mute before using Push To Talk."
@@ -3743,6 +3771,17 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.unreadChatMessageCount += 1
             }
             self.saveChatHistory()
+        }
+    }
+
+    nonisolated func ts3Client(_ client: TS3Client, didReceiveClientPoke poke: TS3ClientPoke) {
+        Task { @MainActor in
+            guard !poke.isOwnPoke else { return }
+            self.pokeEvents.insert(TS3PokeSummary(poke: poke), at: 0)
+            if self.pokeEvents.count > 50 {
+                self.pokeEvents.removeLast(self.pokeEvents.count - 50)
+            }
+            self.unreadPokeCount += 1
         }
     }
 

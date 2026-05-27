@@ -256,6 +256,7 @@ struct ChannelListView: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var isShowingServerTools = false
     @State private var isShowingChat = false
+    @State private var isShowingEvents = false
     @State private var isShowingWhisper = false
     @State private var isShowingCreateChannel = false
 
@@ -276,6 +277,12 @@ struct ChannelListView: View {
                     isShowingServerTools = true
                 } label: {
                     Label("Tools", systemImage: "slider.horizontal.3")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                Button {
+                    isShowingEvents = true
+                } label: {
+                    EventsButtonLabel(unreadCount: model.unreadPokeCount)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button {
@@ -326,6 +333,10 @@ struct ChannelListView: View {
         }
         .sheet(isPresented: $isShowingServerTools) {
             ServerToolsSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingEvents) {
+            EventsSheet()
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingWhisper) {
@@ -1996,20 +2007,43 @@ struct ChatButtonLabel: View {
             Image(systemName: "message")
             Text("Chat")
             if unreadCount > 0 {
-                Text(unreadCountText)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.red)
-                    .clipShape(Capsule())
-                    .accessibilityLabel("\(unreadCount) unread messages")
+                CountBadge(count: unreadCount, label: "unread messages")
             }
         }
     }
+}
 
-    private var unreadCountText: String {
-        unreadCount > 99 ? "99+" : String(unreadCount)
+struct EventsButtonLabel: View {
+    let unreadCount: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "bell")
+            Text("Events")
+            if unreadCount > 0 {
+                CountBadge(count: unreadCount, label: "unread events")
+            }
+        }
+    }
+}
+
+struct CountBadge: View {
+    let count: Int
+    let label: String
+
+    var body: some View {
+        Text(countText)
+            .font(.caption2.weight(.semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.red)
+            .clipShape(Capsule())
+            .accessibilityLabel("\(count) \(label)")
+    }
+
+    private var countText: String {
+        count > 99 ? "99+" : String(count)
     }
 }
 
@@ -2045,6 +2079,67 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
         case .privateMessage:
             return mode == .client
         }
+    }
+}
+
+struct EventsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Pokes")) {
+                    if model.pokeEvents.isEmpty {
+                        Text("No pokes")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.pokeEvents) { poke in
+                            PokeEventRow(poke: poke)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Events")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                model.markPokesRead()
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct PokeEventRow: View {
+    let poke: TS3PokeSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(poke.senderName)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(Self.dateText(poke.timestamp))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Text(poke.message.isEmpty ? "Poke" : poke.message)
+                .font(.body)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 }
 

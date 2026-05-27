@@ -585,6 +585,41 @@ public struct TS3TextMessage: Identifiable {
     }
 }
 
+/// A client poke notification received from the TeamSpeak server.
+public struct TS3ClientPoke: Identifiable {
+    /// Stable local identifier for UI lists.
+    public let id = UUID()
+    /// Time when the poke notification was received locally.
+    public let timestamp: Date
+    /// Runtime client ID of the sender, when provided by the server.
+    public let senderId: Int?
+    /// Display name of the sender.
+    public let senderName: String
+    /// Stable TeamSpeak unique identifier of the sender, when provided by the server.
+    public let senderUniqueIdentifier: String?
+    /// Poke message body.
+    public let message: String
+    /// Indicates whether this poke was sent by the current client.
+    public let isOwnPoke: Bool
+
+    /// Creates a received client poke record.
+    public init(
+        timestamp: Date,
+        senderId: Int?,
+        senderName: String,
+        senderUniqueIdentifier: String?,
+        message: String,
+        isOwnPoke: Bool
+    ) {
+        self.timestamp = timestamp
+        self.senderId = senderId
+        self.senderName = senderName
+        self.senderUniqueIdentifier = senderUniqueIdentifier
+        self.message = message
+        self.isOwnPoke = isOwnPoke
+    }
+}
+
 public struct TS3OfflineMessage: Identifiable {
     public let id: Int
     public let senderUniqueIdentifier: String?
@@ -914,6 +949,7 @@ public protocol TS3ClientDelegate: AnyObject {
     func ts3Client(_ client: TS3Client, didUpdateChannels channels: [TS3Channel])
     func ts3Client(_ client: TS3Client, didUpdateClients clients: [TS3ServerClient])
     func ts3Client(_ client: TS3Client, didReceiveTextMessage message: TS3TextMessage)
+    func ts3Client(_ client: TS3Client, didReceiveClientPoke poke: TS3ClientPoke)
     func ts3Client(_ client: TS3Client, didUpdateServerGroups groups: [TS3ServerGroup])
     func ts3Client(_ client: TS3Client, didUpdateChannelGroups groups: [TS3ChannelGroup])
 }
@@ -921,6 +957,7 @@ public protocol TS3ClientDelegate: AnyObject {
 public extension TS3ClientDelegate {
     func ts3Client(_ client: TS3Client, didUpdateServerInfo info: TS3ServerInfo) {}
     func ts3Client(_ client: TS3Client, didReceiveTextMessage message: TS3TextMessage) {}
+    func ts3Client(_ client: TS3Client, didReceiveClientPoke poke: TS3ClientPoke) {}
     func ts3Client(_ client: TS3Client, didUpdateServerGroups groups: [TS3ServerGroup]) {}
     func ts3Client(_ client: TS3Client, didUpdateChannelGroups groups: [TS3ChannelGroup]) {}
 }
