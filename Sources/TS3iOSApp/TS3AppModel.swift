@@ -2468,6 +2468,16 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func sendOfflineMessage(toUniqueIdentifier uniqueIdentifier: String, subject: String, message: String) {
+        let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uniqueIdentifier.isEmpty, !subject.isEmpty, !message.isEmpty else { return }
+        runClientCommand { client in
+            try await client.sendOfflineMessage(toUniqueIdentifier: uniqueIdentifier, subject: subject, message: message)
+        }
+    }
+
     private func upsertOfflineMessage(_ message: TS3OfflineMessageSummary) {
         if let index = offlineMessages.firstIndex(where: { $0.id == message.id }) {
             offlineMessages[index] = message

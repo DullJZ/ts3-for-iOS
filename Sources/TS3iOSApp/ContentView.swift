@@ -2387,6 +2387,7 @@ struct OfflineMessagesSheet: View {
 struct OfflineMessageRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let message: TS3OfflineMessageSummary
+    @State private var isShowingReply = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2424,6 +2425,12 @@ struct OfflineMessageRow: View {
             }
 
             HStack {
+                if canReply {
+                    Button("Reply") {
+                        isShowingReply = true
+                    }
+                    .buttonStyle(.borderless)
+                }
                 Button(message.isRead ? "Mark Unread" : "Mark Read") {
                     model.markOfflineMessage(message, read: !message.isRead)
                 }
@@ -2438,6 +2445,14 @@ struct OfflineMessageRow: View {
             .font(.caption)
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $isShowingReply) {
+            OfflineMessageReplySheet(message: message)
+                .environmentObject(model)
+        }
+    }
+
+    private var canReply: Bool {
+        message.senderUniqueIdentifier?.isEmpty == false
     }
 
     private static func dateText(_ date: Date) -> String {
@@ -2445,6 +2460,68 @@ struct OfflineMessageRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+struct OfflineMessageReplySheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let message: TS3OfflineMessageSummary
+    @State private var subject: String
+    @State private var replyText = ""
+
+    init(message: TS3OfflineMessageSummary) {
+        self.message = message
+        _subject = State(initialValue: Self.replySubject(for: message.subject))
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(message.senderName ?? "Recipient")) {
+                    TextField("Subject", text: $subject)
+                        .ts3PlainTextField()
+                    TextField("Message", text: $replyText)
+                        .ts3PlainTextField()
+                }
+            }
+            .navigationTitle("Reply")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Send") {
+                        if let uniqueIdentifier = message.senderUniqueIdentifier {
+                            model.sendOfflineMessage(
+                                toUniqueIdentifier: uniqueIdentifier,
+                                subject: subject,
+                                message: replyText
+                            )
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(isSendDisabled)
+                }
+            }
+        }
+    }
+
+    private var isSendDisabled: Bool {
+        message.senderUniqueIdentifier?.isEmpty != false
+            || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private static func replySubject(for subject: String) -> String {
+        let trimmed = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.lowercased().hasPrefix("re:") {
+            return trimmed
+        }
+        return trimmed.isEmpty ? "Re:" : "Re: \(trimmed)"
     }
 }
 
