@@ -1318,6 +1318,8 @@ struct ChannelMemberRow: View {
     let member: TS3UserSummary
     @State private var actionMode: UserActionMode?
     @State private var isShowingPlaybackSettings = false
+    @State private var passwordMoveChannel: TS3ChannelSummary?
+    @State private var movePassword = ""
 
     var body: some View {
         HStack(spacing: 10) {
@@ -1486,7 +1488,12 @@ struct ChannelMemberRow: View {
                 Menu("Move To") {
                     ForEach(model.channels) { channel in
                         Button(channel.name) {
-                            model.moveUser(member, to: channel)
+                            if channel.isPasswordProtected {
+                                movePassword = ""
+                                passwordMoveChannel = channel
+                            } else {
+                                model.moveUser(member, to: channel)
+                            }
                         }
                     }
                 }
@@ -1538,6 +1545,10 @@ struct ChannelMemberRow: View {
         }
         .sheet(isPresented: $isShowingPlaybackSettings) {
             UserPlaybackSheet(user: member)
+                .environmentObject(model)
+        }
+        .sheet(item: $passwordMoveChannel) { channel in
+            MoveUserPasswordSheet(user: member, channel: channel, password: $movePassword)
                 .environmentObject(model)
         }
     }
@@ -5938,6 +5949,39 @@ struct JoinChannelPasswordSheet: View {
                 Section {
                     Button("Join") {
                         model.joinChannel(channel, password: password)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Channel Password")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct MoveUserPasswordSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let user: TS3UserSummary
+    let channel: TS3ChannelSummary
+    @Binding var password: String
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    SecureField("Password", text: $password)
+                }
+                Section {
+                    Button("Move User") {
+                        model.moveUser(user, to: channel, password: password)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
