@@ -2214,6 +2214,14 @@ private extension TS3Client {
             if let serverClient = clientFromEnterViewCommand(command) {
                 clientCache[UInt16(serverClient.id)] = serverClient
                 publishClients()
+                publishServerActivity(activityEvent(
+                    from: command,
+                    kind: .clientEntered,
+                    fallbackClientId: serverClient.id,
+                    fallbackClientName: serverClient.nickname,
+                    fallbackFromChannelId: nil,
+                    fallbackToChannelId: serverClient.channelId
+                ))
             }
             if let cid = ownClientChannelId(from: command) {
                 currentChannelId = cid
@@ -2227,8 +2235,18 @@ private extension TS3Client {
             if let clidValue = command.get("clid")?.value,
                let clid = Int(clidValue),
                let cid = targetChannelId(from: command) {
+                let existing = clientCache[UInt16(clid)]
+                let fromChannelId = intValue(command, "cfid") ?? existing?.channelId
                 updateClientChannel(clientId: clid, channelId: cid)
                 publishClients()
+                publishServerActivity(activityEvent(
+                    from: command,
+                    kind: .clientMoved,
+                    fallbackClientId: clid,
+                    fallbackClientName: existing?.nickname ?? "Client \(clid)",
+                    fallbackFromChannelId: fromChannelId,
+                    fallbackToChannelId: cid
+                ))
             }
             if let cid = ownClientChannelId(from: command) {
                 currentChannelId = cid
@@ -2246,8 +2264,17 @@ private extension TS3Client {
                     disconnectInternal(error: nil)
                     return
                 }
+                let existing = clientCache[clid]
                 clientCache.removeValue(forKey: clid)
                 publishClients()
+                publishServerActivity(activityEvent(
+                    from: command,
+                    kind: .clientLeft,
+                    fallbackClientId: Int(clid),
+                    fallbackClientName: existing?.nickname ?? "Client \(clid)",
+                    fallbackFromChannelId: intValue(command, "cfid") ?? existing?.channelId,
+                    fallbackToChannelId: nil
+                ))
             }
             return
         }
@@ -3011,6 +3038,30 @@ private extension TS3Client {
         )
     }
 
+    func activityEvent(
+        from command: TS3SingleCommand,
+        kind: TS3ServerActivityEvent.Kind,
+        fallbackClientId: Int,
+        fallbackClientName: String,
+        fallbackFromChannelId: Int?,
+        fallbackToChannelId: Int?
+    ) -> TS3ServerActivityEvent {
+        let affectedClientId = intValue(command, "clid") ?? fallbackClientId
+        return TS3ServerActivityEvent(
+            timestamp: Date(),
+            kind: kind,
+            clientId: affectedClientId,
+            clientName: command.get("client_nickname")?.value ?? fallbackClientName,
+            fromChannelId: intValue(command, "cfid") ?? fallbackFromChannelId,
+            toChannelId: targetChannelId(from: command) ?? fallbackToChannelId,
+            invokerId: intValue(command, "invokerid"),
+            invokerName: command.get("invokername")?.value,
+            reasonId: intValue(command, "reasonid"),
+            reasonMessage: command.get("reasonmsg")?.value,
+            isOwnClient: UInt16(affectedClientId) == clientId
+        )
+    }
+
     func offlineMessage(from command: TS3SingleCommand, detailedMessage: String?) -> TS3OfflineMessage? {
         guard let id = intValue(command, "msgid") else {
             return nil
@@ -3276,6 +3327,12 @@ private extension TS3Client {
     func publishServerInfo(_ info: TS3ServerInfo) {
         DispatchQueue.main.async {
             self.delegate?.ts3Client(self, didUpdateServerInfo: info)
+        }
+    }
+
+    func publishServerActivity(_ event: TS3ServerActivityEvent) {
+        DispatchQueue.main.async {
+            self.delegate?.ts3Client(self, didReceiveServerActivity: event)
         }
     }
 

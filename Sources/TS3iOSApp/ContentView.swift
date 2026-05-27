@@ -282,7 +282,7 @@ struct ChannelListView: View {
                 Button {
                     isShowingEvents = true
                 } label: {
-                    EventsButtonLabel(unreadCount: model.unreadPokeCount)
+                    EventsButtonLabel(unreadCount: model.unreadPokeCount + model.unreadActivityCount)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button {
@@ -2089,6 +2089,17 @@ struct EventsSheet: View {
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Activity")) {
+                    if model.activityEvents.isEmpty {
+                        Text("No activity")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.activityEvents) { event in
+                            ActivityEventRow(event: event)
+                                .environmentObject(model)
+                        }
+                    }
+                }
                 Section(header: Text("Pokes")) {
                     if model.pokeEvents.isEmpty {
                         Text("No pokes")
@@ -2113,6 +2124,64 @@ struct EventsSheet: View {
                 }
             }
         }
+    }
+}
+
+struct ActivityEventRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let event: TS3ActivitySummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(event.clientName)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(Self.dateText(event.timestamp))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Text(messageText)
+                .font(.body)
+            if let detailText {
+                Text(detailText)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var messageText: String {
+        switch event.kind {
+        case .clientEntered:
+            return "joined \(channelText(event.toChannelId))"
+        case .clientLeft:
+            return "left \(channelText(event.fromChannelId))"
+        case .clientMoved:
+            return "moved from \(channelText(event.fromChannelId)) to \(channelText(event.toChannelId))"
+        }
+    }
+
+    private var detailText: String? {
+        if let reason = event.reasonMessage, !reason.isEmpty {
+            return reason
+        }
+        if let invoker = event.invokerName, !invoker.isEmpty {
+            return "by \(invoker)"
+        }
+        return nil
+    }
+
+    private func channelText(_ channelId: Int?) -> String {
+        model.channelName(for: channelId) ?? "the server"
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 }
 

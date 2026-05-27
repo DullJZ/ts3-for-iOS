@@ -182,6 +182,34 @@ struct TS3PokeSummary: Identifiable {
     }
 }
 
+struct TS3ActivitySummary: Identifiable {
+    let id: UUID
+    let timestamp: Date
+    let kind: TS3ServerActivityEvent.Kind
+    let clientId: Int
+    let clientName: String
+    let fromChannelId: Int?
+    let toChannelId: Int?
+    let invokerName: String?
+    let reasonId: Int?
+    let reasonMessage: String?
+    let isOwnClient: Bool
+
+    init(event: TS3ServerActivityEvent) {
+        id = event.id
+        timestamp = event.timestamp
+        kind = event.kind
+        clientId = event.clientId
+        clientName = event.clientName
+        fromChannelId = event.fromChannelId
+        toChannelId = event.toChannelId
+        invokerName = event.invokerName
+        reasonId = event.reasonId
+        reasonMessage = event.reasonMessage
+        isOwnClient = event.isOwnClient
+    }
+}
+
 enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
     case neutral
     case friend
@@ -797,6 +825,8 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var unreadChatMessageCount = 0
     @Published private(set) var pokeEvents: [TS3PokeSummary] = []
     @Published private(set) var unreadPokeCount = 0
+    @Published private(set) var activityEvents: [TS3ActivitySummary] = []
+    @Published private(set) var unreadActivityCount = 0
     @Published var offlineMessages: [TS3OfflineMessageSummary] = []
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var complaintEntries: [TS3ComplaintSummary] = []
@@ -1227,6 +1257,8 @@ final class TS3AppModel: ObservableObject {
         clients = []
         pokeEvents = []
         unreadPokeCount = 0
+        activityEvents = []
+        unreadActivityCount = 0
         offlineMessages = []
         banEntries = []
         complaintEntries = []
@@ -3235,6 +3267,12 @@ final class TS3AppModel: ObservableObject {
 
     func markPokesRead() {
         unreadPokeCount = 0
+        unreadActivityCount = 0
+    }
+
+    func channelName(for id: Int?) -> String? {
+        guard let id else { return nil }
+        return channels.first { $0.id == id }?.name ?? "Channel \(id)"
     }
 
     func toggleTalking() {
@@ -3782,6 +3820,17 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
             }
             self.unreadPokeCount += 1
+        }
+    }
+
+    nonisolated func ts3Client(_ client: TS3Client, didReceiveServerActivity event: TS3ServerActivityEvent) {
+        Task { @MainActor in
+            guard !event.isOwnClient else { return }
+            self.activityEvents.insert(TS3ActivitySummary(event: event), at: 0)
+            if self.activityEvents.count > 100 {
+                self.activityEvents.removeLast(self.activityEvents.count - 100)
+            }
+            self.unreadActivityCount += 1
         }
     }
 
