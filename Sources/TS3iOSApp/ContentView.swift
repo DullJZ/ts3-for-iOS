@@ -1108,6 +1108,7 @@ struct ChannelMemberRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let member: TS3UserSummary
     @State private var actionMode: UserActionMode?
+    @State private var isShowingPlaybackSettings = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -1134,6 +1135,11 @@ struct ChannelMemberRow: View {
                     }
                     if member.isOutputMuted {
                         Text("Sound muted")
+                    }
+                    if playbackPreference.isMuted {
+                        Text("Locally muted")
+                    } else if playbackPreference.volume != 1 {
+                        Text("Volume \(model.playbackVolumePercentText(for: member))")
                     }
                     if member.isChannelCommander {
                         Text("Commander")
@@ -1205,6 +1211,21 @@ struct ChannelMemberRow: View {
                 }
                 Button("Whisper to User") {
                     model.enableWhisperToClient(member)
+                }
+                if !member.isCurrentUser {
+                    Menu("Local Playback") {
+                        Button(playbackPreference.isMuted ? "Unmute Locally" : "Mute Locally") {
+                            model.setPlaybackMuted(!playbackPreference.isMuted, for: member)
+                        }
+                        Button("Adjust Volume") {
+                            isShowingPlaybackSettings = true
+                        }
+                        Button("Reset Volume") {
+                            model.updatePlaybackVolume(1, for: member)
+                            model.setPlaybackMuted(false, for: member)
+                        }
+                        .disabled(!playbackPreference.isMuted && playbackPreference.volume == 1)
+                    }
                 }
                 Button("Refresh Details") {
                     model.refreshUserDetails(member)
@@ -1305,6 +1326,10 @@ struct ChannelMemberRow: View {
             UserActionSheet(mode: mode, user: member)
                 .environmentObject(model)
         }
+        .sheet(isPresented: $isShowingPlaybackSettings) {
+            UserPlaybackSheet(user: member)
+                .environmentObject(model)
+        }
     }
 
     private var assignedServerGroups: [TS3GroupSummary] {
@@ -1323,6 +1348,10 @@ struct ChannelMemberRow: View {
 
     private var contactStatus: TS3ContactStatus {
         model.contactStatus(for: member)
+    }
+
+    private var playbackPreference: TS3UserPlaybackPreference {
+        model.userPlaybackPreference(for: member)
     }
 }
 
@@ -1505,6 +1534,11 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Note", value: model.contactNote(for: user))
         }
 
+        Section(header: Text("Local Playback")) {
+            ServerInfoDetailRow(label: "Muted", value: model.userPlaybackPreference(for: user).isMuted ? "Yes" : "No")
+            ServerInfoDetailRow(label: "Volume", value: model.playbackVolumePercentText(for: user))
+        }
+
         Section(header: Text("Application")) {
             ServerInfoDetailRow(label: "Platform", value: user.platform)
             ServerInfoDetailRow(label: "Version", value: user.version)
@@ -1659,6 +1693,69 @@ struct ContactRow: View {
                 Image(systemName: "trash")
             }
             .buttonStyle(.borderless)
+        }
+    }
+}
+
+struct UserPlaybackSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let user: TS3UserSummary
+
+    private var mutedBinding: Binding<Bool> {
+        Binding(
+            get: { model.userPlaybackPreference(for: user).isMuted },
+            set: { model.setPlaybackMuted($0, for: user) }
+        )
+    }
+
+    private var volumeBinding: Binding<Double> {
+        Binding(
+            get: { model.userPlaybackPreference(for: user).volume },
+            set: { model.updatePlaybackVolume($0, for: user) }
+        )
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(user.nickname)) {
+                    Toggle("Mute Locally", isOn: mutedBinding)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Playback Volume")
+                            Spacer()
+                            Text(model.playbackVolumePercentText(for: user))
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: volumeBinding, in: 0...4, step: 0.05)
+                        HStack {
+                            Button("0%") {
+                                model.updatePlaybackVolume(0, for: user)
+                            }
+                            Spacer()
+                            Button("100%") {
+                                model.updatePlaybackVolume(1, for: user)
+                            }
+                            Spacer()
+                            Button("400%") {
+                                model.updatePlaybackVolume(4, for: user)
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .navigationTitle("Local Playback")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
 }

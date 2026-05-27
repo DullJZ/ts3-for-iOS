@@ -51,6 +51,8 @@ final class TS3AudioEngine {
     private let encoder: TS3OpusEncoder
     private var playbackStates: [PlaybackSource: PlaybackState] = [:]
     private var playbackVolume: Float = 1.0
+    private var sourcePlaybackGains: [UInt16: Float] = [:]
+    private var mutedPlaybackSources: Set<UInt16> = []
     private var inputGain: Float = 1.0
     private var transmitMode: TS3AudioTransmitMode = .pushToTalk
     private var voiceActivationThreshold: Float = 0.03
@@ -157,6 +159,23 @@ final class TS3AudioEngine {
         playbackVolume = min(max(volume, 0), 4)
     }
 
+    func setPlaybackGain(_ gain: Float, for clientId: UInt16) {
+        let clamped = min(max(gain, 0), 4)
+        if clamped == 1 {
+            sourcePlaybackGains.removeValue(forKey: clientId)
+        } else {
+            sourcePlaybackGains[clientId] = clamped
+        }
+    }
+
+    func setPlaybackMuted(_ isMuted: Bool, for clientId: UInt16) {
+        if isMuted {
+            mutedPlaybackSources.insert(clientId)
+        } else {
+            mutedPlaybackSources.remove(clientId)
+        }
+    }
+
     func setInputGain(_ gain: Float) {
         inputGain = min(max(gain, 0), 4)
     }
@@ -183,7 +202,7 @@ final class TS3AudioEngine {
             let state = try playbackState(for: source, sessionMarker: sessionMarker)
             let samples = try state.decoder.decode(packet: packet)
             playbackStates[source] = state
-            play(samples: samples, on: state.playerNode)
+            play(samples: samples, from: source.clientId, on: state.playerNode)
         } catch {
             let route = isWhisper ? "whisper" : "channel"
             log(.warning, "playback failed for \(route) source \(clientId): \(error.localizedDescription)")
@@ -519,16 +538,18 @@ final class TS3AudioEngine {
         onLog?(level, message)
     }
 
-    private func play(samples: [Float], on playerNode: AVAudioPlayerNode) {
+    private func play(samples: [Float], from clientId: UInt16, on playerNode: AVAudioPlayerNode) {
         guard let outputFormat else { return }
+        guard !mutedPlaybackSources.contains(clientId) else { return }
         guard let buffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: AVAudioFrameCount(samples.count)) else {
             return
         }
         buffer.frameLength = AVAudioFrameCount(samples.count)
+        let gain = sourcePlaybackGains[clientId] ?? 1
         if let channelData = buffer.floatChannelData {
             let channel = channelData[0]
             for i in 0..<samples.count {
-                let scaled = samples[i] * playbackVolume
+                let scaled = samples[i] * playbackVolume * gain
                 channel[i] = min(max(scaled, -1), 1)
             }
         }

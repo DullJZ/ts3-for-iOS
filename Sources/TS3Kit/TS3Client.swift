@@ -1322,6 +1322,25 @@ public final class TS3Client {
         log(.info, "playback volume set to \(Int((clamped * 100).rounded()))%")
     }
 
+    /// Sets the local playback gain for audio received from a specific client.
+    public func setPlaybackGain(_ gain: Float, forClientId clientId: Int) {
+        guard let sourceId = UInt16(exactly: clientId) else { return }
+        let clamped = min(max(gain, 0), 4)
+        withAudioQueueSync {
+            audioEngine?.setPlaybackGain(clamped, for: sourceId)
+        }
+        log(.info, "playback gain for client \(clientId) set to \(Int((clamped * 100).rounded()))%")
+    }
+
+    /// Locally mutes or unmutes audio received from a specific client.
+    public func setPlaybackMuted(_ isMuted: Bool, forClientId clientId: Int) {
+        guard let sourceId = UInt16(exactly: clientId) else { return }
+        withAudioQueueSync {
+            audioEngine?.setPlaybackMuted(isMuted, for: sourceId)
+        }
+        log(.info, "playback for client \(clientId) \(isMuted ? "muted" : "unmuted")")
+    }
+
     public func setInputGain(_ gain: Float) {
         let clamped = min(max(gain, 0), 4)
         withAudioQueueSync {

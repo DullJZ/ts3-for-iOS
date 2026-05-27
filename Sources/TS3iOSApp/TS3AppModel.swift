@@ -135,6 +135,11 @@ struct TS3ContactEntry: Identifiable, Codable {
     var id: String { uniqueIdentifier }
 }
 
+struct TS3UserPlaybackPreference {
+    var volume: Double = 1.0
+    var isMuted = false
+}
+
 struct TS3OfflineMessageSummary: Identifiable {
     let id: Int
     let senderUniqueIdentifier: String?
@@ -759,6 +764,7 @@ final class TS3AppModel: ObservableObject {
     @Published var lastError: String?
     @Published var avatarDownloadStatus: String?
     @Published var playbackVolume: Double = 1.0
+    @Published var userPlaybackPreferences: [Int: TS3UserPlaybackPreference] = [:]
     @Published var inputGain: Double = 1.0
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
@@ -815,6 +821,29 @@ final class TS3AppModel: ObservableObject {
 
     var playbackVolumePercentText: String {
         "\(Int((playbackVolume * 100).rounded()))%"
+    }
+
+    func playbackVolumePercentText(for user: TS3UserSummary) -> String {
+        "\(Int((userPlaybackPreference(for: user).volume * 100).rounded()))%"
+    }
+
+    func userPlaybackPreference(for user: TS3UserSummary) -> TS3UserPlaybackPreference {
+        userPlaybackPreferences[user.id] ?? TS3UserPlaybackPreference()
+    }
+
+    func updatePlaybackVolume(_ volume: Double, for user: TS3UserSummary) {
+        let clamped = min(max(volume, 0), 4)
+        var preference = userPlaybackPreference(for: user)
+        preference.volume = clamped
+        userPlaybackPreferences[user.id] = preference
+        client?.setPlaybackGain(Float(clamped), forClientId: user.id)
+    }
+
+    func setPlaybackMuted(_ isMuted: Bool, for user: TS3UserSummary) {
+        var preference = userPlaybackPreference(for: user)
+        preference.isMuted = isMuted
+        userPlaybackPreferences[user.id] = preference
+        client?.setPlaybackMuted(isMuted, forClientId: user.id)
     }
 
     var transmitButtonTitle: String {
@@ -1131,6 +1160,7 @@ final class TS3AppModel: ObservableObject {
         isRequestingTalkPower = false
         talkRequestMessage = ""
         whisperRoute = .none
+        userPlaybackPreferences = [:]
         microphonePermissionPrompt = nil
         iconURLs = [:]
         iconDownloads = []
@@ -3231,6 +3261,10 @@ final class TS3AppModel: ObservableObject {
 
     private func applyAudioSettings(to client: TS3Client) {
         client.setPlaybackVolume(Float(playbackVolume))
+        for (clientId, preference) in userPlaybackPreferences {
+            client.setPlaybackGain(Float(preference.volume), forClientId: clientId)
+            client.setPlaybackMuted(preference.isMuted, forClientId: clientId)
+        }
         client.setInputGain(Float(inputGain))
         client.setAudioTransmitMode(audioTransmitMode)
         client.setVoiceActivationThreshold(Float(voiceActivationThreshold))
