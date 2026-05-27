@@ -2515,6 +2515,7 @@ struct EventsSheet: View {
                     } else {
                         ForEach(model.pokeEvents) { poke in
                             PokeEventRow(poke: poke)
+                                .environmentObject(model)
                         }
                     }
                 }
@@ -2631,7 +2632,10 @@ struct ActivityEventRow: View {
 }
 
 struct PokeEventRow: View {
+    @EnvironmentObject private var model: TS3AppModel
     let poke: TS3PokeSummary
+    @State private var replyTarget: TS3UserSummary?
+    @State private var isShowingOfflineReply = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -2645,8 +2649,42 @@ struct PokeEventRow: View {
             }
             Text(poke.message.isEmpty ? "Poke" : poke.message)
                 .font(.body)
+            if onlineSender != nil || poke.senderUniqueIdentifier?.isEmpty == false {
+                HStack(spacing: 12) {
+                    if let onlineSender {
+                        Button("Private Message") {
+                            replyTarget = onlineSender
+                        }
+                        .buttonStyle(.borderless)
+                        Button("Poke Back") {
+                            model.pokeUser(onlineSender, message: "Poke")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    if poke.senderUniqueIdentifier?.isEmpty == false {
+                        Button("Offline Reply") {
+                            isShowingOfflineReply = true
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+                .font(.caption)
+            }
         }
         .padding(.vertical, 4)
+        .sheet(item: $replyTarget) { user in
+            ChatPrivateReplySheet(user: user)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingOfflineReply) {
+            PokeOfflineReplySheet(poke: poke)
+                .environmentObject(model)
+        }
+    }
+
+    private var onlineSender: TS3UserSummary? {
+        guard let senderId = poke.senderId else { return nil }
+        return model.clients.first { $0.id == senderId }
     }
 
     private static func dateText(_ date: Date) -> String {
@@ -2654,6 +2692,55 @@ struct PokeEventRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .medium
         return formatter.string(from: date)
+    }
+}
+
+struct PokeOfflineReplySheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let poke: TS3PokeSummary
+    @State private var subject = "Re: Poke"
+    @State private var message = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(poke.senderName)) {
+                    TextField("Subject", text: $subject)
+                        .ts3PlainTextField()
+                    TextField("Message", text: $message)
+                        .ts3PlainTextField()
+                }
+            }
+            .navigationTitle("Offline Reply")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Send") {
+                        if let uniqueIdentifier = poke.senderUniqueIdentifier {
+                            model.sendOfflineMessage(
+                                toUniqueIdentifier: uniqueIdentifier,
+                                subject: subject,
+                                message: message
+                            )
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(isSendDisabled)
+                }
+            }
+        }
+    }
+
+    private var isSendDisabled: Bool {
+        poke.senderUniqueIdentifier?.isEmpty != false
+            || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 
