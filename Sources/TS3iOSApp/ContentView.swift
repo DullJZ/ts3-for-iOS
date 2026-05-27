@@ -2179,19 +2179,9 @@ struct ChatSheet: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredMessages) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(item.senderName)
-                                        .font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Text(targetModeText(item.targetMode))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Text(item.message)
-                                    .font(.body)
-                            }
-                            .listRowBackground(item.isOwnMessage ? Color.accentColor.opacity(0.08) : Color.clear)
+                            ChatMessageRow(item: item, replyUser: replyUser(for: item))
+                                .environmentObject(model)
+                                .listRowBackground(item.isOwnMessage ? Color.accentColor.opacity(0.08) : Color.clear)
                         }
                     }
                 }
@@ -2267,6 +2257,49 @@ struct ChatSheet: View {
         model.chatMessages.isEmpty ? "No chat messages" : "No matching messages"
     }
 
+    private func replyUser(for item: TS3ChatMessageSummary) -> TS3UserSummary? {
+        guard item.targetMode == .client,
+              !item.isOwnMessage,
+              let senderId = item.senderId else {
+            return nil
+        }
+        return model.clients.first { $0.id == senderId }
+    }
+}
+
+struct ChatMessageRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let item: TS3ChatMessageSummary
+    let replyUser: TS3UserSummary?
+    @State private var replyTarget: TS3UserSummary?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(item.senderName)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(targetModeText(item.targetMode))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Text(item.message)
+                .font(.body)
+            if let replyUser {
+                Button("Reply") {
+                    replyTarget = replyUser
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .accessibilityLabel("Reply to \(replyUser.nickname)")
+            }
+        }
+        .sheet(item: $replyTarget) { user in
+            ChatPrivateReplySheet(user: user)
+                .environmentObject(model)
+        }
+    }
+
     private func targetModeText(_ mode: TS3TextMessageTargetMode) -> String {
         switch mode {
         case .server:
@@ -2275,6 +2308,40 @@ struct ChatSheet: View {
             return "Channel"
         case .client:
             return "Private"
+        }
+    }
+}
+
+struct ChatPrivateReplySheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let user: TS3UserSummary
+    @State private var message = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(user.nickname)) {
+                    TextField("Message", text: $message)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button("Send") {
+                        model.sendPrivateMessage(message, to: user)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle("Private Reply")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
 }
