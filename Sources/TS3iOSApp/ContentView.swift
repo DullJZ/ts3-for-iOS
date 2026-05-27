@@ -289,7 +289,7 @@ struct ChannelListView: View {
                 Button {
                     isShowingWhisper = true
                 } label: {
-                    Label("Whisper", systemImage: "wave.3.right")
+                    WhisperButtonLabel(isActive: model.whisperRoute != .none)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button("Disconnect") {
@@ -2120,6 +2120,17 @@ struct EventsButtonLabel: View {
             if unreadCount > 0 {
                 CountBadge(count: unreadCount, label: "unread events")
             }
+        }
+    }
+}
+
+struct WhisperButtonLabel: View {
+    let isActive: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isActive ? "wave.3.right.circle.fill" : "wave.3.right")
+            Text(isActive ? "Whispering" : "Whisper")
         }
     }
 }
@@ -5201,6 +5212,10 @@ struct WhisperSheet: View {
                 }
 
                 Section(header: Text("Quick Actions")) {
+                    Button("Whisper to Current Channel") {
+                        model.enableWhisperToCurrentChannel()
+                    }
+                    .disabled(model.currentChannel == nil)
                     Button("Whisper to Server") {
                         model.enableWhisperToServer()
                     }
