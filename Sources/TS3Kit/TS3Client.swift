@@ -1283,6 +1283,24 @@ public final class TS3Client {
         )
     }
 
+    /// Generates and saves a new local identity, replacing the current one.
+    public func regenerateIdentity(securityLevel: Int = 8) async throws -> TS3IdentitySnapshot {
+        guard state == .disconnected else {
+            throw TS3Error.invalidState
+        }
+        let identity = try TS3Identity.generate(securityLevel: securityLevel) { [weak self] oldLevel, newLevel, offset in
+            self?.log(.debug, "Improved identity security level: from \(oldLevel) to \(newLevel) (\(offset))")
+        }
+        try saveIdentity(identity)
+        self.identity = identity
+        return TS3IdentitySnapshot(
+            uid: identity.uid.toBase64(),
+            securityLevel: identity.securityLevel(),
+            keyOffset: identity.keyOffset,
+            exportString: try identityExportString(for: identity)
+        )
+    }
+
     public func startMicrophone() throws {
         guard state == .connected else {
             throw TS3Error.invalidState

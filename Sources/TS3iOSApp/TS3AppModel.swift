@@ -3380,6 +3380,36 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func regenerateIdentity() {
+        guard state == .disconnected else {
+            lastError = "Disconnect before replacing your identity."
+            return
+        }
+        Task {
+            do {
+                let snapshot = try await TS3Client(config: TS3ClientConfig(
+                    host: "localhost",
+                    port: 9987,
+                    nickname: nickname,
+                    serverPassword: nil
+                )).regenerateIdentity()
+                await MainActor.run {
+                    self.identitySummary = TS3IdentitySummary(
+                        uid: snapshot.uid,
+                        securityLevel: snapshot.securityLevel,
+                        keyOffset: snapshot.keyOffset,
+                        exportString: snapshot.exportString
+                    )
+                    self.lastError = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     private func runClientCommand(
         _ operation: @escaping (TS3Client) async throws -> Void,
         onSuccess: @escaping @MainActor () -> Void = {}

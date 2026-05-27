@@ -5868,6 +5868,7 @@ struct ServerInfoRows: View {
 struct IdentitySummaryRows: View {
     @EnvironmentObject private var model: TS3AppModel
     @Binding var importedIdentity: String
+    @State private var isConfirmingRegenerate = false
 
     var body: some View {
         HStack {
@@ -5900,6 +5901,21 @@ struct IdentitySummaryRows: View {
             importedIdentity = ""
         }
         .disabled(importedIdentity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        Button("Regenerate Identity") {
+            isConfirmingRegenerate = true
+        }
+        .foregroundColor(.red)
+        .disabled(model.state != .disconnected)
+        .alert(isPresented: $isConfirmingRegenerate) {
+            Alert(
+                title: Text("Regenerate Identity?"),
+                message: Text("This replaces your local identity. Servers will treat you as a different client unless you restore a backup."),
+                primaryButton: .destructive(Text("Regenerate")) {
+                    model.regenerateIdentity()
+                },
+                secondaryButton: .cancel()
+            )
+        }
     }
 }
 
