@@ -1267,6 +1267,36 @@ final class TS3AppModel: ObservableObject {
         privilegeKey = bookmark.privilegeKey
     }
 
+    func copyCurrentInviteLink() {
+        guard let link = inviteLink(
+            name: serverHost,
+            host: serverHost,
+            port: serverPort,
+            nickname: nickname,
+            defaultChannel: defaultChannel
+        ) else {
+            lastError = "Current server is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
+    func copyInviteLink(for bookmark: TS3BookmarkSummary) {
+        guard let link = inviteLink(
+            name: bookmark.name,
+            host: bookmark.host,
+            port: bookmark.port,
+            nickname: bookmark.nickname,
+            defaultChannel: bookmark.defaultChannel
+        ) else {
+            lastError = "Bookmark is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
     func applyServerURL(_ rawValue: String) {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed) else {
@@ -1310,6 +1340,29 @@ final class TS3AppModel: ObservableObject {
         bookmarks.removeAll { $0.host == bookmark.host && $0.port == bookmark.port }
         bookmarks.insert(bookmark, at: 0)
         saveBookmarks()
+    }
+
+    private func inviteLink(
+        name: String,
+        host: String,
+        port: String,
+        nickname: String,
+        defaultChannel: String
+    ) -> String? {
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHost.isEmpty else { return nil }
+        let trimmedPort = port.trimmingCharacters(in: .whitespacesAndNewlines)
+        let serverURL = TS3ServerURL(
+            host: trimmedHost,
+            port: Int(trimmedPort),
+            nickname: nickname,
+            serverPassword: nil,
+            defaultChannel: defaultChannel,
+            defaultChannelPassword: nil,
+            privilegeKey: nil,
+            bookmarkName: name
+        )
+        return serverURL.url(includingSecrets: false)?.absoluteString
     }
 
     func updateBookmark(_ bookmark: TS3BookmarkSummary) {

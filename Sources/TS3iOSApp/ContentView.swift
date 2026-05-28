@@ -96,6 +96,12 @@ struct ConnectView: View {
                             .buttonStyle(.borderless)
                             Spacer()
                             Button {
+                                model.copyInviteLink(for: bookmark)
+                            } label: {
+                                Image(systemName: "link")
+                            }
+                            .buttonStyle(.borderless)
+                            Button {
                                 editingBookmark = bookmark
                             } label: {
                                 Image(systemName: "pencil")
@@ -147,6 +153,10 @@ struct ConnectView: View {
                 Button("Save Current Server") {
                     model.saveCurrentBookmark(name: bookmarkName)
                     bookmarkName = ""
+                }
+                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Copy Invite Link") {
+                    model.copyCurrentInviteLink()
                 }
                 .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button("Import Bookmarks") {

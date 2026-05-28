@@ -65,6 +65,28 @@ public struct TS3ServerURL: Equatable {
         )
     }
 
+    /// Builds a TeamSpeak `ts3server://` URL from this value.
+    public func url(includingSecrets: Bool = true) -> URL? {
+        var components = URLComponents()
+        components.scheme = "ts3server"
+        components.host = host
+        components.port = port
+
+        var queryItems: [URLQueryItem] = []
+        appendQueryItem(name: "nickname", value: nickname, to: &queryItems)
+        if includingSecrets {
+            appendQueryItem(name: "password", value: serverPassword, to: &queryItems)
+        }
+        appendQueryItem(name: "channel", value: defaultChannel, to: &queryItems)
+        if includingSecrets {
+            appendQueryItem(name: "channelpassword", value: defaultChannelPassword, to: &queryItems)
+            appendQueryItem(name: "token", value: privilegeKey, to: &queryItems)
+        }
+        appendQueryItem(name: "addbookmark", value: bookmarkName, to: &queryItems)
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
+        return components.url
+    }
+
     private static func normalizedQueryItem(_ item: URLQueryItem) -> (String, String)? {
         let key = item.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !key.isEmpty else { return nil }
@@ -80,6 +102,11 @@ public struct TS3ServerURL: Equatable {
     private static func intValue(_ value: String?) -> Int? {
         guard let value else { return nil }
         return Int(value.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private func appendQueryItem(name: String, value: String?, to queryItems: inout [URLQueryItem]) {
+        guard let value = Self.nonEmpty(value) else { return }
+        queryItems.append(URLQueryItem(name: name, value: value))
     }
 
     private static func hostFromOpaqueURL(_ url: URL) -> String? {

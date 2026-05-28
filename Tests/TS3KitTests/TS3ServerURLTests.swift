@@ -32,4 +32,47 @@ final class TS3ServerURLTests: XCTestCase {
 
         XCTAssertThrowsError(try TS3ServerURL(url: url))
     }
+
+    func testBuildsTeamSpeakInvitationURL() throws {
+        let serverURL = TS3ServerURL(
+            host: "voice.example.com",
+            port: 9988,
+            nickname: "Alice",
+            serverPassword: "s3cr3t",
+            defaultChannel: "Root/Sub",
+            defaultChannelPassword: "room",
+            privilegeKey: "abc123",
+            bookmarkName: "Main"
+        )
+
+        let url = try XCTUnwrap(serverURL.url())
+        let parsed = try TS3ServerURL(url: url)
+
+        XCTAssertEqual(parsed, serverURL)
+    }
+
+    func testBuildsInvitationURLWithoutSecrets() throws {
+        let serverURL = TS3ServerURL(
+            host: "voice.example.com",
+            port: 9988,
+            nickname: "Alice",
+            serverPassword: "s3cr3t",
+            defaultChannel: "Root/Sub",
+            defaultChannelPassword: "room",
+            privilegeKey: "abc123",
+            bookmarkName: "Main"
+        )
+
+        let url = try XCTUnwrap(serverURL.url(includingSecrets: false))
+        let parsed = try TS3ServerURL(url: url)
+
+        XCTAssertEqual(parsed.host, "voice.example.com")
+        XCTAssertEqual(parsed.port, 9988)
+        XCTAssertEqual(parsed.nickname, "Alice")
+        XCTAssertEqual(parsed.defaultChannel, "Root/Sub")
+        XCTAssertEqual(parsed.bookmarkName, "Main")
+        XCTAssertNil(parsed.serverPassword)
+        XCTAssertNil(parsed.defaultChannelPassword)
+        XCTAssertNil(parsed.privilegeKey)
+    }
 }
