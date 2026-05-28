@@ -73,6 +73,9 @@ struct ConnectView: View {
     @State private var serverURLText = ""
     @State private var editingBookmark: TS3BookmarkSummary?
     @State private var isShowingIdentity = false
+    @State private var isShowingBookmarkImporter = false
+    @State private var isExportingBookmarks = false
+    @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
 
     var body: some View {
         Form {
@@ -146,6 +149,16 @@ struct ConnectView: View {
                     bookmarkName = ""
                 }
                 .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Import Bookmarks") {
+                    isShowingBookmarkImporter = true
+                }
+                Button("Export Bookmarks") {
+                    exportBookmarks()
+                }
+                .disabled(model.bookmarks.isEmpty)
+                Text("Bookmark backups include saved passwords and privilege keys.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             if let error = model.lastError {
@@ -195,6 +208,69 @@ struct ConnectView: View {
             BookmarkEditorSheet(bookmark: bookmark)
                 .environmentObject(model)
         }
+        .fileImporter(
+            isPresented: $isShowingBookmarkImporter,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                importBookmarks(from: url)
+            } else if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingBookmarks,
+            document: bookmarkExportDocument,
+            contentType: .json,
+            defaultFilename: "ts3-bookmarks"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+    }
+
+    private func exportBookmarks() {
+        do {
+            bookmarkExportDocument = TS3BookmarkFileDocument(data: try model.bookmarksExportData())
+            isExportingBookmarks = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importBookmarks(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importBookmarks(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+}
+
+struct TS3BookmarkFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json, .data] }
+    static var writableContentTypes: [UTType] { [.json] }
+
+    var data: Data
+
+    init(data: Data = Data()) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 

@@ -1334,6 +1334,42 @@ final class TS3AppModel: ObservableObject {
         saveBookmarks()
     }
 
+    func bookmarksExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(bookmarks)
+    }
+
+    @discardableResult
+    func importBookmarks(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3BookmarkSummary].self, from: data)
+        var merged = bookmarks
+        for bookmark in imported {
+            let host = bookmark.host.trimmingCharacters(in: .whitespacesAndNewlines)
+            let port = bookmark.port.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !host.isEmpty, Int(port) != nil else { continue }
+            var normalized = bookmark
+            normalized.host = host
+            normalized.port = port
+            normalized.name = bookmark.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            normalized.nickname = bookmark.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+            if normalized.name.isEmpty {
+                normalized.name = host
+            }
+            merged.removeAll { existing in
+                existing.id == normalized.id || (
+                    existing.host.caseInsensitiveCompare(normalized.host) == .orderedSame
+                        && existing.port == normalized.port
+                )
+            }
+            merged.insert(normalized, at: 0)
+        }
+        bookmarks = merged
+        saveBookmarks()
+        lastError = nil
+        return imported.count
+    }
+
     func disconnect() {
         client?.delegate = nil
         client?.disconnect(reason: "ui-disconnect")
