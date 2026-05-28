@@ -979,6 +979,29 @@ struct ChannelRow: View {
     @State private var isShowingMove = false
     @State private var isConfirmingDelete = false
 
+    private var channelPath: String {
+        model.channelPath(for: channel)
+    }
+
+    private var channelClipboardSummary: String {
+        var parts = [
+            "channelId=\(channel.id)",
+            "name=\(channel.name)",
+            "path=\(channelPath)"
+        ]
+        if let topic = channel.topic, !topic.isEmpty {
+            parts.append("topic=\(topic)")
+        }
+        if let description = channel.description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let iconId = channel.iconId, iconId != 0 {
+            parts.append("iconId=\(iconId)")
+        }
+        parts.append("members=\(members.count)")
+        return parts.joined(separator: " | ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
@@ -1054,6 +1077,18 @@ struct ChannelRow: View {
                 Menu {
                     Button("Channel Info") {
                         isShowingInfo = true
+                    }
+                    Button("Copy Channel Summary") {
+                        TS3PlatformSupport.copyToPasteboard(channelClipboardSummary)
+                    }
+                    Button("Copy Channel Name") {
+                        TS3PlatformSupport.copyToPasteboard(channel.name)
+                    }
+                    Button("Copy Channel Path") {
+                        TS3PlatformSupport.copyToPasteboard(channelPath)
+                    }
+                    Button("Copy Channel ID") {
+                        TS3PlatformSupport.copyToPasteboard("\(channel.id)")
                     }
                     if let isSubscribed = channel.isSubscribed {
                         Button(isSubscribed ? "Unsubscribe Channel" : "Subscribe Channel") {
@@ -1450,6 +1485,33 @@ struct ChannelMemberRow: View {
     @State private var passwordMoveChannel: TS3ChannelSummary?
     @State private var movePassword = ""
 
+    private var memberClipboardSummary: String {
+        var parts = [
+            "clientId=\(member.id)",
+            "nickname=\(member.nickname)",
+            "channelId=\(member.channelId)"
+        ]
+        if let databaseId = member.databaseId {
+            parts.append("databaseId=\(databaseId)")
+        }
+        if let uniqueIdentifier = member.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let ipAddress = member.ipAddress, !ipAddress.isEmpty {
+            parts.append("ip=\(ipAddress)")
+        }
+        if let country = member.country, !country.isEmpty {
+            parts.append("country=\(country)")
+        }
+        if let platform = member.platform, !platform.isEmpty {
+            parts.append("platform=\(platform)")
+        }
+        if let version = member.version, !version.isEmpty {
+            parts.append("version=\(version)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             UserAvatarView(user: member)
@@ -1538,6 +1600,30 @@ struct ChannelMemberRow: View {
             Menu {
                 Button("Client Info") {
                     actionMode = .info
+                }
+                Button("Copy Client Summary") {
+                    TS3PlatformSupport.copyToPasteboard(memberClipboardSummary)
+                }
+                Button("Copy Nickname") {
+                    TS3PlatformSupport.copyToPasteboard(member.nickname)
+                }
+                Button("Copy Client ID") {
+                    TS3PlatformSupport.copyToPasteboard("\(member.id)")
+                }
+                if let databaseId = member.databaseId {
+                    Button("Copy Database ID") {
+                        TS3PlatformSupport.copyToPasteboard("\(databaseId)")
+                    }
+                }
+                if let uniqueIdentifier = member.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                    Button("Copy Unique ID") {
+                        TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                    }
+                }
+                if let ipAddress = member.ipAddress, !ipAddress.isEmpty {
+                    Button("Copy IP Address") {
+                        TS3PlatformSupport.copyToPasteboard(ipAddress)
+                    }
                 }
                 Button("Send Private Message") {
                     actionMode = .privateMessage
