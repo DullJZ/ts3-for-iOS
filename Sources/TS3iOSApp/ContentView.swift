@@ -2265,6 +2265,9 @@ struct UserIconView: View {
 struct ContactsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var searchText = ""
+    @State private var isExportingContacts = false
+    @State private var contactsDocument = TS3TextFileDocument()
 
     private var notedContacts: [TS3ContactEntry] {
         model.contacts
@@ -2272,30 +2275,128 @@ struct ContactsSheet: View {
             .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
     }
 
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredFriends: [TS3ContactEntry] {
+        filterContacts(model.friendContacts)
+    }
+
+    private var filteredBlocked: [TS3ContactEntry] {
+        filterContacts(model.blockedContacts)
+    }
+
+    private var filteredNotes: [TS3ContactEntry] {
+        filterContacts(notedContacts)
+    }
+
     var body: some View {
         NavigationView {
             List {
-                contactSection(title: "Friends", contacts: model.friendContacts)
-                contactSection(title: "Blocked", contacts: model.blockedContacts)
-                contactSection(title: "Notes", contacts: notedContacts)
+                Section(header: Text("Search")) {
+                    TextField("Search contacts", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                }
+
+                contactSection(title: "Friends", contacts: filteredFriends)
+                contactSection(title: "Blocked", contacts: filteredBlocked)
+                contactSection(title: "Notes", contacts: filteredNotes)
             }
             .navigationTitle("Contacts")
             .ts3InlineNavigationTitle()
             .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Menu {
+                        Button("Copy Contact Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(contactSnapshot)
+                        }
+                        .disabled(model.contacts.isEmpty)
+                        Button("Export Contact Snapshot") {
+                            contactsDocument = TS3TextFileDocument(data: Data(contactSnapshot.utf8))
+                            isExportingContacts = true
+                        }
+                        .disabled(model.contacts.isEmpty)
+                    } label: {
+                        Label("Contacts", systemImage: "ellipsis.circle")
+                    }
+                }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingContacts,
+                document: contactsDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-contacts"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private func filterContacts(_ contacts: [TS3ContactEntry]) -> [TS3ContactEntry] {
+        guard isSearching else { return contacts }
+        return contacts.filter { contact in
+            containsSearch(contact.nickname)
+                || containsSearch(contact.uniqueIdentifier)
+                || containsSearch(contact.note)
+                || containsSearch(contact.status.title)
+        }
+    }
+
+    private func containsSearch(_ value: String) -> Bool {
+        value.lowercased().contains(normalizedSearchText)
+    }
+
+    private var contactSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date) -> String {
+            formatter.string(from: date)
+        }
+
+        return model.contacts
+            .sorted { lhs, rhs in
+                if lhs.status != rhs.status {
+                    return lhs.status.title < rhs.status.title
+                }
+                return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
+            }
+            .map { contact in
+                [
+                    "Nickname: \(contact.nickname)",
+                    "Unique ID: \(contact.uniqueIdentifier)",
+                    "Status: \(contact.status.title)",
+                    "Note: \(contact.note.isEmpty ? "-" : contact.note)",
+                    "Updated: \(dateText(contact.updatedAt))"
+                ]
+                .joined(separator: "\n")
+            }
+            .joined(separator: "\n\n")
     }
 
     @ViewBuilder
     private func contactSection(title: String, contacts: [TS3ContactEntry]) -> some View {
         Section(header: Text(title)) {
             if contacts.isEmpty {
-                Text("No contacts")
+                Text(isSearching ? "No matching contacts" : "No contacts")
                     .foregroundColor(.secondary)
             } else {
                 ForEach(contacts) { contact in
