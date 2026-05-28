@@ -5245,6 +5245,11 @@ struct PermissionsSheet: View {
                     } else {
                         ForEach(displayedPermissions) { permission in
                             PermissionRow(permission: permission) {
+                                permissionName = permission.name
+                                permissionValue = "\(permission.value)"
+                                permissionNegated = permission.isNegated
+                                permissionSkip = permission.isSkipped
+                            } delete: {
                                 model.deleteSelectedPermission(permission)
                             }
                         }
@@ -5283,6 +5288,10 @@ struct PermissionsSheet: View {
                             PermissionInfoRow(permission: permission) {
                                 permissionName = permission.name
                                 searchText = permission.name
+                            } copyName: {
+                                TS3PlatformSupport.copyToPasteboard(permission.name)
+                            } copyId: {
+                                TS3PlatformSupport.copyToPasteboard("\(permission.id)")
                             }
                         }
                     }
@@ -5315,6 +5324,7 @@ struct PermissionsSheet: View {
 
 struct PermissionRow: View {
     let permission: TS3PermissionSummary
+    let edit: () -> Void
     let delete: () -> Void
     @State private var isConfirmingDelete = false
 
@@ -5337,6 +5347,10 @@ struct PermissionRow: View {
                     Text("Skipped")
                 }
                 Spacer()
+                Button("Edit") {
+                    edit()
+                }
+                .buttonStyle(.borderless)
                 Button("Delete") {
                     isConfirmingDelete = true
                 }
@@ -5357,12 +5371,32 @@ struct PermissionRow: View {
                 secondaryButton: .cancel()
             )
         }
+        .contextMenu {
+            Button("Edit Permission") {
+                edit()
+            }
+            Button("Copy Name") {
+                TS3PlatformSupport.copyToPasteboard(permission.name)
+            }
+            Button("Copy Value") {
+                TS3PlatformSupport.copyToPasteboard("\(permission.value)")
+            }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
+            }
+            Button("Delete") {
+                isConfirmingDelete = true
+            }
+            .foregroundColor(.red)
+        }
     }
 }
 
 struct PermissionInfoRow: View {
     let permission: TS3PermissionInfoSummary
     let select: () -> Void
+    let copyName: () -> Void
+    let copyId: () -> Void
 
     var body: some View {
         Button(action: select) {
@@ -5386,6 +5420,33 @@ struct PermissionInfoRow: View {
             .padding(.vertical, 3)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Use Permission") {
+                select()
+            }
+            Button("Copy Name") {
+                copyName()
+            }
+            Button("Copy ID") {
+                copyId()
+            }
+        }
+    }
+}
+
+private extension TS3PermissionSummary {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "value=\(value)"
+        ]
+        if isNegated {
+            parts.append("negated=true")
+        }
+        if isSkipped {
+            parts.append("skip=true")
+        }
+        return parts.joined(separator: " ")
     }
 }
 
