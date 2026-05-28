@@ -618,6 +618,53 @@ struct TS3DownloadedFileSummary: Identifiable {
     let url: URL
 }
 
+enum TS3FileTransferDirection: String {
+    case upload
+    case download
+
+    var title: String {
+        switch self {
+        case .upload:
+            return "Upload"
+        case .download:
+            return "Download"
+        }
+    }
+}
+
+enum TS3FileTransferState: String {
+    case preparing
+    case transferring
+    case completed
+    case failed
+
+    var title: String {
+        switch self {
+        case .preparing:
+            return "Preparing"
+        case .transferring:
+            return "Transferring"
+        case .completed:
+            return "Completed"
+        case .failed:
+            return "Failed"
+        }
+    }
+}
+
+struct TS3FileTransferSummary: Identifiable {
+    let id: UUID
+    let direction: TS3FileTransferDirection
+    let name: String
+    let remotePath: String
+    var localPath: String?
+    var progress: Double?
+    var state: TS3FileTransferState
+    var detail: String
+    let startedAt: Date
+    var completedAt: Date?
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double
@@ -917,6 +964,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileBrowserPassword = ""
     @Published var fileTransferStatus: String?
     @Published var fileTransferProgress: Double?
+    @Published var fileTransfers: [TS3FileTransferSummary] = []
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var contacts: [TS3ContactEntry] = []
@@ -2384,12 +2432,25 @@ final class TS3AppModel: ObservableObject {
             lastError = "Connect to a server first."
             return
         }
+        let transferId = addFileTransfer(
+            direction: .download,
+            name: entry.name,
+            remotePath: entry.path,
+            detail: "Waiting for server"
+        )
         Task {
             do {
                 let destination = try downloadDestination(for: entry.name)
                 await MainActor.run {
                     self.fileTransferStatus = "Preparing download: \(entry.name)"
                     self.fileTransferProgress = 0
+                    self.updateFileTransfer(
+                        transferId,
+                        progress: 0,
+                        state: .preparing,
+                        detail: "Preparing download",
+                        localPath: destination.path
+                    )
                 }
                 let parameters = try await client.initFileDownload(
                     channelId: entry.channelId,
@@ -2401,19 +2462,41 @@ final class TS3AppModel: ObservableObject {
                         if let total, total > 0 {
                             self.fileTransferProgress = min(1, Double(received) / Double(total))
                         }
-                        self.fileTransferStatus = "Downloading \(entry.name): \(Self.transferProgressText(received, total: total))"
+                        let detail = Self.transferProgressText(received, total: total)
+                        self.fileTransferStatus = "Downloading \(entry.name): \(detail)"
+                        self.updateFileTransfer(
+                            transferId,
+                            progress: total.map { $0 > 0 ? min(1, Double(received) / Double($0)) : 0 },
+                            state: .transferring,
+                            detail: detail
+                        )
                     }
                 }
                 await MainActor.run {
                     self.fileTransferProgress = 1
                     self.fileTransferStatus = "Downloaded \(entry.name) to \(destination.lastPathComponent)"
                     self.lastDownloadedFile = TS3DownloadedFileSummary(name: destination.lastPathComponent, url: destination)
+                    self.updateFileTransfer(
+                        transferId,
+                        progress: 1,
+                        state: .completed,
+                        detail: "Saved to \(destination.lastPathComponent)",
+                        localPath: destination.path,
+                        completedAt: Date()
+                    )
                     self.lastError = nil
                 }
             } catch {
                 await MainActor.run {
                     self.fileTransferProgress = nil
                     self.fileTransferStatus = nil
+                    self.updateFileTransfer(
+                        transferId,
+                        progress: nil,
+                        state: .failed,
+                        detail: error.localizedDescription,
+                        completedAt: Date()
+                    )
                     self.lastError = error.localizedDescription
                 }
             }
@@ -2441,6 +2524,15 @@ final class TS3AppModel: ObservableObject {
             lastError = "Connect to a server first."
             return
         }
+        let remoteName = source.lastPathComponent
+        let remotePath = joinedFilePath(parentPath: fileBrowserPath, name: remoteName)
+        let transferId = addFileTransfer(
+            direction: .upload,
+            name: remoteName,
+            remotePath: remotePath,
+            localPath: source.path,
+            detail: "Waiting for server"
+        )
         Task {
             let didAccess = source.startAccessingSecurityScopedResource()
             defer {
@@ -2451,11 +2543,15 @@ final class TS3AppModel: ObservableObject {
             do {
                 let attributes = try FileManager.default.attributesOfItem(atPath: source.path)
                 let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
-                let remoteName = source.lastPathComponent
-                let remotePath = joinedFilePath(parentPath: fileBrowserPath, name: remoteName)
                 await MainActor.run {
                     self.fileTransferStatus = "Preparing upload: \(remoteName)"
                     self.fileTransferProgress = 0
+                    self.updateFileTransfer(
+                        transferId,
+                        progress: 0,
+                        state: .preparing,
+                        detail: "Preparing upload"
+                    )
                 }
                 let parameters = try await client.initFileUpload(
                     channelId: channelId,
@@ -2469,12 +2565,26 @@ final class TS3AppModel: ObservableObject {
                         if let total, total > 0 {
                             self.fileTransferProgress = min(1, Double(sent) / Double(total))
                         }
-                        self.fileTransferStatus = "Uploading \(remoteName): \(Self.transferProgressText(sent, total: total))"
+                        let detail = Self.transferProgressText(sent, total: total)
+                        self.fileTransferStatus = "Uploading \(remoteName): \(detail)"
+                        self.updateFileTransfer(
+                            transferId,
+                            progress: total.map { $0 > 0 ? min(1, Double(sent) / Double($0)) : 0 },
+                            state: .transferring,
+                            detail: detail
+                        )
                     }
                 }
                 await MainActor.run {
                     self.fileTransferProgress = 1
                     self.fileTransferStatus = "Uploaded \(remoteName)"
+                    self.updateFileTransfer(
+                        transferId,
+                        progress: 1,
+                        state: .completed,
+                        detail: "Uploaded to \(remotePath)",
+                        completedAt: Date()
+                    )
                     self.lastError = nil
                     self.refreshFileList()
                 }
@@ -2482,6 +2592,13 @@ final class TS3AppModel: ObservableObject {
                 await MainActor.run {
                     self.fileTransferProgress = nil
                     self.fileTransferStatus = nil
+                    self.updateFileTransfer(
+                        transferId,
+                        progress: nil,
+                        state: .failed,
+                        detail: error.localizedDescription,
+                        completedAt: Date()
+                    )
                     self.lastError = error.localizedDescription
                 }
             }
@@ -2566,6 +2683,61 @@ final class TS3AppModel: ObservableObject {
     private var trimmedFileBrowserPassword: String? {
         let password = fileBrowserPassword.trimmingCharacters(in: .whitespacesAndNewlines)
         return password.isEmpty ? nil : password
+    }
+
+    private func addFileTransfer(
+        direction: TS3FileTransferDirection,
+        name: String,
+        remotePath: String,
+        localPath: String? = nil,
+        detail: String
+    ) -> UUID {
+        let id = UUID()
+        fileTransfers.insert(
+            TS3FileTransferSummary(
+                id: id,
+                direction: direction,
+                name: name,
+                remotePath: remotePath,
+                localPath: localPath,
+                progress: nil,
+                state: .preparing,
+                detail: detail,
+                startedAt: Date(),
+                completedAt: nil
+            ),
+            at: 0
+        )
+        if fileTransfers.count > 25 {
+            fileTransfers.removeLast(fileTransfers.count - 25)
+        }
+        return id
+    }
+
+    private func updateFileTransfer(
+        _ id: UUID,
+        progress: Double? = nil,
+        state: TS3FileTransferState? = nil,
+        detail: String? = nil,
+        localPath: String? = nil,
+        completedAt: Date? = nil
+    ) {
+        guard let index = fileTransfers.firstIndex(where: { $0.id == id }) else { return }
+        if let progress {
+            fileTransfers[index].progress = progress
+        }
+        if let state {
+            fileTransfers[index].state = state
+        }
+        if let detail {
+            fileTransfers[index].detail = detail
+        }
+        if let localPath {
+            fileTransfers[index].localPath = localPath
+        }
+        if let completedAt {
+            fileTransfers[index].completedAt = completedAt
+        }
     }
 
     private func downloadDestination(for name: String) throws -> URL {

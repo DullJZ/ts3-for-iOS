@@ -4868,6 +4868,12 @@ struct FileBrowserSheet: View {
                         ProgressView(value: progress)
                     }
 
+                    if !model.fileTransfers.isEmpty {
+                        ForEach(model.fileTransfers) { transfer in
+                            FileTransferRow(transfer: transfer)
+                        }
+                    }
+
                     if let downloadedFile = model.lastDownloadedFile {
                         Divider()
                         Text("Last download: \(downloadedFile.name)")
@@ -4996,6 +5002,66 @@ struct FileBrowserSheet: View {
                 }
             }
         )
+    }
+}
+
+struct FileTransferRow: View {
+    let transfer: TS3FileTransferSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(transfer.name)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Text("\(transfer.direction.title) - \(transfer.state.title)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            if let progress = transfer.progress, transfer.state != .completed {
+                ProgressView(value: progress)
+            }
+            Text(transfer.detail)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+            Text(transfer.remotePath)
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(.vertical, 3)
+        .contextMenu {
+            Button("Copy Remote Path") {
+                TS3PlatformSupport.copyToPasteboard(transfer.remotePath)
+            }
+            if let localPath = transfer.localPath, !localPath.isEmpty {
+                Button("Copy Local Path") {
+                    TS3PlatformSupport.copyToPasteboard(localPath)
+                }
+            }
+            Button("Copy Status") {
+                TS3PlatformSupport.copyToPasteboard(transfer.clipboardSummary)
+            }
+        }
+    }
+}
+
+private extension TS3FileTransferSummary {
+    var clipboardSummary: String {
+        var parts = [
+            "\(direction.title) \(state.title)",
+            name,
+            remotePath,
+            detail
+        ]
+        if let localPath, !localPath.isEmpty {
+            parts.append(localPath)
+        }
+        return parts.joined(separator: " | ")
     }
 }
 
