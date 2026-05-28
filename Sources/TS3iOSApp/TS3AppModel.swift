@@ -2363,16 +2363,7 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.refreshComplaints(clientDatabaseId: record.id)
             await MainActor.run {
                 self.complaintTarget = record.userSummary
-                self.complaintEntries = entries
-                    .map { TS3ComplaintSummary(entry: $0) }
-                    .sorted {
-                        switch ($0.timestamp, $1.timestamp) {
-                        case let (lhs?, rhs?): return lhs > rhs
-                        case (_?, nil): return true
-                        case (nil, _?): return false
-                        case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
-                        }
-                    }
+                self.complaintEntries = self.complaintSummaries(from: entries)
             }
         }
     }
@@ -3660,16 +3651,7 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.refreshComplaints(clientDatabaseId: databaseId)
             await MainActor.run {
                 self.complaintTarget = user
-                self.complaintEntries = entries
-                    .map { TS3ComplaintSummary(entry: $0) }
-                    .sorted {
-                        switch ($0.timestamp, $1.timestamp) {
-                        case let (lhs?, rhs?): return lhs > rhs
-                        case (_?, nil): return true
-                        case (nil, _?): return false
-                        case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
-                        }
-                    }
+                self.complaintEntries = self.complaintSummaries(from: entries)
             }
         }
     }
@@ -3698,6 +3680,43 @@ final class TS3AppModel: ObservableObject {
                 self.complaintEntries = []
             }
         }
+    }
+
+    func deleteComplaints(_ entries: [TS3ComplaintSummary]) {
+        let uniqueEntries = Dictionary(grouping: entries, by: \.id).compactMap { $0.value.first }
+        guard !uniqueEntries.isEmpty else { return }
+        runClientCommand { client in
+            for entry in uniqueEntries {
+                try await client.deleteComplaint(
+                    targetClientDatabaseId: entry.targetClientDatabaseId,
+                    sourceClientDatabaseId: entry.sourceClientDatabaseId
+                )
+            }
+            if let target = self.complaintTarget {
+                let databaseId = try await self.databaseId(for: target, using: client)
+                let refreshedEntries = try await client.refreshComplaints(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    self.complaintEntries = self.complaintSummaries(from: refreshedEntries)
+                }
+            } else {
+                await MainActor.run {
+                    self.complaintEntries = []
+                }
+            }
+        }
+    }
+
+    private func complaintSummaries(from entries: [TS3ComplaintEntry]) -> [TS3ComplaintSummary] {
+        entries
+            .map { TS3ComplaintSummary(entry: $0) }
+            .sorted {
+                switch ($0.timestamp, $1.timestamp) {
+                case let (lhs?, rhs?): return lhs > rhs
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
+                }
+            }
     }
 
     func pokeUser(_ user: TS3UserSummary, message: String) {

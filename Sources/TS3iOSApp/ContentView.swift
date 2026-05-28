@@ -6363,6 +6363,13 @@ struct ComplaintListSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isConfirmingDeleteAll = false
+    @State private var isConfirmingDeleteVisible = false
+    @State private var isExportingComplaints = false
+    @State private var complaintExportDocument = TS3TextFileDocument()
+
+    private var complaintSnapshot: String {
+        model.complaintEntries.map(\.clipboardSummary).joined(separator: "\n")
+    }
 
     var body: some View {
         NavigationView {
@@ -6391,6 +6398,20 @@ struct ComplaintListSheet: View {
                         Text("No complaints")
                             .foregroundColor(.secondary)
                     } else {
+                        Button("Copy Visible Complaints") {
+                            TS3PlatformSupport.copyToPasteboard(complaintSnapshot)
+                        }
+
+                        Button("Export Visible Complaints") {
+                            complaintExportDocument = TS3TextFileDocument(data: Data(complaintSnapshot.utf8))
+                            isExportingComplaints = true
+                        }
+
+                        Button("Delete Visible Complaints") {
+                            isConfirmingDeleteVisible = true
+                        }
+                        .foregroundColor(.red)
+
                         ForEach(model.complaintEntries) { entry in
                             ComplaintEntryRow(entry: entry)
                                 .environmentObject(model)
@@ -6405,6 +6426,16 @@ struct ComplaintListSheet: View {
                         }
                         .foregroundColor(.red)
                     }
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingComplaints,
+                document: complaintExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-complaints"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
                 }
             }
             .navigationTitle("Complaints")
@@ -6434,6 +6465,16 @@ struct ComplaintListSheet: View {
                     secondaryButton: .cancel()
                 )
             }
+            .alert(isPresented: $isConfirmingDeleteVisible) {
+                Alert(
+                    title: Text("Delete Visible Complaints?"),
+                    message: Text(model.complaintTarget?.nickname ?? "Selected user"),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteComplaints(model.complaintEntries)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
@@ -6452,6 +6493,7 @@ struct ComplaintListSheet: View {
 struct ComplaintEntryRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let entry: TS3ComplaintSummary
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -6474,20 +6516,74 @@ struct ComplaintEntryRow: View {
                 Text(message)
             }
             Button("Delete Complaint") {
-                model.deleteComplaint(entry)
+                isConfirmingDelete = true
             }
             .buttonStyle(.borderless)
             .foregroundColor(.red)
             .font(.caption)
         }
         .padding(.vertical, 4)
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Complaint?"),
+                message: Text(entry.sourceName?.isEmpty == false ? entry.sourceName! : "Client DB \(entry.sourceClientDatabaseId)"),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteComplaint(entry)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .contextMenu {
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+            }
+            Button("Copy Source DB") {
+                TS3PlatformSupport.copyToPasteboard("\(entry.sourceClientDatabaseId)")
+            }
+            if let sourceName = entry.sourceName, !sourceName.isEmpty {
+                Button("Copy Source Name") {
+                    TS3PlatformSupport.copyToPasteboard(sourceName)
+                }
+            }
+            if let message = entry.message, !message.isEmpty {
+                Button("Copy Message") {
+                    TS3PlatformSupport.copyToPasteboard(message)
+                }
+            }
+            Button("Delete Complaint") {
+                isConfirmingDelete = true
+            }
+            .foregroundColor(.red)
+        }
     }
 
-    private static func dateText(_ date: Date) -> String {
+    fileprivate static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+private extension TS3ComplaintSummary {
+    var clipboardSummary: String {
+        var parts = [
+            "sourceDb=\(sourceClientDatabaseId)",
+            "targetDb=\(targetClientDatabaseId)"
+        ]
+        if let sourceName, !sourceName.isEmpty {
+            parts.append("sourceName=\(sourceName)")
+        }
+        if let targetName, !targetName.isEmpty {
+            parts.append("targetName=\(targetName)")
+        }
+        if let timestamp {
+            parts.append("timestamp=\(ComplaintEntryRow.dateText(timestamp))")
+        }
+        if let message, !message.isEmpty {
+            parts.append("message=\(message)")
+        }
+        return parts.joined(separator: " | ")
     }
 }
 
