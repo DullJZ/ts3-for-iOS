@@ -3324,6 +3324,8 @@ struct ServerLogsSheet: View {
     @State private var instanceLogs = false
     @State private var newLogLevel: TS3LogLevel = .info
     @State private var newLogMessage = ""
+    @State private var isExportingLogs = false
+    @State private var logExportDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -3341,6 +3343,15 @@ struct ServerLogsSheet: View {
                             instance: instanceLogs
                         )
                     }
+                    Button("Copy Visible Logs") {
+                        TS3PlatformSupport.copyToPasteboard(Self.transcript(from: model.serverLogEntries))
+                    }
+                    .disabled(model.serverLogEntries.isEmpty)
+                    Button("Export Visible Logs") {
+                        logExportDocument = TS3TextFileDocument(data: Data(Self.transcript(from: model.serverLogEntries).utf8))
+                        isExportingLogs = true
+                    }
+                    .disabled(model.serverLogEntries.isEmpty)
                 }
 
                 Section(header: Text("Add Entry")) {
@@ -3400,6 +3411,16 @@ struct ServerLogsSheet: View {
                     instance: instanceLogs
                 )
             }
+            .fileExporter(
+                isPresented: $isExportingLogs,
+                document: logExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-server-logs"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -3416,6 +3437,10 @@ struct ServerLogsSheet: View {
         case .warning: return "Warning"
         case .error: return "Error"
         }
+    }
+
+    private static func transcript(from entries: [TS3ServerLogSummary]) -> String {
+        entries.map(\.clipboardText).joined(separator: "\n")
     }
 }
 
@@ -3446,13 +3471,41 @@ struct ServerLogRow: View {
                 .font(.subheadline)
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button("Copy Message") {
+                TS3PlatformSupport.copyToPasteboard(entry.message)
+            }
+            Button("Copy Raw Line") {
+                TS3PlatformSupport.copyToPasteboard(entry.rawLine)
+            }
+            Button("Copy Entry") {
+                TS3PlatformSupport.copyToPasteboard(entry.clipboardText)
+            }
+        }
     }
 
-    private static func dateText(_ date: Date) -> String {
+    fileprivate static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .medium
         return formatter.string(from: date)
+    }
+}
+
+private extension TS3ServerLogSummary {
+    var clipboardText: String {
+        var parts: [String] = []
+        if let timestamp {
+            parts.append(ServerLogRow.dateText(timestamp))
+        }
+        if let level, !level.isEmpty {
+            parts.append(level)
+        }
+        if let channel, !channel.isEmpty {
+            parts.append(channel)
+        }
+        parts.append(message)
+        return parts.joined(separator: " | ")
     }
 }
 
