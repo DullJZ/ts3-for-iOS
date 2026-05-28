@@ -4320,6 +4320,13 @@ final class TS3AppModel: ObservableObject {
         unreadActivityCount = 0
     }
 
+    func clearEventHistory() {
+        pokeEvents = []
+        activityEvents = []
+        unreadPokeCount = 0
+        unreadActivityCount = 0
+    }
+
     func channelName(for id: Int?) -> String? {
         guard let id else { return nil }
         return channels.first { $0.id == id }?.name ?? "Channel \(id)"

@@ -2946,6 +2946,8 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 struct EventsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isExportingEvents = false
+    @State private var eventsDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -2979,13 +2981,76 @@ struct EventsSheet: View {
                 model.markPokesRead()
             }
             .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.markPokesRead()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Menu {
+                        Button("Copy Event Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(eventsSnapshot)
+                        }
+                        .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        Button("Export Event Snapshot") {
+                            eventsDocument = TS3TextFileDocument(data: Data(eventsSnapshot.utf8))
+                            isExportingEvents = true
+                        }
+                        .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        Button("Clear Events") {
+                            model.clearEventHistory()
+                        }
+                        .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingEvents,
+                document: eventsDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-events"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var eventsSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date) -> String {
+            formatter.string(from: date)
+        }
+
+        var lines: [String] = []
+        if !model.activityEvents.isEmpty {
+            lines.append("Activity")
+            for event in model.activityEvents {
+                lines.append("[\(dateText(event.timestamp))] \(event.clientName): \(ActivityEventRow.snapshotMessage(for: event, in: model))")
+                if let reason = event.reasonMessage, !reason.isEmpty {
+                    lines.append("  Reason: \(reason)")
+                }
+            }
+        }
+        if !model.pokeEvents.isEmpty {
+            if !lines.isEmpty { lines.append("") }
+            lines.append("Pokes")
+            for poke in model.pokeEvents {
+                lines.append("[\(dateText(poke.timestamp))] \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)")
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 }
 
@@ -3015,26 +3080,7 @@ struct ActivityEventRow: View {
     }
 
     private var messageText: String {
-        switch event.kind {
-        case .clientEntered:
-            return "joined \(channelText(event.toChannelId))"
-        case .clientLeft:
-            return "left \(channelText(event.fromChannelId))"
-        case .clientMoved:
-            return "moved from \(channelText(event.fromChannelId)) to \(channelText(event.toChannelId))"
-        case .channelCreated:
-            return "created \(affectedChannelText)"
-        case .channelEdited:
-            return "edited \(affectedChannelText)"
-        case .channelDeleted:
-            return "deleted \(affectedChannelText)"
-        case .channelMoved:
-            return "moved \(affectedChannelText) to \(channelText(event.toChannelId))"
-        case .channelPasswordChanged:
-            return "changed the password for \(affectedChannelText)"
-        case .channelDescriptionChanged:
-            return "changed the description for \(affectedChannelText)"
-        }
+        Self.snapshotMessage(for: event, in: model)
     }
 
     private var titleText: String {
@@ -3074,6 +3120,29 @@ struct ActivityEventRow: View {
 
     private func channelText(_ channelId: Int?) -> String {
         model.channelName(for: channelId) ?? "the server"
+    }
+
+    static func snapshotMessage(for event: TS3ActivitySummary, in model: TS3AppModel) -> String {
+        switch event.kind {
+        case .clientEntered:
+            return "joined \(model.channelName(for: event.toChannelId) ?? "the server")"
+        case .clientLeft:
+            return "left \(model.channelName(for: event.fromChannelId) ?? "the server")"
+        case .clientMoved:
+            return "moved from \(model.channelName(for: event.fromChannelId) ?? "the server") to \(model.channelName(for: event.toChannelId) ?? "the server")"
+        case .channelCreated:
+            return "created \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
+        case .channelEdited:
+            return "edited \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
+        case .channelDeleted:
+            return "deleted \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
+        case .channelMoved:
+            return "moved \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel") to \(model.channelName(for: event.toChannelId) ?? "the server")"
+        case .channelPasswordChanged:
+            return "changed the password for \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
+        case .channelDescriptionChanged:
+            return "changed the description for \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
+        }
     }
 
     private static func dateText(_ date: Date) -> String {
