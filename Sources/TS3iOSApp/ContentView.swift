@@ -5547,6 +5547,9 @@ struct PermissionsSheet: View {
     @State private var permissionValue = "0"
     @State private var permissionNegated = false
     @State private var permissionSkip = false
+    @State private var isExportingPermissions = false
+    @State private var permissionExportDocument = TS3TextFileDocument()
+    @State private var isConfirmingDeleteVisible = false
 
     var filteredPermissionInfos: [TS3PermissionInfoSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -5560,6 +5563,25 @@ struct PermissionsSheet: View {
 
     var displayedPermissions: [TS3PermissionSummary] {
         model.permissionEditScope == .ownClient ? model.ownClientPermissions : model.scopedPermissions
+    }
+
+    var visiblePermissionsSnapshot: String {
+        displayedPermissions.map(\.clipboardSummary).joined(separator: "\n")
+    }
+
+    var exportFilename: String {
+        switch model.permissionEditScope {
+        case .ownClient:
+            return "ts3-own-client-permissions"
+        case .serverGroup:
+            return "ts3-server-group-permissions"
+        case .channelGroup:
+            return "ts3-channel-group-permissions"
+        case .channel:
+            return "ts3-channel-permissions"
+        case .channelClient:
+            return "ts3-channel-client-permissions"
+        }
     }
 
     var body: some View {
@@ -5646,6 +5668,23 @@ struct PermissionsSheet: View {
                 }
 
                 Section(header: Text("\(model.permissionEditScope.title) Permissions")) {
+                    Button("Copy Visible Permissions") {
+                        TS3PlatformSupport.copyToPasteboard(visiblePermissionsSnapshot)
+                    }
+                    .disabled(displayedPermissions.isEmpty)
+
+                    Button("Export Visible Permissions") {
+                        permissionExportDocument = TS3TextFileDocument(data: Data(visiblePermissionsSnapshot.utf8))
+                        isExportingPermissions = true
+                    }
+                    .disabled(displayedPermissions.isEmpty)
+
+                    Button("Delete Visible Permissions") {
+                        isConfirmingDeleteVisible = true
+                    }
+                    .disabled(displayedPermissions.isEmpty)
+                    .foregroundColor(.red)
+
                     if displayedPermissions.isEmpty {
                         Text("No permissions")
                             .foregroundColor(.secondary)
@@ -5724,6 +5763,26 @@ struct PermissionsSheet: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
+            }
+            .fileExporter(
+                isPresented: $isExportingPermissions,
+                document: permissionExportDocument,
+                contentType: .plainText,
+                defaultFilename: exportFilename
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .alert(isPresented: $isConfirmingDeleteVisible) {
+                Alert(
+                    title: Text("Delete Visible Permissions?"),
+                    message: Text("This removes \(displayedPermissions.count) permission entries from the current target."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteSelectedPermissions(displayedPermissions)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }

@@ -2092,6 +2092,92 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func deleteSelectedPermissions(_ permissions: [TS3PermissionSummary]) {
+        let names = Array(Set(permissions.map(\.name))).sorted()
+        guard !names.isEmpty else { return }
+        switch permissionEditScope {
+        case .ownClient:
+            guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
+                lastError = "Current client details are not available yet."
+                return
+            }
+            runClientCommand { client in
+                let databaseId = try await self.databaseId(for: ownClient, using: client)
+                for name in names {
+                    try await client.deleteClientPermission(clientDatabaseId: databaseId, permissionName: name)
+                }
+                let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    self.ownClientDatabaseId = databaseId
+                    self.ownClientPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .serverGroup:
+            guard let groupId = selectedServerGroupPermissionId else {
+                lastError = "Select a server group first."
+                return
+            }
+            runClientCommand { client in
+                for name in names {
+                    try await client.deleteServerGroupPermission(groupId: groupId, permissionName: name)
+                }
+                let permissions = try await client.refreshServerGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channelGroup:
+            guard let groupId = selectedChannelGroupPermissionId else {
+                lastError = "Select a channel group first."
+                return
+            }
+            runClientCommand { client in
+                for name in names {
+                    try await client.deleteChannelGroupPermission(groupId: groupId, permissionName: name)
+                }
+                let permissions = try await client.refreshChannelGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channel:
+            guard let channelId = selectedChannelPermissionId else {
+                lastError = "Select a channel first."
+                return
+            }
+            runClientCommand { client in
+                for name in names {
+                    try await client.deleteChannelPermission(channelId: channelId, permissionName: name)
+                }
+                let permissions = try await client.refreshChannelPermissions(channelId: channelId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        case .channelClient:
+            guard let selection = selectedChannelClientPermissionTarget() else {
+                lastError = "Select a channel client first."
+                return
+            }
+            runClientCommand { client in
+                for name in names {
+                    try await client.deleteChannelClientPermission(
+                        channelId: selection.channelId,
+                        clientDatabaseId: selection.databaseId,
+                        permissionName: name
+                    )
+                }
+                let permissions = try await client.refreshChannelClientPermissions(
+                    channelId: selection.channelId,
+                    clientDatabaseId: selection.databaseId
+                )
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
+        }
+    }
+
     func channelClientPermissionMembers() -> [TS3UserSummary] {
         let channelId = selectedChannelClientPermissionChannelId ?? currentChannel?.id ?? channels.first?.id
         guard let channelId else { return [] }
