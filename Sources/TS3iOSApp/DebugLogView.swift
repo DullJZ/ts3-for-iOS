@@ -1,8 +1,11 @@
 import SwiftUI
 import TS3Kit
+import UniformTypeIdentifiers
 
 struct DebugLogView: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isExportingLogs = false
+    @State private var logDocument = TS3TextFileDocument()
 
     private let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -37,9 +40,26 @@ struct DebugLogView: View {
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("导出") {
+                        logDocument = TS3TextFileDocument(data: model.debugLogData())
+                        isExportingLogs = true
+                    }
+                    .disabled(model.logs.isEmpty)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("清空") {
                         model.clearLogs()
                     }
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingLogs,
+                document: logDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-debug-log"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
                 }
             }
         }

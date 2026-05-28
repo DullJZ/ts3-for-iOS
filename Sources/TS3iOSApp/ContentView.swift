@@ -284,6 +284,25 @@ struct TS3BookmarkFileDocument: FileDocument {
     }
 }
 
+struct TS3TextFileDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.plainText, .data] }
+    static var writableContentTypes: [UTType] { [.plainText] }
+
+    var data: Data
+
+    init(data: Data = Data()) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
+}
+
 struct BookmarkEditorSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
@@ -2252,6 +2271,8 @@ struct ChatSheet: View {
     @State private var searchText = ""
     @State private var isShowingOfflineMessages = false
     @State private var isConfirmingClearHistory = false
+    @State private var isExportingTranscript = false
+    @State private var transcriptDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -2337,6 +2358,11 @@ struct ChatSheet: View {
                         isConfirmingClearHistory = true
                     }
                     .disabled(model.chatMessages.isEmpty)
+                    Button("Export") {
+                        transcriptDocument = TS3TextFileDocument(data: model.chatTranscriptData(messages: filteredMessages))
+                        isExportingTranscript = true
+                    }
+                    .disabled(filteredMessages.isEmpty)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -2347,6 +2373,16 @@ struct ChatSheet: View {
             .sheet(isPresented: $isShowingOfflineMessages) {
                 OfflineMessagesSheet()
                     .environmentObject(model)
+            }
+            .fileExporter(
+                isPresented: $isExportingTranscript,
+                document: transcriptDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-chat-transcript"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
             }
             .onAppear {
                 model.beginViewingChat()

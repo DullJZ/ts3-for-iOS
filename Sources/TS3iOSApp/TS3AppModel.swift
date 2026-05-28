@@ -3774,6 +3774,23 @@ final class TS3AppModel: ObservableObject {
         saveChatHistory()
     }
 
+    func chatTranscriptData(messages: [TS3ChatMessageSummary]) -> Data {
+        let lines = messages.map { message in
+            let mode: String
+            switch message.targetMode {
+            case .server:
+                mode = "Server"
+            case .channel:
+                mode = "Channel"
+            case .client:
+                mode = "Private"
+            }
+            let direction = message.isOwnMessage ? "out" : "in"
+            return "\(Self.transcriptDateFormatter.string(from: message.timestamp)) [\(mode)] [\(direction)] \(message.senderName): \(message.message)"
+        }
+        return Data(lines.joined(separator: "\n").utf8)
+    }
+
     func beginViewingChat() {
         isViewingChat = true
         unreadChatMessageCount = 0
@@ -4107,6 +4124,13 @@ final class TS3AppModel: ObservableObject {
         logs.removeAll()
     }
 
+    func debugLogData() -> Data {
+        let lines = logs.map { entry in
+            "\(Self.transcriptDateFormatter.string(from: entry.timestamp)) [\(entry.level.rawValue)] \(entry.message)"
+        }
+        return Data(lines.joined(separator: "\n").utf8)
+    }
+
     private func appendAudioPermissionLog(_ source: String, status: String) {
         appendLog(
             TS3LogEntry(
@@ -4116,6 +4140,12 @@ final class TS3AppModel: ObservableObject {
             )
         )
     }
+
+    private static let transcriptDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 }
 
 private struct MicrophoneAccessResult {
