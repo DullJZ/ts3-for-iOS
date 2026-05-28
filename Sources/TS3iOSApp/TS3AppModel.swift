@@ -3170,11 +3170,39 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func deleteOfflineMessages(_ messages: [TS3OfflineMessageSummary]) {
+        let messageIds = Array(Set(messages.map(\.id))).sorted()
+        guard !messageIds.isEmpty else { return }
+        runClientCommand { client in
+            for messageId in messageIds {
+                try await client.deleteOfflineMessage(messageId: messageId)
+            }
+            let refreshedMessages = try await client.refreshOfflineMessages()
+            await MainActor.run {
+                self.offlineMessages = refreshedMessages.map { TS3OfflineMessageSummary(message: $0) }
+            }
+        }
+    }
+
     func markOfflineMessage(_ message: TS3OfflineMessageSummary, read: Bool) {
         runClientCommand { client in
             try await client.setOfflineMessageRead(messageId: message.id, isRead: read)
             await MainActor.run {
                 self.upsertOfflineMessage(TS3OfflineMessageSummary(copying: message, isRead: read))
+            }
+        }
+    }
+
+    func markAllOfflineMessagesRead() {
+        let unreadMessages = offlineMessages.filter { !$0.isRead }
+        guard !unreadMessages.isEmpty else { return }
+        runClientCommand { client in
+            for message in unreadMessages {
+                try await client.setOfflineMessageRead(messageId: message.id, isRead: true)
+            }
+            let refreshedMessages = try await client.refreshOfflineMessages()
+            await MainActor.run {
+                self.offlineMessages = refreshedMessages.map { TS3OfflineMessageSummary(message: $0) }
             }
         }
     }

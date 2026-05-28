@@ -3200,6 +3200,8 @@ struct PokeOfflineReplySheet: View {
 struct OfflineMessagesSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isExportingInbox = false
+    @State private var inboxDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -3226,12 +3228,76 @@ struct OfflineMessagesSheet: View {
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Menu {
+                        Button("Copy Inbox Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(inboxSnapshot)
+                        }
+                        .disabled(model.offlineMessages.isEmpty)
+                        Button("Export Inbox Snapshot") {
+                            inboxDocument = TS3TextFileDocument(data: Data(inboxSnapshot.utf8))
+                            isExportingInbox = true
+                        }
+                        .disabled(model.offlineMessages.isEmpty)
+                        Button("Mark All Read") {
+                            model.markAllOfflineMessagesRead()
+                        }
+                        .disabled(model.offlineMessages.allSatisfy(\.isRead))
+                        Button("Delete All Messages") {
+                            model.deleteOfflineMessages(model.offlineMessages)
+                        }
+                        .disabled(model.offlineMessages.isEmpty)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingInbox,
+                document: inboxDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-offline-inbox"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var inboxSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        return model.offlineMessages.map { message in
+            var rows = [
+                "Message ID: \(message.id)",
+                "Read: \(message.isRead ? "Yes" : "No")",
+                "Sender: \(message.senderName ?? message.senderUniqueIdentifier ?? "Unknown sender")",
+                "Subject: \(message.subject)"
+            ]
+            if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
+                rows.append("Sender UID: \(senderUniqueIdentifier)")
+            }
+            if let timestamp = dateText(message.timestamp) {
+                rows.append("Timestamp: \(timestamp)")
+            }
+            if let body = message.message, !body.isEmpty {
+                rows.append("Message: \(body)")
+            }
+            return rows.joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
     }
 }
 
