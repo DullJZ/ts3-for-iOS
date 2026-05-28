@@ -265,6 +265,14 @@ public struct TS3ServerEdit {
     public var hostButtonURL: String?
     public var hostButtonGraphicsURL: String?
     public var iconId: Int?
+    public var downloadQuota: Int64?
+    public var uploadQuota: Int64?
+    public var complainAutoBanCount: Int?
+    public var complainAutoBanTime: Int?
+    public var complainRemoveTime: Int?
+    public var minClientsInChannelBeforeForcedSilence: Int?
+    public var prioritySpeakerDimmModificator: Double?
+    public var codecEncryptionMode: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
     public init(
@@ -280,7 +288,15 @@ public struct TS3ServerEdit {
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
         hostButtonGraphicsURL: String? = nil,
-        iconId: Int? = nil
+        iconId: Int? = nil,
+        downloadQuota: Int64? = nil,
+        uploadQuota: Int64? = nil,
+        complainAutoBanCount: Int? = nil,
+        complainAutoBanTime: Int? = nil,
+        complainRemoveTime: Int? = nil,
+        minClientsInChannelBeforeForcedSilence: Int? = nil,
+        prioritySpeakerDimmModificator: Double? = nil,
+        codecEncryptionMode: Int? = nil
     ) {
         self.name = name
         self.welcomeMessage = welcomeMessage
@@ -295,6 +311,14 @@ public struct TS3ServerEdit {
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
         self.iconId = iconId
+        self.downloadQuota = downloadQuota
+        self.uploadQuota = uploadQuota
+        self.complainAutoBanCount = complainAutoBanCount
+        self.complainAutoBanTime = complainAutoBanTime
+        self.complainRemoveTime = complainRemoveTime
+        self.minClientsInChannelBeforeForcedSilence = minClientsInChannelBeforeForcedSilence
+        self.prioritySpeakerDimmModificator = prioritySpeakerDimmModificator
+        self.codecEncryptionMode = codecEncryptionMode
     }
 }
 

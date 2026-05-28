@@ -4785,6 +4785,14 @@ struct ServerSettingsEditorSheet: View {
     @State private var hostButtonURL = ""
     @State private var hostButtonGraphicsURL = ""
     @State private var iconId = ""
+    @State private var downloadQuota = ""
+    @State private var uploadQuota = ""
+    @State private var complainAutoBanCount = ""
+    @State private var complainAutoBanTime = ""
+    @State private var complainRemoveTime = ""
+    @State private var minClientsInChannelBeforeForcedSilence = ""
+    @State private var prioritySpeakerDimmModificator = ""
+    @State private var codecEncryptionMode = ""
     @State private var isShowingIconImporter = false
 
     var body: some View {
@@ -4840,6 +4848,35 @@ struct ServerSettingsEditorSheet: View {
                     TextField("Button Image URL", text: $hostButtonGraphicsURL)
                         .ts3URLTextField()
                 }
+
+                Section(header: Text("Limits")) {
+                    TextField("Download Quota Bytes", text: $downloadQuota)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Upload Quota Bytes", text: $uploadQuota)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Codec Encryption Mode", text: $codecEncryptionMode)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                }
+
+                Section(header: Text("Anti-Flood and Complaints")) {
+                    TextField("Auto-Ban Complaint Count", text: $complainAutoBanCount)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Auto-Ban Seconds", text: $complainAutoBanTime)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Complaint Remove Seconds", text: $complainRemoveTime)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Forced Silence Client Count", text: $minClientsInChannelBeforeForcedSilence)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Priority Speaker Dimming", text: $prioritySpeakerDimmModificator)
+                        .ts3PlainTextField()
+                }
             }
             .navigationTitle("Server Settings")
             .ts3InlineNavigationTitle()
@@ -4892,6 +4929,14 @@ struct ServerSettingsEditorSheet: View {
         hostButtonURL = model.serverInfo.hostButtonURL ?? ""
         hostButtonGraphicsURL = model.serverInfo.hostButtonGraphicsURL ?? ""
         iconId = model.serverInfo.iconId.map(String.init) ?? ""
+        downloadQuota = model.serverInfo.downloadQuota.map(String.init) ?? ""
+        uploadQuota = model.serverInfo.uploadQuota.map(String.init) ?? ""
+        complainAutoBanCount = model.serverInfo.complainAutoBanCount.map(String.init) ?? ""
+        complainAutoBanTime = model.serverInfo.complainAutoBanTime.map(String.init) ?? ""
+        complainRemoveTime = model.serverInfo.complainRemoveTime.map(String.init) ?? ""
+        minClientsInChannelBeforeForcedSilence = model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init) ?? ""
+        prioritySpeakerDimmModificator = model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText) ?? ""
+        codecEncryptionMode = model.serverInfo.codecEncryptionMode.map(String.init) ?? ""
     }
 
     private func save() {
@@ -4908,8 +4953,20 @@ struct ServerSettingsEditorSheet: View {
             hostButtonTooltip: hostButtonTooltip,
             hostButtonURL: hostButtonURL,
             hostButtonGraphicsURL: hostButtonGraphicsURL,
-            iconId: Int(iconId.trimmingCharacters(in: .whitespacesAndNewlines))
+            iconId: Int(iconId.trimmingCharacters(in: .whitespacesAndNewlines)),
+            downloadQuota: Int64(downloadQuota.trimmingCharacters(in: .whitespacesAndNewlines)),
+            uploadQuota: Int64(uploadQuota.trimmingCharacters(in: .whitespacesAndNewlines)),
+            complainAutoBanCount: Int(complainAutoBanCount.trimmingCharacters(in: .whitespacesAndNewlines)),
+            complainAutoBanTime: Int(complainAutoBanTime.trimmingCharacters(in: .whitespacesAndNewlines)),
+            complainRemoveTime: Int(complainRemoveTime.trimmingCharacters(in: .whitespacesAndNewlines)),
+            minClientsInChannelBeforeForcedSilence: Int(minClientsInChannelBeforeForcedSilence.trimmingCharacters(in: .whitespacesAndNewlines)),
+            prioritySpeakerDimmModificator: Double(prioritySpeakerDimmModificator.trimmingCharacters(in: .whitespacesAndNewlines)),
+            codecEncryptionMode: Int(codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
         )
+    }
+
+    private static func decimalText(_ value: Double) -> String {
+        String(format: "%.2f", value)
     }
 }
 

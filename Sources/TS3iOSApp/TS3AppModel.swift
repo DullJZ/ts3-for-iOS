@@ -2304,7 +2304,15 @@ final class TS3AppModel: ObservableObject {
         hostButtonTooltip: String,
         hostButtonURL: String,
         hostButtonGraphicsURL: String,
-        iconId: Int?
+        iconId: Int?,
+        downloadQuota: Int64?,
+        uploadQuota: Int64?,
+        complainAutoBanCount: Int?,
+        complainAutoBanTime: Int?,
+        complainRemoveTime: Int?,
+        minClientsInChannelBeforeForcedSilence: Int?,
+        prioritySpeakerDimmModificator: Double?,
+        codecEncryptionMode: Int?
     ) {
         let edit = TS3ServerEdit(
             name: trimmedValue(name),
@@ -2319,7 +2327,15 @@ final class TS3AppModel: ObservableObject {
             hostButtonTooltip: hostButtonTooltip.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonURL: hostButtonURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonGraphicsURL: hostButtonGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
-            iconId: iconId
+            iconId: iconId,
+            downloadQuota: downloadQuota,
+            uploadQuota: uploadQuota,
+            complainAutoBanCount: complainAutoBanCount,
+            complainAutoBanTime: complainAutoBanTime,
+            complainRemoveTime: complainRemoveTime,
+            minClientsInChannelBeforeForcedSilence: minClientsInChannelBeforeForcedSilence,
+            prioritySpeakerDimmModificator: prioritySpeakerDimmModificator,
+            codecEncryptionMode: codecEncryptionMode
         )
         runClientCommand { client in
             try await client.editServer(edit)
