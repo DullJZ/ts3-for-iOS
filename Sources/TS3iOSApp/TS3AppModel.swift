@@ -353,6 +353,17 @@ struct TS3DatabaseClientSummary: Identifiable {
         self.lastIP = client.lastIP
     }
 
+    init(groupClient: TS3GroupClientSummary) {
+        self.id = groupClient.clientDatabaseId
+        self.uniqueIdentifier = groupClient.uniqueIdentifier
+        self.nickname = groupClient.displayName
+        self.createdAt = nil
+        self.lastConnectedAt = nil
+        self.totalConnections = nil
+        self.description = nil
+        self.lastIP = nil
+    }
+
     func copy(description: String?) -> TS3DatabaseClientSummary {
         TS3DatabaseClientSummary(
             id: id,

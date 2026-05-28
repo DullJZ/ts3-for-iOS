@@ -3893,6 +3893,7 @@ struct GroupClientRow: View {
     let group: TS3GroupSummary
     let target: TS3GroupManagementTarget
     let client: TS3GroupClientSummary
+    @State private var isShowingInfo = false
     @State private var isConfirmingRemove = false
 
     var body: some View {
@@ -3917,18 +3918,53 @@ struct GroupClientRow: View {
                 }
             }
             Spacer()
-            if target == .server {
-                Menu {
+            Menu {
+                Button("Info") {
+                    isShowingInfo = true
+                }
+                Button("Copy Nickname") {
+                    TS3PlatformSupport.copyToPasteboard(client.displayName)
+                }
+                Button("Copy Database ID") {
+                    TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
+                }
+                if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                    Button("Copy Unique ID") {
+                        TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                    }
+                    Menu("Contact") {
+                        Button("Mark as Friend") {
+                            model.setContactStatus(.friend, for: databaseRecord)
+                        }
+                        .disabled(model.contactStatus(for: databaseRecord) == .friend)
+                        Button("Block Contact") {
+                            model.setContactStatus(.blocked, for: databaseRecord)
+                        }
+                        .disabled(model.contactStatus(for: databaseRecord) == .blocked)
+                        Button("Set Neutral") {
+                            model.setContactStatus(.neutral, for: databaseRecord)
+                        }
+                        .disabled(model.contactStatus(for: databaseRecord) == .neutral && model.contactNote(for: databaseRecord) == nil)
+                    }
+                }
+                Button("Load Database Details") {
+                    model.loadDatabaseClientDetails(databaseRecord)
+                }
+                if target == .server {
                     Button("Remove From Group") {
                         isConfirmingRemove = true
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
-                .buttonStyle(.borderless)
+            } label: {
+                Image(systemName: "ellipsis.circle")
             }
+            .buttonStyle(.borderless)
         }
         .padding(.vertical, 3)
+        .sheet(isPresented: $isShowingInfo) {
+            GroupClientInfoSheet(group: group, target: target, client: client)
+                .environmentObject(model)
+        }
         .alert(isPresented: $isConfirmingRemove) {
             Alert(
                 title: Text("Remove Member?"),
@@ -3938,6 +3974,96 @@ struct GroupClientRow: View {
                 },
                 secondaryButton: .cancel()
             )
+        }
+        .contextMenu {
+            Button("Info") {
+                isShowingInfo = true
+            }
+            Button("Copy Nickname") {
+                TS3PlatformSupport.copyToPasteboard(client.displayName)
+            }
+            Button("Copy Database ID") {
+                TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
+            }
+            if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                Button("Copy Unique ID") {
+                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+            }
+            Button("Load Database Details") {
+                model.loadDatabaseClientDetails(databaseRecord)
+            }
+            if target == .server {
+                Button("Remove From Group") {
+                    isConfirmingRemove = true
+                }
+                .foregroundColor(.red)
+            }
+        }
+    }
+
+    private var databaseRecord: TS3DatabaseClientSummary {
+        TS3DatabaseClientSummary(groupClient: client)
+    }
+}
+
+struct GroupClientInfoSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
+    let client: TS3GroupClientSummary
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(client.displayName)) {
+                    infoRow("Group", value: group.name)
+                    infoRow("Group Type", value: target.title)
+                    infoRow("Database ID", value: "\(client.clientDatabaseId)")
+                    if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                        infoRow("Unique ID", value: uniqueIdentifier)
+                    }
+                    if let channelId = client.channelId {
+                        infoRow("Channel", value: model.channelName(for: channelId) ?? "Channel \(channelId)")
+                    }
+                }
+                Section {
+                    Button("Copy Nickname") {
+                        TS3PlatformSupport.copyToPasteboard(client.displayName)
+                    }
+                    Button("Copy Database ID") {
+                        TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
+                    }
+                    if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                        Button("Copy Unique ID") {
+                            TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                        }
+                    }
+                    Button("Load Database Details") {
+                        model.loadDatabaseClientDetails(TS3DatabaseClientSummary(groupClient: client))
+                    }
+                }
+            }
+            .navigationTitle("Member Info")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func infoRow(_ title: String, value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
