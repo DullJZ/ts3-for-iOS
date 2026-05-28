@@ -4692,6 +4692,9 @@ struct FileBrowserSheet: View {
                         .buttonStyle(.borderless)
                         .disabled(pathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
+                    Button("Copy Current Path") {
+                        TS3PlatformSupport.copyToPasteboard(model.fileBrowserPath)
+                    }
                 }
 
                 Section(header: Text(model.fileBrowserPath)) {
@@ -4747,6 +4750,10 @@ struct FileBrowserSheet: View {
                         HStack {
                             Button("Open") {
                                 model.openLastDownloadedFile()
+                            }
+                            .buttonStyle(.borderless)
+                            Button("Copy Path") {
+                                TS3PlatformSupport.copyToPasteboard(downloadedFile.url.path)
                             }
                             .buttonStyle(.borderless)
                             Button("Export") {
@@ -4890,6 +4897,7 @@ struct FileEntryRow: View {
     let entry: TS3FileEntrySummary
     @State private var isRenaming = false
     @State private var isConfirmingDelete = false
+    @State private var isShowingInfo = false
     @State private var newName = ""
 
     var body: some View {
@@ -4927,6 +4935,10 @@ struct FileEntryRow: View {
                     isRenaming = true
                 }
                 .buttonStyle(.borderless)
+                Button("Info") {
+                    isShowingInfo = true
+                }
+                .buttonStyle(.borderless)
                 Spacer()
                 Button("Delete") {
                     isConfirmingDelete = true
@@ -4950,6 +4962,37 @@ struct FileEntryRow: View {
         .sheet(isPresented: $isRenaming) {
             RenameFileEntrySheet(entry: entry, newName: $newName)
                 .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingInfo) {
+            FileEntryInfoSheet(entry: entry)
+        }
+        .contextMenu {
+            if entry.isDirectory {
+                Button("Open Directory") {
+                    model.enterFileDirectory(entry)
+                }
+            } else {
+                Button("Download") {
+                    model.downloadFileEntry(entry)
+                }
+            }
+            Button("Copy Name") {
+                TS3PlatformSupport.copyToPasteboard(entry.name)
+            }
+            Button("Copy Remote Path") {
+                TS3PlatformSupport.copyToPasteboard(entry.path)
+            }
+            Button("Info") {
+                isShowingInfo = true
+            }
+            Button("Rename") {
+                newName = entry.name
+                isRenaming = true
+            }
+            Button("Delete") {
+                isConfirmingDelete = true
+            }
+            .foregroundColor(.red)
         }
     }
 
@@ -4978,6 +5021,73 @@ struct FileEntryRow: View {
             return String(format: "%.1f MB", mb)
         }
         return String(format: "%.1f GB", mb / 1_024)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+struct FileEntryInfoSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let entry: TS3FileEntrySummary
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(entry.name)) {
+                    infoRow("Type", value: entry.isDirectory ? "Directory" : "File")
+                    infoRow("Remote Path", value: entry.path)
+                    infoRow("Parent Path", value: entry.parentPath)
+                    infoRow("Channel ID", value: "\(entry.channelId)")
+                    if !entry.isDirectory {
+                        infoRow("Size", value: Self.sizeText(entry.size))
+                    }
+                    if entry.isStillUploading {
+                        infoRow("Status", value: "Uploading")
+                    }
+                    if let modifiedAt = entry.modifiedAt {
+                        infoRow("Modified", value: Self.dateText(modifiedAt))
+                    }
+                }
+                Section {
+                    Button("Copy Remote Path") {
+                        TS3PlatformSupport.copyToPasteboard(entry.path)
+                    }
+                    Button("Copy Name") {
+                        TS3PlatformSupport.copyToPasteboard(entry.name)
+                    }
+                }
+            }
+            .navigationTitle("File Info")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func infoRow(_ title: String, value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private static func sizeText(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
     }
 
     private static func dateText(_ date: Date) -> String {
