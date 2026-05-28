@@ -1315,10 +1315,24 @@ struct ChannelInformationSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
     let memberCount: Int
+    @State private var isExportingSnapshot = false
+    @State private var snapshotDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Snapshot")) {
+                    Button("Copy Channel Information") {
+                        TS3PlatformSupport.copyToPasteboard(informationSnapshot)
+                    }
+                    .disabled(informationSnapshot.isEmpty)
+                    Button("Export Channel Information") {
+                        snapshotDocument = TS3TextFileDocument(data: Data(informationSnapshot.utf8))
+                        isExportingSnapshot = true
+                    }
+                    .disabled(informationSnapshot.isEmpty)
+                }
+
                 Section(header: Text(channel.name)) {
                     ServerInfoDetailRow(label: "Channel ID", value: String(channel.id))
                     ServerInfoDetailRow(label: "Parent", value: parentName)
@@ -1348,6 +1362,16 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: "Max Clients", value: maxClientsText)
                     ServerInfoDetailRow(label: "Max Family Clients", value: maxFamilyClientsText)
                     ServerInfoDetailRow(label: "Delete Delay", value: channel.deleteDelaySeconds.map { "\($0)s" })
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingSnapshot,
+                document: snapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-channel-\(channel.id)"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
                 }
             }
             .navigationTitle("Channel Info")
@@ -1400,6 +1424,38 @@ struct ChannelInformationSheet: View {
 
     private func yesNo(_ value: Bool) -> String {
         value ? "Yes" : "No"
+    }
+
+    private var informationSnapshot: String {
+        let rows: [(String, String?)] = [
+            ("Channel ID", String(channel.id)),
+            ("Name", channel.name),
+            ("Path", model.channelPath(for: channel)),
+            ("Parent", parentName),
+            ("Order After", orderName),
+            ("Type", channelTypeText),
+            ("Default", yesNo(channel.isDefault)),
+            ("Password", channel.isPasswordProtected ? "Protected" : "Not Protected"),
+            ("Subscribed", channel.isSubscribed.map(yesNo)),
+            ("Icon ID", channel.iconId.map(String.init)),
+            ("Members", String(memberCount)),
+            ("Phonetic Name", channel.phoneticName),
+            ("Topic", channel.topic),
+            ("Description", channel.description),
+            ("Codec", channel.codec.map(String.init)),
+            ("Codec Quality", channel.codecQuality.map(String.init)),
+            ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
+            ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
+            ("Max Clients", maxClientsText),
+            ("Max Family Clients", maxFamilyClientsText),
+            ("Delete Delay", channel.deleteDelaySeconds.map { "\($0)s" })
+        ]
+        return rows
+            .compactMap { label, value in
+                guard let value, !value.isEmpty else { return nil }
+                return "\(label): \(value)"
+            }
+            .joined(separator: "\n")
     }
 }
 
@@ -1808,6 +1864,8 @@ struct UserActionSheet: View {
     @State private var text = ""
     @State private var banDuration: TS3BanDuration = .permanent
     @State private var customBanMinutes = "60"
+    @State private var isExportingInfo = false
+    @State private var infoExportDocument = TS3TextFileDocument()
 
     var title: String {
         switch mode {
@@ -1855,6 +1913,18 @@ struct UserActionSheet: View {
         NavigationView {
             Form {
                 if mode == .info {
+                    Section(header: Text("Snapshot")) {
+                        Button("Copy Client Information") {
+                            TS3PlatformSupport.copyToPasteboard(infoSnapshot)
+                        }
+                        .disabled(infoSnapshot.isEmpty)
+                        Button("Export Client Information") {
+                            infoExportDocument = TS3TextFileDocument(data: Data(infoSnapshot.utf8))
+                            isExportingInfo = true
+                        }
+                        .disabled(infoSnapshot.isEmpty)
+                    }
+
                     UserInfoRows(user: currentUser)
                 } else {
                     Section(header: Text(user.nickname)) {
@@ -1914,6 +1984,16 @@ struct UserActionSheet: View {
                     }
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingInfo,
+                document: infoExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-client-\(currentUser.id)"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .navigationTitle(title)
             .ts3InlineNavigationTitle()
             .onAppear {
@@ -1951,6 +2031,10 @@ struct UserActionSheet: View {
         case .ban:
             return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
         }
+    }
+
+    private var infoSnapshot: String {
+        UserInfoRows.snapshot(for: currentUser, model: model)
     }
 
     private var currentUser: TS3UserSummary {
@@ -2030,6 +2114,66 @@ struct UserInfoRows: View {
         if hours < 24 { return "\(hours)h \(minutes % 60)m" }
         let days = hours / 24
         return "\(days)d \(hours % 24)h"
+    }
+
+    static func snapshot(for user: TS3UserSummary, model: TS3AppModel) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        func durationText(_ seconds: Int?) -> String? {
+            guard let seconds else { return nil }
+            if seconds < 60 { return "\(seconds)s" }
+            let minutes = seconds / 60
+            if minutes < 60 { return "\(minutes)m \(seconds % 60)s" }
+            let hours = minutes / 60
+            if hours < 24 { return "\(hours)h \(minutes % 60)m" }
+            let days = hours / 24
+            return "\(days)d \(hours % 24)h"
+        }
+
+        let rows: [(String, String?)] = [
+            ("Nickname", user.nickname),
+            ("Client ID", String(user.id)),
+            ("Database ID", user.databaseId.map(String.init)),
+            ("Unique ID", user.uniqueIdentifier),
+            ("Icon ID", user.iconId.map(String.init)),
+            ("Channel", String(user.channelId)),
+            ("Country", user.country),
+            ("IP Address", user.ipAddress),
+            ("Contact Status", model.contactStatus(for: user).title),
+            ("Note", model.contactNote(for: user)),
+            ("Locally Muted", model.isPlaybackMuted(for: user) ? "Yes" : "No"),
+            ("Playback Volume", model.playbackVolumePercentText(for: user)),
+            ("Platform", user.platform),
+            ("Version", user.version),
+            ("Channel Commander", user.isChannelCommander ? "Yes" : "No"),
+            ("Priority Speaker", user.isPrioritySpeaker ? "Yes" : "No"),
+            ("Talker", user.isTalker ? "Yes" : "No"),
+            ("Requests Talk Power", user.isRequestingTalkPower ? "Yes" : "No"),
+            ("Talk Request", user.talkRequestMessage?.isEmpty == false ? user.talkRequestMessage : nil),
+            ("Talk Power", user.talkPower.map(String.init)),
+            ("Connected", durationText(user.connectedSeconds)),
+            ("Idle", durationText(user.idleTimeSeconds)),
+            ("Total Connections", user.totalConnections.map(String.init)),
+            ("Created", dateText(user.createdAt)),
+            ("Last Connected", dateText(user.lastConnectedAt)),
+            ("Away", user.isAway ? (user.awayMessage?.isEmpty == false ? user.awayMessage : "Yes") : "No"),
+            ("Input Muted", user.isInputMuted ? "Yes" : "No"),
+            ("Output Muted", user.isOutputMuted ? "Yes" : "No")
+        ]
+
+        return rows
+            .compactMap { label, value in
+                guard let value, !value.isEmpty else { return nil }
+                return "\(label): \(value)"
+            }
+            .joined(separator: "\n")
     }
 }
 
