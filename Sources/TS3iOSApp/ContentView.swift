@@ -6210,12 +6210,19 @@ struct BanListSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isConfirmingDeleteAll = false
+    @State private var isConfirmingDeleteVisible = false
+    @State private var isExportingBans = false
+    @State private var banExportDocument = TS3TextFileDocument()
     @State private var ip = ""
     @State private var name = ""
     @State private var uniqueIdentifier = ""
     @State private var reason = ""
     @State private var duration: TS3BanDuration = .permanent
     @State private var customBanMinutes = "60"
+
+    private var visibleBanSnapshot: String {
+        model.banEntries.map(\.clipboardSummary).joined(separator: "\n")
+    }
 
     var body: some View {
         NavigationView {
@@ -6256,6 +6263,20 @@ struct BanListSheet: View {
                     Text("No bans")
                         .foregroundColor(.secondary)
                 } else {
+                    Section(header: Text("Visible Bans")) {
+                        Button("Copy Visible Bans") {
+                            TS3PlatformSupport.copyToPasteboard(visibleBanSnapshot)
+                        }
+                        Button("Export Visible Bans") {
+                            banExportDocument = TS3TextFileDocument(data: Data(visibleBanSnapshot.utf8))
+                            isExportingBans = true
+                        }
+                        Button("Delete Visible Bans") {
+                            isConfirmingDeleteVisible = true
+                        }
+                        .foregroundColor(.red)
+                    }
+
                     ForEach(model.banEntries) { entry in
                         BanEntryRow(entry: entry)
                             .environmentObject(model)
@@ -6266,6 +6287,16 @@ struct BanListSheet: View {
                         }
                         .foregroundColor(.red)
                     }
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingBans,
+                document: banExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-ban-list"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
                 }
             }
             .navigationTitle("Ban List")
@@ -6291,6 +6322,16 @@ struct BanListSheet: View {
                     message: Text("This removes every ban entry on the server."),
                     primaryButton: .destructive(Text("Delete All")) {
                         model.deleteAllBans()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeleteVisible) {
+                Alert(
+                    title: Text("Delete Visible Bans?"),
+                    message: Text("This removes \(model.banEntries.count) ban entries from the server."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteBans(model.banEntries)
                     },
                     secondaryButton: .cancel()
                 )
@@ -6453,6 +6494,7 @@ struct ComplaintEntryRow: View {
 struct BanEntryRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let entry: TS3BanEntrySummary
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -6493,13 +6535,47 @@ struct BanEntryRow: View {
             .foregroundColor(.secondary)
 
             Button("Delete Ban") {
-                model.deleteBan(entry)
+                isConfirmingDelete = true
             }
             .buttonStyle(.borderless)
             .foregroundColor(.red)
             .font(.caption)
         }
         .padding(.vertical, 4)
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Ban?"),
+                message: Text(title),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteBan(entry)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .contextMenu {
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+            }
+            if let ip = entry.ip, !ip.isEmpty {
+                Button("Copy IP") {
+                    TS3PlatformSupport.copyToPasteboard(ip)
+                }
+            }
+            if let uniqueIdentifier = entry.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                Button("Copy Unique ID") {
+                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+            }
+            if let reason = entry.reason, !reason.isEmpty {
+                Button("Copy Reason") {
+                    TS3PlatformSupport.copyToPasteboard(reason)
+                }
+            }
+            Button("Delete Ban") {
+                isConfirmingDelete = true
+            }
+            .foregroundColor(.red)
+        }
     }
 
     private var title: String {
@@ -6524,14 +6600,14 @@ struct BanEntryRow: View {
             .joined(separator: " | ")
     }
 
-    private static func dateText(_ date: Date) -> String {
+    fileprivate static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
 
-    private static func durationText(_ seconds: Int) -> String {
+    fileprivate static func durationText(_ seconds: Int) -> String {
         if seconds == 0 {
             return "Permanent"
         }
@@ -6545,6 +6621,40 @@ struct BanEntryRow: View {
             return "\(hours)h \(minutes)m"
         }
         return "\(minutes)m"
+    }
+}
+
+private extension TS3BanEntrySummary {
+    var clipboardSummary: String {
+        var parts = ["banId=\(id)"]
+        if let name, !name.isEmpty {
+            parts.append("name=\(name)")
+        }
+        if let lastNickname, !lastNickname.isEmpty {
+            parts.append("lastNickname=\(lastNickname)")
+        }
+        if let ip, !ip.isEmpty {
+            parts.append("ip=\(ip)")
+        }
+        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let createdAt {
+            parts.append("createdAt=\(BanEntryRow.dateText(createdAt))")
+        }
+        if let durationSeconds {
+            parts.append("duration=\(BanEntryRow.durationText(durationSeconds))")
+        }
+        if let invokerName, !invokerName.isEmpty {
+            parts.append("invoker=\(invokerName)")
+        }
+        if let enforcements {
+            parts.append("enforcements=\(enforcements)")
+        }
+        if let reason, !reason.isEmpty {
+            parts.append("reason=\(reason)")
+        }
+        return parts.joined(separator: " | ")
     }
 }
 

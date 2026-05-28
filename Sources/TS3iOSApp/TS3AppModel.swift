@@ -2352,7 +2352,7 @@ final class TS3AppModel: ObservableObject {
             )
             let entries = try await client.refreshBanList()
             await MainActor.run {
-                self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
+                self.banEntries = self.banEntrySummaries(from: entries)
             }
         }
     }
@@ -2441,7 +2441,7 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let entries = try await client.refreshBanList()
             await MainActor.run {
-                self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
+                self.banEntries = self.banEntrySummaries(from: entries)
             }
         }
     }
@@ -3570,7 +3570,7 @@ final class TS3AppModel: ObservableObject {
             try await client.banClient(clientId: user.id, durationSeconds: durationSeconds, message: message)
             let entries = try await client.refreshBanList()
             await MainActor.run {
-                self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
+                self.banEntries = self.banEntrySummaries(from: entries)
             }
         }
     }
@@ -3594,7 +3594,7 @@ final class TS3AppModel: ObservableObject {
             )
             let entries = try await client.refreshBanList()
             await MainActor.run {
-                self.banEntries = entries.map { TS3BanEntrySummary(entry: $0) }
+                self.banEntries = self.banEntrySummaries(from: entries)
             }
         }
     }
@@ -3615,6 +3615,33 @@ final class TS3AppModel: ObservableObject {
                 self.banEntries = []
             }
         }
+    }
+
+    func deleteBans(_ entries: [TS3BanEntrySummary]) {
+        let banIds = Array(Set(entries.map(\.id))).sorted()
+        guard !banIds.isEmpty else { return }
+        runClientCommand { client in
+            for banId in banIds {
+                try await client.deleteBan(banId: banId)
+            }
+            let refreshedEntries = try await client.refreshBanList()
+            await MainActor.run {
+                self.banEntries = self.banEntrySummaries(from: refreshedEntries)
+            }
+        }
+    }
+
+    private func banEntrySummaries(from entries: [TS3BanEntry]) -> [TS3BanEntrySummary] {
+        entries
+            .map { TS3BanEntrySummary(entry: $0) }
+            .sorted {
+                switch ($0.createdAt, $1.createdAt) {
+                case let (lhs?, rhs?): return lhs > rhs
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil): return $0.id > $1.id
+                }
+            }
     }
 
     func complainAboutUser(_ user: TS3UserSummary, message: String) {
