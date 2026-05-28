@@ -3075,6 +3075,13 @@ struct ServerToolsSheet: View {
     @State private var isShowingGroupManagement = false
     @State private var isShowingContacts = false
 
+    private var notificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.notificationsEnabled },
+            set: { model.setNotificationsEnabled($0) }
+        )
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -3158,6 +3165,13 @@ struct ServerToolsSheet: View {
                     Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
                         model.toggleOutputMuted()
                     }
+                }
+
+                Section(header: Text("Notifications")) {
+                    Toggle("Private Messages and Pokes", isOn: notificationsBinding)
+                    Text("Notifications are shown when the app is not active.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 Section(header: Text("Privilege Key")) {

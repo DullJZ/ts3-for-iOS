@@ -7,6 +7,9 @@ import AVFoundation
 #if canImport(AVFAudio)
 import AVFAudio
 #endif
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 
 enum UIConnectionState {
     case disconnected
@@ -618,6 +621,12 @@ private struct TS3AudioSettings: Codable {
     )
 }
 
+private struct TS3NotificationSettings: Codable {
+    var isEnabled: Bool
+
+    static let defaults = TS3NotificationSettings(isEnabled: false)
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -920,6 +929,7 @@ final class TS3AppModel: ObservableObject {
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
+    @Published private(set) var notificationsEnabled = false
 
     @Published var serverHost = ""
     @Published var serverPort = "9987"
@@ -938,9 +948,11 @@ final class TS3AppModel: ObservableObject {
     private var failedIconIds: Set<Int> = []
     private let chatHistoryLimit = 500
     private var isViewingChat = false
+    private var isAppActive = true
 
     init() {
         loadAudioSettings()
+        loadNotificationSettings()
         loadBookmarks()
         loadContacts()
         loadChatHistory()
@@ -1555,6 +1567,42 @@ final class TS3AppModel: ObservableObject {
             applyAudioSettings(to: client)
         }
         saveAudioSettings()
+    }
+
+    func setAppActive(_ isActive: Bool) {
+        isAppActive = isActive
+    }
+
+    func setNotificationsEnabled(_ isEnabled: Bool) {
+        #if canImport(UserNotifications)
+        guard isEnabled else {
+            notificationsEnabled = false
+            saveNotificationSettings()
+            return
+        }
+
+        Task {
+            do {
+                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+                await MainActor.run {
+                    self.notificationsEnabled = granted
+                    self.saveNotificationSettings()
+                    if !granted {
+                        self.lastError = "Notification permission was not granted."
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.notificationsEnabled = false
+                    self.saveNotificationSettings()
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+        #else
+        notificationsEnabled = false
+        lastError = "Notifications are not available on this platform."
+        #endif
     }
 
     var inputGainPercentText: String {
@@ -3587,6 +3635,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-audio-settings.json")
     }
 
+    private var notificationSettingsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-notification-settings.json")
+    }
+
     private func loadAudioSettings() {
         guard let data = try? Data(contentsOf: audioSettingsURL),
               let decoded = try? JSONDecoder().decode(TS3AudioSettings.self, from: data) else {
@@ -3618,6 +3671,41 @@ final class TS3AppModel: ObservableObject {
         inputGain = min(max(settings.inputGain, 0), 4)
         audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
+    }
+
+    private func loadNotificationSettings() {
+        guard let data = try? Data(contentsOf: notificationSettingsURL),
+              let decoded = try? JSONDecoder().decode(TS3NotificationSettings.self, from: data) else {
+            notificationsEnabled = TS3NotificationSettings.defaults.isEnabled
+            return
+        }
+        notificationsEnabled = decoded.isEnabled
+    }
+
+    private func saveNotificationSettings() {
+        do {
+            let directory = notificationSettingsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(TS3NotificationSettings(isEnabled: notificationsEnabled))
+            try data.write(to: notificationSettingsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func notifyIfInactive(title: String, body: String, identifier: String) {
+        #if canImport(UserNotifications)
+        guard notificationsEnabled, !isAppActive else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        UNUserNotificationCenter.current().add(UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: nil
+        ))
+        #endif
     }
 
     private func loadBookmarks() {
@@ -4238,6 +4326,13 @@ extension TS3AppModel: TS3ClientDelegate {
             if !message.isOwnMessage && !self.isViewingChat {
                 self.unreadChatMessageCount += 1
             }
+            if !message.isOwnMessage && message.targetMode == .client {
+                self.notifyIfInactive(
+                    title: "Private message from \(message.senderName)",
+                    body: message.message,
+                    identifier: "ts3-private-message-\(message.id.uuidString)"
+                )
+            }
             self.saveChatHistory()
         }
     }
@@ -4250,6 +4345,11 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
             }
             self.unreadPokeCount += 1
+            self.notifyIfInactive(
+                title: "Poke from \(poke.senderName)",
+                body: poke.message,
+                identifier: "ts3-poke-\(poke.id.uuidString)"
+            )
         }
     }
 
