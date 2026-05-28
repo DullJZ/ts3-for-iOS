@@ -2050,6 +2050,12 @@ struct ContactRow: View {
                 Button("Edit Contact") {
                     isEditing = true
                 }
+                Button("Copy Nickname") {
+                    TS3PlatformSupport.copyToPasteboard(contact.nickname)
+                }
+                Button("Copy Unique ID") {
+                    TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
+                }
                 ForEach(TS3ContactStatus.allCases) { status in
                     Button("Set \(status.title)") {
                         model.updateContact(contact, status: status, note: contact.note)
@@ -2067,6 +2073,17 @@ struct ContactRow: View {
         .sheet(isPresented: $isEditing) {
             ContactEditorSheet(contact: contact)
                 .environmentObject(model)
+        }
+        .contextMenu {
+            Button("Copy Nickname") {
+                TS3PlatformSupport.copyToPasteboard(contact.nickname)
+            }
+            Button("Copy Unique ID") {
+                TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
+            }
+            Button("Edit Contact") {
+                isEditing = true
+            }
         }
     }
 }
