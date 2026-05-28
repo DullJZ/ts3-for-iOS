@@ -1424,6 +1424,7 @@ enum UserActionMode: Identifiable {
 
 enum DatabaseClientActionMode: Identifiable {
     case offlineMessage
+    case contactNote
     case complain
     case ban
 
@@ -1431,6 +1432,8 @@ enum DatabaseClientActionMode: Identifiable {
         switch self {
         case .offlineMessage:
             return "offlineMessage"
+        case .contactNote:
+            return "contactNote"
         case .complain:
             return "complain"
         case .ban:
@@ -4040,6 +4043,34 @@ struct ClientDatabaseSheet: View {
                 if let selected = model.selectedDatabaseClient {
                     Section(header: Text("Selected Client")) {
                         DatabaseClientDetailRows(record: selected)
+                        Button("Copy Nickname") {
+                            TS3PlatformSupport.copyToPasteboard(selected.nickname)
+                        }
+                        Button("Copy Database ID") {
+                            TS3PlatformSupport.copyToPasteboard("\(selected.id)")
+                        }
+                        if let uniqueIdentifier = selected.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                            Button("Copy Unique ID") {
+                                TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                            }
+                            Menu("Contact") {
+                                Button("Mark as Friend") {
+                                    model.setContactStatus(.friend, for: selected)
+                                }
+                                .disabled(model.contactStatus(for: selected) == .friend)
+                                Button("Block Contact") {
+                                    model.setContactStatus(.blocked, for: selected)
+                                }
+                                .disabled(model.contactStatus(for: selected) == .blocked)
+                                Button("Set Neutral") {
+                                    model.setContactStatus(.neutral, for: selected)
+                                }
+                                .disabled(model.contactStatus(for: selected) == .neutral && model.contactNote(for: selected) == nil)
+                                Button("Edit Note") {
+                                    actionMode = .contactNote
+                                }
+                            }
+                        }
                         Button("Resolve Database ID From UID") {
                             model.resolveDatabaseIdForSelectedClient()
                         }
@@ -4257,6 +4288,11 @@ struct DatabaseClientActionSheet: View {
             }
             .navigationTitle(title)
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if mode == .contactNote, text.isEmpty {
+                    text = model.contactNote(for: record) ?? ""
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
@@ -4271,6 +4307,8 @@ struct DatabaseClientActionSheet: View {
         switch mode {
         case .offlineMessage:
             return "Offline Message"
+        case .contactNote:
+            return "Contact Note"
         case .complain:
             return "Submit Complaint"
         case .ban:
@@ -4282,6 +4320,8 @@ struct DatabaseClientActionSheet: View {
         switch mode {
         case .offlineMessage:
             return "Message"
+        case .contactNote:
+            return "Note"
         case .complain:
             return "Complaint"
         case .ban:
@@ -4293,6 +4333,8 @@ struct DatabaseClientActionSheet: View {
         switch mode {
         case .offlineMessage:
             return "Send"
+        case .contactNote:
+            return "Save Note"
         case .complain:
             return "Submit Complaint"
         case .ban:
@@ -4305,6 +4347,8 @@ struct DatabaseClientActionSheet: View {
         switch mode {
         case .offlineMessage:
             return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .contactNote:
+            return false
         case .complain:
             return textIsEmpty
         case .ban:
@@ -4316,6 +4360,8 @@ struct DatabaseClientActionSheet: View {
         switch mode {
         case .offlineMessage:
             model.sendOfflineMessage(to: record, subject: subject, message: text)
+        case .contactNote:
+            model.setContactNote(text, for: record)
         case .complain:
             model.complainAboutDatabaseClient(record, message: text)
         case .ban:
@@ -4356,6 +4402,19 @@ struct DatabaseClientRow: View {
             .padding(.vertical, 3)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Copy Nickname") {
+                TS3PlatformSupport.copyToPasteboard(record.nickname)
+            }
+            Button("Copy Database ID") {
+                TS3PlatformSupport.copyToPasteboard("\(record.id)")
+            }
+            if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                Button("Copy Unique ID") {
+                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+            }
+        }
     }
 }
 

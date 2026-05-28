@@ -1100,6 +1100,28 @@ final class TS3AppModel: ObservableObject {
         updateContact(for: user, status: contactStatus(for: user), note: note)
     }
 
+    func contact(for record: TS3DatabaseClientSummary) -> TS3ContactEntry? {
+        guard let uniqueIdentifier = record.uniqueIdentifier else { return nil }
+        return contacts.first { $0.uniqueIdentifier == uniqueIdentifier }
+    }
+
+    func contactStatus(for record: TS3DatabaseClientSummary) -> TS3ContactStatus {
+        contact(for: record)?.status ?? .neutral
+    }
+
+    func contactNote(for record: TS3DatabaseClientSummary) -> String? {
+        guard let note = contact(for: record)?.note, !note.isEmpty else { return nil }
+        return note
+    }
+
+    func setContactStatus(_ status: TS3ContactStatus, for record: TS3DatabaseClientSummary) {
+        updateContact(for: record, status: status, note: contactNote(for: record) ?? "")
+    }
+
+    func setContactNote(_ note: String, for record: TS3DatabaseClientSummary) {
+        updateContact(for: record, status: contactStatus(for: record), note: note)
+    }
+
     func deleteContact(_ contact: TS3ContactEntry) {
         contacts.removeAll { $0.uniqueIdentifier == contact.uniqueIdentifier }
         saveContacts()
@@ -1153,6 +1175,32 @@ final class TS3AppModel: ObservableObject {
         }
         saveContacts()
         applyPlaybackMute(for: user)
+    }
+
+    private func updateContact(for record: TS3DatabaseClientSummary, status: TS3ContactStatus, note: String) {
+        guard let uniqueIdentifier = record.uniqueIdentifier else {
+            lastError = "The server did not provide a unique id for \(record.nickname)."
+            return
+        }
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if status == .neutral && trimmedNote.isEmpty {
+            contacts.removeAll { $0.uniqueIdentifier == uniqueIdentifier }
+        } else if let index = contacts.firstIndex(where: { $0.uniqueIdentifier == uniqueIdentifier }) {
+            contacts[index].nickname = record.nickname
+            contacts[index].status = status
+            contacts[index].note = trimmedNote
+            contacts[index].updatedAt = Date()
+        } else {
+            contacts.append(TS3ContactEntry(
+                uniqueIdentifier: uniqueIdentifier,
+                nickname: record.nickname,
+                status: status,
+                note: trimmedNote,
+                updatedAt: Date()
+            ))
+        }
+        saveContacts()
+        syncBlockedContactPlayback()
     }
 
     private func isBlockedMessage(_ message: TS3TextMessage) -> Bool {
