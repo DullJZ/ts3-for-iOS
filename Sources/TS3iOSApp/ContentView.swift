@@ -3512,10 +3512,24 @@ private extension TS3ServerLogSummary {
 struct ServerInformationSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isExportingInfo = false
+    @State private var infoExportDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Snapshot")) {
+                    Button("Copy Server Information") {
+                        TS3PlatformSupport.copyToPasteboard(informationSnapshot)
+                    }
+                    .disabled(informationSnapshot.isEmpty)
+                    Button("Export Server Information") {
+                        infoExportDocument = TS3TextFileDocument(data: Data(informationSnapshot.utf8))
+                        isExportingInfo = true
+                    }
+                    .disabled(informationSnapshot.isEmpty)
+                }
+
                 Section(header: Text("Overview")) {
                     ServerInfoDetailRow(label: "Name", value: model.serverInfo.name)
                     ServerInfoDetailRow(label: "Status", value: model.serverInfo.status)
@@ -3613,7 +3627,71 @@ struct ServerInformationSheet: View {
                     }
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingInfo,
+                document: infoExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-server-info"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var informationSnapshot: String {
+        var rows: [(String, String?)] = []
+        rows.append(("Name", model.serverInfo.name))
+        rows.append(("Status", model.serverInfo.status))
+        rows.append(("Unique ID", model.serverInfo.uniqueIdentifier))
+        rows.append(("Machine ID", model.serverInfo.machineId))
+        rows.append(("Icon ID", model.serverInfo.iconId.map(String.init)))
+        rows.append(("Platform", model.serverInfo.platform))
+        rows.append(("Version", model.serverInfo.version))
+        rows.append(("Created", model.serverInfo.createdAt.map(Self.dateText)))
+        rows.append(("Uptime", model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText)))
+        rows.append(("Password", model.serverInfo.passwordProtected ? "Protected" : "Not Protected"))
+        rows.append(("Welcome Message", model.serverInfo.welcomeMessage))
+        rows.append(("Clients", clientsText))
+        rows.append(("Query Clients", model.serverInfo.clientsInQuery.map(String.init)))
+        rows.append(("Channels", model.serverInfo.channelsOnline.map(String.init)))
+        rows.append(("Client Connections", model.serverInfo.clientConnections.map(String.init)))
+        rows.append(("Query Connections", model.serverInfo.queryClientConnections.map(String.init)))
+        rows.append(("Default Server Group", groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups)))
+        rows.append(("Default Channel Group", groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups)))
+        rows.append(("Default Channel Admin", groupName(model.serverInfo.defaultChannelAdminGroupId, groups: model.channelGroups)))
+        rows.append(("Reserved Slots", model.serverInfo.reservedSlots.map(String.init)))
+        rows.append(("Download Quota", model.serverInfo.downloadQuota.map(Self.byteText)))
+        rows.append(("Upload Quota", model.serverInfo.uploadQuota.map(Self.byteText)))
+        rows.append(("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)))
+        rows.append(("File Base", model.serverInfo.fileBase))
+        rows.append(("Codec Encryption", model.serverInfo.codecEncryptionMode.map(String.init)))
+        rows.append(("Auto-Ban Count", model.serverInfo.complainAutoBanCount.map(String.init)))
+        rows.append(("Auto-Ban Time", model.serverInfo.complainAutoBanTime.map(Self.durationText)))
+        rows.append(("Complaint Remove Time", model.serverInfo.complainRemoveTime.map(Self.durationText)))
+        rows.append(("Forced Silence Clients", model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init)))
+        rows.append(("Priority Speaker Dimming", model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText)))
+        rows.append(("Month Downloaded", model.serverInfo.monthlyBytesDownloaded.map(Self.byteText)))
+        rows.append(("Month Uploaded", model.serverInfo.monthlyBytesUploaded.map(Self.byteText)))
+        rows.append(("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.byteText)))
+        rows.append(("Total Uploaded", model.serverInfo.totalBytesUploaded.map(Self.byteText)))
+        rows.append(("Ping", model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" }))
+        rows.append(("Packet Loss", model.serverInfo.totalPacketLossTotal.map(Self.percentText)))
+        rows.append(("Speech Loss", model.serverInfo.totalPacketLossSpeech.map(Self.percentText)))
+        rows.append(("Keepalive Loss", model.serverInfo.totalPacketLossKeepalive.map(Self.percentText)))
+        rows.append(("Control Loss", model.serverInfo.totalPacketLossControl.map(Self.percentText)))
+        rows.append(("Host Message", model.serverInfo.hostMessage))
+        rows.append(("Message Mode", model.serverInfo.hostMessageMode.map(String.init)))
+        rows.append(("Banner URL", model.serverInfo.hostBannerURL))
+        rows.append(("Banner Graphic", model.serverInfo.hostBannerGraphicsURL))
+        rows.append(("Button Tooltip", model.serverInfo.hostButtonTooltip))
+        rows.append(("Button URL", model.serverInfo.hostButtonURL))
+        rows.append(("Button Graphic", model.serverInfo.hostButtonGraphicsURL))
+        return rows.compactMap { label, value in
+            guard let value, !value.isEmpty else { return nil }
+            return "\(label): \(value)"
+        }.joined(separator: "\n")
     }
 
     private var clientsText: String? {
@@ -3667,6 +3745,14 @@ struct ServerInfoDetailRow: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.trailing)
                     .lineLimit(3)
+            }
+            .contextMenu {
+                Button("Copy Value") {
+                    TS3PlatformSupport.copyToPasteboard(value)
+                }
+                Button("Copy Row") {
+                    TS3PlatformSupport.copyToPasteboard("\(label): \(value)")
+                }
             }
         }
     }
