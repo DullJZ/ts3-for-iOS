@@ -5925,6 +5925,13 @@ struct PrivilegeKeysSheet: View {
     @State private var selectedChannelId = 0
     @State private var description = ""
     @State private var customSet = ""
+    @State private var isExportingKeys = false
+    @State private var keysExportDocument = TS3TextFileDocument()
+    @State private var isConfirmingDeleteAll = false
+
+    private var privilegeKeysSnapshot: String {
+        model.privilegeKeys.map(\.clipboardSummary).joined(separator: "\n")
+    }
 
     var body: some View {
         NavigationView {
@@ -5988,6 +5995,23 @@ struct PrivilegeKeysSheet: View {
                 }
 
                 Section(header: Text("Existing Keys")) {
+                    Button("Copy Visible Keys") {
+                        TS3PlatformSupport.copyToPasteboard(privilegeKeysSnapshot)
+                    }
+                    .disabled(model.privilegeKeys.isEmpty)
+
+                    Button("Export Visible Keys") {
+                        keysExportDocument = TS3TextFileDocument(data: Data(privilegeKeysSnapshot.utf8))
+                        isExportingKeys = true
+                    }
+                    .disabled(model.privilegeKeys.isEmpty)
+
+                    Button("Delete Visible Keys") {
+                        isConfirmingDeleteAll = true
+                    }
+                    .disabled(model.privilegeKeys.isEmpty)
+                    .foregroundColor(.red)
+
                     if model.privilegeKeys.isEmpty {
                         Text("No privilege keys")
                             .foregroundColor(.secondary)
@@ -5998,6 +6022,26 @@ struct PrivilegeKeysSheet: View {
                         }
                     }
                 }
+            }
+            .fileExporter(
+                isPresented: $isExportingKeys,
+                document: keysExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-privilege-keys"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .alert(isPresented: $isConfirmingDeleteAll) {
+                Alert(
+                    title: Text("Delete Visible Privilege Keys?"),
+                    message: Text("This removes \(model.privilegeKeys.count) privilege keys from the server."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deletePrivilegeKeys(model.privilegeKeys)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .navigationTitle("Privilege Keys")
             .ts3InlineNavigationTitle()
@@ -6131,11 +6175,34 @@ struct PrivilegeKeyRow: View {
         }
     }
 
-    private static func dateText(_ date: Date) -> String {
+    fileprivate static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+private extension TS3PrivilegeKeySummary {
+    var clipboardSummary: String {
+        var parts = ["key=\(key)"]
+        if let type {
+            parts.append("type=\(type.rawValue)")
+        }
+        parts.append("groupId=\(groupId)")
+        if let channelId {
+            parts.append("channelId=\(channelId)")
+        }
+        if let createdAt {
+            parts.append("createdAt=\(PrivilegeKeyRow.dateText(createdAt))")
+        }
+        if let description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let customSet, !customSet.isEmpty {
+            parts.append("customSet=\(customSet)")
+        }
+        return parts.joined(separator: " | ")
     }
 }
 

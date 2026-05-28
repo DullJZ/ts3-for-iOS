@@ -3702,16 +3702,7 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let keys = try await client.refreshPrivilegeKeys()
             await MainActor.run {
-                self.privilegeKeys = keys
-                    .map { TS3PrivilegeKeySummary(entry: $0) }
-                    .sorted {
-                        switch ($0.createdAt, $1.createdAt) {
-                        case let (lhs?, rhs?): return lhs > rhs
-                        case (_?, nil): return true
-                        case (nil, _?): return false
-                        case (nil, nil): return $0.key < $1.key
-                        }
-                    }
+                self.privilegeKeys = self.privilegeKeySummaries(from: keys)
             }
         }
     }
@@ -3737,7 +3728,7 @@ final class TS3AppModel: ObservableObject {
             let keys = try await client.refreshPrivilegeKeys()
             await MainActor.run {
                 self.generatedPrivilegeKey = key
-                self.privilegeKeys = keys.map { TS3PrivilegeKeySummary(entry: $0) }
+                self.privilegeKeys = self.privilegeKeySummaries(from: keys)
             }
         }
     }
@@ -3752,6 +3743,36 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func deletePrivilegeKeys(_ keys: [TS3PrivilegeKeySummary]) {
+        let rawKeys = Array(Set(keys.map(\.key))).sorted()
+        guard !rawKeys.isEmpty else { return }
+        runClientCommand { client in
+            for key in rawKeys {
+                try await client.deletePrivilegeKey(key)
+            }
+            let refreshedKeys = try await client.refreshPrivilegeKeys()
+            await MainActor.run {
+                self.privilegeKeys = self.privilegeKeySummaries(from: refreshedKeys)
+                if let generatedPrivilegeKey = self.generatedPrivilegeKey, rawKeys.contains(generatedPrivilegeKey) {
+                    self.generatedPrivilegeKey = nil
+                }
+            }
+        }
+    }
+
+    private func privilegeKeySummaries(from keys: [TS3PrivilegeKeyEntry]) -> [TS3PrivilegeKeySummary] {
+        keys
+            .map { TS3PrivilegeKeySummary(entry: $0) }
+            .sorted {
+                switch ($0.createdAt, $1.createdAt) {
+                case let (lhs?, rhs?): return lhs > rhs
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil): return $0.key < $1.key
+                }
+            }
     }
 
     func addServerGroup(_ group: TS3GroupSummary, to user: TS3UserSummary) {
