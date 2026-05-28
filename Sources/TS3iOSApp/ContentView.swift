@@ -375,6 +375,8 @@ struct ChannelListView: View {
     @State private var isShowingEvents = false
     @State private var isShowingWhisper = false
     @State private var isShowingCreateChannel = false
+    @State private var isExportingChannelTree = false
+    @State private var channelTreeDocument = TS3TextFileDocument()
     @State private var channelSearchText = ""
 
     var body: some View {
@@ -444,6 +446,27 @@ struct ChannelListView: View {
         .navigationTitle("Channels")
         .toolbar {
             ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                Menu {
+                    Button("Copy Visible Channel Tree") {
+                        TS3PlatformSupport.copyToPasteboard(channelTreeSnapshot)
+                    }
+                    .disabled(channelTree.isEmpty)
+                    Button("Export Visible Channel Tree") {
+                        channelTreeDocument = TS3TextFileDocument(data: Data(channelTreeSnapshot.utf8))
+                        isExportingChannelTree = true
+                    }
+                    .disabled(channelTree.isEmpty)
+                    Button("Subscribe All Channels") {
+                        model.setAllChannelsSubscribed(true)
+                    }
+                    Button("Unsubscribe All Channels") {
+                        model.setAllChannelsSubscribed(false)
+                    }
+                } label: {
+                    Label("Channel Tools", systemImage: "list.bullet.rectangle")
+                }
+            }
+            ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                 Button {
                     isShowingCreateChannel = true
                 } label: {
@@ -470,6 +493,16 @@ struct ChannelListView: View {
         .sheet(isPresented: $isShowingCreateChannel) {
             ChannelEditorSheet(mode: .create(parent: model.currentChannel))
                 .environmentObject(model)
+        }
+        .fileExporter(
+            isPresented: $isExportingChannelTree,
+            document: channelTreeDocument,
+            contentType: .plainText,
+            defaultFilename: "ts3-channel-tree"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
         }
     }
 
@@ -505,6 +538,35 @@ struct ChannelListView: View {
         }
 
         return model.channels.filter { included.contains($0.id) }
+    }
+
+    private var channelTreeSnapshot: String {
+        channelTree.map { item in
+            let channel = item.channel
+            let prefix = String(repeating: "  ", count: item.depth)
+            let users = members(in: channel.id)
+            var details = [
+                "id=\(channel.id)",
+                "users=\(users.count)"
+            ]
+            if channel.isCurrent {
+                details.append("current")
+            }
+            if channel.isDefault {
+                details.append("default")
+            }
+            if channel.isPasswordProtected {
+                details.append("password")
+            }
+            if channel.isSubscribed == false {
+                details.append("unsubscribed")
+            }
+            let memberText = users.isEmpty
+                ? ""
+                : "\n" + users.map { "\(prefix)  - \($0.nickname) [clientId=\($0.id)]" }.joined(separator: "\n")
+            return "\(prefix)\(channel.name) (\(details.joined(separator: ", ")))\(memberText)"
+        }
+        .joined(separator: "\n")
     }
 
     private func members(in channelId: Int) -> [TS3UserSummary] {
@@ -2093,10 +2155,6 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Away", value: user.isAway ? (user.awayMessage?.isEmpty == false ? user.awayMessage : "Yes") : "No")
             ServerInfoDetailRow(label: "Input Muted", value: user.isInputMuted ? "Yes" : "No")
             ServerInfoDetailRow(label: "Output Muted", value: user.isOutputMuted ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Channel Commander", value: user.isChannelCommander ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Talker", value: user.isTalker ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Requests Talk Power", value: user.isRequestingTalkPower ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
         }
     }
 
