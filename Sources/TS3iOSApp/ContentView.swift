@@ -6673,6 +6673,12 @@ struct AudioSettingsSheet: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                Section {
+                    Button("Reset Audio Settings") {
+                        model.resetAudioSettings()
+                    }
+                }
             }
             .navigationTitle("Audio Settings")
             .ts3InlineNavigationTitle()

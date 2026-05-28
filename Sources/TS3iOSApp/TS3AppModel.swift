@@ -604,6 +604,20 @@ struct TS3DownloadedFileSummary: Identifiable {
     let url: URL
 }
 
+private struct TS3AudioSettings: Codable {
+    var playbackVolume: Double
+    var inputGain: Double
+    var transmitMode: String
+    var voiceActivationThreshold: Double
+
+    static let defaults = TS3AudioSettings(
+        playbackVolume: 1.0,
+        inputGain: 1.0,
+        transmitMode: TS3AudioTransmitMode.pushToTalk.rawValue,
+        voiceActivationThreshold: 0.03
+    )
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -926,6 +940,7 @@ final class TS3AppModel: ObservableObject {
     private var isViewingChat = false
 
     init() {
+        loadAudioSettings()
         loadBookmarks()
         loadContacts()
         loadChatHistory()
@@ -1499,18 +1514,21 @@ final class TS3AppModel: ObservableObject {
         let clamped = min(max(volume, 0), 4)
         playbackVolume = clamped
         client?.setPlaybackVolume(Float(clamped))
+        saveAudioSettings()
     }
 
     func updateInputGain(_ gain: Double) {
         let clamped = min(max(gain, 0), 4)
         inputGain = clamped
         client?.setInputGain(Float(clamped))
+        saveAudioSettings()
     }
 
     func updateVoiceActivationThreshold(_ threshold: Double) {
         let clamped = min(max(threshold, 0.001), 0.5)
         voiceActivationThreshold = clamped
         client?.setVoiceActivationThreshold(Float(clamped))
+        saveAudioSettings()
     }
 
     func updateAudioTransmitMode(_ mode: TS3AudioTransmitMode) {
@@ -1520,6 +1538,23 @@ final class TS3AppModel: ObservableObject {
             client?.stopMicrophone()
             isTalking = false
         }
+        saveAudioSettings()
+    }
+
+    func resetAudioSettings() {
+        let defaults = TS3AudioSettings.defaults
+        playbackVolume = defaults.playbackVolume
+        inputGain = defaults.inputGain
+        audioTransmitMode = TS3AudioTransmitMode(rawValue: defaults.transmitMode) ?? .pushToTalk
+        voiceActivationThreshold = defaults.voiceActivationThreshold
+        if isTalking {
+            client?.stopMicrophone()
+            isTalking = false
+        }
+        if let client {
+            applyAudioSettings(to: client)
+        }
+        saveAudioSettings()
     }
 
     var inputGainPercentText: String {
@@ -3545,6 +3580,44 @@ final class TS3AppModel: ObservableObject {
     private var chatHistoryURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-chat-history.json")
+    }
+
+    private var audioSettingsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-audio-settings.json")
+    }
+
+    private func loadAudioSettings() {
+        guard let data = try? Data(contentsOf: audioSettingsURL),
+              let decoded = try? JSONDecoder().decode(TS3AudioSettings.self, from: data) else {
+            applyAudioSettingsSnapshot(.defaults)
+            return
+        }
+        applyAudioSettingsSnapshot(decoded)
+    }
+
+    private func saveAudioSettings() {
+        do {
+            let directory = audioSettingsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let snapshot = TS3AudioSettings(
+                playbackVolume: playbackVolume,
+                inputGain: inputGain,
+                transmitMode: audioTransmitMode.rawValue,
+                voiceActivationThreshold: voiceActivationThreshold
+            )
+            let data = try JSONEncoder().encode(snapshot)
+            try data.write(to: audioSettingsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func applyAudioSettingsSnapshot(_ settings: TS3AudioSettings) {
+        playbackVolume = min(max(settings.playbackVolume, 0), 4)
+        inputGain = min(max(settings.inputGain, 0), 4)
+        audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
+        voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
     }
 
     private func loadBookmarks() {
