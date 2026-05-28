@@ -2445,6 +2445,14 @@ struct ChatMessageRow: View {
                 .accessibilityLabel("Reply to \(replyUser.nickname)")
             }
         }
+        .contextMenu {
+            Button("Copy Message") {
+                TS3PlatformSupport.copyToPasteboard(item.message)
+            }
+            Button("Copy Sender") {
+                TS3PlatformSupport.copyToPasteboard(item.senderName)
+            }
+        }
         .sheet(item: $replyTarget) { user in
             ChatPrivateReplySheet(user: user)
                 .environmentObject(model)
@@ -2934,6 +2942,12 @@ struct OfflineMessageRow: View {
                     model.markOfflineMessage(message, read: !message.isRead)
                 }
                 .buttonStyle(.borderless)
+                if canCopyBody {
+                    Button("Copy") {
+                        TS3PlatformSupport.copyToPasteboard(message.message ?? "")
+                    }
+                    .buttonStyle(.borderless)
+                }
                 Spacer()
                 Button("Delete") {
                     model.deleteOfflineMessage(message)
@@ -2948,10 +2962,29 @@ struct OfflineMessageRow: View {
             OfflineMessageReplySheet(message: message)
                 .environmentObject(model)
         }
+        .contextMenu {
+            Button("Copy Subject") {
+                TS3PlatformSupport.copyToPasteboard(message.subject)
+            }
+            if let body = message.message, !body.isEmpty {
+                Button("Copy Message") {
+                    TS3PlatformSupport.copyToPasteboard(body)
+                }
+            }
+            if let sender = message.senderName ?? message.senderUniqueIdentifier, !sender.isEmpty {
+                Button("Copy Sender") {
+                    TS3PlatformSupport.copyToPasteboard(sender)
+                }
+            }
+        }
     }
 
     private var canReply: Bool {
         message.senderUniqueIdentifier?.isEmpty == false
+    }
+
+    private var canCopyBody: Bool {
+        message.message?.isEmpty == false
     }
 
     private static func dateText(_ date: Date) -> String {
