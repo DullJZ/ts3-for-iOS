@@ -4711,6 +4711,8 @@ struct ClientDatabaseSheet: View {
     @State private var actionMode: DatabaseClientActionMode?
     @State private var isShowingComplaints = false
     @State private var isConfirmingDelete = false
+    @State private var isExportingDatabase = false
+    @State private var databaseExportDocument = TS3TextFileDocument()
 
     var displayedRecords: [TS3DatabaseClientSummary] {
         model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
@@ -4748,6 +4750,13 @@ struct ClientDatabaseSheet: View {
                 if let selected = model.selectedDatabaseClient {
                     Section(header: Text("Selected Client")) {
                         DatabaseClientDetailRows(record: selected)
+                        Button("Copy Selected Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(databaseClientSnapshot(for: selected))
+                        }
+                        Button("Export Selected Snapshot") {
+                            databaseExportDocument = TS3TextFileDocument(data: Data(databaseClientSnapshot(for: selected).utf8))
+                            isExportingDatabase = true
+                        }
                         Button("Copy Nickname") {
                             TS3PlatformSupport.copyToPasteboard(selected.nickname)
                         }
@@ -4825,6 +4834,21 @@ struct ClientDatabaseSheet: View {
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Menu {
+                        Button("Copy Visible Database Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(databaseSnapshot)
+                        }
+                        .disabled(displayedRecords.isEmpty)
+                        Button("Export Visible Database Snapshot") {
+                            databaseExportDocument = TS3TextFileDocument(data: Data(databaseSnapshot.utf8))
+                            isExportingDatabase = true
+                        }
+                        .disabled(displayedRecords.isEmpty)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -4859,7 +4883,90 @@ struct ClientDatabaseSheet: View {
                     secondaryButton: .cancel()
                 )
             }
+            .fileExporter(
+                isPresented: $isExportingDatabase,
+                document: databaseExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-client-database"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var databaseSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        return displayedRecords.map { record in
+            var rows = [
+                "Database ID: \(record.id)",
+                "Nickname: \(record.nickname)"
+            ]
+            if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                rows.append("Unique ID: \(uniqueIdentifier)")
+            }
+            if let createdAt = dateText(record.createdAt) {
+                rows.append("Created: \(createdAt)")
+            }
+            if let lastConnectedAt = dateText(record.lastConnectedAt) {
+                rows.append("Last Connected: \(lastConnectedAt)")
+            }
+            if let totalConnections = record.totalConnections {
+                rows.append("Connections: \(totalConnections)")
+            }
+            if let lastIP = record.lastIP, !lastIP.isEmpty {
+                rows.append("Last IP: \(lastIP)")
+            }
+            if let description = record.description, !description.isEmpty {
+                rows.append("Description: \(description)")
+            }
+            return rows.joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
+    }
+
+    private func databaseClientSnapshot(for record: TS3DatabaseClientSummary) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        var rows = [
+            "Database ID: \(record.id)",
+            "Nickname: \(record.nickname)"
+        ]
+        if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            rows.append("Unique ID: \(uniqueIdentifier)")
+        }
+        if let createdAt = dateText(record.createdAt) {
+            rows.append("Created: \(createdAt)")
+        }
+        if let lastConnectedAt = dateText(record.lastConnectedAt) {
+            rows.append("Last Connected: \(lastConnectedAt)")
+        }
+        if let totalConnections = record.totalConnections {
+            rows.append("Connections: \(totalConnections)")
+        }
+        if let lastIP = record.lastIP, !lastIP.isEmpty {
+            rows.append("Last IP: \(lastIP)")
+        }
+        if let description = record.description, !description.isEmpty {
+            rows.append("Description: \(description)")
+        }
+        return rows.joined(separator: "\n")
     }
 }
 
