@@ -636,6 +636,7 @@ enum TS3FileTransferState: String {
     case preparing
     case transferring
     case completed
+    case cancelled
     case failed
 
     var title: String {
@@ -646,6 +647,8 @@ enum TS3FileTransferState: String {
             return "Transferring"
         case .completed:
             return "Completed"
+        case .cancelled:
+            return "Cancelled"
         case .failed:
             return "Failed"
         }
@@ -663,6 +666,10 @@ struct TS3FileTransferSummary: Identifiable {
     var detail: String
     let startedAt: Date
     var completedAt: Date?
+
+    var canCancel: Bool {
+        state == .preparing || state == .transferring
+    }
 }
 
 private struct TS3AudioSettings: Codable {
@@ -1005,6 +1012,7 @@ final class TS3AppModel: ObservableObject {
     private var iconURLs: [Int: URL] = [:]
     private var iconDownloads: Set<Int> = []
     private var failedIconIds: Set<Int> = []
+    private var fileTransferTasks: [UUID: Task<Void, Never>] = [:]
     private let chatHistoryLimit = 500
     private var isViewingChat = false
     private var isAppActive = true
@@ -1610,6 +1618,13 @@ final class TS3AppModel: ObservableObject {
         fileBrowserChannelId = nil
         fileBrowserPath = "/"
         fileBrowserPassword = ""
+        for task in fileTransferTasks.values {
+            task.cancel()
+        }
+        fileTransferTasks = [:]
+        fileTransfers = []
+        fileTransferStatus = nil
+        fileTransferProgress = nil
         serverInfo = .empty
         isTalking = false
         isAway = false
@@ -2438,7 +2453,12 @@ final class TS3AppModel: ObservableObject {
             remotePath: entry.path,
             detail: "Waiting for server"
         )
-        Task {
+        let task = Task {
+            defer {
+                Task { @MainActor in
+                    self.fileTransferTasks[transferId] = nil
+                }
+            }
             do {
                 let destination = try downloadDestination(for: entry.name)
                 await MainActor.run {
@@ -2486,26 +2506,63 @@ final class TS3AppModel: ObservableObject {
                     )
                     self.lastError = nil
                 }
+            } catch is CancellationError {
+                await MainActor.run {
+                    self.fileTransferProgress = nil
+                    self.fileTransferStatus = "Cancelled download: \(entry.name)"
+                    self.updateFileTransfer(
+                        transferId,
+                        state: .cancelled,
+                        detail: "Cancelled",
+                        completedAt: Date()
+                    )
+                }
             } catch {
                 await MainActor.run {
                     self.fileTransferProgress = nil
                     self.fileTransferStatus = nil
-                    self.updateFileTransfer(
-                        transferId,
-                        progress: nil,
-                        state: .failed,
-                        detail: error.localizedDescription,
-                        completedAt: Date()
-                    )
-                    self.lastError = error.localizedDescription
+                    if self.fileTransfers.first(where: { $0.id == transferId })?.state == .cancelled {
+                        self.updateFileTransfer(
+                            transferId,
+                            detail: "Cancelled",
+                            completedAt: Date()
+                        )
+                    } else {
+                        self.updateFileTransfer(
+                            transferId,
+                            progress: nil,
+                            state: .failed,
+                            detail: error.localizedDescription,
+                            completedAt: Date()
+                        )
+                        self.lastError = error.localizedDescription
+                    }
                 }
             }
         }
+        fileTransferTasks[transferId] = task
     }
 
     func openLastDownloadedFile() {
         guard let file = lastDownloadedFile else { return }
         TS3PlatformSupport.openURL(file.url)
+    }
+
+    func cancelFileTransfer(_ transfer: TS3FileTransferSummary) {
+        guard transfer.canCancel else { return }
+        fileTransferTasks[transfer.id]?.cancel()
+        updateFileTransfer(
+            transfer.id,
+            state: .cancelled,
+            detail: "Cancelling...",
+            completedAt: Date()
+        )
+    }
+
+    func clearCompletedFileTransfers() {
+        fileTransfers.removeAll { !$0.canCancel }
+        let activeIds = Set(fileTransfers.map(\.id))
+        fileTransferTasks = fileTransferTasks.filter { activeIds.contains($0.key) }
     }
 
     func uploadFiles(_ sources: [URL], overwrite: Bool = false) {
@@ -2533,7 +2590,12 @@ final class TS3AppModel: ObservableObject {
             localPath: source.path,
             detail: "Waiting for server"
         )
-        Task {
+        let task = Task {
+            defer {
+                Task { @MainActor in
+                    self.fileTransferTasks[transferId] = nil
+                }
+            }
             let didAccess = source.startAccessingSecurityScopedResource()
             defer {
                 if didAccess {
@@ -2588,21 +2650,41 @@ final class TS3AppModel: ObservableObject {
                     self.lastError = nil
                     self.refreshFileList()
                 }
+            } catch is CancellationError {
+                await MainActor.run {
+                    self.fileTransferProgress = nil
+                    self.fileTransferStatus = "Cancelled upload: \(remoteName)"
+                    self.updateFileTransfer(
+                        transferId,
+                        state: .cancelled,
+                        detail: "Cancelled",
+                        completedAt: Date()
+                    )
+                }
             } catch {
                 await MainActor.run {
                     self.fileTransferProgress = nil
                     self.fileTransferStatus = nil
-                    self.updateFileTransfer(
-                        transferId,
-                        progress: nil,
-                        state: .failed,
-                        detail: error.localizedDescription,
-                        completedAt: Date()
-                    )
-                    self.lastError = error.localizedDescription
+                    if self.fileTransfers.first(where: { $0.id == transferId })?.state == .cancelled {
+                        self.updateFileTransfer(
+                            transferId,
+                            detail: "Cancelled",
+                            completedAt: Date()
+                        )
+                    } else {
+                        self.updateFileTransfer(
+                            transferId,
+                            progress: nil,
+                            state: .failed,
+                            detail: error.localizedDescription,
+                            completedAt: Date()
+                        )
+                        self.lastError = error.localizedDescription
+                    }
                 }
             }
         }
+        fileTransferTasks[transferId] = task
     }
 
     private func uploadIcon(
@@ -2709,7 +2791,12 @@ final class TS3AppModel: ObservableObject {
             at: 0
         )
         if fileTransfers.count > 25 {
+            let removed = fileTransfers.suffix(fileTransfers.count - 25).map(\.id)
             fileTransfers.removeLast(fileTransfers.count - 25)
+            for id in removed {
+                fileTransferTasks[id]?.cancel()
+                fileTransferTasks[id] = nil
+            }
         }
         return id
     }

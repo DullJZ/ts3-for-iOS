@@ -4869,8 +4869,13 @@ struct FileBrowserSheet: View {
                     }
 
                     if !model.fileTransfers.isEmpty {
+                        Button("Clear Completed Transfers") {
+                            model.clearCompletedFileTransfers()
+                        }
+                        .disabled(!model.fileTransfers.contains { !$0.canCancel })
                         ForEach(model.fileTransfers) { transfer in
                             FileTransferRow(transfer: transfer)
+                                .environmentObject(model)
                         }
                     }
 
@@ -5006,6 +5011,7 @@ struct FileBrowserSheet: View {
 }
 
 struct FileTransferRow: View {
+    @EnvironmentObject private var model: TS3AppModel
     let transfer: TS3FileTransferSummary
 
     var body: some View {
@@ -5032,9 +5038,22 @@ struct FileTransferRow: View {
                 .foregroundColor(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            if transfer.canCancel {
+                Button("Cancel") {
+                    model.cancelFileTransfer(transfer)
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .foregroundColor(.red)
+            }
         }
         .padding(.vertical, 3)
         .contextMenu {
+            if transfer.canCancel {
+                Button("Cancel Transfer") {
+                    model.cancelFileTransfer(transfer)
+                }
+            }
             Button("Copy Remote Path") {
                 TS3PlatformSupport.copyToPasteboard(transfer.remotePath)
             }

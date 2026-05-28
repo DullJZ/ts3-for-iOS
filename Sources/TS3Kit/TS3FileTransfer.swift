@@ -9,12 +9,19 @@ public enum TS3FileTransfer {
         progress: (@Sendable (Int64, Int64?) -> Void)? = nil
     ) async throws {
         let socket = TS3FileTransferSocket(parameters: parameters)
-        defer {
+        try await withTaskCancellationHandler {
+            defer {
+                socket.cancel()
+            }
+            try Task.checkCancellation()
+            try await socket.connect()
+            try Task.checkCancellation()
+            try await socket.sendKey()
+            try Task.checkCancellation()
+            try await socket.download(to: destination, progress: progress)
+        } onCancel: {
             socket.cancel()
         }
-        try await socket.connect()
-        try await socket.sendKey()
-        try await socket.download(to: destination, progress: progress)
     }
 
     /// Uploads a local file using negotiated file transfer parameters.
@@ -24,12 +31,19 @@ public enum TS3FileTransfer {
         progress: (@Sendable (Int64, Int64?) -> Void)? = nil
     ) async throws {
         let socket = TS3FileTransferSocket(parameters: parameters)
-        defer {
+        try await withTaskCancellationHandler {
+            defer {
+                socket.cancel()
+            }
+            try Task.checkCancellation()
+            try await socket.connect()
+            try Task.checkCancellation()
+            try await socket.sendKey()
+            try Task.checkCancellation()
+            try await socket.upload(from: source, progress: progress)
+        } onCancel: {
             socket.cancel()
         }
-        try await socket.connect()
-        try await socket.sendKey()
-        try await socket.upload(from: source, progress: progress)
     }
 }
 
@@ -86,6 +100,7 @@ private final class TS3FileTransferSocket {
 
         var sent: Int64 = 0
         while true {
+            try Task.checkCancellation()
             let chunk = try handle.read(upToCount: 64 * 1024) ?? Data()
             if chunk.isEmpty {
                 break
@@ -109,6 +124,7 @@ private final class TS3FileTransferSocket {
         let expectedSize = parameters.size
         var received: Int64 = 0
         while expectedSize == nil || received < (expectedSize ?? 0) {
+            try Task.checkCancellation()
             let remaining = expectedSize.map { max(1, min(Int($0 - received), 64 * 1024)) } ?? (64 * 1024)
             let chunk = try await receive(maximumLength: remaining)
             if chunk.isEmpty {
