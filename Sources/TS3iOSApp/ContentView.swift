@@ -7939,10 +7939,92 @@ struct WhisperSheet: View {
     @State private var groupWhisperTarget: TS3GroupWhisperTarget = .currentChannel
     @State private var selectedServerGroupId = 0
     @State private var selectedChannelGroupId = 0
+    @State private var searchText = ""
+    @State private var isExportingRoute = false
+    @State private var routeDocument = TS3TextFileDocument()
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredChannels: [TS3ChannelSummary] {
+        guard isSearching else { return model.channels }
+        return model.channels.filter { channel in
+            containsSearch(channel.name)
+                || containsSearch(channel.topic)
+                || containsSearch(channel.description)
+                || containsSearch(channel.phoneticName)
+                || String(channel.id).contains(normalizedSearchText)
+        }
+    }
+
+    private var filteredUsers: [TS3UserSummary] {
+        let users = model.clients.filter { !$0.isCurrentUser }
+        guard isSearching else { return users }
+        return users.filter { user in
+            containsSearch(user.nickname)
+                || containsSearch(user.uniqueIdentifier)
+                || containsSearch(user.description)
+                || containsSearch(user.country)
+                || String(user.id).contains(normalizedSearchText)
+        }
+    }
+
+    private var filteredServerGroups: [TS3GroupSummary] {
+        guard isSearching else { return model.serverGroups }
+        return model.serverGroups.filter { group in
+            containsSearch(group.name)
+                || containsSearch(group.typeTitle)
+                || String(group.id).contains(normalizedSearchText)
+        }
+    }
+
+    private var filteredChannelGroups: [TS3GroupSummary] {
+        guard isSearching else { return model.channelGroups }
+        return model.channelGroups.filter { group in
+            containsSearch(group.name)
+                || containsSearch(group.typeTitle)
+                || String(group.id).contains(normalizedSearchText)
+        }
+    }
+
+    private var whisperRouteSnapshot: String {
+        [
+            "Route: \(model.whisperRouteDescription)",
+            "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
+            "Group Type: \(groupWhisperType.title)",
+            "Group Scope: \(groupWhisperTarget.title)",
+            "Server Groups: \(filteredServerGroups.count)",
+            "Channel Groups: \(filteredChannelGroups.count)",
+            "Channels: \(filteredChannels.count)",
+            "Users: \(filteredUsers.count)"
+        ].joined(separator: "\n")
+    }
 
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Search")) {
+                    TextField("Search whisper targets", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                    Button("Copy Route Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(whisperRouteSnapshot)
+                    }
+                    Button("Export Route Snapshot") {
+                        routeDocument = TS3TextFileDocument(data: Data(whisperRouteSnapshot.utf8))
+                        isExportingRoute = true
+                    }
+                }
+
                 Section(header: Text("Current Route")) {
                     Text(model.whisperRouteDescription)
                         .foregroundColor(.secondary)
@@ -7974,19 +8056,19 @@ struct WhisperSheet: View {
                     }
                     if groupWhisperType == .serverGroup {
                         Picker("Server Group", selection: $selectedServerGroupId) {
-                            ForEach(model.serverGroups) { group in
+                            ForEach(filteredServerGroups) { group in
                                 Text(group.name).tag(group.id)
                             }
                         }
-                        .disabled(model.serverGroups.isEmpty)
+                        .disabled(filteredServerGroups.isEmpty)
                     }
                     if groupWhisperType == .channelGroup {
                         Picker("Channel Group", selection: $selectedChannelGroupId) {
-                            ForEach(model.channelGroups) { group in
+                            ForEach(filteredChannelGroups) { group in
                                 Text(group.name).tag(group.id)
                             }
                         }
-                        .disabled(model.channelGroups.isEmpty)
+                        .disabled(filteredChannelGroups.isEmpty)
                     }
                     Button("Enable Group Whisper") {
                         model.enableGroupWhisper(
@@ -8000,9 +8082,14 @@ struct WhisperSheet: View {
 
                 if !model.channels.isEmpty {
                     Section(header: Text("Channels")) {
-                        ForEach(model.channels) { channel in
-                            Button(channel.name) {
-                                model.enableWhisperToChannel(id: channel.id)
+                        if filteredChannels.isEmpty {
+                            Text("No matching channels")
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(filteredChannels) { channel in
+                                Button(channel.name) {
+                                    model.enableWhisperToChannel(id: channel.id)
+                                }
                             }
                         }
                     }
@@ -8010,9 +8097,14 @@ struct WhisperSheet: View {
 
                 if !model.clients.isEmpty {
                     Section(header: Text("Users")) {
-                        ForEach(model.clients.filter { !$0.isCurrentUser }) { user in
-                            Button(user.nickname) {
-                                model.enableWhisperToClient(user)
+                        if filteredUsers.isEmpty {
+                            Text("No matching users")
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(filteredUsers) { user in
+                                Button(user.nickname) {
+                                    model.enableWhisperToClient(user)
+                                }
                             }
                         }
                     }
@@ -8029,6 +8121,16 @@ struct WhisperSheet: View {
             }
             .onChange(of: model.channelGroups.map(\.id)) { _ in
                 updateSelectedGroups()
+            }
+            .fileExporter(
+                isPresented: $isExportingRoute,
+                document: routeDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-whisper-route"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -8077,6 +8179,11 @@ struct WhisperSheet: View {
         case .channelCommander, .allClients:
             return true
         }
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 
     private func updateSelectedGroups() {
