@@ -297,6 +297,18 @@ struct TS3BanEntrySummary: Identifiable {
     let enforcements: Int?
 }
 
+private struct TS3BanBackupEntry: Codable {
+    var ip: String?
+    var name: String?
+    var uniqueIdentifier: String?
+    var durationSeconds: Int?
+    var reason: String?
+}
+
+private struct TS3BanBackup: Codable {
+    var entries: [TS3BanBackupEntry]
+}
+
 extension TS3BanEntrySummary {
     init(entry: TS3BanEntry) {
         self.id = entry.id
@@ -3736,6 +3748,37 @@ final class TS3AppModel: ObservableObject {
                 self.complaintEntries = self.complaintSummaries(from: entries)
             }
         }
+    }
+
+    func banBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let snapshot = TS3BanBackup(
+            entries: banEntries.map {
+                TS3BanBackupEntry(
+                    ip: $0.ip,
+                    name: $0.name,
+                    uniqueIdentifier: $0.uniqueIdentifier,
+                    durationSeconds: $0.durationSeconds,
+                    reason: $0.reason
+                )
+            }
+        )
+        return try encoder.encode(snapshot)
+    }
+
+    func importBanBackup(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3BanBackup.self, from: data)
+        for entry in decoded.entries {
+            addBan(
+                ip: entry.ip ?? "",
+                name: entry.name ?? "",
+                uniqueIdentifier: entry.uniqueIdentifier ?? "",
+                durationSeconds: entry.durationSeconds,
+                reason: entry.reason ?? ""
+            )
+        }
+        lastError = nil
     }
 
     func deleteComplaint(_ entry: TS3ComplaintSummary) {

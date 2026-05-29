@@ -7466,7 +7466,9 @@ struct BanListSheet: View {
     @State private var isConfirmingDeleteAll = false
     @State private var isConfirmingDeleteVisible = false
     @State private var isExportingBans = false
+    @State private var isImportingBans = false
     @State private var banExportDocument = TS3TextFileDocument()
+    @State private var banBackupDocument = TS3TextFileDocument()
     @State private var searchText = ""
     @State private var ip = ""
     @State private var name = ""
@@ -7538,6 +7540,13 @@ struct BanListSheet: View {
                             isExportingBans = true
                         }
                         .disabled(filteredBanEntries.isEmpty)
+                        Button("Export Ban Backup") {
+                            exportBanBackup()
+                        }
+                        .disabled(model.banEntries.isEmpty)
+                        Button("Import Ban Backup") {
+                            isImportingBans = true
+                        }
                         Button("Delete Visible Bans") {
                             isConfirmingDeleteVisible = true
                         }
@@ -7569,6 +7578,27 @@ struct BanListSheet: View {
                 defaultFilename: "ts3-ban-list"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingBans,
+                document: banBackupDocument,
+                contentType: .json,
+                defaultFilename: "ts3-ban-backup"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingBans,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importBanBackup(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -7654,6 +7684,29 @@ struct BanListSheet: View {
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func exportBanBackup() {
+        do {
+            banBackupDocument = TS3TextFileDocument(data: try model.banBackupData())
+            isExportingBans = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importBanBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importBanBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 
