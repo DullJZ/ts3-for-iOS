@@ -4375,6 +4375,9 @@ struct GroupManagementSheet: View {
     @State private var target: TS3GroupManagementTarget = .server
     @State private var newGroupName = ""
     @State private var newGroupType: TS3PermissionGroupDatabaseType = .regular
+    @State private var searchText = ""
+    @State private var isExportingGroups = false
+    @State private var groupsExportDocument = TS3TextFileDocument()
 
     private var groups: [TS3GroupSummary] {
         switch target {
@@ -4383,6 +4386,22 @@ struct GroupManagementSheet: View {
         case .channel:
             return model.channelGroups
         }
+    }
+
+    private var filteredGroups: [TS3GroupSummary] {
+        guard isSearching else { return groups }
+        return groups.filter { group in
+            containsSearch(group.name)
+                || containsSearch(group.typeTitle)
+                || String(group.id).contains(normalizedSearchText)
+        }
+    }
+
+    private var visibleGroupsSnapshot: String {
+        filteredGroups.map { group in
+            "groupId=\(group.id) | name=\(group.name) | type=\(group.typeTitle)"
+        }
+        .joined(separator: "\n")
     }
 
     var body: some View {
@@ -4411,12 +4430,34 @@ struct GroupManagementSheet: View {
                     .disabled(newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
+                Section(header: Text("Search")) {
+                    TextField("Search groups", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                    Button("Copy Visible Groups") {
+                        TS3PlatformSupport.copyToPasteboard(visibleGroupsSnapshot)
+                    }
+                    .disabled(filteredGroups.isEmpty)
+                    Button("Export Visible Groups") {
+                        groupsExportDocument = TS3TextFileDocument(data: Data(visibleGroupsSnapshot.utf8))
+                        isExportingGroups = true
+                    }
+                    .disabled(filteredGroups.isEmpty)
+                }
+
                 Section(header: Text(target.title)) {
                     if groups.isEmpty {
                         Text("No groups")
                             .foregroundColor(.secondary)
+                    } else if filteredGroups.isEmpty {
+                        Text("No matching groups")
+                            .foregroundColor(.secondary)
                     } else {
-                        ForEach(groups) { group in
+                        ForEach(filteredGroups) { group in
                             GroupManagementRow(group: group, target: target)
                                 .environmentObject(model)
                         }
@@ -4427,6 +4468,16 @@ struct GroupManagementSheet: View {
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshGroups()
+            }
+            .fileExporter(
+                isPresented: $isExportingGroups,
+                document: groupsExportDocument,
+                contentType: .plainText,
+                defaultFilename: target == .server ? "ts3-server-groups" : "ts3-channel-groups"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
@@ -4452,6 +4503,19 @@ struct GroupManagementSheet: View {
         }
         newGroupName = ""
         newGroupType = .regular
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 }
 
@@ -4595,15 +4659,68 @@ struct GroupClientListSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let group: TS3GroupSummary
     let target: TS3GroupManagementTarget
+    @State private var searchText = ""
+    @State private var isExportingMembers = false
+    @State private var membersExportDocument = TS3TextFileDocument()
+
+    private var filteredClients: [TS3GroupClientSummary] {
+        guard isSearching else { return model.groupClients }
+        return model.groupClients.filter { client in
+            containsSearch(client.displayName)
+                || containsSearch(client.uniqueIdentifier)
+                || client.channelId.map { String($0).contains(normalizedSearchText) } == true
+                || String(client.clientDatabaseId).contains(normalizedSearchText)
+                || client.channelId.flatMap { model.channelName(for: $0) }?.lowercased().contains(normalizedSearchText) == true
+        }
+    }
+
+    private var visibleMembersSnapshot: String {
+        filteredClients.map { client in
+            var parts = [
+                "clientDb=\(client.clientDatabaseId)",
+                "nickname=\(client.displayName)"
+            ]
+            if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                parts.append("uid=\(uniqueIdentifier)")
+            }
+            if let channelId = client.channelId {
+                parts.append("channel=\(model.channelName(for: channelId) ?? "Channel \(channelId)")")
+            }
+            return parts.joined(separator: " | ")
+        }
+        .joined(separator: "\n")
+    }
 
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Search")) {
+                    TextField("Search members", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                    Button("Copy Visible Members") {
+                        TS3PlatformSupport.copyToPasteboard(visibleMembersSnapshot)
+                    }
+                    .disabled(filteredClients.isEmpty)
+                    Button("Export Visible Members") {
+                        membersExportDocument = TS3TextFileDocument(data: Data(visibleMembersSnapshot.utf8))
+                        isExportingMembers = true
+                    }
+                    .disabled(filteredClients.isEmpty)
+                }
+
                 if model.groupClients.isEmpty {
                     Text("No members")
                         .foregroundColor(.secondary)
+                } else if filteredClients.isEmpty {
+                    Text("No matching members")
+                        .foregroundColor(.secondary)
                 } else {
-                    ForEach(model.groupClients) { client in
+                    ForEach(filteredClients) { client in
                         GroupClientRow(group: group, target: target, client: client)
                             .environmentObject(model)
                     }
@@ -4611,6 +4728,16 @@ struct GroupClientListSheet: View {
             }
             .navigationTitle(model.groupClientListTitle)
             .ts3InlineNavigationTitle()
+            .fileExporter(
+                isPresented: $isExportingMembers,
+                document: membersExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-group-members"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -4619,6 +4746,19 @@ struct GroupClientListSheet: View {
                 }
             }
         }
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 }
 
