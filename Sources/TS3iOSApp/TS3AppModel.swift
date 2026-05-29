@@ -344,6 +344,18 @@ struct TS3ComplaintSummary: Identifiable {
     }
 }
 
+private struct TS3SelfStatusBackup: Codable {
+    var nickname: String
+    var description: String
+    var isAway: Bool
+    var awayMessage: String
+    var isInputMuted: Bool
+    var isOutputMuted: Bool
+    var isChannelCommander: Bool
+    var talkRequestMessage: String
+    var iconId: Int?
+}
+
 struct TS3DatabaseClientSummary: Identifiable {
     let id: Int
     let uniqueIdentifier: String?
@@ -4583,6 +4595,41 @@ final class TS3AppModel: ObservableObject {
         activityEvents = []
         unreadPokeCount = 0
         unreadActivityCount = 0
+    }
+
+    func selfStatusBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let snapshot = TS3SelfStatusBackup(
+            nickname: nickname,
+            description: clients.first(where: { $0.isCurrentUser })?.description ?? "",
+            isAway: isAway,
+            awayMessage: awayMessage,
+            isInputMuted: isInputMuted,
+            isOutputMuted: isOutputMuted,
+            isChannelCommander: isChannelCommander,
+            talkRequestMessage: talkRequestMessage,
+            iconId: clients.first(where: { $0.isCurrentUser })?.iconId
+        )
+        return try encoder.encode(snapshot)
+    }
+
+    func importSelfStatusBackup(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3SelfStatusBackup.self, from: data)
+        nickname = decoded.nickname
+        awayMessage = decoded.awayMessage
+        isAway = decoded.isAway
+        isInputMuted = decoded.isInputMuted
+        isOutputMuted = decoded.isOutputMuted
+        isChannelCommander = decoded.isChannelCommander
+        talkRequestMessage = decoded.talkRequestMessage
+        if let client = clients.first(where: { $0.isCurrentUser }) {
+            updateUser(clientId: client.id) { existing in
+                self.copyUser(existing, description: decoded.description, iconId: decoded.iconId)
+            }
+        }
+        saveAudioSettings()
+        lastError = nil
     }
 
     func channelName(for id: Int?) -> String? {

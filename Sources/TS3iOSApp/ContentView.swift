@@ -9112,6 +9112,7 @@ struct SelfStatusSheet: View {
     @State private var isShowingIconImporter = false
     @State private var isShowingAvatarImporter = false
     @State private var isExportingStatus = false
+    @State private var isImportingStatus = false
     @State private var statusDocument = TS3TextFileDocument()
 
     var body: some View {
@@ -9124,6 +9125,12 @@ struct SelfStatusSheet: View {
                     Button("Export Status Snapshot") {
                         statusDocument = TS3TextFileDocument(data: Data(statusSnapshot.utf8))
                         isExportingStatus = true
+                    }
+                    Button("Export Status Backup") {
+                        exportStatusBackup()
+                    }
+                    Button("Import Status Backup") {
+                        isImportingStatus = true
                     }
                     if let currentUser {
                         Menu("Copy Identifiers") {
@@ -9298,6 +9305,27 @@ struct SelfStatusSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingStatus,
+                document: statusDocument,
+                contentType: .json,
+                defaultFilename: "ts3-self-status-backup"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingStatus,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importStatusBackup(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -9359,6 +9387,30 @@ struct SelfStatusSheet: View {
         isChannelCommander = model.isChannelCommander
         talkRequestMessage = model.talkRequestMessage
         selfIconId = model.clients.first(where: { $0.isCurrentUser })?.iconId.map(String.init) ?? ""
+    }
+
+    private func exportStatusBackup() {
+        do {
+            statusDocument = TS3TextFileDocument(data: try model.selfStatusBackupData())
+            isExportingStatus = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importStatusBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importSelfStatusBackup(from: Data(contentsOf: url))
+            refreshDraft()
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private var currentUser: TS3UserSummary? {
