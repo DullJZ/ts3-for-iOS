@@ -590,6 +590,20 @@ struct TS3PrivilegeKeySummary: Identifiable {
     }
 }
 
+private struct TS3PrivilegeKeyBackupEntry: Codable {
+    var key: String
+    var type: Int?
+    var groupId: Int
+    var channelId: Int?
+    var createdAt: Date?
+    var description: String?
+    var customSet: String?
+}
+
+private struct TS3PrivilegeKeyBackup: Codable {
+    var entries: [TS3PrivilegeKeyBackupEntry]
+}
+
 enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
     case ownClient
     case serverGroup
@@ -3984,6 +3998,31 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func privilegeKeyBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let snapshot = TS3PrivilegeKeyBackup(
+            entries: privilegeKeys.map {
+                TS3PrivilegeKeyBackupEntry(
+                    key: $0.key,
+                    type: $0.type?.rawValue,
+                    groupId: $0.groupId,
+                    channelId: $0.channelId,
+                    createdAt: $0.createdAt,
+                    description: $0.description,
+                    customSet: $0.customSet
+                )
+            }
+        )
+        return try encoder.encode(snapshot)
+    }
+
+    func importPrivilegeKeyBackup(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3PrivilegeKeyBackup.self, from: data)
+        generatedPrivilegeKey = decoded.entries.first?.key
+        lastError = nil
     }
 
     private func privilegeKeySummaries(from keys: [TS3PrivilegeKeyEntry]) -> [TS3PrivilegeKeySummary] {

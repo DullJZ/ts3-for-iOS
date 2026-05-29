@@ -7197,6 +7197,7 @@ struct PrivilegeKeysSheet: View {
     @State private var searchText = ""
     @State private var isExportingKeys = false
     @State private var keysExportDocument = TS3TextFileDocument()
+    @State private var keysBackupDocument = TS3TextFileDocument()
     @State private var isConfirmingDeleteAll = false
 
     private var privilegeKeysSnapshot: String {
@@ -7284,6 +7285,11 @@ struct PrivilegeKeysSheet: View {
                     }
                     .disabled(filteredPrivilegeKeys.isEmpty)
 
+                    Button("Export Privilege Key Backup") {
+                        exportPrivilegeKeyBackup()
+                    }
+                    .disabled(model.privilegeKeys.isEmpty)
+
                     Button("Delete Visible Keys") {
                         isConfirmingDeleteAll = true
                     }
@@ -7309,6 +7315,16 @@ struct PrivilegeKeysSheet: View {
                 document: keysExportDocument,
                 contentType: .plainText,
                 defaultFilename: "ts3-privilege-keys"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingKeys,
+                document: keysBackupDocument,
+                contentType: .json,
+                defaultFilename: "ts3-privilege-key-backup"
             ) { result in
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
@@ -7405,6 +7421,16 @@ struct PrivilegeKeysSheet: View {
             selectedChannelId = model.currentChannel?.id ?? model.channels.first?.id ?? 0
         }
     }
+
+    private func exportPrivilegeKeyBackup() {
+        do {
+            keysBackupDocument = TS3TextFileDocument(data: try model.privilegeKeyBackupData())
+            isExportingKeys = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
 }
 
 struct PrivilegeKeyRow: View {
