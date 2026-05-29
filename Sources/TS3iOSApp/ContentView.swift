@@ -8462,12 +8462,22 @@ struct IdentityManagementSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var importedIdentity = ""
+    @State private var isImportingIdentity = false
+    @State private var isExportingIdentity = false
+    @State private var identityExportDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Identity")) {
                     IdentitySummaryRows(importedIdentity: $importedIdentity)
+                    Button("Import Identity Backup") {
+                        isImportingIdentity = true
+                    }
+                    Button("Export Identity Backup") {
+                        exportIdentityBackup()
+                    }
+                    .disabled(model.identitySummary.exportString.isEmpty)
                 }
             }
             .navigationTitle("Identity")
@@ -8484,6 +8494,52 @@ struct IdentityManagementSheet: View {
                     }
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingIdentity,
+                allowedContentTypes: [.plainText, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importIdentity(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingIdentity,
+                document: identityExportDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-identity-backup"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func exportIdentityBackup() {
+        guard !model.identitySummary.exportString.isEmpty else { return }
+        identityExportDocument = TS3TextFileDocument(data: Data(model.identitySummary.exportString.utf8))
+        isExportingIdentity = true
+    }
+
+    private func importIdentity(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            guard let exportString = String(data: data, encoding: .utf8) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            model.importIdentity(exportString)
+            importedIdentity = ""
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 }
