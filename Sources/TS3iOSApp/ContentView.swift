@@ -3047,18 +3047,85 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 struct EventsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var searchText = ""
     @State private var isExportingEvents = false
     @State private var eventsDocument = TS3TextFileDocument()
+
+    private var visibleActivityEvents: [TS3ActivitySummary] {
+        guard isSearching else { return model.activityEvents }
+        return model.activityEvents.filter { event in
+            containsSearch(event.clientName)
+                || containsSearch(event.invokerName)
+                || containsSearch(event.channelName)
+                || containsSearch(event.reasonMessage)
+                || containsSearch(ActivityEventRow.snapshotMessage(for: event, in: model))
+        }
+    }
+
+    private var visiblePokeEvents: [TS3PokeSummary] {
+        guard isSearching else { return model.pokeEvents }
+        return model.pokeEvents.filter { poke in
+            containsSearch(poke.senderName)
+                || containsSearch(poke.senderUniqueIdentifier)
+                || containsSearch(poke.message)
+        }
+    }
+
+    private var hasVisibleEvents: Bool {
+        !visibleActivityEvents.isEmpty || !visiblePokeEvents.isEmpty
+    }
+
+    private var visibleEventsSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date) -> String {
+            formatter.string(from: date)
+        }
+
+        var lines: [String] = []
+        if !visibleActivityEvents.isEmpty {
+            lines.append("Activity")
+            for event in visibleActivityEvents {
+                lines.append("[\(dateText(event.timestamp))] \(event.clientName): \(ActivityEventRow.snapshotMessage(for: event, in: model))")
+                if let reason = event.reasonMessage, !reason.isEmpty {
+                    lines.append("  Reason: \(reason)")
+                }
+            }
+        }
+        if !visiblePokeEvents.isEmpty {
+            if !lines.isEmpty { lines.append("") }
+            lines.append("Pokes")
+            for poke in visiblePokeEvents {
+                lines.append("[\(dateText(poke.timestamp))] \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)")
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
 
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Search")) {
+                    TextField("Search events", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                }
+
                 Section(header: Text("Activity")) {
                     if model.activityEvents.isEmpty {
                         Text("No activity")
                             .foregroundColor(.secondary)
+                    } else if visibleActivityEvents.isEmpty {
+                        Text("No matching activity")
+                            .foregroundColor(.secondary)
                     } else {
-                        ForEach(model.activityEvents) { event in
+                        ForEach(visibleActivityEvents) { event in
                             ActivityEventRow(event: event)
                                 .environmentObject(model)
                         }
@@ -3068,8 +3135,11 @@ struct EventsSheet: View {
                     if model.pokeEvents.isEmpty {
                         Text("No pokes")
                             .foregroundColor(.secondary)
+                    } else if visiblePokeEvents.isEmpty {
+                        Text("No matching pokes")
+                            .foregroundColor(.secondary)
                     } else {
-                        ForEach(model.pokeEvents) { poke in
+                        ForEach(visiblePokeEvents) { poke in
                             PokeEventRow(poke: poke)
                                 .environmentObject(model)
                         }
@@ -3090,14 +3160,14 @@ struct EventsSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
                         Button("Copy Event Snapshot") {
-                            TS3PlatformSupport.copyToPasteboard(eventsSnapshot)
+                            TS3PlatformSupport.copyToPasteboard(visibleEventsSnapshot)
                         }
-                        .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        .disabled(!hasVisibleEvents)
                         Button("Export Event Snapshot") {
-                            eventsDocument = TS3TextFileDocument(data: Data(eventsSnapshot.utf8))
+                            eventsDocument = TS3TextFileDocument(data: Data(visibleEventsSnapshot.utf8))
                             isExportingEvents = true
                         }
-                        .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        .disabled(!hasVisibleEvents)
                         Button("Clear Events") {
                             model.clearEventHistory()
                         }
@@ -3125,33 +3195,17 @@ struct EventsSheet: View {
         }
     }
 
-    private var eventsSnapshot: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 
-        func dateText(_ date: Date) -> String {
-            formatter.string(from: date)
-        }
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
 
-        var lines: [String] = []
-        if !model.activityEvents.isEmpty {
-            lines.append("Activity")
-            for event in model.activityEvents {
-                lines.append("[\(dateText(event.timestamp))] \(event.clientName): \(ActivityEventRow.snapshotMessage(for: event, in: model))")
-                if let reason = event.reasonMessage, !reason.isEmpty {
-                    lines.append("  Reason: \(reason)")
-                }
-            }
-        }
-        if !model.pokeEvents.isEmpty {
-            if !lines.isEmpty { lines.append("") }
-            lines.append("Pokes")
-            for poke in model.pokeEvents {
-                lines.append("[\(dateText(poke.timestamp))] \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)")
-            }
-        }
-        return lines.joined(separator: "\n")
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 }
 
