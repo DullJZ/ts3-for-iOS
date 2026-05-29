@@ -6069,6 +6069,7 @@ struct FileBrowserSheet: View {
     @State private var directoryName = ""
     @State private var pathText = "/"
     @State private var searchText = ""
+    @State private var selectedEntryIDs: Set<String> = []
     @State private var isShowingFileImporter = false
     @State private var isExportingDownloadedFile = false
     @State private var downloadedFileDocument = TS3DownloadedFileDocument()
@@ -6132,12 +6133,54 @@ struct FileBrowserSheet: View {
                         }
                     }
 
+                    if hasSelection {
+                        HStack {
+                            Text("\(selectedEntries.count) selected")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Button("Clear") {
+                                selectedEntryIDs.removeAll()
+                            }
+                            .buttonStyle(.borderless)
+                        }
+
+                        HStack(spacing: 12) {
+                            Button("Download Selected") {
+                                model.downloadFileEntries(selectedEntries)
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(selectedEntries.allSatisfy(\.isDirectory))
+                            Button("Delete Selected") {
+                                model.deleteFileEntries(selectedEntries)
+                                selectedEntryIDs.removeAll()
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundColor(.red)
+                            .disabled(selectedEntries.isEmpty)
+                        }
+                        .font(.caption)
+                    }
+
                     if filteredFileEntries.isEmpty {
                         Text(isSearching ? "No matching files" : "No files")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredFileEntries) { entry in
-                            FileEntryRow(entry: entry)
+                            FileEntryRow(
+                                entry: entry,
+                                isSelected: selectedEntryIDs.contains(entry.id),
+                                onSelect: {
+                                    if entry.isDirectory {
+                                        model.enterFileDirectory(entry)
+                                    } else {
+                                        toggleSelection(for: entry)
+                                    }
+                                },
+                                onSelectionToggle: {
+                                    toggleSelection(for: entry)
+                                }
+                            )
                                 .environmentObject(model)
                         }
                     }
@@ -6216,6 +6259,7 @@ struct FileBrowserSheet: View {
             }
             .onChange(of: model.fileBrowserPath) { newPath in
                 pathText = newPath
+                selectedEntryIDs.removeAll()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
@@ -6311,6 +6355,22 @@ struct FileBrowserSheet: View {
             uploadOverwriteNames = conflicts
             isConfirmingUploadOverwrite = true
         }
+    }
+
+    private func toggleSelection(for entry: TS3FileEntrySummary) {
+        if selectedEntryIDs.contains(entry.id) {
+            selectedEntryIDs.remove(entry.id)
+        } else {
+            selectedEntryIDs.insert(entry.id)
+        }
+    }
+
+    private var selectedEntries: [TS3FileEntrySummary] {
+        model.fileEntries.filter { selectedEntryIDs.contains($0.id) }
+    }
+
+    private var hasSelection: Bool {
+        !selectedEntries.isEmpty
     }
 
     private func exportDownloadedFile(_ file: TS3DownloadedFileSummary) {
@@ -6486,6 +6546,9 @@ struct TS3DownloadedFileDocument: FileDocument {
 struct FileEntryRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let entry: TS3FileEntrySummary
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onSelectionToggle: () -> Void
     @State private var isRenaming = false
     @State private var isConfirmingDelete = false
     @State private var isShowingInfo = false
@@ -6494,11 +6557,11 @@ struct FileEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                if entry.isDirectory {
-                    model.enterFileDirectory(entry)
-                }
+                onSelect()
             } label: {
                 HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundColor(isSelected ? .accentColor : .secondary)
                     Image(systemName: entry.isDirectory ? "folder" : "doc")
                         .foregroundColor(entry.isDirectory ? .accentColor : .secondary)
                     VStack(alignment: .leading, spacing: 3) {
@@ -6521,6 +6584,10 @@ struct FileEntryRow: View {
                     }
                     .buttonStyle(.borderless)
                 }
+                Button(isSelected ? "Deselect" : "Select") {
+                    onSelectionToggle()
+                }
+                .buttonStyle(.borderless)
                 Button("Rename") {
                     newName = entry.name
                     isRenaming = true
@@ -6566,6 +6633,9 @@ struct FileEntryRow: View {
                 Button("Download") {
                     model.downloadFileEntry(entry)
                 }
+            }
+            Button(isSelected ? "Deselect" : "Select") {
+                onSelectionToggle()
             }
             Button("Copy Name") {
                 TS3PlatformSupport.copyToPasteboard(entry.name)

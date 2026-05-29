@@ -2667,6 +2667,23 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func deleteFileEntries(_ entries: [TS3FileEntrySummary]) {
+        let entries = entries.sorted {
+            if $0.isDirectory != $1.isDirectory { return $0.isDirectory && !$1.isDirectory }
+            return $0.path.localizedCaseInsensitiveCompare($1.path) == .orderedAscending
+        }
+        guard !entries.isEmpty else { return }
+        let password = trimmedFileBrowserPassword
+        runClientCommand { client in
+            for entry in entries {
+                try await client.deleteFile(channelId: entry.channelId, path: entry.path, password: password)
+            }
+            await MainActor.run {
+                self.refreshFileList()
+            }
+        }
+    }
+
     func renameFileEntry(_ entry: TS3FileEntrySummary, to newName: String) {
         let newName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !newName.isEmpty, newName != entry.name else { return }
@@ -2779,6 +2796,14 @@ final class TS3AppModel: ObservableObject {
             }
         }
         fileTransferTasks[transferId] = task
+    }
+
+    func downloadFileEntries(_ entries: [TS3FileEntrySummary]) {
+        let files = entries.filter { !$0.isDirectory }
+        guard !files.isEmpty else { return }
+        for entry in files.sorted(by: fileEntryDownloadSort) {
+            downloadFileEntry(entry)
+        }
     }
 
     func openLastDownloadedFile() {
@@ -3063,6 +3088,10 @@ final class TS3AppModel: ObservableObject {
         if let completedAt {
             fileTransfers[index].completedAt = completedAt
         }
+    }
+
+    private func fileEntryDownloadSort(_ lhs: TS3FileEntrySummary, _ rhs: TS3FileEntrySummary) -> Bool {
+        lhs.path.localizedCaseInsensitiveCompare(rhs.path) == .orderedAscending
     }
 
     private func downloadDestination(for name: String) throws -> URL {
