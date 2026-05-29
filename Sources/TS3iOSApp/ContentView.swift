@@ -2271,6 +2271,7 @@ struct ContactsSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
     @State private var isExportingContacts = false
+    @State private var isImportingContacts = false
     @State private var contactsDocument = TS3TextFileDocument()
 
     private var notedContacts: [TS3ContactEntry] {
@@ -2330,6 +2331,13 @@ struct ContactsSheet: View {
                             isExportingContacts = true
                         }
                         .disabled(model.contacts.isEmpty)
+                        Button("Export Contacts Backup") {
+                            exportContacts()
+                        }
+                        .disabled(model.contacts.isEmpty)
+                        Button("Import Contacts Backup") {
+                            isImportingContacts = true
+                        }
                     } label: {
                         Label("Contacts", systemImage: "ellipsis.circle")
                     }
@@ -2350,6 +2358,17 @@ struct ContactsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingContacts,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importContacts(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -2365,6 +2384,29 @@ struct ContactsSheet: View {
 
     private func containsSearch(_ value: String) -> Bool {
         value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func exportContacts() {
+        do {
+            contactsDocument = TS3TextFileDocument(data: try model.contactsExportData())
+            isExportingContacts = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importContacts(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importContacts(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private var contactSnapshot: String {

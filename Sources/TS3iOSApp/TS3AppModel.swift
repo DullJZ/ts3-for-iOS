@@ -4263,6 +4263,40 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func contactsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(contacts)
+    }
+
+    @discardableResult
+    func importContacts(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ContactEntry].self, from: data)
+        var merged = contacts
+        for contact in imported {
+            let uniqueIdentifier = contact.uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !uniqueIdentifier.isEmpty else { continue }
+            let nickname = contact.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+            let note = contact.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            merged.removeAll { $0.uniqueIdentifier == uniqueIdentifier }
+            merged.insert(
+                TS3ContactEntry(
+                    uniqueIdentifier: uniqueIdentifier,
+                    nickname: nickname.isEmpty ? uniqueIdentifier : nickname,
+                    status: contact.status,
+                    note: note,
+                    updatedAt: contact.updatedAt
+                ),
+                at: 0
+            )
+        }
+        contacts = merged
+        saveContacts()
+        syncBlockedContactPlayback()
+        lastError = nil
+        return imported.count
+    }
+
     private func loadChatHistory() {
         guard let data = try? Data(contentsOf: chatHistoryURL),
               let decoded = try? JSONDecoder().decode([TS3ChatMessageSummary].self, from: data) else {
