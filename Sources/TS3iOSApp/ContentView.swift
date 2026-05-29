@@ -6346,6 +6346,7 @@ struct PermissionsSheet: View {
     @State private var permissionValue = "0"
     @State private var permissionNegated = false
     @State private var permissionSkip = false
+    @State private var assignedSearchText = ""
     @State private var isExportingPermissions = false
     @State private var permissionExportDocument = TS3TextFileDocument()
     @State private var isConfirmingDeleteVisible = false
@@ -6364,8 +6365,19 @@ struct PermissionsSheet: View {
         model.permissionEditScope == .ownClient ? model.ownClientPermissions : model.scopedPermissions
     }
 
+    var filteredDisplayedPermissions: [TS3PermissionSummary] {
+        let query = assignedSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return displayedPermissions }
+        return displayedPermissions.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || String($0.value).contains(query)
+                || ($0.isNegated && "negated".localizedCaseInsensitiveContains(query))
+                || ($0.isSkipped && "skipped".localizedCaseInsensitiveContains(query))
+        }
+    }
+
     var visiblePermissionsSnapshot: String {
-        displayedPermissions.map(\.clipboardSummary).joined(separator: "\n")
+        filteredDisplayedPermissions.map(\.clipboardSummary).joined(separator: "\n")
     }
 
     var exportFilename: String {
@@ -6470,25 +6482,36 @@ struct PermissionsSheet: View {
                     Button("Copy Visible Permissions") {
                         TS3PlatformSupport.copyToPasteboard(visiblePermissionsSnapshot)
                     }
-                    .disabled(displayedPermissions.isEmpty)
+                    .disabled(filteredDisplayedPermissions.isEmpty)
 
                     Button("Export Visible Permissions") {
                         permissionExportDocument = TS3TextFileDocument(data: Data(visiblePermissionsSnapshot.utf8))
                         isExportingPermissions = true
                     }
-                    .disabled(displayedPermissions.isEmpty)
+                    .disabled(filteredDisplayedPermissions.isEmpty)
 
                     Button("Delete Visible Permissions") {
                         isConfirmingDeleteVisible = true
                     }
-                    .disabled(displayedPermissions.isEmpty)
+                    .disabled(filteredDisplayedPermissions.isEmpty)
                     .foregroundColor(.red)
+
+                    TextField("Search assigned permissions", text: $assignedSearchText)
+                        .ts3PlainTextField()
+                    if !assignedSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Button("Clear Search") {
+                            assignedSearchText = ""
+                        }
+                    }
 
                     if displayedPermissions.isEmpty {
                         Text("No permissions")
                             .foregroundColor(.secondary)
+                    } else if filteredDisplayedPermissions.isEmpty {
+                        Text("No matching permissions")
+                            .foregroundColor(.secondary)
                     } else {
-                        ForEach(displayedPermissions) { permission in
+                        ForEach(filteredDisplayedPermissions) { permission in
                             PermissionRow(permission: permission) {
                                 permissionName = permission.name
                                 permissionValue = "\(permission.value)"
@@ -6576,9 +6599,9 @@ struct PermissionsSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text("Delete Visible Permissions?"),
-                    message: Text("This removes \(displayedPermissions.count) permission entries from the current target."),
+                    message: Text("This removes \(filteredDisplayedPermissions.count) permission entries from the current target."),
                     primaryButton: .destructive(Text("Delete")) {
-                        model.deleteSelectedPermissions(displayedPermissions)
+                        model.deleteSelectedPermissions(filteredDisplayedPermissions)
                     },
                     secondaryButton: .cancel()
                 )
@@ -6724,12 +6747,13 @@ struct PrivilegeKeysSheet: View {
     @State private var selectedChannelId = 0
     @State private var description = ""
     @State private var customSet = ""
+    @State private var searchText = ""
     @State private var isExportingKeys = false
     @State private var keysExportDocument = TS3TextFileDocument()
     @State private var isConfirmingDeleteAll = false
 
     private var privilegeKeysSnapshot: String {
-        model.privilegeKeys.map(\.clipboardSummary).joined(separator: "\n")
+        filteredPrivilegeKeys.map(\.clipboardSummary).joined(separator: "\n")
     }
 
     var body: some View {
@@ -6794,28 +6818,39 @@ struct PrivilegeKeysSheet: View {
                 }
 
                 Section(header: Text("Existing Keys")) {
+                    TextField("Search keys", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+
                     Button("Copy Visible Keys") {
                         TS3PlatformSupport.copyToPasteboard(privilegeKeysSnapshot)
                     }
-                    .disabled(model.privilegeKeys.isEmpty)
+                    .disabled(filteredPrivilegeKeys.isEmpty)
 
                     Button("Export Visible Keys") {
                         keysExportDocument = TS3TextFileDocument(data: Data(privilegeKeysSnapshot.utf8))
                         isExportingKeys = true
                     }
-                    .disabled(model.privilegeKeys.isEmpty)
+                    .disabled(filteredPrivilegeKeys.isEmpty)
 
                     Button("Delete Visible Keys") {
                         isConfirmingDeleteAll = true
                     }
-                    .disabled(model.privilegeKeys.isEmpty)
+                    .disabled(filteredPrivilegeKeys.isEmpty)
                     .foregroundColor(.red)
 
                     if model.privilegeKeys.isEmpty {
                         Text("No privilege keys")
                             .foregroundColor(.secondary)
+                    } else if filteredPrivilegeKeys.isEmpty {
+                        Text("No matching privilege keys")
+                            .foregroundColor(.secondary)
                     } else {
-                        ForEach(model.privilegeKeys) { key in
+                        ForEach(filteredPrivilegeKeys) { key in
                             PrivilegeKeyRow(key: key)
                                 .environmentObject(model)
                         }
@@ -6835,9 +6870,9 @@ struct PrivilegeKeysSheet: View {
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
                     title: Text("Delete Visible Privilege Keys?"),
-                    message: Text("This removes \(model.privilegeKeys.count) privilege keys from the server."),
+                    message: Text("This removes \(filteredPrivilegeKeys.count) privilege keys from the server."),
                     primaryButton: .destructive(Text("Delete")) {
-                        model.deletePrivilegeKeys(model.privilegeKeys)
+                        model.deletePrivilegeKeys(filteredPrivilegeKeys)
                     },
                     secondaryButton: .cancel()
                 )
@@ -6885,6 +6920,31 @@ struct PrivilegeKeysSheet: View {
         case .channelGroup:
             return selectedChannelGroupId != 0 && selectedChannelId != 0
         }
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredPrivilegeKeys: [TS3PrivilegeKeySummary] {
+        guard isSearching else { return model.privilegeKeys }
+        return model.privilegeKeys.filter { key in
+            containsSearch(key.key)
+                || containsSearch(key.description)
+                || containsSearch(key.customSet)
+                || key.type.map { String($0.rawValue).contains(normalizedSearchText) } == true
+                || String(key.groupId).contains(normalizedSearchText)
+                || key.channelId.map { String($0).contains(normalizedSearchText) } == true
+        }
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 
     private func normalizeSelections() {
