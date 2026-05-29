@@ -8844,6 +8844,18 @@ struct SelfStatusSheet: View {
                     }
                 }
 
+                Section {
+                    Button("Reset Presence State") {
+                        model.setAway(false, message: "")
+                        model.setTalkRequest(false, message: "")
+                        model.setChannelCommander(false)
+                        if let currentUser {
+                            model.setPrioritySpeaker(false, for: currentUser)
+                            model.setTalker(false, for: currentUser)
+                        }
+                    }
+                }
+
                 Section(header: Text("Talk Power")) {
                     TextField("Request Message", text: $talkRequestMessage)
                         .ts3PlainTextField()
