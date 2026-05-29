@@ -3846,10 +3846,13 @@ struct ServerLogsSheet: View {
     @State private var lineLimit = "100"
     @State private var reverseOrder = true
     @State private var instanceLogs = false
+    @State private var searchText = ""
     @State private var newLogLevel: TS3LogLevel = .info
     @State private var newLogMessage = ""
     @State private var isExportingLogs = false
     @State private var logExportDocument = TS3TextFileDocument()
+    @State private var isExportingSnapshot = false
+    @State private var snapshotDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -3860,6 +3863,13 @@ struct ServerLogsSheet: View {
                         .ts3PlainTextField()
                     Toggle("Reverse Order", isOn: $reverseOrder)
                     Toggle("Instance Logs", isOn: $instanceLogs)
+                    TextField("Search logs", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
                     Button("Refresh") {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
@@ -3868,12 +3878,21 @@ struct ServerLogsSheet: View {
                         )
                     }
                     Button("Copy Visible Logs") {
-                        TS3PlatformSupport.copyToPasteboard(Self.transcript(from: model.serverLogEntries))
+                        TS3PlatformSupport.copyToPasteboard(filteredTranscript)
+                    }
+                    .disabled(filteredEntries.isEmpty)
+                    Button("Export Visible Logs") {
+                        logExportDocument = TS3TextFileDocument(data: Data(filteredTranscript.utf8))
+                        isExportingLogs = true
+                    }
+                    .disabled(filteredEntries.isEmpty)
+                    Button("Copy Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(snapshot)
                     }
                     .disabled(model.serverLogEntries.isEmpty)
-                    Button("Export Visible Logs") {
-                        logExportDocument = TS3TextFileDocument(data: Data(Self.transcript(from: model.serverLogEntries).utf8))
-                        isExportingLogs = true
+                    Button("Export Snapshot") {
+                        snapshotDocument = TS3TextFileDocument(data: Data(snapshot.utf8))
+                        isExportingSnapshot = true
                     }
                     .disabled(model.serverLogEntries.isEmpty)
                 }
@@ -3900,11 +3919,11 @@ struct ServerLogsSheet: View {
                 }
 
                 Section(header: Text("Server Log")) {
-                    if model.serverLogEntries.isEmpty {
-                        Text("No log entries")
+                    if filteredEntries.isEmpty {
+                        Text(isSearching ? "No matching log entries" : "No log entries")
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(model.serverLogEntries) { entry in
+                        ForEach(filteredEntries) { entry in
                             ServerLogRow(entry: entry)
                         }
                     }
@@ -3945,11 +3964,63 @@ struct ServerLogsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingSnapshot,
+                document: snapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-server-log-snapshot"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
     private var parsedLineLimit: Int {
         Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredEntries: [TS3ServerLogSummary] {
+        guard isSearching else { return model.serverLogEntries }
+        return model.serverLogEntries.filter { entry in
+            containsSearch(entry.message)
+                || containsSearch(entry.level)
+                || containsSearch(entry.channel)
+        }
+    }
+
+    private var filteredTranscript: String {
+        Self.transcript(from: filteredEntries)
+    }
+
+    private var snapshot: String {
+        var lines = [
+            "Limit: \(parsedLineLimit)",
+            "Reverse: \(reverseOrder ? "Yes" : "No")",
+            "Instance: \(instanceLogs ? "Yes" : "No")"
+        ]
+        if isSearching {
+            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !filteredEntries.isEmpty {
+            lines.append("")
+            lines.append(filteredTranscript)
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]
