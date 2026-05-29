@@ -5223,7 +5223,9 @@ struct ClientDatabaseSheet: View {
     @State private var isShowingComplaints = false
     @State private var isConfirmingDelete = false
     @State private var isExportingDatabase = false
+    @State private var isImportingDatabase = false
     @State private var databaseExportDocument = TS3TextFileDocument()
+    @State private var databaseBackupDocument = TS3TextFileDocument()
 
     var displayedRecords: [TS3DatabaseClientSummary] {
         model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
@@ -5267,6 +5269,9 @@ struct ClientDatabaseSheet: View {
                         Button("Export Selected Snapshot") {
                             databaseExportDocument = TS3TextFileDocument(data: Data(databaseClientSnapshot(for: selected).utf8))
                             isExportingDatabase = true
+                        }
+                        Button("Export Database Backup") {
+                            exportDatabaseBackup()
                         }
                         Button("Copy Nickname") {
                             TS3PlatformSupport.copyToPasteboard(selected.nickname)
@@ -5346,18 +5351,21 @@ struct ClientDatabaseSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
-                        Button("Copy Visible Database Snapshot") {
-                            TS3PlatformSupport.copyToPasteboard(databaseSnapshot)
-                        }
-                        .disabled(displayedRecords.isEmpty)
-                        Button("Export Visible Database Snapshot") {
-                            databaseExportDocument = TS3TextFileDocument(data: Data(databaseSnapshot.utf8))
-                            isExportingDatabase = true
-                        }
-                        .disabled(displayedRecords.isEmpty)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+                    Button("Copy Visible Database Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(databaseSnapshot)
                     }
+                    .disabled(displayedRecords.isEmpty)
+                    Button("Export Visible Database Snapshot") {
+                        databaseExportDocument = TS3TextFileDocument(data: Data(databaseSnapshot.utf8))
+                        isExportingDatabase = true
+                    }
+                    .disabled(displayedRecords.isEmpty)
+                    Button("Import Database Backup") {
+                        isImportingDatabase = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -5401,6 +5409,27 @@ struct ClientDatabaseSheet: View {
                 defaultFilename: "ts3-client-database"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingDatabase,
+                document: databaseBackupDocument,
+                contentType: .json,
+                defaultFilename: "ts3-client-database-backup"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingDatabase,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importDatabaseBackup(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -5478,6 +5507,29 @@ struct ClientDatabaseSheet: View {
             rows.append("Description: \(description)")
         }
         return rows.joined(separator: "\n")
+    }
+
+    private func exportDatabaseBackup() {
+        do {
+            databaseBackupDocument = TS3TextFileDocument(data: try model.databaseClientBackupData())
+            isExportingDatabase = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importDatabaseBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importDatabaseClientBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 

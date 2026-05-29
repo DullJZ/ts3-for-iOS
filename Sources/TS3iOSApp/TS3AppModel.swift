@@ -389,7 +389,7 @@ struct TS3DatabaseClientSummary: Identifiable {
         )
     }
 
-    private init(
+    init(
         id: Int,
         uniqueIdentifier: String?,
         nickname: String,
@@ -445,6 +445,21 @@ struct TS3DatabaseClientSummary: Identifiable {
             connectedSeconds: nil
         )
     }
+}
+
+private struct TS3DatabaseClientBackupEntry: Codable {
+    var id: Int
+    var uniqueIdentifier: String?
+    var nickname: String
+    var createdAt: Date?
+    var lastConnectedAt: Date?
+    var totalConnections: Int?
+    var description: String?
+    var lastIP: String?
+}
+
+private struct TS3DatabaseClientBackup: Codable {
+    var entries: [TS3DatabaseClientBackupEntry]
 }
 
 struct TS3ClientLocationSummary: Identifiable {
@@ -2382,6 +2397,44 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func databaseClientBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let snapshot = TS3DatabaseClientBackup(
+            entries: databaseClients.map {
+                TS3DatabaseClientBackupEntry(
+                    id: $0.id,
+                    uniqueIdentifier: $0.uniqueIdentifier,
+                    nickname: $0.nickname,
+                    createdAt: $0.createdAt,
+                    lastConnectedAt: $0.lastConnectedAt,
+                    totalConnections: $0.totalConnections,
+                    description: $0.description,
+                    lastIP: $0.lastIP
+                )
+            }
+        )
+        return try encoder.encode(snapshot)
+    }
+
+    func importDatabaseClientBackup(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3DatabaseClientBackup.self, from: data)
+        let imported = decoded.entries.map {
+            TS3DatabaseClientSummary(
+                id: $0.id,
+                uniqueIdentifier: $0.uniqueIdentifier,
+                nickname: $0.nickname,
+                createdAt: $0.createdAt,
+                lastConnectedAt: $0.lastConnectedAt,
+                totalConnections: $0.totalConnections,
+                description: $0.description,
+                lastIP: $0.lastIP
+            )
+        }
+        databaseClients = imported.sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+        lastError = nil
     }
 
     func sendOfflineMessage(to record: TS3DatabaseClientSummary, subject: String, message: String) {
