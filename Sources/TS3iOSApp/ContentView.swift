@@ -6686,8 +6686,11 @@ struct PermissionsSheet: View {
     @State private var permissionNegated = false
     @State private var permissionSkip = false
     @State private var assignedSearchText = ""
-    @State private var isExportingPermissions = false
+    @State private var isExportingPermissionSnapshot = false
+    @State private var isExportingPermissionBackup = false
+    @State private var isImportingPermissions = false
     @State private var permissionExportDocument = TS3TextFileDocument()
+    @State private var permissionBackupDocument = TS3TextFileDocument()
     @State private var isConfirmingDeleteVisible = false
 
     var filteredPermissionInfos: [TS3PermissionInfoSummary] {
@@ -6825,9 +6828,18 @@ struct PermissionsSheet: View {
 
                     Button("Export Visible Permissions") {
                         permissionExportDocument = TS3TextFileDocument(data: Data(visiblePermissionsSnapshot.utf8))
-                        isExportingPermissions = true
+                        isExportingPermissionSnapshot = true
                     }
                     .disabled(filteredDisplayedPermissions.isEmpty)
+
+                    Button("Export Permission Backup") {
+                        exportPermissionBackup()
+                    }
+                    .disabled(displayedPermissions.isEmpty)
+
+                    Button("Import Permission Backup") {
+                        isImportingPermissions = true
+                    }
 
                     Button("Delete Visible Permissions") {
                         isConfirmingDeleteVisible = true
@@ -6926,12 +6938,33 @@ struct PermissionsSheet: View {
                 }
             }
             .fileExporter(
-                isPresented: $isExportingPermissions,
+                isPresented: $isExportingPermissionSnapshot,
                 document: permissionExportDocument,
                 contentType: .plainText,
                 defaultFilename: exportFilename
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPermissionBackup,
+                document: permissionBackupDocument,
+                contentType: .json,
+                defaultFilename: "ts3-permission-backup"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPermissions,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPermissionBackup(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -6945,6 +6978,29 @@ struct PermissionsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
+        }
+    }
+
+    private func exportPermissionBackup() {
+        do {
+            permissionBackupDocument = TS3TextFileDocument(data: try model.permissionBackupData())
+            isExportingPermissionBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPermissionBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importPermissionBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 }

@@ -672,6 +672,24 @@ struct TS3FileTransferSummary: Identifiable {
     }
 }
 
+private struct TS3PermissionBackupPermission: Codable {
+    var name: String
+    var value: Int
+    var isNegated: Bool
+    var isSkipped: Bool
+}
+
+private struct TS3PermissionBackup: Codable {
+    var scope: String
+    var ownClientDatabaseId: Int?
+    var selectedServerGroupPermissionId: Int?
+    var selectedChannelGroupPermissionId: Int?
+    var selectedChannelPermissionId: Int?
+    var selectedChannelClientPermissionChannelId: Int?
+    var selectedChannelClientPermissionClientId: Int?
+    var permissions: [TS3PermissionBackupPermission]
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double
@@ -2176,6 +2194,42 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func permissionBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let snapshot = TS3PermissionBackup(
+            scope: permissionEditScope.rawValue,
+            ownClientDatabaseId: ownClientDatabaseId,
+            selectedServerGroupPermissionId: selectedServerGroupPermissionId,
+            selectedChannelGroupPermissionId: selectedChannelGroupPermissionId,
+            selectedChannelPermissionId: selectedChannelPermissionId,
+            selectedChannelClientPermissionChannelId: selectedChannelClientPermissionChannelId,
+            selectedChannelClientPermissionClientId: selectedChannelClientPermissionClientId,
+            permissions: (permissionEditScope == .ownClient ? ownClientPermissions : scopedPermissions).map {
+                TS3PermissionBackupPermission(
+                    name: $0.name,
+                    value: $0.value,
+                    isNegated: $0.isNegated,
+                    isSkipped: $0.isSkipped
+                )
+            }
+        )
+        return try encoder.encode(snapshot)
+    }
+
+    func importPermissionBackup(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
+        permissionEditScope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
+        ownClientDatabaseId = decoded.ownClientDatabaseId
+        selectedServerGroupPermissionId = decoded.selectedServerGroupPermissionId
+        selectedChannelGroupPermissionId = decoded.selectedChannelGroupPermissionId
+        selectedChannelPermissionId = decoded.selectedChannelPermissionId
+        selectedChannelClientPermissionChannelId = decoded.selectedChannelClientPermissionChannelId
+        selectedChannelClientPermissionClientId = decoded.selectedChannelClientPermissionClientId
+        refreshSelectedPermissions()
+        lastError = nil
     }
 
     func channelClientPermissionMembers() -> [TS3UserSummary] {
