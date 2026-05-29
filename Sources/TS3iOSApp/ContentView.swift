@@ -8964,6 +8964,8 @@ struct SelfStatusSheet: View {
 struct AudioSettingsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isExportingAudioSettings = false
+    @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
         Binding(
@@ -8996,6 +8998,16 @@ struct AudioSettingsSheet: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Snapshot")) {
+                    Button("Copy Audio Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(audioSettingsSnapshot)
+                    }
+                    Button("Export Audio Snapshot") {
+                        audioSettingsDocument = TS3TextFileDocument(data: Data(audioSettingsSnapshot.utf8))
+                        isExportingAudioSettings = true
+                    }
+                }
+
                 Section(header: Text("Transmit Mode")) {
                     Picker("Mode", selection: transmitModeBinding) {
                         Text("Push To Talk").tag(TS3AudioTransmitMode.pushToTalk)
@@ -9073,7 +9085,29 @@ struct AudioSettingsSheet: View {
                     }
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingAudioSettings,
+                document: audioSettingsDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-audio-settings"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var audioSettingsSnapshot: String {
+        var rows = [
+            "Transmit Mode: \(model.audioTransmitMode.rawValue)",
+            "Input Gain: \(model.inputGainPercentText)",
+            "Playback Volume: \(model.playbackVolumePercentText)"
+        ]
+        if model.audioTransmitMode == .voiceActivation {
+            rows.append("Voice Activation Threshold: \(model.voiceActivationThresholdText)")
+        }
+        return rows.joined(separator: "\n")
     }
 }
 
