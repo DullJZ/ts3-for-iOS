@@ -8830,6 +8830,20 @@ struct SelfStatusSheet: View {
                     }
                 }
 
+                Section(header: Text("Voice Status")) {
+                    if let currentUser {
+                        Button(currentUser.isPrioritySpeaker ? "Remove Priority Speaker" : "Grant Priority Speaker") {
+                            model.setPrioritySpeaker(!currentUser.isPrioritySpeaker, for: currentUser)
+                        }
+                        Button(currentUser.isTalker ? "Remove Talker" : "Mark As Talker") {
+                            model.setTalker(!currentUser.isTalker, for: currentUser)
+                        }
+                    } else {
+                        Text("Current client unavailable")
+                            .foregroundColor(.secondary)
+                    }
+                }
+
                 Section(header: Text("Talk Power")) {
                     TextField("Request Message", text: $talkRequestMessage)
                         .ts3PlainTextField()
@@ -8920,6 +8934,8 @@ struct SelfStatusSheet: View {
             if let iconId = selfUser.iconId {
                 rows.append("Icon ID: \(iconId)")
             }
+            rows.append("Priority Speaker: \(selfUser.isPrioritySpeaker ? "Yes" : "No")")
+            rows.append("Talker: \(selfUser.isTalker ? "Yes" : "No")")
         }
         if !model.identitySummary.uid.isEmpty {
             rows.append("Identity UID: \(model.identitySummary.uid)")
