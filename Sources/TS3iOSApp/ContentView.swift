@@ -2114,6 +2114,8 @@ struct UserInfoRows: View {
             ServerInfoDetailRow(label: "Database ID", value: user.databaseId.map(String.init))
             ServerInfoDetailRow(label: "Unique ID", value: user.uniqueIdentifier, monospaced: true)
             ServerInfoDetailRow(label: "Icon ID", value: user.iconId.map(String.init))
+            ServerInfoDetailRow(label: "Avatar Hash", value: user.avatarHash, monospaced: true)
+            ServerInfoDetailRow(label: "Avatar Path", value: user.avatarURL?.path, monospaced: true)
             ServerInfoDetailRow(label: "Channel", value: String(user.channelId))
             ServerInfoDetailRow(label: "Country", value: user.country)
             ServerInfoDetailRow(label: "IP Address", value: user.ipAddress)
@@ -2201,6 +2203,8 @@ struct UserInfoRows: View {
             ("Database ID", user.databaseId.map(String.init)),
             ("Unique ID", user.uniqueIdentifier),
             ("Icon ID", user.iconId.map(String.init)),
+            ("Avatar Hash", user.avatarHash),
+            ("Avatar Path", user.avatarURL?.path),
             ("Channel", String(user.channelId)),
             ("Country", user.country),
             ("IP Address", user.ipAddress),
@@ -8775,6 +8779,28 @@ struct SelfStatusSheet: View {
                         statusDocument = TS3TextFileDocument(data: Data(statusSnapshot.utf8))
                         isExportingStatus = true
                     }
+                    if let currentUser {
+                        Menu("Copy Identifiers") {
+                            Button("Copy Client ID") {
+                                TS3PlatformSupport.copyToPasteboard("\(currentUser.id)")
+                            }
+                            if let databaseId = currentUser.databaseId {
+                                Button("Copy Database ID") {
+                                    TS3PlatformSupport.copyToPasteboard("\(databaseId)")
+                                }
+                            }
+                            if let uniqueIdentifier = currentUser.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                                Button("Copy Unique ID") {
+                                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                                }
+                            }
+                            if let avatarHash = currentUser.avatarHash, !avatarHash.isEmpty {
+                                Button("Copy Avatar Hash") {
+                                    TS3PlatformSupport.copyToPasteboard(avatarHash)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Section(header: Text("Profile")) {
@@ -8789,6 +8815,18 @@ struct SelfStatusSheet: View {
                     Button("Update Description") {
                         if let currentUser {
                             model.editUserDescription(currentUser, description: descriptionText)
+                        }
+                    }
+                    .disabled(currentUser == nil)
+                    Button("Refresh Self Details") {
+                        if let currentUser {
+                            model.refreshUserDetails(currentUser)
+                        }
+                    }
+                    .disabled(currentUser == nil)
+                    Button("Download Avatar") {
+                        if let currentUser {
+                            model.refreshUserAvatar(currentUser)
                         }
                     }
                     .disabled(currentUser == nil)
@@ -8945,6 +8983,12 @@ struct SelfStatusSheet: View {
             }
             if let iconId = selfUser.iconId {
                 rows.append("Icon ID: \(iconId)")
+            }
+            if let avatarHash = selfUser.avatarHash, !avatarHash.isEmpty {
+                rows.append("Avatar Hash: \(avatarHash)")
+            }
+            if let avatarURL = selfUser.avatarURL {
+                rows.append("Avatar Path: \(avatarURL.path)")
             }
             rows.append("Priority Speaker: \(selfUser.isPrioritySpeaker ? "Yes" : "No")")
             rows.append("Talker: \(selfUser.isTalker ? "Yes" : "No")")
