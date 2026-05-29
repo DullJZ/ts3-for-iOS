@@ -9149,6 +9149,7 @@ struct AudioSettingsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isExportingAudioSettings = false
+    @State private var isImportingAudioSettings = false
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
@@ -9189,6 +9190,12 @@ struct AudioSettingsSheet: View {
                     Button("Export Audio Snapshot") {
                         audioSettingsDocument = TS3TextFileDocument(data: Data(audioSettingsSnapshot.utf8))
                         isExportingAudioSettings = true
+                    }
+                    Button("Export Audio Settings") {
+                        exportAudioSettings()
+                    }
+                    Button("Import Audio Settings") {
+                        isImportingAudioSettings = true
                     }
                 }
 
@@ -9279,6 +9286,40 @@ struct AudioSettingsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingAudioSettings,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importAudioSettings(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func exportAudioSettings() {
+        do {
+            audioSettingsDocument = TS3TextFileDocument(data: try model.audioSettingsExportData())
+            isExportingAudioSettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importAudioSettings(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importAudioSettings(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 

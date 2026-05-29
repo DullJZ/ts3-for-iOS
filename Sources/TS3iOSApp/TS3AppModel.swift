@@ -4181,6 +4181,28 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func audioSettingsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let snapshot = TS3AudioSettings(
+            playbackVolume: playbackVolume,
+            inputGain: inputGain,
+            transmitMode: audioTransmitMode.rawValue,
+            voiceActivationThreshold: voiceActivationThreshold
+        )
+        return try encoder.encode(snapshot)
+    }
+
+    func importAudioSettings(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3AudioSettings.self, from: data)
+        applyAudioSettingsSnapshot(decoded)
+        saveAudioSettings()
+        if let client {
+            applyAudioSettings(to: client)
+        }
+        lastError = nil
+    }
+
     private func applyAudioSettingsSnapshot(_ settings: TS3AudioSettings) {
         playbackVolume = min(max(settings.playbackVolume, 0), 4)
         inputGain = min(max(settings.inputGain, 0), 4)
