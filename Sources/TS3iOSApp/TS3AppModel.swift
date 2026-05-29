@@ -4208,6 +4208,19 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func notificationSettingsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TS3NotificationSettings(isEnabled: notificationsEnabled))
+    }
+
+    func importNotificationSettings(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3NotificationSettings.self, from: data)
+        notificationsEnabled = decoded.isEnabled
+        saveNotificationSettings()
+        lastError = nil
+    }
+
     private func notifyIfInactive(title: String, body: String, identifier: String) {
         #if canImport(UserNotifications)
         guard notificationsEnabled, !isAppActive else { return }

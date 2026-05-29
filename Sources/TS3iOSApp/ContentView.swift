@@ -3792,6 +3792,9 @@ struct ServerToolsSheet: View {
     @State private var isShowingPrivilegeKeys = false
     @State private var isShowingGroupManagement = false
     @State private var isShowingContacts = false
+    @State private var isImportingNotificationSettings = false
+    @State private var isExportingNotificationSettings = false
+    @State private var notificationSettingsDocument = TS3TextFileDocument()
 
     private var notificationsBinding: Binding<Bool> {
         Binding(
@@ -3887,6 +3890,12 @@ struct ServerToolsSheet: View {
 
                 Section(header: Text("Notifications")) {
                     Toggle("Private Messages and Pokes", isOn: notificationsBinding)
+                    Button("Export Notification Settings") {
+                        exportNotificationSettings()
+                    }
+                    Button("Import Notification Settings") {
+                        isImportingNotificationSettings = true
+                    }
                     Text("Notifications are shown when the app is not active.")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -3974,6 +3983,50 @@ struct ServerToolsSheet: View {
                 ServerLogsSheet()
                     .environmentObject(model)
             }
+            .fileImporter(
+                isPresented: $isImportingNotificationSettings,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importNotificationSettings(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingNotificationSettings,
+                document: notificationSettingsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-notification-settings"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func exportNotificationSettings() {
+        do {
+            notificationSettingsDocument = TS3TextFileDocument(data: try model.notificationSettingsExportData())
+            isExportingNotificationSettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importNotificationSettings(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importNotificationSettings(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 }
