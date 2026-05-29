@@ -28,6 +28,7 @@ struct ContentView: View {
                     Spacer()
                     debugButton
                         .buttonStyle(TS3BorderedButtonStyle())
+                        .keyboardShortcut("l", modifiers: [.command, .shift])
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -3811,6 +3812,7 @@ struct ServerToolsSheet: View {
                     Button("Refresh Channels and Clients") {
                         model.refreshServerView()
                     }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
                     Button("Subscribe All Channels") {
                         model.setAllChannelsSubscribed(true)
                     }
@@ -3828,6 +3830,7 @@ struct ServerToolsSheet: View {
                         model.refreshServerLogs()
                         isShowingServerLogs = true
                     }
+                    .keyboardShortcut("g", modifiers: [.command, .shift])
                     Button("Edit Server Settings") {
                         isShowingServerEditor = true
                     }
@@ -3854,6 +3857,7 @@ struct ServerToolsSheet: View {
                     Button("Manage Contacts") {
                         isShowingContacts = true
                     }
+                    .keyboardShortcut("c", modifiers: [.command, .shift])
                     Button("Browse Channel Files") {
                         model.openFileBrowser()
                         isShowingFiles = true
@@ -3876,16 +3880,20 @@ struct ServerToolsSheet: View {
                     Button("Apply Nickname") {
                         model.updateNickname(to: nickname.isEmpty ? model.nickname : nickname)
                     }
+                    .keyboardShortcut(.return, modifiers: [.command])
                     TextField("Away Message", text: $model.awayMessage)
                     Button(model.isAway ? "Clear Away" : "Set Away") {
                         model.toggleAway()
                     }
+                    .keyboardShortcut("a", modifiers: [.command, .shift])
                     Button(model.isInputMuted ? "Unmute Microphone" : "Mute Microphone") {
                         model.toggleInputMuted()
                     }
+                    .keyboardShortcut("m", modifiers: [.command, .shift])
                     Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
                         model.toggleOutputMuted()
                     }
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
                 }
 
                 Section(header: Text("Notifications")) {
