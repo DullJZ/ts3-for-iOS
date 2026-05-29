@@ -7012,6 +7012,7 @@ struct BanListSheet: View {
     @State private var isConfirmingDeleteVisible = false
     @State private var isExportingBans = false
     @State private var banExportDocument = TS3TextFileDocument()
+    @State private var searchText = ""
     @State private var ip = ""
     @State private var name = ""
     @State private var uniqueIdentifier = ""
@@ -7020,7 +7021,7 @@ struct BanListSheet: View {
     @State private var customBanMinutes = "60"
 
     private var visibleBanSnapshot: String {
-        model.banEntries.map(\.clipboardSummary).joined(separator: "\n")
+        filteredBanEntries.map(\.clipboardSummary).joined(separator: "\n")
     }
 
     var body: some View {
@@ -7058,6 +7059,16 @@ struct BanListSheet: View {
                     .disabled(isAddDisabled)
                 }
 
+                Section(header: Text("Search")) {
+                    TextField("Search bans", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                }
+
                 if model.banEntries.isEmpty {
                     Text("No bans")
                         .foregroundColor(.secondary)
@@ -7066,19 +7077,27 @@ struct BanListSheet: View {
                         Button("Copy Visible Bans") {
                             TS3PlatformSupport.copyToPasteboard(visibleBanSnapshot)
                         }
+                        .disabled(filteredBanEntries.isEmpty)
                         Button("Export Visible Bans") {
                             banExportDocument = TS3TextFileDocument(data: Data(visibleBanSnapshot.utf8))
                             isExportingBans = true
                         }
+                        .disabled(filteredBanEntries.isEmpty)
                         Button("Delete Visible Bans") {
                             isConfirmingDeleteVisible = true
                         }
                         .foregroundColor(.red)
+                        .disabled(filteredBanEntries.isEmpty)
                     }
 
-                    ForEach(model.banEntries) { entry in
-                        BanEntryRow(entry: entry)
-                            .environmentObject(model)
+                    if filteredBanEntries.isEmpty {
+                        Text("No matching bans")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(filteredBanEntries) { entry in
+                            BanEntryRow(entry: entry)
+                                .environmentObject(model)
+                        }
                     }
                     Section {
                         Button("Delete All Bans") {
@@ -7128,9 +7147,9 @@ struct BanListSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text("Delete Visible Bans?"),
-                    message: Text("This removes \(model.banEntries.count) ban entries from the server."),
+                    message: Text("This removes \(filteredBanEntries.count) ban entries from the server."),
                     primaryButton: .destructive(Text("Delete")) {
-                        model.deleteBans(model.banEntries)
+                        model.deleteBans(filteredBanEntries)
                     },
                     secondaryButton: .cancel()
                 )
@@ -7156,6 +7175,31 @@ struct BanListSheet: View {
         duration = .permanent
         customBanMinutes = "60"
     }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredBanEntries: [TS3BanEntrySummary] {
+        guard isSearching else { return model.banEntries }
+        return model.banEntries.filter { entry in
+            containsSearch(entry.name)
+                || containsSearch(entry.lastNickname)
+                || containsSearch(entry.ip)
+                || containsSearch(entry.uniqueIdentifier)
+                || containsSearch(entry.invokerName)
+                || containsSearch(entry.reason)
+        }
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
+    }
 }
 
 struct ComplaintListSheet: View {
@@ -7165,9 +7209,10 @@ struct ComplaintListSheet: View {
     @State private var isConfirmingDeleteVisible = false
     @State private var isExportingComplaints = false
     @State private var complaintExportDocument = TS3TextFileDocument()
+    @State private var searchText = ""
 
     private var complaintSnapshot: String {
-        model.complaintEntries.map(\.clipboardSummary).joined(separator: "\n")
+        filteredComplaintEntries.map(\.clipboardSummary).joined(separator: "\n")
     }
 
     var body: some View {
@@ -7192,6 +7237,16 @@ struct ComplaintListSheet: View {
                     }
                 }
 
+                Section(header: Text("Search")) {
+                    TextField("Search complaints", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                }
+
                 Section(header: Text("Complaints")) {
                     if model.complaintEntries.isEmpty {
                         Text("No complaints")
@@ -7200,20 +7255,28 @@ struct ComplaintListSheet: View {
                         Button("Copy Visible Complaints") {
                             TS3PlatformSupport.copyToPasteboard(complaintSnapshot)
                         }
+                        .disabled(filteredComplaintEntries.isEmpty)
 
                         Button("Export Visible Complaints") {
                             complaintExportDocument = TS3TextFileDocument(data: Data(complaintSnapshot.utf8))
                             isExportingComplaints = true
                         }
+                        .disabled(filteredComplaintEntries.isEmpty)
 
                         Button("Delete Visible Complaints") {
                             isConfirmingDeleteVisible = true
                         }
                         .foregroundColor(.red)
+                        .disabled(filteredComplaintEntries.isEmpty)
 
-                        ForEach(model.complaintEntries) { entry in
-                            ComplaintEntryRow(entry: entry)
-                                .environmentObject(model)
+                        if filteredComplaintEntries.isEmpty {
+                            Text("No matching complaints")
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(filteredComplaintEntries) { entry in
+                                ComplaintEntryRow(entry: entry)
+                                    .environmentObject(model)
+                            }
                         }
                     }
                 }
@@ -7269,7 +7332,7 @@ struct ComplaintListSheet: View {
                     title: Text("Delete Visible Complaints?"),
                     message: Text(model.complaintTarget?.nickname ?? "Selected user"),
                     primaryButton: .destructive(Text("Delete")) {
-                        model.deleteComplaints(model.complaintEntries)
+                        model.deleteComplaints(filteredComplaintEntries)
                     },
                     secondaryButton: .cancel()
                 )
@@ -7286,6 +7349,30 @@ struct ComplaintListSheet: View {
                 }
             }
         )
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredComplaintEntries: [TS3ComplaintSummary] {
+        guard isSearching else { return model.complaintEntries }
+        return model.complaintEntries.filter { entry in
+            containsSearch(entry.targetName)
+                || containsSearch(entry.sourceName)
+                || containsSearch(entry.message)
+                || String(entry.targetClientDatabaseId).contains(normalizedSearchText)
+                || String(entry.sourceClientDatabaseId).contains(normalizedSearchText)
+        }
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 }
 
