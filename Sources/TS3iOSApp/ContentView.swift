@@ -5606,10 +5606,13 @@ struct FileBrowserSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var directoryName = ""
     @State private var pathText = "/"
+    @State private var searchText = ""
     @State private var isShowingFileImporter = false
     @State private var isExportingDownloadedFile = false
     @State private var downloadedFileDocument = TS3DownloadedFileDocument()
     @State private var downloadedFileExportName = "download"
+    @State private var isExportingDirectorySnapshot = false
+    @State private var directorySnapshotDocument = TS3TextFileDocument()
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadOverwriteNames: [String] = []
     @State private var isConfirmingUploadOverwrite = false
@@ -5650,6 +5653,16 @@ struct FileBrowserSheet: View {
                     }
                 }
 
+                Section(header: Text("Search")) {
+                    TextField("Search files", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                }
+
                 Section(header: Text(model.fileBrowserPath)) {
                     if model.fileBrowserPath != "/" {
                         Button("Parent Directory") {
@@ -5657,11 +5670,11 @@ struct FileBrowserSheet: View {
                         }
                     }
 
-                    if model.fileEntries.isEmpty {
-                        Text("No files")
+                    if filteredFileEntries.isEmpty {
+                        Text(isSearching ? "No matching files" : "No files")
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(model.fileEntries) { entry in
+                        ForEach(filteredFileEntries) { entry in
                             FileEntryRow(entry: entry)
                                 .environmentObject(model)
                         }
@@ -5744,8 +5757,21 @@ struct FileBrowserSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
-                        model.refreshFileList()
+                    Menu {
+                        Button("Copy Directory Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(directorySnapshot)
+                        }
+                        .disabled(filteredFileEntries.isEmpty)
+                        Button("Export Directory Snapshot") {
+                            directorySnapshotDocument = TS3TextFileDocument(data: Data(directorySnapshot.utf8))
+                            isExportingDirectorySnapshot = true
+                        }
+                        .disabled(filteredFileEntries.isEmpty)
+                        Button("Refresh") {
+                            model.refreshFileList()
+                        }
+                    } label: {
+                        Label("Directory", systemImage: "ellipsis.circle")
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -5768,6 +5794,16 @@ struct FileBrowserSheet: View {
                 document: downloadedFileDocument,
                 contentType: .data,
                 defaultFilename: downloadedFileExportName
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingDirectorySnapshot,
+                document: directorySnapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-directory-snapshot"
             ) { result in
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
@@ -5823,6 +5859,61 @@ struct FileBrowserSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredFileEntries: [TS3FileEntrySummary] {
+        guard isSearching else { return model.fileEntries }
+        return model.fileEntries.filter { entry in
+            containsSearch(entry.name)
+                || containsSearch(entry.path)
+                || containsSearch(entry.parentPath)
+        }
+    }
+
+    private func containsSearch(_ value: String) -> Bool {
+        value.lowercased().contains(normalizedSearchText)
+    }
+
+    private static func sizeText(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
+    }
+
+    private var directorySnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        return filteredFileEntries.map { entry in
+            var rows = [
+                "Name: \(entry.name)",
+                "Path: \(entry.path)",
+                "Type: \(entry.isDirectory ? "Directory" : "File")",
+                "Size: \(Self.sizeText(entry.size))"
+            ]
+            if let modifiedAt = dateText(entry.modifiedAt) {
+                rows.append("Modified: \(modifiedAt)")
+            }
+            if entry.isStillUploading {
+                rows.append("Uploading: Yes")
+            }
+            return rows.joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
     }
 
     private var channelSelection: Binding<Int> {
@@ -6017,8 +6108,14 @@ struct FileEntryRow: View {
             Button("Copy Name") {
                 TS3PlatformSupport.copyToPasteboard(entry.name)
             }
-            Button("Copy Remote Path") {
+            Button("Copy Path") {
                 TS3PlatformSupport.copyToPasteboard(entry.path)
+            }
+            Button("Copy Parent Path") {
+                TS3PlatformSupport.copyToPasteboard(entry.parentPath)
+            }
+            Button("Copy Size") {
+                TS3PlatformSupport.copyToPasteboard(Self.sizeText(entry.size))
             }
             Button("Info") {
                 isShowingInfo = true
