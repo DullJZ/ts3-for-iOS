@@ -8751,6 +8751,7 @@ struct SelfStatusSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var nickname = ""
+    @State private var descriptionText = ""
     @State private var isAway = false
     @State private var awayMessage = ""
     @State private var isInputMuted = false
@@ -8783,6 +8784,14 @@ struct SelfStatusSheet: View {
                         model.updateNickname(to: nickname)
                     }
                     .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    TextEditor(text: $descriptionText)
+                        .frame(minHeight: 88)
+                    Button("Update Description") {
+                        if let currentUser {
+                            model.editUserDescription(currentUser, description: descriptionText)
+                        }
+                    }
+                    .disabled(currentUser == nil)
                 }
 
                 Section(header: Text("Status")) {
@@ -8916,11 +8925,15 @@ struct SelfStatusSheet: View {
             rows.append("Identity UID: \(model.identitySummary.uid)")
             rows.append("Identity Security Level: \(model.identitySummary.securityLevel)")
         }
+        if let currentUserDescription = currentUser?.description, !currentUserDescription.isEmpty {
+            rows.append("Description: \(currentUserDescription)")
+        }
         return rows.joined(separator: "\n")
     }
 
     private func refreshDraft() {
         nickname = model.nickname
+        descriptionText = currentUser?.description ?? ""
         isAway = model.isAway
         awayMessage = model.awayMessage
         isInputMuted = model.isInputMuted
@@ -8928,6 +8941,10 @@ struct SelfStatusSheet: View {
         isChannelCommander = model.isChannelCommander
         talkRequestMessage = model.talkRequestMessage
         selfIconId = model.clients.first(where: { $0.isCurrentUser })?.iconId.map(String.init) ?? ""
+    }
+
+    private var currentUser: TS3UserSummary? {
+        model.clients.first(where: { $0.isCurrentUser })
     }
 
     private var inputMutedBinding: Binding<Bool> {
