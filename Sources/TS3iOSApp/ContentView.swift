@@ -8760,10 +8760,22 @@ struct SelfStatusSheet: View {
     @State private var selfIconId = ""
     @State private var isShowingIconImporter = false
     @State private var isShowingAvatarImporter = false
+    @State private var isExportingStatus = false
+    @State private var statusDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Snapshot")) {
+                    Button("Copy Status Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(statusSnapshot)
+                    }
+                    Button("Export Status Snapshot") {
+                        statusDocument = TS3TextFileDocument(data: Data(statusSnapshot.utf8))
+                        isExportingStatus = true
+                    }
+                }
+
                 Section(header: Text("Profile")) {
                     TextField("Nickname", text: $nickname)
                         .ts3PlainTextField()
@@ -8828,14 +8840,7 @@ struct SelfStatusSheet: View {
             .navigationTitle("Self Status")
             .ts3InlineNavigationTitle()
             .onAppear {
-                nickname = model.nickname
-                isAway = model.isAway
-                awayMessage = model.awayMessage
-                isInputMuted = model.isInputMuted
-                isOutputMuted = model.isOutputMuted
-                isChannelCommander = model.isChannelCommander
-                talkRequestMessage = model.talkRequestMessage
-                selfIconId = model.clients.first(where: { $0.isCurrentUser })?.iconId.map(String.init) ?? ""
+                refreshDraft()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -8864,7 +8869,65 @@ struct SelfStatusSheet: View {
                     model.uploadSelfAvatar(from: url)
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingStatus,
+                document: statusDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-self-status"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var statusSnapshot: String {
+        var rows = [
+            "Nickname: \(model.nickname)",
+            "Away: \(model.isAway ? "Yes" : "No")",
+            "Microphone Muted: \(model.isInputMuted ? "Yes" : "No")",
+            "Output Muted: \(model.isOutputMuted ? "Yes" : "No")",
+            "Channel Commander: \(model.isChannelCommander ? "Yes" : "No")",
+            "Requesting Talk Power: \(model.isRequestingTalkPower ? "Yes" : "No")"
+        ]
+        if !model.awayMessage.isEmpty {
+            rows.append("Away Message: \(model.awayMessage)")
+        }
+        if !model.talkRequestMessage.isEmpty {
+            rows.append("Talk Request Message: \(model.talkRequestMessage)")
+        }
+        if let selfUser = model.clients.first(where: { $0.isCurrentUser }) {
+            rows.append("Client ID: \(selfUser.id)")
+            if let databaseId = selfUser.databaseId {
+                rows.append("Database ID: \(databaseId)")
+            }
+            if let uniqueIdentifier = selfUser.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                rows.append("Unique ID: \(uniqueIdentifier)")
+            }
+            if let channel = model.channelName(for: selfUser.channelId) {
+                rows.append("Channel: \(channel)")
+            }
+            if let iconId = selfUser.iconId {
+                rows.append("Icon ID: \(iconId)")
+            }
+        }
+        if !model.identitySummary.uid.isEmpty {
+            rows.append("Identity UID: \(model.identitySummary.uid)")
+            rows.append("Identity Security Level: \(model.identitySummary.securityLevel)")
+        }
+        return rows.joined(separator: "\n")
+    }
+
+    private func refreshDraft() {
+        nickname = model.nickname
+        isAway = model.isAway
+        awayMessage = model.awayMessage
+        isInputMuted = model.isInputMuted
+        isOutputMuted = model.isOutputMuted
+        isChannelCommander = model.isChannelCommander
+        talkRequestMessage = model.talkRequestMessage
+        selfIconId = model.clients.first(where: { $0.isCurrentUser })?.iconId.map(String.init) ?? ""
     }
 
     private var inputMutedBinding: Binding<Bool> {
