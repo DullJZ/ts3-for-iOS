@@ -3370,17 +3370,73 @@ struct PokeOfflineReplySheet: View {
 struct OfflineMessagesSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var searchText = ""
     @State private var isExportingInbox = false
     @State private var inboxDocument = TS3TextFileDocument()
+
+    private var filteredMessages: [TS3OfflineMessageSummary] {
+        guard isSearching else { return model.offlineMessages }
+        return model.offlineMessages.filter { message in
+            containsSearch(message.subject)
+                || containsSearch(message.senderName)
+                || containsSearch(message.senderUniqueIdentifier)
+                || containsSearch(message.message)
+                || containsSearch(message.isRead ? "read" : "unread")
+        }
+    }
+
+    private var visibleInboxSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        return filteredMessages.map { message in
+            var rows = [
+                "Message ID: \(message.id)",
+                "Read: \(message.isRead ? "Yes" : "No")",
+                "Sender: \(message.senderName ?? message.senderUniqueIdentifier ?? "Unknown sender")",
+                "Subject: \(message.subject)"
+            ]
+            if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
+                rows.append("Sender UID: \(senderUniqueIdentifier)")
+            }
+            if let timestamp = dateText(message.timestamp) {
+                rows.append("Timestamp: \(timestamp)")
+            }
+            if let body = message.message, !body.isEmpty {
+                rows.append("Message: \(body)")
+            }
+            return rows.joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
+    }
 
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Search")) {
+                    TextField("Search inbox", text: $searchText)
+                        .ts3PlainTextField()
+                    if isSearching {
+                        Button("Clear Search") {
+                            searchText = ""
+                        }
+                    }
+                }
+
                 if model.offlineMessages.isEmpty {
                     Text("No offline messages")
                         .foregroundColor(.secondary)
+                } else if filteredMessages.isEmpty {
+                    Text("No matching messages")
+                        .foregroundColor(.secondary)
                 } else {
-                    ForEach(model.offlineMessages) { message in
+                    ForEach(filteredMessages) { message in
                         OfflineMessageRow(message: message)
                             .environmentObject(model)
                     }
@@ -3400,22 +3456,22 @@ struct OfflineMessagesSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
                         Button("Copy Inbox Snapshot") {
-                            TS3PlatformSupport.copyToPasteboard(inboxSnapshot)
+                            TS3PlatformSupport.copyToPasteboard(visibleInboxSnapshot)
                         }
-                        .disabled(model.offlineMessages.isEmpty)
+                        .disabled(filteredMessages.isEmpty)
                         Button("Export Inbox Snapshot") {
-                            inboxDocument = TS3TextFileDocument(data: Data(inboxSnapshot.utf8))
+                            inboxDocument = TS3TextFileDocument(data: Data(visibleInboxSnapshot.utf8))
                             isExportingInbox = true
                         }
-                        .disabled(model.offlineMessages.isEmpty)
+                        .disabled(filteredMessages.isEmpty)
                         Button("Mark All Read") {
                             model.markAllOfflineMessagesRead()
                         }
-                        .disabled(model.offlineMessages.allSatisfy(\.isRead))
+                        .disabled(filteredMessages.allSatisfy(\.isRead))
                         Button("Delete All Messages") {
-                            model.deleteOfflineMessages(model.offlineMessages)
+                            model.deleteOfflineMessages(filteredMessages)
                         }
-                        .disabled(model.offlineMessages.isEmpty)
+                        .disabled(filteredMessages.isEmpty)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -3439,35 +3495,17 @@ struct OfflineMessagesSheet: View {
         }
     }
 
-    private var inboxSnapshot: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 
-        func dateText(_ date: Date?) -> String? {
-            guard let date else { return nil }
-            return formatter.string(from: date)
-        }
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
 
-        return model.offlineMessages.map { message in
-            var rows = [
-                "Message ID: \(message.id)",
-                "Read: \(message.isRead ? "Yes" : "No")",
-                "Sender: \(message.senderName ?? message.senderUniqueIdentifier ?? "Unknown sender")",
-                "Subject: \(message.subject)"
-            ]
-            if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
-                rows.append("Sender UID: \(senderUniqueIdentifier)")
-            }
-            if let timestamp = dateText(message.timestamp) {
-                rows.append("Timestamp: \(timestamp)")
-            }
-            if let body = message.message, !body.isEmpty {
-                rows.append("Message: \(body)")
-            }
-            return rows.joined(separator: "\n")
-        }
-        .joined(separator: "\n\n")
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
     }
 }
 
