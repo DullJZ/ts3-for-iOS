@@ -5208,6 +5208,36 @@ final class TS3AppModel: ObservableObject {
         saveWhisperPresets()
     }
 
+    func whisperPresetBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(whisperPresets)
+    }
+
+    @discardableResult
+    func importWhisperPresetBackup(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3WhisperPreset].self, from: data)
+        var merged = whisperPresets
+        for preset in imported {
+            let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let channelIds = Array(Set(preset.channelIds.filter { $0 > 0 })).sorted()
+            let clientIds = Array(Set(preset.clientIds.filter { $0 > 0 })).sorted()
+            guard !name.isEmpty, !channelIds.isEmpty || !clientIds.isEmpty else { continue }
+            merged.removeAll { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+            merged.insert(TS3WhisperPreset(
+                id: preset.id,
+                name: name,
+                channelIds: channelIds,
+                clientIds: clientIds,
+                updatedAt: preset.updatedAt
+            ), at: 0)
+        }
+        whisperPresets = merged.sorted { $0.updatedAt > $1.updatedAt }
+        saveWhisperPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func enableGroupWhisper(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int) {
         whisperRoute = .group(type: type, target: target, targetId: targetId)
         client?.startWhisper(target: .group(type: type, target: target, targetId: UInt64(max(targetId, 0))))

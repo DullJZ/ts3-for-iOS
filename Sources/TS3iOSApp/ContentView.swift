@@ -8786,7 +8786,10 @@ struct WhisperSheet: View {
     @State private var whisperPresetName = ""
     @State private var searchText = ""
     @State private var isExportingRoute = false
+    @State private var isExportingPresetBackup = false
+    @State private var isImportingPresetBackup = false
     @State private var routeDocument = TS3TextFileDocument()
+    @State private var presetBackupDocument = TS3TextFileDocument()
 
     private var normalizedSearchText: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -8915,10 +8918,20 @@ struct WhisperSheet: View {
                     }
                     .disabled(whisperPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         || (selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty))
+                    Button("Export Preset Backup") {
+                        exportPresetBackup()
+                    }
+                    .disabled(model.whisperPresets.isEmpty)
+                    Button("Import Preset Backup") {
+                        isImportingPresetBackup = true
+                    }
                 }
 
-                if !model.whisperPresets.isEmpty {
-                    Section(header: Text("Presets")) {
+                Section(header: Text("Presets")) {
+                    if model.whisperPresets.isEmpty {
+                        Text("No saved whisper presets")
+                            .foregroundColor(.secondary)
+                    } else {
                         ForEach(model.whisperPresets) { preset in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
@@ -9050,6 +9063,27 @@ struct WhisperSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresetBackup,
+                document: presetBackupDocument,
+                contentType: .json,
+                defaultFilename: "ts3-whisper-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresetBackup,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresetBackup(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -9057,6 +9091,29 @@ struct WhisperSheet: View {
                     }
                 }
             }
+        }
+    }
+
+    private func exportPresetBackup() {
+        do {
+            presetBackupDocument = TS3TextFileDocument(data: try model.whisperPresetBackupData())
+            isExportingPresetBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresetBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importWhisperPresetBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 
