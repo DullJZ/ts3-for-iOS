@@ -4457,6 +4457,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setChannelGroup(_ group: TS3GroupSummary, for member: TS3GroupClientSummary) {
+        guard let channelId = member.channelId else {
+            lastError = "Selected group member has no channel id."
+            return
+        }
+        runClientCommand { client in
+            try await client.setChannelGroup(groupId: group.id, channelId: channelId, clientDatabaseId: member.clientDatabaseId)
+            await MainActor.run {
+                self.groupClients.removeAll { $0.id == member.id }
+                for onlineClient in self.clients where onlineClient.databaseId == member.clientDatabaseId && onlineClient.channelId == channelId {
+                    self.setChannelGroup(group.id, forClientId: onlineClient.id)
+                }
+            }
+        }
+    }
+
     func setPrioritySpeaker(_ isPrioritySpeaker: Bool, for user: TS3UserSummary) {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)

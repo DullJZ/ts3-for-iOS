@@ -5303,6 +5303,15 @@ struct GroupClientRow: View {
                     Button("Remove From Group") {
                         isConfirmingRemove = true
                     }
+                } else if memberCanChangeChannelGroup {
+                    Menu("Set Channel Group") {
+                        ForEach(model.channelGroups) { channelGroup in
+                            Button(channelGroup.name) {
+                                model.setChannelGroup(channelGroup, for: client)
+                            }
+                            .disabled(channelGroup.id == group.id)
+                        }
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -5347,8 +5356,19 @@ struct GroupClientRow: View {
                     isConfirmingRemove = true
                 }
                 .foregroundColor(.red)
+            } else if memberCanChangeChannelGroup {
+                ForEach(model.channelGroups) { channelGroup in
+                    Button("Set Channel Group: \(channelGroup.name)") {
+                        model.setChannelGroup(channelGroup, for: client)
+                    }
+                    .disabled(channelGroup.id == group.id)
+                }
             }
         }
+    }
+
+    private var memberCanChangeChannelGroup: Bool {
+        target == .channel && client.channelId != nil && !model.channelGroups.isEmpty
     }
 
     private var databaseRecord: TS3DatabaseClientSummary {
