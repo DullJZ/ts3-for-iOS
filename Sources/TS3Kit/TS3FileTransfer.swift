@@ -120,14 +120,28 @@ private final class TS3FileTransferSocket {
         to destination: URL,
         progress: (@Sendable (Int64, Int64?) -> Void)?
     ) async throws {
-        FileManager.default.createFile(atPath: destination.path, contents: nil)
+        let seekPosition = max(0, parameters.seekPosition)
+        if seekPosition == 0 {
+            FileManager.default.createFile(atPath: destination.path, contents: nil)
+        } else {
+            guard FileManager.default.fileExists(atPath: destination.path) else {
+                throw TS3Error.fileTransferFailed
+            }
+            let attributes = try FileManager.default.attributesOfItem(atPath: destination.path)
+            let localSize = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+            guard localSize >= seekPosition else {
+                throw TS3Error.fileTransferFailed
+            }
+        }
         let handle = try FileHandle(forWritingTo: destination)
         defer {
             try? handle.close()
         }
+        try handle.seek(toOffset: UInt64(seekPosition))
+        try handle.truncate(atOffset: UInt64(seekPosition))
 
         let expectedSize = parameters.size
-        var received: Int64 = 0
+        var received = seekPosition
         while expectedSize == nil || received < (expectedSize ?? 0) {
             try Task.checkCancellation()
             let remaining = expectedSize.map { max(1, min(Int($0 - received), 64 * 1024)) } ?? (64 * 1024)

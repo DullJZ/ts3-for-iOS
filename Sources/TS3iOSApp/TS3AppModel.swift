@@ -3014,21 +3014,25 @@ final class TS3AppModel: ObservableObject {
                 }
             }
             do {
-                let destination = try downloadDestination(for: entry.name)
+                let download = try downloadDestination(for: entry)
+                let destination = download.url
+                let seekPosition = download.seekPosition
                 await MainActor.run {
-                    self.fileTransferStatus = "Preparing download: \(entry.name)"
-                    self.fileTransferProgress = 0
+                    let progress = entry.size > 0 ? min(1, Double(seekPosition) / Double(entry.size)) : 0
+                    self.fileTransferStatus = seekPosition > 0 ? "Resuming download: \(entry.name)" : "Preparing download: \(entry.name)"
+                    self.fileTransferProgress = progress
                     self.updateFileTransfer(
                         transferId,
-                        progress: 0,
+                        progress: progress,
                         state: .preparing,
-                        detail: "Preparing download",
+                        detail: seekPosition > 0 ? Self.transferProgressText(seekPosition, total: entry.size) : "Preparing download",
                         localPath: destination.path
                     )
                 }
                 let parameters = try await client.initFileDownload(
                     channelId: entry.channelId,
                     path: entry.path,
+                    seekPosition: seekPosition,
                     password: self.trimmedFileBrowserPassword
                 )
                 try await TS3FileTransfer.download(parameters: parameters, to: destination) { received, total in
@@ -3394,7 +3398,7 @@ final class TS3AppModel: ObservableObject {
         lhs.path.localizedCaseInsensitiveCompare(rhs.path) == .orderedAscending
     }
 
-    private func downloadDestination(for name: String) throws -> URL {
+    private func downloadDestination(for entry: TS3FileEntrySummary) throws -> (url: URL, seekPosition: Int64) {
         let documents = try FileManager.default.url(
             for: .documentDirectory,
             in: .userDomainMask,
@@ -3403,7 +3407,18 @@ final class TS3AppModel: ObservableObject {
         )
         let directory = documents.appendingPathComponent("TS3 Downloads", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return uniqueFileURL(in: directory, named: name)
+        let fallbackName = entry.name.isEmpty ? "download" : entry.name
+        let baseURL = directory.appendingPathComponent(fallbackName)
+        guard FileManager.default.fileExists(atPath: baseURL.path) else {
+            return (baseURL, 0)
+        }
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: baseURL.path)
+        let localSize = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+        if localSize > 0, localSize < entry.size {
+            return (baseURL, localSize)
+        }
+        return (uniqueFileURL(in: directory, named: fallbackName), 0)
     }
 
     private func avatarDestination(for hash: String) throws -> URL {
