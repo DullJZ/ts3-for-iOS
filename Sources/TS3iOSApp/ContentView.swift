@@ -5494,6 +5494,7 @@ struct ClientDatabaseSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var uniqueIdSearchText = ""
     @State private var databaseBatchSize = "100"
     @State private var isShowingDescriptionEditor = false
     @State private var actionMode: DatabaseClientActionMode?
@@ -5523,10 +5524,17 @@ struct ClientDatabaseSheet: View {
                         Spacer()
                         Button("Clear") {
                             searchText = ""
+                            uniqueIdSearchText = ""
                             model.databaseSearchResults = []
                             model.clientLocations = []
                         }
                     }
+                    TextField("Unique ID", text: $uniqueIdSearchText)
+                        .ts3PlainTextField()
+                    Button("Find by Unique ID") {
+                        model.findDatabaseClient(uniqueIdentifier: uniqueIdSearchText)
+                    }
+                    .disabled(uniqueIdSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Section(header: Text("Database Range")) {

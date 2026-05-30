@@ -2574,6 +2574,28 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func findDatabaseClient(uniqueIdentifier: String) {
+        let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uniqueIdentifier.isEmpty else {
+            lastError = "Enter a unique id to search."
+            return
+        }
+        runClientCommand { client in
+            guard let databaseId = try await client.databaseId(forUniqueIdentifier: uniqueIdentifier),
+                  let detailed = try await client.databaseClientInfo(clientDatabaseId: databaseId) else {
+                throw TS3Error.serverError(message: "No database record found for unique id.")
+            }
+            let locations = try await client.onlineClientIds(forUniqueIdentifier: uniqueIdentifier)
+            await MainActor.run {
+                let record = TS3DatabaseClientSummary(client: detailed)
+                self.selectedDatabaseClient = record
+                self.replaceDatabaseClient(record)
+                self.databaseSearchResults = [record]
+                self.clientLocations = locations.map { TS3ClientLocationSummary(location: $0) }
+            }
+        }
+    }
+
     func loadDatabaseClientDetails(_ record: TS3DatabaseClientSummary) {
         runClientCommand { client in
             let detailed = try await client.databaseClientInfo(clientDatabaseId: record.id)
