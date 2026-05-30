@@ -2329,6 +2329,7 @@ struct ContactsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var isShowingNewContact = false
     @State private var isExportingContacts = false
     @State private var isImportingContacts = false
     @State private var contactsDocument = TS3TextFileDocument()
@@ -2362,6 +2363,12 @@ struct ContactsSheet: View {
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("Add")) {
+                    Button("New Contact") {
+                        isShowingNewContact = true
+                    }
+                }
+
                 Section(header: Text("Search")) {
                     TextField("Search contacts", text: $searchText)
                         .ts3PlainTextField()
@@ -2427,6 +2434,23 @@ struct ContactsSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .sheet(isPresented: $isShowingNewContact) {
+                ContactEditorSheet(
+                    uniqueIdentifier: "",
+                    nickname: "",
+                    initialStatus: .neutral,
+                    initialNote: "",
+                    submit: { uniqueIdentifier, nickname, status, note in
+                        model.addContact(
+                            uniqueIdentifier: uniqueIdentifier,
+                            nickname: nickname,
+                            status: status,
+                            note: note
+                        )
+                    }
+                )
+                .environmentObject(model)
             }
         }
     }
@@ -2565,8 +2589,20 @@ struct ContactRow: View {
             .buttonStyle(.borderless)
         }
         .sheet(isPresented: $isEditing) {
-            ContactEditorSheet(contact: contact)
-                .environmentObject(model)
+            ContactEditorSheet(
+                uniqueIdentifier: contact.uniqueIdentifier,
+                nickname: contact.nickname,
+                initialStatus: contact.status,
+                initialNote: contact.note,
+                submit: { uniqueIdentifier, nickname, status, note in
+                    model.addContact(
+                        uniqueIdentifier: uniqueIdentifier,
+                        nickname: nickname.isEmpty ? contact.nickname : nickname,
+                        status: status,
+                        note: note
+                    )
+                }
+            )
         }
         .contextMenu {
             Button("Copy Nickname") {
@@ -2584,21 +2620,38 @@ struct ContactRow: View {
 
 struct ContactEditorSheet: View {
     @Environment(\.presentationMode) private var presentationMode
-    @EnvironmentObject private var model: TS3AppModel
-    let contact: TS3ContactEntry
+    let uniqueIdentifier: String
+    let nickname: String
+    let submit: (String, String, TS3ContactStatus, String) -> Void
     @State private var status: TS3ContactStatus
     @State private var note: String
+    @State private var identifier: String
+    @State private var displayName: String
 
-    init(contact: TS3ContactEntry) {
-        self.contact = contact
-        _status = State(initialValue: contact.status)
-        _note = State(initialValue: contact.note)
+    init(
+        uniqueIdentifier: String,
+        nickname: String,
+        initialStatus: TS3ContactStatus,
+        initialNote: String,
+        submit: @escaping (String, String, TS3ContactStatus, String) -> Void
+    ) {
+        self.uniqueIdentifier = uniqueIdentifier
+        self.nickname = nickname
+        self.submit = submit
+        _status = State(initialValue: initialStatus)
+        _note = State(initialValue: initialNote)
+        _identifier = State(initialValue: uniqueIdentifier)
+        _displayName = State(initialValue: nickname)
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text(contact.nickname)) {
+                Section(header: Text(displayName.isEmpty ? "Contact" : displayName)) {
+                    TextField("Unique ID", text: $identifier)
+                        .ts3PlainTextField()
+                    TextField("Nickname", text: $displayName)
+                        .ts3PlainTextField()
                     Picker("Status", selection: $status) {
                         ForEach(TS3ContactStatus.allCases) { status in
                             Text(status.title).tag(status)
@@ -2609,12 +2662,13 @@ struct ContactEditorSheet: View {
                 }
                 Section {
                     Button("Save") {
-                        model.updateContact(contact, status: status, note: note)
+                        submit(identifier, displayName, status, note)
                         presentationMode.wrappedValue.dismiss()
                     }
+                    .disabled(identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .navigationTitle("Edit Contact")
+            .navigationTitle(uniqueIdentifier.isEmpty ? "New Contact" : "Edit Contact")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {

@@ -1289,6 +1289,35 @@ final class TS3AppModel: ObservableObject {
         syncBlockedContactPlayback()
     }
 
+    func addContact(
+        uniqueIdentifier: String,
+        nickname: String,
+        status: TS3ContactStatus,
+        note: String
+    ) {
+        let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uniqueIdentifier.isEmpty else {
+            lastError = "Enter a unique id for the contact."
+            return
+        }
+        let nickname = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        contacts.removeAll { $0.uniqueIdentifier == uniqueIdentifier }
+        contacts.insert(
+            TS3ContactEntry(
+                uniqueIdentifier: uniqueIdentifier,
+                nickname: nickname.isEmpty ? uniqueIdentifier : nickname,
+                status: status,
+                note: note,
+                updatedAt: Date()
+            ),
+            at: 0
+        )
+        saveContacts()
+        syncBlockedContactPlayback()
+        lastError = nil
+    }
+
     func updateContact(_ contact: TS3ContactEntry, status: TS3ContactStatus, note: String) {
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         if status == .neutral && trimmedNote.isEmpty {
