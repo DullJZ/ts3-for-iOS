@@ -80,6 +80,64 @@ struct ConnectView: View {
 
     var body: some View {
         Form {
+            if !model.recentConnections.isEmpty {
+                Section(header: Text("Recent Servers")) {
+                    ForEach(model.recentConnections) { snapshot in
+                        HStack {
+                            Button {
+                                model.applyRecentConnection(snapshot)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(snapshot.host)
+                                    Text("\(snapshot.nickname) · \(snapshot.port)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .buttonStyle(.borderless)
+                            Spacer()
+                            Button {
+                                model.copyInviteLink(
+                                    for: TS3BookmarkSummary(
+                                        id: snapshot.id,
+                                        name: snapshot.host,
+                                        host: snapshot.host,
+                                        port: snapshot.port,
+                                        nickname: snapshot.nickname,
+                                        serverPassword: snapshot.serverPassword,
+                                        defaultChannel: snapshot.defaultChannel,
+                                        defaultChannelPassword: snapshot.defaultChannelPassword,
+                                        privilegeKey: snapshot.privilegeKey
+                                    )
+                                )
+                            } label: {
+                                Image(systemName: "link")
+                            }
+                            .buttonStyle(.borderless)
+                            Button {
+                                model.applyRecentConnection(snapshot)
+                                model.connect()
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .buttonStyle(.borderless)
+                            Button {
+                                model.saveCurrentBookmark(name: snapshot.host)
+                            } label: {
+                                Image(systemName: "bookmark")
+                            }
+                            .buttonStyle(.borderless)
+                            Button {
+                                model.deleteRecentConnection(snapshot)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+            }
+
             if !model.bookmarks.isEmpty {
                 Section(header: Text("Bookmarks")) {
                     ForEach(model.bookmarks) { bookmark in

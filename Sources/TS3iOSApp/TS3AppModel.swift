@@ -822,7 +822,8 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     }
 }
 
-struct TS3ConnectionSnapshot {
+struct TS3ConnectionSnapshot: Identifiable, Codable {
+    let id: UUID
     let host: String
     let port: String
     let nickname: String
@@ -833,6 +834,26 @@ struct TS3ConnectionSnapshot {
 
     var title: String {
         "\(host):\(port)"
+    }
+
+    init(
+        id: UUID = UUID(),
+        host: String,
+        port: String,
+        nickname: String,
+        serverPassword: String,
+        defaultChannel: String,
+        defaultChannelPassword: String,
+        privilegeKey: String
+    ) {
+        self.id = id
+        self.host = host
+        self.port = port
+        self.nickname = nickname
+        self.serverPassword = serverPassword
+        self.defaultChannel = defaultChannel
+        self.defaultChannelPassword = defaultChannelPassword
+        self.privilegeKey = privilegeKey
     }
 }
 
@@ -1076,6 +1097,7 @@ final class TS3AppModel: ObservableObject {
     @Published var privilegeKey = ""
     @Published var nickname = TS3PlatformSupport.defaultNickname
     @Published var awayMessage = ""
+    @Published private(set) var recentConnections: [TS3ConnectionSnapshot] = []
     @Published private(set) var lastConnectionSnapshot: TS3ConnectionSnapshot?
     @Published private(set) var lastDisconnectMessage: String?
 
@@ -1092,6 +1114,7 @@ final class TS3AppModel: ObservableObject {
         loadAudioSettings()
         loadNotificationSettings()
         loadBookmarks()
+        loadRecentConnections()
         loadContacts()
         loadChatHistory()
         Task { @MainActor in
@@ -1417,7 +1440,9 @@ final class TS3AppModel: ObservableObject {
         state = .connecting
 
         let port = Int(serverPort) ?? 9987
-        lastConnectionSnapshot = currentConnectionSnapshot(port: port)
+        let snapshot = currentConnectionSnapshot(port: port)
+        lastConnectionSnapshot = snapshot
+        upsertRecentConnection(snapshot)
         let config = TS3ClientConfig(
             host: serverHost,
             port: port,
@@ -1468,6 +1493,21 @@ final class TS3AppModel: ObservableObject {
         defaultChannelPassword = snapshot.defaultChannelPassword
         privilegeKey = snapshot.privilegeKey
         connect()
+    }
+
+    func applyRecentConnection(_ snapshot: TS3ConnectionSnapshot) {
+        serverHost = snapshot.host
+        serverPort = snapshot.port
+        nickname = snapshot.nickname
+        serverPassword = snapshot.serverPassword
+        defaultChannel = snapshot.defaultChannel
+        defaultChannelPassword = snapshot.defaultChannelPassword
+        privilegeKey = snapshot.privilegeKey
+    }
+
+    func deleteRecentConnection(_ snapshot: TS3ConnectionSnapshot) {
+        recentConnections.removeAll { $0.id == snapshot.id }
+        saveRecentConnections()
     }
 
     func applyBookmark(_ bookmark: TS3BookmarkSummary) {
@@ -1713,6 +1753,53 @@ final class TS3AppModel: ObservableObject {
         if !keepLastConnection {
             lastConnectionSnapshot = nil
         }
+    }
+
+    private var recentConnectionsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-recent-connections.json")
+    }
+
+    private func loadRecentConnections() {
+        guard let data = try? Data(contentsOf: recentConnectionsURL),
+              let decoded = try? JSONDecoder().decode([TS3ConnectionSnapshot].self, from: data) else {
+            recentConnections = []
+            return
+        }
+        recentConnections = decoded
+    }
+
+    private func saveRecentConnections() {
+        do {
+            let directory = recentConnectionsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(recentConnections)
+            try data.write(to: recentConnectionsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func upsertRecentConnection(_ snapshot: TS3ConnectionSnapshot) {
+        var normalized = snapshot
+        normalized = TS3ConnectionSnapshot(
+            id: snapshot.id,
+            host: snapshot.host.trimmingCharacters(in: .whitespacesAndNewlines),
+            port: snapshot.port.trimmingCharacters(in: .whitespacesAndNewlines),
+            nickname: snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            serverPassword: snapshot.serverPassword,
+            defaultChannel: snapshot.defaultChannel,
+            defaultChannelPassword: snapshot.defaultChannelPassword,
+            privilegeKey: snapshot.privilegeKey
+        )
+        recentConnections.removeAll {
+            $0.host.caseInsensitiveCompare(normalized.host) == .orderedSame && $0.port == normalized.port
+        }
+        recentConnections.insert(normalized, at: 0)
+        if recentConnections.count > 12 {
+            recentConnections = Array(recentConnections.prefix(12))
+        }
+        saveRecentConnections()
     }
 
     func updatePlaybackVolume(_ volume: Double) {
