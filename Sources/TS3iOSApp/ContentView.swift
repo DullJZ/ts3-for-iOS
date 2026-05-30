@@ -1115,6 +1115,7 @@ struct ChannelRow: View {
     @State private var isShowingMove = false
     @State private var isShowingPermissions = false
     @State private var isShowingFiles = false
+    @State private var isShowingPrivilegeKeys = false
     @State private var isConfirmingDelete = false
 
     private var channelPath: String {
@@ -1248,6 +1249,11 @@ struct ChannelRow: View {
                         model.openFileBrowser(channel: channel)
                         isShowingFiles = true
                     }
+                    if !model.channelGroups.isEmpty {
+                        Button("Create Channel Privilege Key") {
+                            isShowingPrivilegeKeys = true
+                        }
+                    }
                     Button("Move Channel") {
                         isShowingMove = true
                     }
@@ -1301,6 +1307,14 @@ struct ChannelRow: View {
         .sheet(isPresented: $isShowingFiles) {
             FileBrowserSheet()
                 .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingPrivilegeKeys) {
+            PrivilegeKeysSheet(
+                initialTargetType: .channelGroup,
+                initialChannelGroupId: model.channelGroups.first?.id,
+                initialChannelId: channel.id
+            )
+            .environmentObject(model)
         }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
@@ -4891,6 +4905,7 @@ struct GroupManagementRow: View {
     let target: TS3GroupManagementTarget
     @State private var isShowingMembers = false
     @State private var isShowingPermissions = false
+    @State private var isShowingPrivilegeKeys = false
     @State private var isShowingRename = false
     @State private var isShowingCopy = false
     @State private var isConfirmingDelete = false
@@ -4920,6 +4935,10 @@ struct GroupManagementRow: View {
                     model.selectGroupPermissions(group, target: target)
                     isShowingPermissions = true
                 }
+                Button("Create Privilege Key") {
+                    isShowingPrivilegeKeys = true
+                }
+                .disabled(target == .channel && model.channels.isEmpty)
                 Button("Rename") {
                     isShowingRename = true
                 }
@@ -4945,6 +4964,15 @@ struct GroupManagementRow: View {
         .sheet(isPresented: $isShowingPermissions) {
             PermissionsSheet()
                 .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingPrivilegeKeys) {
+            PrivilegeKeysSheet(
+                initialTargetType: privilegeKeyTargetType,
+                initialServerGroupId: target == .server ? group.id : nil,
+                initialChannelGroupId: target == .channel ? group.id : nil,
+                initialChannelId: target == .channel ? model.currentChannel?.id ?? model.channels.first?.id : nil
+            )
+            .environmentObject(model)
         }
         .sheet(isPresented: $isShowingRename) {
             GroupNameSheet(
@@ -5025,6 +5053,15 @@ struct GroupManagementRow: View {
             model.deleteServerGroup(group, force: force)
         case .channel:
             model.deleteChannelGroup(group, force: force)
+        }
+    }
+
+    private var privilegeKeyTargetType: TS3PrivilegeKeyTargetType {
+        switch target {
+        case .server:
+            return .serverGroup
+        case .channel:
+            return .channelGroup
         }
     }
 }
@@ -7453,6 +7490,10 @@ private extension TS3PermissionSummary {
 struct PrivilegeKeysSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    let initialTargetType: TS3PrivilegeKeyTargetType?
+    let initialServerGroupId: Int?
+    let initialChannelGroupId: Int?
+    let initialChannelId: Int?
     @State private var targetType: TS3PrivilegeKeyTargetType = .serverGroup
     @State private var selectedServerGroupId = 0
     @State private var selectedChannelGroupId = 0
@@ -7468,6 +7509,18 @@ struct PrivilegeKeysSheet: View {
 
     private var privilegeKeysSnapshot: String {
         filteredPrivilegeKeys.map(\.clipboardSummary).joined(separator: "\n")
+    }
+
+    init(
+        initialTargetType: TS3PrivilegeKeyTargetType? = nil,
+        initialServerGroupId: Int? = nil,
+        initialChannelGroupId: Int? = nil,
+        initialChannelId: Int? = nil
+    ) {
+        self.initialTargetType = initialTargetType
+        self.initialServerGroupId = initialServerGroupId
+        self.initialChannelGroupId = initialChannelGroupId
+        self.initialChannelId = initialChannelId
     }
 
     var body: some View {
@@ -7609,6 +7662,7 @@ struct PrivilegeKeysSheet: View {
             .navigationTitle("Privilege Keys")
             .ts3InlineNavigationTitle()
             .onAppear {
+                applyInitialSelection()
                 normalizeSelections()
                 model.refreshGroups()
                 model.refreshPrivilegeKeys()
@@ -7677,14 +7731,29 @@ struct PrivilegeKeysSheet: View {
     }
 
     private func normalizeSelections() {
-        if selectedServerGroupId == 0 || !model.serverGroups.contains(where: { $0.id == selectedServerGroupId }) {
+        if selectedServerGroupId == 0 || (!model.serverGroups.isEmpty && !model.serverGroups.contains(where: { $0.id == selectedServerGroupId })) {
             selectedServerGroupId = model.serverGroups.first?.id ?? 0
         }
-        if selectedChannelGroupId == 0 || !model.channelGroups.contains(where: { $0.id == selectedChannelGroupId }) {
+        if selectedChannelGroupId == 0 || (!model.channelGroups.isEmpty && !model.channelGroups.contains(where: { $0.id == selectedChannelGroupId })) {
             selectedChannelGroupId = model.channelGroups.first?.id ?? 0
         }
-        if selectedChannelId == 0 || !model.channels.contains(where: { $0.id == selectedChannelId }) {
+        if selectedChannelId == 0 || (!model.channels.isEmpty && !model.channels.contains(where: { $0.id == selectedChannelId })) {
             selectedChannelId = model.currentChannel?.id ?? model.channels.first?.id ?? 0
+        }
+    }
+
+    private func applyInitialSelection() {
+        if let initialTargetType {
+            targetType = initialTargetType
+        }
+        if let initialServerGroupId {
+            selectedServerGroupId = initialServerGroupId
+        }
+        if let initialChannelGroupId {
+            selectedChannelGroupId = initialChannelGroupId
+        }
+        if let initialChannelId {
+            selectedChannelId = initialChannelId
         }
     }
 
