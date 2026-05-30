@@ -4303,11 +4303,37 @@ struct ServerToolsSheet: View {
 }
 
 struct ServerLogsSheet: View {
+    private enum LogLevelFilter: String, CaseIterable, Identifiable {
+        case all
+        case info
+        case warning
+        case error
+        case debug
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Levels"
+            case .info: return "Info"
+            case .warning: return "Warning"
+            case .error: return "Error"
+            case .debug: return "Debug"
+            }
+        }
+
+        func matches(_ level: String?) -> Bool {
+            guard self != .all else { return true }
+            return level?.caseInsensitiveCompare(rawValue) == .orderedSame
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var lineLimit = "100"
     @State private var reverseOrder = true
     @State private var instanceLogs = false
+    @State private var levelFilter: LogLevelFilter = .all
     @State private var searchText = ""
     @State private var newLogLevel: TS3LogLevel = .info
     @State private var newLogMessage = ""
@@ -4325,10 +4351,16 @@ struct ServerLogsSheet: View {
                         .ts3PlainTextField()
                     Toggle("Reverse Order", isOn: $reverseOrder)
                     Toggle("Instance Logs", isOn: $instanceLogs)
+                    Picker("Level Filter", selection: $levelFilter) {
+                        ForEach(LogLevelFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
                     TextField("Search logs", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            levelFilter = .all
                             searchText = ""
                         }
                     }
@@ -4451,12 +4483,18 @@ struct ServerLogsSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || levelFilter != .all
+    }
+
     private var filteredEntries: [TS3ServerLogSummary] {
-        guard isSearching else { return model.serverLogEntries }
         return model.serverLogEntries.filter { entry in
-            containsSearch(entry.message)
-                || containsSearch(entry.level)
-                || containsSearch(entry.channel)
+            levelFilter.matches(entry.level) && (
+                !isSearching
+                    || containsSearch(entry.message)
+                    || containsSearch(entry.level)
+                    || containsSearch(entry.channel)
+            )
         }
     }
 
@@ -4470,6 +4508,9 @@ struct ServerLogsSheet: View {
             "Reverse: \(reverseOrder ? "Yes" : "No")",
             "Instance: \(instanceLogs ? "Yes" : "No")"
         ]
+        if levelFilter != .all {
+            lines.append("Level Filter: \(levelFilter.title)")
+        }
         if isSearching {
             lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
         }
