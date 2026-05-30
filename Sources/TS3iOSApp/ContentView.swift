@@ -1155,6 +1155,7 @@ struct ChannelRow: View {
     @State private var isShowingFiles = false
     @State private var isShowingPrivilegeKeys = false
     @State private var isConfirmingDelete = false
+    @State private var isConfirmingForcedDelete = false
 
     private var channelPath: String {
         model.channelPath(for: channel)
@@ -1309,6 +1310,9 @@ struct ChannelRow: View {
                     Button("Delete Channel") {
                         isConfirmingDelete = true
                     }
+                    Button("Force Delete Channel") {
+                        isConfirmingForcedDelete = true
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -1368,11 +1372,23 @@ struct ChannelRow: View {
                 title: Text("Delete Channel"),
                 message: Text(channel.name),
                 primaryButton: .destructive(Text("Delete")) {
-                    model.deleteChannel(channel)
+                    model.deleteChannel(channel, force: false)
                 },
                 secondaryButton: .cancel()
             )
         }
+        .background(
+            EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
+                Alert(
+                    title: Text("Force Delete Channel"),
+                    message: Text(channel.name),
+                    primaryButton: .destructive(Text("Force Delete")) {
+                        model.deleteChannel(channel, force: true)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        )
     }
 
     private var channelLimitText: String? {

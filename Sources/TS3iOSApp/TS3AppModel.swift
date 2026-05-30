@@ -3901,9 +3901,9 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func deleteChannel(_ channel: TS3ChannelSummary) {
+    func deleteChannel(_ channel: TS3ChannelSummary, force: Bool) {
         runClientCommand { client in
-            try await client.deleteChannel(channelId: channel.id, force: true)
+            try await client.deleteChannel(channelId: channel.id, force: force)
         }
     }
 
