@@ -9547,6 +9547,7 @@ struct SelfStatusSheet: View {
     @State private var selfIconId = ""
     @State private var isShowingIconImporter = false
     @State private var isShowingAvatarImporter = false
+    @State private var isConfirmingClearAvatar = false
     @State private var isExportingStatus = false
     @State private var isExportingStatusBackup = false
     @State private var isImportingStatus = false
@@ -9657,6 +9658,10 @@ struct SelfStatusSheet: View {
                     } label: {
                         Label("Upload Avatar", systemImage: "person.crop.square")
                     }
+                    Button("Clear Avatar") {
+                        isConfirmingClearAvatar = true
+                    }
+                    .disabled(currentUser?.avatarHash?.isEmpty ?? true)
                 }
 
                 Section(header: Text("Voice Status")) {
@@ -9732,6 +9737,16 @@ struct SelfStatusSheet: View {
                 if case .success(let urls) = result, let url = urls.first {
                     model.uploadSelfAvatar(from: url)
                 }
+            }
+            .alert(isPresented: $isConfirmingClearAvatar) {
+                Alert(
+                    title: Text("Clear Avatar"),
+                    message: Text("Remove the avatar from your current client identity on this server."),
+                    primaryButton: .destructive(Text("Clear")) {
+                        model.clearSelfAvatar()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .fileExporter(
                 isPresented: $isExportingStatus,

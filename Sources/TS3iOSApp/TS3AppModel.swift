@@ -3775,6 +3775,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func clearSelfAvatar() {
+        guard let ownClient = clients.first(where: { $0.isCurrentUser }) else {
+            lastError = "Current client is not available."
+            return
+        }
+        runClientCommand { client in
+            try await client.setClientAvatarFlag("")
+            await MainActor.run {
+                self.updateUser(clientId: ownClient.id) { existing in
+                    self.copyUser(existing, resetAvatar: true)
+                }
+                self.avatarDownloadStatus = nil
+            }
+        }
+    }
+
     func createChannel(
         name: String,
         parentId: Int?,
@@ -4395,6 +4411,7 @@ final class TS3AppModel: ObservableObject {
         description: String? = nil,
         avatarHash: String? = nil,
         avatarURL: URL? = nil,
+        resetAvatar: Bool = false,
         iconId: Int? = nil,
         iconURL: URL? = nil,
         resetIconURL: Bool = false,
@@ -4428,8 +4445,8 @@ final class TS3AppModel: ObservableObject {
             channelGroupId: channelGroupId ?? user.channelGroupId,
             serverGroups: serverGroups ?? user.serverGroups,
             description: description ?? user.description,
-            avatarHash: avatarHash ?? user.avatarHash,
-            avatarURL: avatarURL ?? user.avatarURL,
+            avatarHash: resetAvatar ? nil : (avatarHash ?? user.avatarHash),
+            avatarURL: resetAvatar ? nil : (avatarURL ?? user.avatarURL),
             iconId: iconId ?? user.iconId,
             iconURL: resetIconURL ? nil : (iconURL ?? user.iconURL),
             version: version ?? user.version,
