@@ -5494,6 +5494,7 @@ struct ClientDatabaseSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var databaseBatchSize = "100"
     @State private var isShowingDescriptionEditor = false
     @State private var actionMode: DatabaseClientActionMode?
     @State private var isShowingComplaints = false
@@ -5525,6 +5526,20 @@ struct ClientDatabaseSheet: View {
                             model.databaseSearchResults = []
                             model.clientLocations = []
                         }
+                    }
+                }
+
+                Section(header: Text("Database Range")) {
+                    TextField("Batch Size", text: $databaseBatchSize)
+                        .ts3NumericKeyboard()
+                    HStack {
+                        Text("\(model.databaseClients.count) loaded")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Load More") {
+                            model.loadMoreClientDatabaseRecords(limit: parsedDatabaseBatchSize)
+                        }
+                        .disabled(!model.databaseSearchResults.isEmpty || !model.canLoadMoreDatabaseClients)
                     }
                 }
 
@@ -5632,7 +5647,7 @@ struct ClientDatabaseSheet: View {
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Refresh") {
-                        model.refreshClientDatabase()
+                        model.refreshClientDatabase(limit: parsedDatabaseBatchSize)
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -5719,7 +5734,14 @@ struct ClientDatabaseSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .onAppear {
+                databaseBatchSize = String(model.databaseClientBatchSize)
+            }
         }
+    }
+
+    private var parsedDatabaseBatchSize: Int {
+        max(1, Int(databaseBatchSize.trimmingCharacters(in: .whitespacesAndNewlines)) ?? model.databaseClientBatchSize)
     }
 
     private var databaseSnapshot: String {

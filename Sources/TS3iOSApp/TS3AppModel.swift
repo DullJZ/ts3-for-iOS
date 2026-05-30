@@ -1050,6 +1050,8 @@ final class TS3AppModel: ObservableObject {
     @Published var complaintTarget: TS3UserSummary?
     @Published var databaseClients: [TS3DatabaseClientSummary] = []
     @Published var databaseSearchResults: [TS3DatabaseClientSummary] = []
+    @Published var databaseClientBatchSize = 100
+    @Published var canLoadMoreDatabaseClients = true
     @Published var clientLocations: [TS3ClientLocationSummary] = []
     @Published var selectedDatabaseClient: TS3DatabaseClientSummary?
     @Published var serverLogEntries: [TS3ServerLogSummary] = []
@@ -2519,13 +2521,36 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func refreshClientDatabase(limit: Int = 100) {
+    func refreshClientDatabase(limit: Int? = nil) {
+        let requestedLimit = max(1, limit ?? databaseClientBatchSize)
+        databaseClientBatchSize = requestedLimit
         runClientCommand { client in
-            let records = try await client.refreshClientDatabase(start: 0, duration: limit)
+            let records = try await client.refreshClientDatabase(start: 0, duration: requestedLimit)
             await MainActor.run {
                 self.databaseClients = records
                     .map { TS3DatabaseClientSummary(client: $0) }
                     .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+                self.canLoadMoreDatabaseClients = records.count >= requestedLimit
+                self.databaseSearchResults = []
+                self.clientLocations = []
+            }
+        }
+    }
+
+    func loadMoreClientDatabaseRecords(limit: Int? = nil) {
+        let start = databaseClients.count
+        let requestedLimit = max(1, limit ?? databaseClientBatchSize)
+        databaseClientBatchSize = requestedLimit
+        runClientCommand { client in
+            let records = try await client.refreshClientDatabase(start: start, duration: requestedLimit)
+            await MainActor.run {
+                let existingIds = Set(self.databaseClients.map(\.id))
+                let newRecords = records
+                    .map { TS3DatabaseClientSummary(client: $0) }
+                    .filter { !existingIds.contains($0.id) }
+                self.databaseClients = (self.databaseClients + newRecords)
+                    .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+                self.canLoadMoreDatabaseClients = records.count >= requestedLimit
             }
         }
     }
