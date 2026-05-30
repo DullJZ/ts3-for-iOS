@@ -1114,6 +1114,7 @@ struct ChannelRow: View {
     @State private var isShowingEdit = false
     @State private var isShowingMove = false
     @State private var isShowingPermissions = false
+    @State private var isShowingFiles = false
     @State private var isConfirmingDelete = false
 
     private var channelPath: String {
@@ -1243,6 +1244,10 @@ struct ChannelRow: View {
                         model.selectChannelPermissions(channel)
                         isShowingPermissions = true
                     }
+                    Button("Browse Channel Files") {
+                        model.openFileBrowser(channel: channel)
+                        isShowingFiles = true
+                    }
                     Button("Move Channel") {
                         isShowingMove = true
                     }
@@ -1291,6 +1296,10 @@ struct ChannelRow: View {
         }
         .sheet(isPresented: $isShowingPermissions) {
             PermissionsSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingFiles) {
+            FileBrowserSheet()
                 .environmentObject(model)
         }
         .alert(isPresented: $isConfirmingDelete) {
