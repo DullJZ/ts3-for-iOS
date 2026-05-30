@@ -449,6 +449,7 @@ struct ChannelListView: View {
     @State private var isShowingEvents = false
     @State private var isShowingWhisper = false
     @State private var isShowingCreateChannel = false
+    @State private var isShowingDisconnect = false
     @State private var isExportingChannelTree = false
     @State private var channelTreeDocument = TS3TextFileDocument()
     @State private var channelSearchText = ""
@@ -485,7 +486,7 @@ struct ChannelListView: View {
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button("Disconnect") {
-                    model.disconnect()
+                    isShowingDisconnect = true
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
             }
@@ -562,6 +563,10 @@ struct ChannelListView: View {
         }
         .sheet(isPresented: $isShowingWhisper) {
             WhisperSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingDisconnect) {
+            DisconnectSheet()
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingCreateChannel) {
@@ -700,6 +705,37 @@ struct ChannelSearchField: View {
         .padding(.vertical, 8)
         .background(Color.secondary.opacity(0.10))
         .cornerRadius(8)
+    }
+}
+
+struct DisconnectSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var reason = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Disconnect")) {
+                    TextField("Message", text: $reason)
+                        .ts3PlainTextField()
+                    Button("Disconnect") {
+                        model.disconnect(reason: reason)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+            .navigationTitle("Disconnect")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -1722,9 +1722,10 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
-    func disconnect() {
+    func disconnect(reason: String = "ui-disconnect") {
+        let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         client?.delegate = nil
-        client?.disconnect(reason: "ui-disconnect")
+        client?.disconnect(reason: reason.isEmpty ? "ui-disconnect" : reason)
         client = nil
         lastDisconnectMessage = nil
         clearConnectionState(keepLastConnection: true)
