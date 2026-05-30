@@ -9136,6 +9136,7 @@ struct ChannelEditorSheet: View {
     @State private var topic = ""
     @State private var description = ""
     @State private var password = ""
+    @State private var clearPassword = false
     @State private var channelType: TS3ChannelType = .permanent
     @State private var isDefault = false
     @State private var neededTalkPower = ""
@@ -9166,7 +9167,11 @@ struct ChannelEditorSheet: View {
                     TextField("Phonetic Name", text: $phoneticName)
                     TextField("Topic", text: $topic)
                     TextField("Description", text: $description)
+                    if case .edit = mode {
+                        Toggle("Clear Password", isOn: $clearPassword)
+                    }
                     SecureField("Password", text: $password)
+                        .disabled(clearPassword)
                     Picker("Type", selection: $channelType) {
                         ForEach(TS3ChannelType.allCases) { type in
                             Text(type.title).tag(type)
@@ -9243,7 +9248,7 @@ struct ChannelEditorSheet: View {
                                 phoneticName: phoneticName,
                                 topic: topic,
                                 description: description,
-                                password: password.isEmpty ? nil : password,
+                                password: clearPassword ? "" : (password.isEmpty ? nil : password),
                                 isDefault: isDefault,
                                 channelType: channelType,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
@@ -9272,6 +9277,7 @@ struct ChannelEditorSheet: View {
                     phoneticName = channel.phoneticName ?? ""
                     topic = channel.topic ?? ""
                     description = channel.description ?? ""
+                    clearPassword = false
                     channelType = channelType(for: channel)
                     isDefault = channel.isDefault
                     neededTalkPower = channel.neededTalkPower.map(String.init) ?? ""
