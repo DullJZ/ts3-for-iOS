@@ -76,6 +76,7 @@ struct ConnectView: View {
     @State private var isShowingIdentity = false
     @State private var isShowingBookmarkImporter = false
     @State private var isExportingBookmarks = false
+    @State private var isConfirmingClearRecentConnections = false
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
 
     var body: some View {
@@ -135,6 +136,10 @@ struct ConnectView: View {
                             .buttonStyle(.borderless)
                         }
                     }
+                    Button("Clear Recent Servers") {
+                        isConfirmingClearRecentConnections = true
+                    }
+                    .foregroundColor(.red)
                 }
             }
 
@@ -297,6 +302,16 @@ struct ConnectView: View {
             if case .failure(let error) = result {
                 model.lastError = error.localizedDescription
             }
+        }
+        .alert(isPresented: $isConfirmingClearRecentConnections) {
+            Alert(
+                title: Text("Clear Recent Servers?"),
+                message: Text("This removes the local connection history on this device."),
+                primaryButton: .destructive(Text("Clear")) {
+                    model.clearRecentConnections()
+                },
+                secondaryButton: .cancel()
+            )
         }
     }
 

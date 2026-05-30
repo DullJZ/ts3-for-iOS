@@ -1539,6 +1539,11 @@ final class TS3AppModel: ObservableObject {
         saveRecentConnections()
     }
 
+    func clearRecentConnections() {
+        recentConnections = []
+        saveRecentConnections()
+    }
+
     func applyBookmark(_ bookmark: TS3BookmarkSummary) {
         serverHost = bookmark.host
         serverPort = bookmark.port
