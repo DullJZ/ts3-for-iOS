@@ -1590,6 +1590,23 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func copyInviteLink(for channel: TS3ChannelSummary) {
+        let channelPath = channelPath(for: channel)
+        let name = "\(serverHost) - \(channel.name)"
+        guard let link = inviteLink(
+            name: name,
+            host: serverHost,
+            port: serverPort,
+            nickname: nickname,
+            defaultChannel: channelPath
+        ) else {
+            lastError = "Current channel is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
     func copyInviteLink(for bookmark: TS3BookmarkSummary) {
         guard let link = inviteLink(
             name: bookmark.name,

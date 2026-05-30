@@ -1265,6 +1265,9 @@ struct ChannelRow: View {
                     Button("Copy Channel Path") {
                         TS3PlatformSupport.copyToPasteboard(channelPath)
                     }
+                    Button("Copy Channel Invite Link") {
+                        model.copyInviteLink(for: channel)
+                    }
                     Button("Copy Channel ID") {
                         TS3PlatformSupport.copyToPasteboard("\(channel.id)")
                     }
