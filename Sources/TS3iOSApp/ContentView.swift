@@ -5399,6 +5399,7 @@ struct ClientDatabaseSheet: View {
     @State private var isShowingComplaints = false
     @State private var isConfirmingDelete = false
     @State private var isExportingDatabase = false
+    @State private var isExportingDatabaseBackup = false
     @State private var isImportingDatabase = false
     @State private var databaseExportDocument = TS3TextFileDocument()
     @State private var databaseBackupDocument = TS3TextFileDocument()
@@ -5598,7 +5599,7 @@ struct ClientDatabaseSheet: View {
                 }
             }
             .fileExporter(
-                isPresented: $isExportingDatabase,
+                isPresented: $isExportingDatabaseBackup,
                 document: databaseBackupDocument,
                 contentType: .json,
                 defaultFilename: "ts3-client-database-backup"
@@ -5697,7 +5698,7 @@ struct ClientDatabaseSheet: View {
     private func exportDatabaseBackup() {
         do {
             databaseBackupDocument = TS3TextFileDocument(data: try model.databaseClientBackupData())
-            isExportingDatabase = true
+            isExportingDatabaseBackup = true
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -7460,6 +7461,7 @@ struct PrivilegeKeysSheet: View {
     @State private var customSet = ""
     @State private var searchText = ""
     @State private var isExportingKeys = false
+    @State private var isExportingKeyBackup = false
     @State private var keysExportDocument = TS3TextFileDocument()
     @State private var keysBackupDocument = TS3TextFileDocument()
     @State private var isConfirmingDeleteAll = false
@@ -7585,7 +7587,7 @@ struct PrivilegeKeysSheet: View {
                 }
             }
             .fileExporter(
-                isPresented: $isExportingKeys,
+                isPresented: $isExportingKeyBackup,
                 document: keysBackupDocument,
                 contentType: .json,
                 defaultFilename: "ts3-privilege-key-backup"
@@ -7689,7 +7691,7 @@ struct PrivilegeKeysSheet: View {
     private func exportPrivilegeKeyBackup() {
         do {
             keysBackupDocument = TS3TextFileDocument(data: try model.privilegeKeyBackupData())
-            isExportingKeys = true
+            isExportingKeyBackup = true
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -7808,6 +7810,7 @@ struct BanListSheet: View {
     @State private var isConfirmingDeleteAll = false
     @State private var isConfirmingDeleteVisible = false
     @State private var isExportingBans = false
+    @State private var isExportingBanBackup = false
     @State private var isImportingBans = false
     @State private var banExportDocument = TS3TextFileDocument()
     @State private var banBackupDocument = TS3TextFileDocument()
@@ -7924,7 +7927,7 @@ struct BanListSheet: View {
                 }
             }
             .fileExporter(
-                isPresented: $isExportingBans,
+                isPresented: $isExportingBanBackup,
                 document: banBackupDocument,
                 contentType: .json,
                 defaultFilename: "ts3-ban-backup"
@@ -8031,7 +8034,7 @@ struct BanListSheet: View {
     private func exportBanBackup() {
         do {
             banBackupDocument = TS3TextFileDocument(data: try model.banBackupData())
-            isExportingBans = true
+            isExportingBanBackup = true
         } catch {
             model.lastError = error.localizedDescription
         }
