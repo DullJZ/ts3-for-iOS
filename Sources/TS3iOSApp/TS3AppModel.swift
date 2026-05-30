@@ -1013,6 +1013,28 @@ enum TS3WhisperRoute: Equatable {
     case group(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int)
 }
 
+struct TS3WhisperPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var channelIds: [Int]
+    var clientIds: [Int]
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        channelIds: [Int],
+        clientIds: [Int],
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.channelIds = channelIds
+        self.clientIds = clientIds
+        self.updatedAt = updatedAt
+    }
+}
+
 struct MicrophonePermissionPrompt: Identifiable {
     enum Action {
         case requestAccess
@@ -1099,6 +1121,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isRequestingTalkPower = false
     @Published var talkRequestMessage = ""
     @Published var whisperRoute: TS3WhisperRoute = .none
+    @Published private(set) var whisperPresets: [TS3WhisperPreset] = []
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
     @Published var lastError: String?
@@ -1139,6 +1162,7 @@ final class TS3AppModel: ObservableObject {
         loadRecentConnections()
         loadContacts()
         loadChatHistory()
+        loadWhisperPresets()
         Task { @MainActor in
             await refreshIdentitySummary()
         }
@@ -4764,6 +4788,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-chat-history.json")
     }
 
+    private var whisperPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-whisper-presets.json")
+    }
+
     private var audioSettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-audio-settings.json")
@@ -4912,6 +4941,26 @@ final class TS3AppModel: ObservableObject {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(contacts)
             try data.write(to: contactsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func loadWhisperPresets() {
+        guard let data = try? Data(contentsOf: whisperPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3WhisperPreset].self, from: data) else {
+            whisperPresets = []
+            return
+        }
+        whisperPresets = decoded.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private func saveWhisperPresets() {
+        do {
+            let directory = whisperPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(whisperPresets)
+            try data.write(to: whisperPresetsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
         }
@@ -5126,6 +5175,37 @@ final class TS3AppModel: ObservableObject {
             channelIds: channels.map { UInt64(max($0, 0)) },
             clientIds: clients.map { UInt16(max(0, min($0, Int(UInt16.max)))) }
         ))
+    }
+
+    func saveWhisperPreset(name: String, channelIds: Set<Int>, clientIds: Set<Int>) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let channels = channelIds.sorted()
+        let clients = clientIds.sorted()
+        guard !trimmedName.isEmpty else {
+            lastError = "Enter a name for the whisper preset."
+            return
+        }
+        guard !channels.isEmpty || !clients.isEmpty else {
+            lastError = "Select at least one whisper target."
+            return
+        }
+        whisperPresets.removeAll { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame }
+        whisperPresets.insert(TS3WhisperPreset(
+            name: trimmedName,
+            channelIds: channels,
+            clientIds: clients
+        ), at: 0)
+        saveWhisperPresets()
+        lastError = nil
+    }
+
+    func enableWhisperPreset(_ preset: TS3WhisperPreset) {
+        enableWhisperList(channelIds: Set(preset.channelIds), clientIds: Set(preset.clientIds))
+    }
+
+    func deleteWhisperPreset(_ preset: TS3WhisperPreset) {
+        whisperPresets.removeAll { $0.id == preset.id }
+        saveWhisperPresets()
     }
 
     func enableGroupWhisper(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int) {

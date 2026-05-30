@@ -8783,6 +8783,7 @@ struct WhisperSheet: View {
     @State private var selectedChannelGroupId = 0
     @State private var selectedWhisperChannelIds: Set<Int> = []
     @State private var selectedWhisperClientIds: Set<Int> = []
+    @State private var whisperPresetName = ""
     @State private var searchText = ""
     @State private var isExportingRoute = false
     @State private var routeDocument = TS3TextFileDocument()
@@ -8890,6 +8891,8 @@ struct WhisperSheet: View {
                 }
 
                 Section(header: Text("Whisper List")) {
+                    TextField("Preset Name", text: $whisperPresetName)
+                        .ts3PlainTextField()
                     Button("Enable Selected Targets") {
                         model.enableWhisperList(
                             channelIds: selectedWhisperChannelIds,
@@ -8902,6 +8905,50 @@ struct WhisperSheet: View {
                         selectedWhisperClientIds = []
                     }
                     .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
+                    Button("Save Selected Targets") {
+                        model.saveWhisperPreset(
+                            name: whisperPresetName,
+                            channelIds: selectedWhisperChannelIds,
+                            clientIds: selectedWhisperClientIds
+                        )
+                        whisperPresetName = ""
+                    }
+                    .disabled(whisperPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || (selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty))
+                }
+
+                if !model.whisperPresets.isEmpty {
+                    Section(header: Text("Presets")) {
+                        ForEach(model.whisperPresets) { preset in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(preset.name)
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(presetSummary(preset))
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Menu {
+                                        Button("Enable Preset") {
+                                            model.enableWhisperPreset(preset)
+                                        }
+                                        Button("Select Targets") {
+                                            selectedWhisperChannelIds = Set(preset.channelIds)
+                                            selectedWhisperClientIds = Set(preset.clientIds)
+                                            whisperPresetName = preset.name
+                                        }
+                                        Button("Delete Preset") {
+                                            model.deleteWhisperPreset(preset)
+                                        }
+                                    } label: {
+                                        Image(systemName: "ellipsis.circle")
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Section(header: Text("Group Whisper")) {
@@ -9064,6 +9111,18 @@ struct WhisperSheet: View {
         if selectedChannelGroupId == 0 || !model.channelGroups.contains(where: { $0.id == selectedChannelGroupId }) {
             selectedChannelGroupId = model.channelGroups.first?.id ?? 0
         }
+    }
+
+    private func presetSummary(_ preset: TS3WhisperPreset) -> String {
+        let channelText = preset.channelIds.count == 1 ? "1 channel" : "\(preset.channelIds.count) channels"
+        let userText = preset.clientIds.count == 1 ? "1 user" : "\(preset.clientIds.count) users"
+        if preset.channelIds.isEmpty {
+            return userText
+        }
+        if preset.clientIds.isEmpty {
+            return channelText
+        }
+        return "\(channelText), \(userText)"
     }
 
     private func channelSelectionBinding(for channelId: Int) -> Binding<Bool> {
