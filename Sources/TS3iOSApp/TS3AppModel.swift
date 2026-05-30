@@ -781,6 +781,12 @@ private struct TS3NotificationSettings: Codable {
     static let defaults = TS3NotificationSettings(isEnabled: false)
 }
 
+private struct TS3ConnectionRecoverySettings: Codable {
+    var autoReconnectEnabled: Bool
+
+    static let defaults = TS3ConnectionRecoverySettings(autoReconnectEnabled: false)
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -1133,6 +1139,8 @@ final class TS3AppModel: ObservableObject {
     @Published var voiceActivationThreshold: Double = 0.03
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
     @Published private(set) var notificationsEnabled = false
+    @Published private(set) var autoReconnectEnabled = false
+    @Published private(set) var autoReconnectStatus: String?
 
     @Published var serverHost = ""
     @Published var serverPort = "9987"
@@ -1151,6 +1159,8 @@ final class TS3AppModel: ObservableObject {
     private var iconDownloads: Set<Int> = []
     private var failedIconIds: Set<Int> = []
     private var fileTransferTasks: [UUID: Task<Void, Never>] = [:]
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
     private let chatHistoryLimit = 500
     private var isViewingChat = false
     private var isAppActive = true
@@ -1158,6 +1168,7 @@ final class TS3AppModel: ObservableObject {
     init() {
         loadAudioSettings()
         loadNotificationSettings()
+        loadConnectionRecoverySettings()
         loadBookmarks()
         loadRecentConnections()
         loadContacts()
@@ -1509,7 +1520,10 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func connect() {
+    func connect(cancelReconnect: Bool = true) {
+        if cancelReconnect {
+            cancelReconnectSchedule(resetAttempts: true)
+        }
         lastError = nil
         lastDisconnectMessage = nil
         state = .connecting
@@ -1543,19 +1557,22 @@ final class TS3AppModel: ObservableObject {
                 try await newClient.connect()
             } catch {
                 await MainActor.run {
+                    guard self.client === newClient else { return }
                     self.lastError = error.localizedDescription
                     self.lastDisconnectMessage = error.localizedDescription
-                    if self.client === newClient {
-                        self.client = nil
-                    }
+                    self.client = nil
                     self.clearConnectionState(keepLastConnection: true)
                     self.state = .disconnected
+                    self.scheduleReconnectIfNeeded(reason: error.localizedDescription)
                 }
             }
         }
     }
 
-    func reconnect() {
+    func reconnect(cancelReconnect: Bool = true) {
+        if cancelReconnect {
+            cancelReconnectSchedule(resetAttempts: true)
+        }
         guard let snapshot = lastConnectionSnapshot else {
             lastError = "No previous connection is available."
             return
@@ -1567,7 +1584,7 @@ final class TS3AppModel: ObservableObject {
         defaultChannel = snapshot.defaultChannel
         defaultChannelPassword = snapshot.defaultChannelPassword
         privilegeKey = snapshot.privilegeKey
-        connect()
+        connect(cancelReconnect: cancelReconnect)
     }
 
     func applyRecentConnection(_ snapshot: TS3ConnectionSnapshot) {
@@ -1775,12 +1792,51 @@ final class TS3AppModel: ObservableObject {
 
     func disconnect(reason: String = "ui-disconnect") {
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        cancelReconnectSchedule(resetAttempts: true)
         client?.delegate = nil
         client?.disconnect(reason: reason.isEmpty ? "ui-disconnect" : reason)
         client = nil
         lastDisconnectMessage = nil
         clearConnectionState(keepLastConnection: true)
         state = .disconnected
+    }
+
+    private func scheduleReconnectIfNeeded(reason: String?) {
+        guard autoReconnectEnabled,
+              state == .disconnected,
+              reconnectTask == nil,
+              let snapshot = lastConnectionSnapshot,
+              !snapshot.host.isEmpty,
+              !snapshot.nickname.isEmpty else {
+            return
+        }
+        reconnectAttempt += 1
+        let delaySeconds = min(30, max(3, reconnectAttempt * 3))
+        autoReconnectStatus = "Reconnect attempt \(reconnectAttempt) in \(delaySeconds)s"
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delaySeconds) * 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self,
+                      !Task.isCancelled,
+                      self.autoReconnectEnabled,
+                      self.state == .disconnected else {
+                    return
+                }
+                self.cancelReconnectSchedule(resetAttempts: false)
+                self.autoReconnectStatus = reason.map { "Reconnecting after \($0)" } ?? "Reconnecting"
+                self.reconnect(cancelReconnect: false)
+            }
+        }
+    }
+
+    private func cancelReconnectSchedule(resetAttempts: Bool) {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        if resetAttempts {
+            reconnectAttempt = 0
+        }
+        autoReconnectStatus = nil
     }
 
     private func currentConnectionSnapshot(port: Int? = nil) -> TS3ConnectionSnapshot {
@@ -1997,6 +2053,14 @@ final class TS3AppModel: ObservableObject {
         notificationsEnabled = false
         lastError = "Notifications are not available on this platform."
         #endif
+    }
+
+    func setAutoReconnectEnabled(_ isEnabled: Bool) {
+        autoReconnectEnabled = isEnabled
+        saveConnectionRecoverySettings()
+        if !isEnabled {
+            cancelReconnectSchedule(resetAttempts: true)
+        }
     }
 
     var inputGainPercentText: String {
@@ -4803,6 +4867,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-notification-settings.json")
     }
 
+    private var connectionRecoverySettingsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-connection-recovery-settings.json")
+    }
+
     private func loadAudioSettings() {
         guard let data = try? Data(contentsOf: audioSettingsURL),
               let decoded = try? JSONDecoder().decode(TS3AudioSettings.self, from: data) else {
@@ -4889,6 +4958,26 @@ final class TS3AppModel: ObservableObject {
         notificationsEnabled = decoded.isEnabled
         saveNotificationSettings()
         lastError = nil
+    }
+
+    private func loadConnectionRecoverySettings() {
+        guard let data = try? Data(contentsOf: connectionRecoverySettingsURL),
+              let decoded = try? JSONDecoder().decode(TS3ConnectionRecoverySettings.self, from: data) else {
+            autoReconnectEnabled = TS3ConnectionRecoverySettings.defaults.autoReconnectEnabled
+            return
+        }
+        autoReconnectEnabled = decoded.autoReconnectEnabled
+    }
+
+    private func saveConnectionRecoverySettings() {
+        do {
+            let directory = connectionRecoverySettingsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled))
+            try data.write(to: connectionRecoverySettingsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func notifyIfInactive(title: String, body: String, identifier: String) {
@@ -5547,6 +5636,7 @@ private enum MicrophonePermissionState {
 extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3ClientDidConnect(_ client: TS3Client) {
         Task { @MainActor in
+            self.cancelReconnectSchedule(resetAttempts: true)
             self.lastDisconnectMessage = nil
             self.state = .connected
         }
@@ -5554,16 +5644,19 @@ extension TS3AppModel: TS3ClientDelegate {
 
     nonisolated func ts3Client(_ client: TS3Client, didDisconnectWith error: Error?) {
         Task { @MainActor in
+            var reconnectReason: String?
             if let error {
                 let message = error.localizedDescription
                 self.lastError = message
                 self.lastDisconnectMessage = message
+                reconnectReason = message
             }
             if self.client === client {
                 self.client = nil
             }
             self.clearConnectionState(keepLastConnection: true)
             self.state = .disconnected
+            self.scheduleReconnectIfNeeded(reason: reconnectReason)
         }
     }
 

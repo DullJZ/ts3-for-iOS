@@ -79,6 +79,13 @@ struct ConnectView: View {
     @State private var isConfirmingClearRecentConnections = false
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
 
+    private var autoReconnectBinding: Binding<Bool> {
+        Binding(
+            get: { model.autoReconnectEnabled },
+            set: { model.setAutoReconnectEnabled($0) }
+        )
+    }
+
     var body: some View {
         Form {
             if !model.recentConnections.isEmpty {
@@ -257,6 +264,15 @@ struct ConnectView: View {
                         model.reconnect()
                     }
                     .disabled(snapshot.host.isEmpty || snapshot.nickname.isEmpty)
+                }
+            }
+
+            Section(header: Text("Connection Recovery")) {
+                Toggle("Reconnect Automatically", isOn: autoReconnectBinding)
+                if let status = model.autoReconnectStatus {
+                    Text(status)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
 
