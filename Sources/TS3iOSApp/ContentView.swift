@@ -1684,6 +1684,7 @@ struct ChannelMemberRow: View {
     @State private var actionMode: UserActionMode?
     @State private var isShowingPlaybackSettings = false
     @State private var isShowingPermissions = false
+    @State private var isShowingDatabaseClient = false
     @State private var passwordMoveChannel: TS3ChannelSummary?
     @State private var movePassword = ""
 
@@ -1863,6 +1864,13 @@ struct ChannelMemberRow: View {
                 Button("Refresh Details") {
                     model.refreshUserDetails(member)
                 }
+                Button("View Database Client") {
+                    if let record = TS3DatabaseClientSummary(user: member) {
+                        model.loadDatabaseClientDetails(record)
+                        isShowingDatabaseClient = true
+                    }
+                }
+                .disabled(member.databaseId == nil)
                 Button("Download Avatar") {
                     model.refreshUserAvatar(member)
                 }
@@ -1975,6 +1983,10 @@ struct ChannelMemberRow: View {
         }
         .sheet(isPresented: $isShowingPermissions) {
             PermissionsSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingDatabaseClient) {
+            ClientDatabaseSheet()
                 .environmentObject(model)
         }
         .sheet(item: $passwordMoveChannel) { channel in

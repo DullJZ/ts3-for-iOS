@@ -388,6 +388,18 @@ struct TS3DatabaseClientSummary: Identifiable {
         self.lastIP = nil
     }
 
+    init?(user: TS3UserSummary) {
+        guard let databaseId = user.databaseId else { return nil }
+        self.id = databaseId
+        self.uniqueIdentifier = user.uniqueIdentifier
+        self.nickname = user.nickname
+        self.createdAt = user.createdAt
+        self.lastConnectedAt = user.lastConnectedAt
+        self.totalConnections = user.totalConnections
+        self.description = user.description
+        self.lastIP = user.ipAddress
+    }
+
     func copy(description: String?) -> TS3DatabaseClientSummary {
         TS3DatabaseClientSummary(
             id: id,
