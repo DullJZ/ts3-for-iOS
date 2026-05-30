@@ -1145,7 +1145,9 @@ struct ChannelRow: View {
     let channel: TS3ChannelSummary
     let members: [TS3UserSummary]
     @State private var joinPassword = ""
+    @State private var defaultChannelPassword = ""
     @State private var isShowingJoinPassword = false
+    @State private var isShowingDefaultChannelPassword = false
     @State private var isShowingInfo = false
     @State private var isShowingEdit = false
     @State private var isShowingMove = false
@@ -1294,7 +1296,12 @@ struct ChannelRow: View {
                         isShowingMove = true
                     }
                     Button("Set as Default Channel") {
-                        model.setDefaultChannel(channel)
+                        if channel.isPasswordProtected {
+                            defaultChannelPassword = ""
+                            isShowingDefaultChannelPassword = true
+                        } else {
+                            model.setDefaultChannel(channel)
+                        }
                     }
                     Button("Whisper to Channel") {
                         model.enableWhisperToChannel(id: channel.id)
@@ -1322,6 +1329,10 @@ struct ChannelRow: View {
         .padding(.vertical, 4)
         .sheet(isPresented: $isShowingJoinPassword) {
             JoinChannelPasswordSheet(channel: channel, password: $joinPassword)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingDefaultChannelPassword) {
+            DefaultChannelPasswordSheet(channel: channel, password: $defaultChannelPassword)
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingInfo) {
@@ -9361,6 +9372,37 @@ struct JoinChannelPasswordSheet: View {
                 }
             }
             .navigationTitle("Channel Password")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct DefaultChannelPasswordSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let channel: TS3ChannelSummary
+    @Binding var password: String
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    SecureField("Password", text: $password)
+                        .ts3PlainTextField()
+                    Button("Set Default Channel") {
+                        model.setDefaultChannel(channel, password: password)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Default Channel")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {

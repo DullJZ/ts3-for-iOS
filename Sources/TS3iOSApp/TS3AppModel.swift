@@ -1246,9 +1246,9 @@ final class TS3AppModel: ObservableObject {
         return path.joined(separator: "/")
     }
 
-    func setDefaultChannel(_ channel: TS3ChannelSummary) {
+    func setDefaultChannel(_ channel: TS3ChannelSummary, password: String = "") {
         defaultChannel = channelPath(for: channel)
-        defaultChannelPassword = ""
+        defaultChannelPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func contact(for user: TS3UserSummary) -> TS3ContactEntry? {
