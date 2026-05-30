@@ -630,6 +630,7 @@ private struct TS3PrivilegeKeyBackup: Codable {
 
 enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
     case ownClient
+    case databaseClient
     case serverGroup
     case channelGroup
     case channel
@@ -641,6 +642,8 @@ enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
         switch self {
         case .ownClient:
             return "Current Client"
+        case .databaseClient:
+            return "Database Client"
         case .serverGroup:
             return "Server Group"
         case .channelGroup:
@@ -747,6 +750,7 @@ private struct TS3PermissionBackupPermission: Codable {
 private struct TS3PermissionBackup: Codable {
     var scope: String
     var ownClientDatabaseId: Int?
+    var selectedDatabaseClientPermissionId: Int?
     var selectedServerGroupPermissionId: Int?
     var selectedChannelGroupPermissionId: Int?
     var selectedChannelPermissionId: Int?
@@ -1063,6 +1067,7 @@ final class TS3AppModel: ObservableObject {
     @Published var ownClientPermissions: [TS3PermissionSummary] = []
     @Published var ownClientDatabaseId: Int?
     @Published var permissionEditScope: TS3PermissionEditScope = .ownClient
+    @Published var selectedDatabaseClientPermissionId: Int?
     @Published var selectedServerGroupPermissionId: Int?
     @Published var selectedChannelGroupPermissionId: Int?
     @Published var selectedChannelPermissionId: Int?
@@ -2088,6 +2093,18 @@ final class TS3AppModel: ObservableObject {
         switch permissionEditScope {
         case .ownClient:
             refreshOwnClientPermissions()
+        case .databaseClient:
+            guard let databaseId = selectedDatabaseClientPermissionId ?? selectedDatabaseClient?.id else {
+                scopedPermissions = []
+                return
+            }
+            selectedDatabaseClientPermissionId = databaseId
+            runClientCommand { client in
+                let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
         case .serverGroup:
             guard let groupId = selectedServerGroupPermissionId ?? serverGroups.first?.id else {
                 scopedPermissions = []
@@ -2146,6 +2163,14 @@ final class TS3AppModel: ObservableObject {
     func selectPermissionScope(_ scope: TS3PermissionEditScope) {
         permissionEditScope = scope
         scopedPermissions = []
+        refreshSelectedPermissions()
+    }
+
+    func selectDatabaseClientPermissions(_ record: TS3DatabaseClientSummary) {
+        permissionEditScope = .databaseClient
+        selectedDatabaseClientPermissionId = record.id
+        scopedPermissions = []
+        refreshPermissionList()
         refreshSelectedPermissions()
     }
 
@@ -2210,6 +2235,18 @@ final class TS3AppModel: ObservableObject {
         switch permissionEditScope {
         case .ownClient:
             addOwnClientPermission(name: name, value: value, skip: skip)
+        case .databaseClient:
+            guard let databaseId = selectedDatabaseClientPermissionId else {
+                lastError = "Select a database client first."
+                return
+            }
+            runClientCommand { client in
+                try await client.addClientPermission(clientDatabaseId: databaseId, permissionName: name, value: value, skip: skip)
+                let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
         case .serverGroup:
             guard let groupId = selectedServerGroupPermissionId else {
                 lastError = "Select a server group first."
@@ -2292,6 +2329,18 @@ final class TS3AppModel: ObservableObject {
         switch permissionEditScope {
         case .ownClient:
             deleteOwnClientPermission(permission)
+        case .databaseClient:
+            guard let databaseId = selectedDatabaseClientPermissionId else {
+                lastError = "Select a database client first."
+                return
+            }
+            runClientCommand { client in
+                try await client.deleteClientPermission(clientDatabaseId: databaseId, permissionName: permission.name)
+                let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
         case .serverGroup:
             guard let groupId = selectedServerGroupPermissionId else {
                 lastError = "Select a server group first."
@@ -2370,6 +2419,20 @@ final class TS3AppModel: ObservableObject {
                     self.ownClientPermissions = self.permissionSummaries(from: permissions)
                 }
             }
+        case .databaseClient:
+            guard let databaseId = selectedDatabaseClientPermissionId else {
+                lastError = "Select a database client first."
+                return
+            }
+            runClientCommand { client in
+                for name in names {
+                    try await client.deleteClientPermission(clientDatabaseId: databaseId, permissionName: name)
+                }
+                let permissions = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: permissions)
+                }
+            }
         case .serverGroup:
             guard let groupId = selectedServerGroupPermissionId else {
                 lastError = "Select a server group first."
@@ -2442,6 +2505,7 @@ final class TS3AppModel: ObservableObject {
         let snapshot = TS3PermissionBackup(
             scope: permissionEditScope.rawValue,
             ownClientDatabaseId: ownClientDatabaseId,
+            selectedDatabaseClientPermissionId: selectedDatabaseClientPermissionId,
             selectedServerGroupPermissionId: selectedServerGroupPermissionId,
             selectedChannelGroupPermissionId: selectedChannelGroupPermissionId,
             selectedChannelPermissionId: selectedChannelPermissionId,
@@ -2463,6 +2527,7 @@ final class TS3AppModel: ObservableObject {
         let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
         permissionEditScope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
         ownClientDatabaseId = decoded.ownClientDatabaseId
+        selectedDatabaseClientPermissionId = decoded.selectedDatabaseClientPermissionId
         selectedServerGroupPermissionId = decoded.selectedServerGroupPermissionId
         selectedChannelGroupPermissionId = decoded.selectedChannelGroupPermissionId
         selectedChannelPermissionId = decoded.selectedChannelPermissionId

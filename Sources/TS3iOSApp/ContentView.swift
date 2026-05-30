@@ -5498,6 +5498,7 @@ struct ClientDatabaseSheet: View {
     @State private var databaseBatchSize = "100"
     @State private var isShowingDescriptionEditor = false
     @State private var actionMode: DatabaseClientActionMode?
+    @State private var isShowingPermissions = false
     @State private var isShowingComplaints = false
     @State private var isConfirmingDelete = false
     @State private var isExportingDatabase = false
@@ -5617,6 +5618,10 @@ struct ClientDatabaseSheet: View {
                         Button("Edit Description") {
                             isShowingDescriptionEditor = true
                         }
+                        Button("Edit Client Permissions") {
+                            model.selectDatabaseClientPermissions(selected)
+                            isShowingPermissions = true
+                        }
                         Button("Send Offline Message") {
                             actionMode = .offlineMessage
                         }
@@ -5694,6 +5699,10 @@ struct ClientDatabaseSheet: View {
                         model.editDatabaseClientDescription(selected, description: description)
                     }
                 }
+            }
+            .sheet(isPresented: $isShowingPermissions) {
+                PermissionsSheet()
+                    .environmentObject(model)
             }
             .sheet(isPresented: $isShowingComplaints) {
                 ComplaintListSheet()
@@ -7173,6 +7182,8 @@ struct PermissionsSheet: View {
         switch model.permissionEditScope {
         case .ownClient:
             return "ts3-own-client-permissions"
+        case .databaseClient:
+            return "ts3-database-client-permissions"
         case .serverGroup:
             return "ts3-server-group-permissions"
         case .channelGroup:
@@ -7200,6 +7211,24 @@ struct PermissionsSheet: View {
                         Text("Database ID \(databaseId)")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                    }
+                    if model.permissionEditScope == .databaseClient {
+                        if let databaseId = model.selectedDatabaseClientPermissionId {
+                            Text("Database ID \(databaseId)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Picker("Database Client", selection: Binding(
+                            get: { model.selectedDatabaseClientPermissionId ?? model.selectedDatabaseClient?.id ?? model.databaseClients.first?.id ?? 0 },
+                            set: {
+                                model.selectedDatabaseClientPermissionId = $0
+                                model.refreshSelectedPermissions()
+                            }
+                        )) {
+                            ForEach(model.databaseClients) { record in
+                                Text("\(record.nickname) (#\(record.id))").tag(record.id)
+                            }
+                        }
                     }
                     if model.permissionEditScope == .serverGroup {
                         Picker("Server Group", selection: Binding(
@@ -7329,7 +7358,7 @@ struct PermissionsSheet: View {
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     Toggle("Negated", isOn: $permissionNegated)
-                        .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .channel || model.permissionEditScope == .channelClient)
+                        .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .databaseClient || model.permissionEditScope == .channel || model.permissionEditScope == .channelClient)
                     Toggle("Skip", isOn: $permissionSkip)
                         .disabled(model.permissionEditScope == .channel)
                     Button("Add or Update Permission") {
