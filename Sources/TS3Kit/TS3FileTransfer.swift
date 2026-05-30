@@ -98,7 +98,12 @@ private final class TS3FileTransferSocket {
             try? handle.close()
         }
 
-        var sent: Int64 = 0
+        let seekPosition = min(max(0, parameters.seekPosition), expectedSize ?? parameters.seekPosition)
+        if seekPosition > 0 {
+            try handle.seek(toOffset: UInt64(seekPosition))
+        }
+
+        var sent = seekPosition
         while true {
             try Task.checkCancellation()
             let chunk = try handle.read(upToCount: 64 * 1024) ?? Data()

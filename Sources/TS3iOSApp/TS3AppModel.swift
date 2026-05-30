@@ -666,6 +666,7 @@ struct TS3FileEntrySummary: Identifiable {
     let modifiedAt: Date?
     let isDirectory: Bool
     let isStillUploading: Bool
+    let incompleteSize: Int64?
 
     init(entry: TS3FileEntry) {
         self.id = entry.id
@@ -677,6 +678,7 @@ struct TS3FileEntrySummary: Identifiable {
         self.modifiedAt = entry.modifiedAt
         self.isDirectory = entry.isDirectory
         self.isStillUploading = entry.isStillUploading
+        self.incompleteSize = entry.incompleteSize
     }
 }
 
@@ -3125,14 +3127,14 @@ final class TS3AppModel: ObservableObject {
         fileTransferTasks = fileTransferTasks.filter { activeIds.contains($0.key) }
     }
 
-    func uploadFiles(_ sources: [URL], overwrite: Bool = false) {
+    func uploadFiles(_ sources: [URL], overwrite: Bool = false, resume: Bool = false) {
         guard !sources.isEmpty else { return }
         for source in sources {
-            uploadFile(from: source, overwrite: overwrite)
+            uploadFile(from: source, overwrite: overwrite, resume: resume)
         }
     }
 
-    func uploadFile(from source: URL, overwrite: Bool = false) {
+    func uploadFile(from source: URL, overwrite: Bool = false, resume: Bool = false) {
         guard let channelId = fileBrowserChannelId else {
             lastError = "No channel is selected for file browsing."
             return
@@ -3180,6 +3182,7 @@ final class TS3AppModel: ObservableObject {
                     path: remotePath,
                     size: size,
                     overwrite: overwrite,
+                    resume: resume,
                     password: self.trimmedFileBrowserPassword
                 )
                 try await TS3FileTransfer.upload(parameters: parameters, from: source) { sent, total in

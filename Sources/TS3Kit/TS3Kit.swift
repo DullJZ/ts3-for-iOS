@@ -999,6 +999,8 @@ public struct TS3FileTransferParameters {
     public let port: Int
     /// Expected byte count when the server provides one.
     public let size: Int64?
+    /// Byte offset where the socket transfer should begin.
+    public let seekPosition: Int64
 
     /// Creates a server-negotiated file transfer descriptor.
     public init(
@@ -1007,7 +1009,8 @@ public struct TS3FileTransferParameters {
         key: String,
         host: String,
         port: Int,
-        size: Int64?
+        size: Int64?,
+        seekPosition: Int64 = 0
     ) {
         self.clientTransferId = clientTransferId
         self.serverTransferId = serverTransferId
@@ -1015,6 +1018,7 @@ public struct TS3FileTransferParameters {
         self.host = host
         self.port = port
         self.size = size
+        self.seekPosition = seekPosition
     }
 }
 

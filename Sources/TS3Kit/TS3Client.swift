@@ -3399,7 +3399,8 @@ private extension TS3Client {
             key: key,
             host: command.get("ip")?.value ?? config.host,
             port: port,
-            size: int64Value(command, "size")
+            size: int64Value(command, "size"),
+            seekPosition: int64Value(command, "seekpos") ?? 0
         )
     }
 

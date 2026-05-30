@@ -6432,7 +6432,7 @@ struct FileBrowserSheet: View {
     @State private var directorySnapshotDocument = TS3TextFileDocument()
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadOverwriteNames: [String] = []
-    @State private var isConfirmingUploadOverwrite = false
+    @State private var isShowingUploadConflictActions = false
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -6669,18 +6669,19 @@ struct FileBrowserSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(isPresented: $isConfirmingUploadOverwrite) {
-                Alert(
-                    title: Text("Overwrite Remote Files?"),
-                    message: Text(uploadOverwriteMessage),
-                    primaryButton: .destructive(Text("Overwrite")) {
-                        model.uploadFiles(pendingUploadURLs, overwrite: true)
-                        pendingUploadURLs = []
-                        uploadOverwriteNames = []
+            .sheet(isPresented: $isShowingUploadConflictActions) {
+                UploadConflictSheet(
+                    message: uploadOverwriteMessage,
+                    canResume: !resumablePendingUploadURLs.isEmpty,
+                    resume: {
+                        resumePendingUploads()
                     },
-                    secondaryButton: .cancel {
-                        pendingUploadURLs = []
-                        uploadOverwriteNames = []
+                    overwrite: {
+                        model.uploadFiles(pendingUploadURLs, overwrite: true)
+                        clearPendingUploads()
+                    },
+                    cancel: {
+                        clearPendingUploads()
                     }
                 )
             }
@@ -6707,8 +6708,35 @@ struct FileBrowserSheet: View {
         } else {
             pendingUploadURLs = urls
             uploadOverwriteNames = conflicts
-            isConfirmingUploadOverwrite = true
+            isShowingUploadConflictActions = true
         }
+    }
+
+    private var resumablePendingUploadURLs: [URL] {
+        let partialNames = Set(model.fileEntries.compactMap { entry -> String? in
+            (entry.incompleteSize ?? 0) > 0 ? entry.name : nil
+        })
+        return pendingUploadURLs.filter { partialNames.contains($0.lastPathComponent) }
+    }
+
+    private func resumePendingUploads() {
+        let resumable = resumablePendingUploadURLs
+        let freshUploads = pendingUploadURLs.filter { url in
+            !uploadOverwriteNames.contains(url.lastPathComponent)
+        }
+        if !freshUploads.isEmpty {
+            model.uploadFiles(freshUploads)
+        }
+        if !resumable.isEmpty {
+            model.uploadFiles(resumable, resume: true)
+        }
+        clearPendingUploads()
+    }
+
+    private func clearPendingUploads() {
+        pendingUploadURLs = []
+        uploadOverwriteNames = []
+        isShowingUploadConflictActions = false
     }
 
     private func toggleSelection(for entry: TS3FileEntrySummary) {
@@ -7116,6 +7144,45 @@ struct FileEntryInfoSheet: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+struct UploadConflictSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let message: String
+    let canResume: Bool
+    let resume: () -> Void
+    let overwrite: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Remote Files Exist")) {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                Section {
+                    Button("Resume Partial Uploads") {
+                        resume()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canResume)
+                    Button("Overwrite Remote Files") {
+                        overwrite()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(.red)
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Upload Conflicts")
+            .ts3InlineNavigationTitle()
+        }
     }
 }
 
