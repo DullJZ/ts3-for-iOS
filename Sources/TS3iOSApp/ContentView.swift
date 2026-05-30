@@ -1113,6 +1113,7 @@ struct ChannelRow: View {
     @State private var isShowingInfo = false
     @State private var isShowingEdit = false
     @State private var isShowingMove = false
+    @State private var isShowingPermissions = false
     @State private var isConfirmingDelete = false
 
     private var channelPath: String {
@@ -1238,6 +1239,10 @@ struct ChannelRow: View {
                     Button("Edit Channel") {
                         isShowingEdit = true
                     }
+                    Button("Edit Channel Permissions") {
+                        model.selectChannelPermissions(channel)
+                        isShowingPermissions = true
+                    }
                     Button("Move Channel") {
                         isShowingMove = true
                     }
@@ -1282,6 +1287,10 @@ struct ChannelRow: View {
         }
         .sheet(isPresented: $isShowingMove) {
             MoveChannelSheet(channel: channel)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingPermissions) {
+            PermissionsSheet()
                 .environmentObject(model)
         }
         .alert(isPresented: $isConfirmingDelete) {
@@ -4850,6 +4859,7 @@ struct GroupManagementRow: View {
     let group: TS3GroupSummary
     let target: TS3GroupManagementTarget
     @State private var isShowingMembers = false
+    @State private var isShowingPermissions = false
     @State private var isShowingRename = false
     @State private var isShowingCopy = false
     @State private var isConfirmingDelete = false
@@ -4875,6 +4885,10 @@ struct GroupManagementRow: View {
                     refreshMembers()
                     isShowingMembers = true
                 }
+                Button("Edit Permissions") {
+                    model.selectGroupPermissions(group, target: target)
+                    isShowingPermissions = true
+                }
                 Button("Rename") {
                     isShowingRename = true
                 }
@@ -4895,6 +4909,10 @@ struct GroupManagementRow: View {
         .padding(.vertical, 3)
         .sheet(isPresented: $isShowingMembers) {
             GroupClientListSheet(group: group, target: target)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingPermissions) {
+            PermissionsSheet()
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingRename) {

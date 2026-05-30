@@ -2134,6 +2134,28 @@ final class TS3AppModel: ObservableObject {
         refreshSelectedPermissions()
     }
 
+    func selectChannelPermissions(_ channel: TS3ChannelSummary) {
+        permissionEditScope = .channel
+        selectedChannelPermissionId = channel.id
+        scopedPermissions = []
+        refreshPermissionList()
+        refreshSelectedPermissions()
+    }
+
+    func selectGroupPermissions(_ group: TS3GroupSummary, target: TS3GroupManagementTarget) {
+        switch target {
+        case .server:
+            permissionEditScope = .serverGroup
+            selectedServerGroupPermissionId = group.id
+        case .channel:
+            permissionEditScope = .channelGroup
+            selectedChannelGroupPermissionId = group.id
+        }
+        scopedPermissions = []
+        refreshPermissionList()
+        refreshSelectedPermissions()
+    }
+
     func addOwnClientPermission(name: String, value: Int, skip: Bool) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
