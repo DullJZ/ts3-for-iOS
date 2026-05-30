@@ -2156,6 +2156,19 @@ final class TS3AppModel: ObservableObject {
         refreshSelectedPermissions()
     }
 
+    func selectChannelClientPermissions(_ user: TS3UserSummary) {
+        guard user.databaseId != nil else {
+            lastError = "Selected client has no database id yet."
+            return
+        }
+        permissionEditScope = .channelClient
+        selectedChannelClientPermissionChannelId = user.channelId
+        selectedChannelClientPermissionClientId = user.id
+        scopedPermissions = []
+        refreshPermissionList()
+        refreshSelectedPermissions()
+    }
+
     func addOwnClientPermission(name: String, value: Int, skip: Bool) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }

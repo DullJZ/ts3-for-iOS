@@ -1683,6 +1683,7 @@ struct ChannelMemberRow: View {
     let member: TS3UserSummary
     @State private var actionMode: UserActionMode?
     @State private var isShowingPlaybackSettings = false
+    @State private var isShowingPermissions = false
     @State private var passwordMoveChannel: TS3ChannelSummary?
     @State private var movePassword = ""
 
@@ -1868,6 +1869,11 @@ struct ChannelMemberRow: View {
                 Button("Edit Description") {
                     actionMode = .editDescription
                 }
+                Button("Edit Channel Client Permissions") {
+                    model.selectChannelClientPermissions(member)
+                    isShowingPermissions = member.databaseId != nil
+                }
+                .disabled(member.databaseId == nil)
                 if member.uniqueIdentifier != nil {
                     Menu("Contact") {
                         Button("Mark as Friend") {
@@ -1965,6 +1971,10 @@ struct ChannelMemberRow: View {
         }
         .sheet(isPresented: $isShowingPlaybackSettings) {
             UserPlaybackSheet(user: member)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingPermissions) {
+            PermissionsSheet()
                 .environmentObject(model)
         }
         .sheet(item: $passwordMoveChannel) { channel in
