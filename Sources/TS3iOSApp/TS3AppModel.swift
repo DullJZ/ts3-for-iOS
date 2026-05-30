@@ -1009,6 +1009,7 @@ enum TS3WhisperRoute: Equatable {
     case server
     case channel(Int)
     case client(Int)
+    case list(channelIds: [Int], clientIds: [Int])
     case group(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int)
 }
 
@@ -5113,6 +5114,20 @@ final class TS3AppModel: ObservableObject {
         client?.startWhisperToChannel(id)
     }
 
+    func enableWhisperList(channelIds: Set<Int>, clientIds: Set<Int>) {
+        let channels = channelIds.sorted()
+        let clients = clientIds.sorted()
+        guard !channels.isEmpty || !clients.isEmpty else {
+            lastError = "Select at least one whisper target."
+            return
+        }
+        whisperRoute = .list(channelIds: channels, clientIds: clients)
+        client?.startWhisper(target: .multiple(
+            channelIds: channels.map { UInt64(max($0, 0)) },
+            clientIds: clients.map { UInt16(max(0, min($0, Int(UInt16.max)))) }
+        ))
+    }
+
     func enableGroupWhisper(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int) {
         whisperRoute = .group(type: type, target: target, targetId: targetId)
         client?.startWhisper(target: .group(type: type, target: target, targetId: UInt64(max(targetId, 0))))
@@ -5130,6 +5145,16 @@ final class TS3AppModel: ObservableObject {
         case let .client(clientId):
             let user = clients.first { $0.id == clientId }?.nickname ?? "Client \(clientId)"
             return "Whisper to \(user)"
+        case let .list(channelIds, clientIds):
+            let channelText = channelIds.count == 1 ? "1 channel" : "\(channelIds.count) channels"
+            let clientText = clientIds.count == 1 ? "1 user" : "\(clientIds.count) users"
+            if channelIds.isEmpty {
+                return "Whisper list: \(clientText)"
+            }
+            if clientIds.isEmpty {
+                return "Whisper list: \(channelText)"
+            }
+            return "Whisper list: \(channelText), \(clientText)"
         case let .group(type, target, targetId):
             let group = whisperGroupName(type: type, targetId: targetId)
             return "Whisper to \(group) in \(target.title.lowercased())"

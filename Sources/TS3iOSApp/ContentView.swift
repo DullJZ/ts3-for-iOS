@@ -8781,6 +8781,8 @@ struct WhisperSheet: View {
     @State private var groupWhisperTarget: TS3GroupWhisperTarget = .currentChannel
     @State private var selectedServerGroupId = 0
     @State private var selectedChannelGroupId = 0
+    @State private var selectedWhisperChannelIds: Set<Int> = []
+    @State private var selectedWhisperClientIds: Set<Int> = []
     @State private var searchText = ""
     @State private var isExportingRoute = false
     @State private var routeDocument = TS3TextFileDocument()
@@ -8840,6 +8842,8 @@ struct WhisperSheet: View {
             "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
             "Group Type: \(groupWhisperType.title)",
             "Group Scope: \(groupWhisperTarget.title)",
+            "Selected Channels: \(selectedWhisperChannelIds.count)",
+            "Selected Users: \(selectedWhisperClientIds.count)",
             "Server Groups: \(filteredServerGroups.count)",
             "Channel Groups: \(filteredChannelGroups.count)",
             "Channels: \(filteredChannels.count)",
@@ -8883,6 +8887,21 @@ struct WhisperSheet: View {
                     Button("Voice to Current Channel") {
                         model.disableWhisper()
                     }
+                }
+
+                Section(header: Text("Whisper List")) {
+                    Button("Enable Selected Targets") {
+                        model.enableWhisperList(
+                            channelIds: selectedWhisperChannelIds,
+                            clientIds: selectedWhisperClientIds
+                        )
+                    }
+                    .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
+                    Button("Clear Selected Targets") {
+                        selectedWhisperChannelIds = []
+                        selectedWhisperClientIds = []
+                    }
+                    .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
                 }
 
                 Section(header: Text("Group Whisper")) {
@@ -8929,8 +8948,13 @@ struct WhisperSheet: View {
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(filteredChannels) { channel in
-                                Button(channel.name) {
-                                    model.enableWhisperToChannel(id: channel.id)
+                                HStack {
+                                    Toggle("", isOn: channelSelectionBinding(for: channel.id))
+                                        .labelsHidden()
+                                    Button(channel.name) {
+                                        model.enableWhisperToChannel(id: channel.id)
+                                    }
+                                    Spacer()
                                 }
                             }
                         }
@@ -8944,8 +8968,13 @@ struct WhisperSheet: View {
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(filteredUsers) { user in
-                                Button(user.nickname) {
-                                    model.enableWhisperToClient(user)
+                                HStack {
+                                    Toggle("", isOn: clientSelectionBinding(for: user.id))
+                                        .labelsHidden()
+                                    Button(user.nickname) {
+                                        model.enableWhisperToClient(user)
+                                    }
+                                    Spacer()
                                 }
                             }
                         }
@@ -9035,6 +9064,32 @@ struct WhisperSheet: View {
         if selectedChannelGroupId == 0 || !model.channelGroups.contains(where: { $0.id == selectedChannelGroupId }) {
             selectedChannelGroupId = model.channelGroups.first?.id ?? 0
         }
+    }
+
+    private func channelSelectionBinding(for channelId: Int) -> Binding<Bool> {
+        Binding(
+            get: { selectedWhisperChannelIds.contains(channelId) },
+            set: { isSelected in
+                if isSelected {
+                    selectedWhisperChannelIds.insert(channelId)
+                } else {
+                    selectedWhisperChannelIds.remove(channelId)
+                }
+            }
+        )
+    }
+
+    private func clientSelectionBinding(for clientId: Int) -> Binding<Bool> {
+        Binding(
+            get: { selectedWhisperClientIds.contains(clientId) },
+            set: { isSelected in
+                if isSelected {
+                    selectedWhisperClientIds.insert(clientId)
+                } else {
+                    selectedWhisperClientIds.remove(clientId)
+                }
+            }
+        )
     }
 }
 
