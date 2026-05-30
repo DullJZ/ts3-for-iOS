@@ -4226,6 +4226,17 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func addServerGroup(_ group: TS3GroupSummary, to record: TS3DatabaseClientSummary) {
+        runClientCommand { client in
+            try await client.addServerGroup(groupId: group.id, toClientDatabaseId: record.id)
+            await MainActor.run {
+                if let onlineClient = self.clients.first(where: { $0.databaseId == record.id }) {
+                    self.upsertServerGroup(group.id, forClientId: onlineClient.id)
+                }
+            }
+        }
+    }
+
     func removeServerGroup(_ group: TS3GroupSummary, from user: TS3UserSummary) {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)

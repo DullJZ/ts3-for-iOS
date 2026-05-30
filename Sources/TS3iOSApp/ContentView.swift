@@ -5427,6 +5427,15 @@ struct ClientDatabaseSheet: View {
                                     actionMode = .contactNote
                                 }
                             }
+                            if !model.serverGroups.isEmpty {
+                                Menu("Add Server Group") {
+                                    ForEach(model.serverGroups) { group in
+                                        Button(group.name) {
+                                            model.addServerGroup(group, to: selected)
+                                        }
+                                    }
+                                }
+                            }
                         }
                         Button("Resolve Database ID From UID") {
                             model.resolveDatabaseIdForSelectedClient()
@@ -5914,6 +5923,15 @@ struct DatabaseClientRow: View {
             if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
                 Button("Copy Unique ID") {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+            }
+            if !model.serverGroups.isEmpty {
+                Menu("Add Server Group") {
+                    ForEach(model.serverGroups) { group in
+                        Button(group.name) {
+                            model.addServerGroup(group, to: record)
+                        }
+                    }
                 }
             }
         }
