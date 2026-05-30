@@ -9376,8 +9376,10 @@ struct SelfStatusSheet: View {
     @State private var isShowingIconImporter = false
     @State private var isShowingAvatarImporter = false
     @State private var isExportingStatus = false
+    @State private var isExportingStatusBackup = false
     @State private var isImportingStatus = false
     @State private var statusDocument = TS3TextFileDocument()
+    @State private var statusBackupDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -9570,8 +9572,8 @@ struct SelfStatusSheet: View {
                 }
             }
             .fileExporter(
-                isPresented: $isExportingStatus,
-                document: statusDocument,
+                isPresented: $isExportingStatusBackup,
+                document: statusBackupDocument,
                 contentType: .json,
                 defaultFilename: "ts3-self-status-backup"
             ) { result in
@@ -9655,8 +9657,8 @@ struct SelfStatusSheet: View {
 
     private func exportStatusBackup() {
         do {
-            statusDocument = TS3TextFileDocument(data: try model.selfStatusBackupData())
-            isExportingStatus = true
+            statusBackupDocument = TS3TextFileDocument(data: try model.selfStatusBackupData())
+            isExportingStatusBackup = true
         } catch {
             model.lastError = error.localizedDescription
         }
