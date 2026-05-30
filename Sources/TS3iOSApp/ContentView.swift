@@ -9578,6 +9578,21 @@ struct AudioSettingsSheet: View {
                         Text("Continuous").tag(TS3AudioTransmitMode.continuous)
                         Text("Voice Activation").tag(TS3AudioTransmitMode.voiceActivation)
                     }
+                    HStack(spacing: 10) {
+                        Button("PTT Preset") {
+                            model.applyAudioPreset(mode: .pushToTalk, inputGain: 1)
+                        }
+                        .buttonStyle(.borderless)
+                        Button("Voice Preset") {
+                            model.applyAudioPreset(mode: .voiceActivation, inputGain: 1, threshold: 0.03)
+                        }
+                        .buttonStyle(.borderless)
+                        Button("Continuous") {
+                            model.applyAudioPreset(mode: .continuous, inputGain: 1)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .font(.caption)
                     if model.audioTransmitMode == .voiceActivation {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
@@ -9601,6 +9616,20 @@ struct AudioSettingsSheet: View {
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: inputGainBinding, in: 0...4, step: 0.05)
+                        HStack {
+                            Button("50%") {
+                                model.updateInputGain(0.5)
+                            }
+                            Spacer()
+                            Button("100%") {
+                                model.updateInputGain(1)
+                            }
+                            Spacer()
+                            Button("200%") {
+                                model.updateInputGain(2)
+                            }
+                        }
+                        .buttonStyle(.borderless)
                     }
                     .padding(.vertical, 4)
                 }

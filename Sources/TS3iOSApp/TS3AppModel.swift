@@ -1746,6 +1746,22 @@ final class TS3AppModel: ObservableObject {
         saveAudioSettings()
     }
 
+    func applyAudioPreset(mode: TS3AudioTransmitMode, inputGain: Double, threshold: Double? = nil) {
+        audioTransmitMode = mode
+        self.inputGain = min(max(inputGain, 0), 4)
+        if let threshold {
+            voiceActivationThreshold = min(max(threshold, 0.001), 0.5)
+        }
+        if isTalking {
+            client?.stopMicrophone()
+            isTalking = false
+        }
+        if let client {
+            applyAudioSettings(to: client)
+        }
+        saveAudioSettings()
+    }
+
     func resetAudioSettings() {
         let defaults = TS3AudioSettings.defaults
         playbackVolume = defaults.playbackVolume
