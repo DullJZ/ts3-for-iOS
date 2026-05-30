@@ -9547,6 +9547,7 @@ struct SelfStatusSheet: View {
     @State private var selfIconId = ""
     @State private var isShowingIconImporter = false
     @State private var isShowingAvatarImporter = false
+    @State private var isConfirmingClearIcon = false
     @State private var isConfirmingClearAvatar = false
     @State private var isExportingStatus = false
     @State private var isExportingStatusBackup = false
@@ -9648,6 +9649,10 @@ struct SelfStatusSheet: View {
                         model.setSelfIcon(iconId: Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)))
                     }
                     .disabled(!selfIconId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)) == nil)
+                    Button("Clear Client Icon") {
+                        isConfirmingClearIcon = true
+                    }
+                    .disabled((currentUser?.iconId ?? 0) == 0)
                     Button {
                         isShowingIconImporter = true
                     } label: {
@@ -9728,6 +9733,17 @@ struct SelfStatusSheet: View {
                         selfIconId = String(uploadedIconId)
                     }
                 }
+            }
+            .alert(isPresented: $isConfirmingClearIcon) {
+                Alert(
+                    title: Text("Clear Client Icon"),
+                    message: Text("Remove the icon from your current client on this server."),
+                    primaryButton: .destructive(Text("Clear")) {
+                        model.clearSelfIcon()
+                        selfIconId = ""
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .fileImporter(
                 isPresented: $isShowingAvatarImporter,

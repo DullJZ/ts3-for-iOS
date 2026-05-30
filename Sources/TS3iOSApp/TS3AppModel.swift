@@ -3692,6 +3692,18 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func clearSelfIcon() {
+        runClientCommand { client in
+            try await client.setClientIcon(iconId: 0)
+        } onSuccess: {
+            guard let ownClient = self.clients.first(where: { $0.isCurrentUser }) else { return }
+            self.updateUser(clientId: ownClient.id) { existing in
+                self.copyUser(existing, iconId: 0, resetIconURL: true)
+            }
+            self.refreshMissingIcons()
+        }
+    }
+
     func uploadSelfIcon(from source: URL, updateDraft: ((Int) -> Void)? = nil) {
         uploadIcon(from: source) { client, iconId in
             try await client.setClientIcon(iconId: iconId)
