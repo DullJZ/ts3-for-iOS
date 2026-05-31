@@ -11627,6 +11627,7 @@ struct IdentitySummaryRows: View {
     @EnvironmentObject private var model: TS3AppModel
     @Binding var importedIdentity: String
     @State private var isConfirmingRegenerate = false
+    @State private var targetSecurityLevel = "8"
 
     var body: some View {
         HStack {
@@ -11652,6 +11653,13 @@ struct IdentitySummaryRows: View {
             model.copyIdentityExport()
         }
         .disabled(model.identitySummary.exportString.isEmpty)
+        HStack {
+            Text("New Security Level")
+            Spacer()
+            TextField("8", text: $targetSecurityLevel)
+                .multilineTextAlignment(.trailing)
+                .ts3NumericKeyboard()
+        }
         TextField("Identity Backup", text: $importedIdentity)
             .ts3PlainTextField()
         Button("Import Identity") {
@@ -11663,17 +11671,25 @@ struct IdentitySummaryRows: View {
             isConfirmingRegenerate = true
         }
         .foregroundColor(.red)
-        .disabled(model.state != .disconnected)
+        .disabled(model.state != .disconnected || parsedSecurityLevel == nil)
         .alert(isPresented: $isConfirmingRegenerate) {
             Alert(
                 title: Text("Regenerate Identity?"),
                 message: Text("This replaces your local identity. Servers will treat you as a different client unless you restore a backup."),
                 primaryButton: .destructive(Text("Regenerate")) {
-                    model.regenerateIdentity()
+                    model.regenerateIdentity(securityLevel: parsedSecurityLevel ?? 8)
                 },
                 secondaryButton: .cancel()
             )
         }
+    }
+
+    private var parsedSecurityLevel: Int? {
+        let trimmed = targetSecurityLevel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let level = Int(trimmed), level >= 0, level <= 32 else {
+            return nil
+        }
+        return level
     }
 }
 
@@ -11683,13 +11699,21 @@ struct IdentityManagementSheet: View {
     @State private var importedIdentity = ""
     @State private var isImportingIdentity = false
     @State private var isExportingIdentity = false
+    @State private var isExportingIdentitySnapshot = false
     @State private var identityExportDocument = TS3TextFileDocument()
+    @State private var identitySnapshotDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Identity")) {
                     IdentitySummaryRows(importedIdentity: $importedIdentity)
+                    Button("Copy Identity Snapshot") {
+                        model.copyIdentitySnapshot()
+                    }
+                    Button("Export Identity Snapshot") {
+                        exportIdentitySnapshot()
+                    }
                     Button("Import Identity Backup") {
                         isImportingIdentity = true
                     }
@@ -11734,6 +11758,16 @@ struct IdentityManagementSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingIdentitySnapshot,
+                document: identitySnapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-identity-snapshot"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -11741,6 +11775,11 @@ struct IdentityManagementSheet: View {
         guard !model.identitySummary.exportString.isEmpty else { return }
         identityExportDocument = TS3TextFileDocument(data: Data(model.identitySummary.exportString.utf8))
         isExportingIdentity = true
+    }
+
+    private func exportIdentitySnapshot() {
+        identitySnapshotDocument = TS3TextFileDocument(data: model.identitySnapshotData())
+        isExportingIdentitySnapshot = true
     }
 
     private func importIdentity(from url: URL) {

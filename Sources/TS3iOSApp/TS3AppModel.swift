@@ -944,6 +944,16 @@ struct TS3IdentitySummary {
     var keyOffset: Int
     var exportString: String
 
+    var snapshotText: String {
+        [
+            "Identity UID: \(uid.isEmpty ? "Unavailable" : uid)",
+            "Security Level: \(securityLevel)",
+            "Key Offset: \(keyOffset)",
+            "Backup Available: \(exportString.isEmpty ? "No" : "Yes")",
+            "Backup Length: \(exportString.count)"
+        ].joined(separator: "\n")
+    }
+
     static let empty = TS3IdentitySummary(uid: "", securityLevel: 0, keyOffset: 0, exportString: "")
 }
 
@@ -4898,6 +4908,14 @@ final class TS3AppModel: ObservableObject {
         TS3PlatformSupport.copyToPasteboard(identitySummary.exportString)
     }
 
+    func copyIdentitySnapshot() {
+        TS3PlatformSupport.copyToPasteboard(identitySummary.snapshotText)
+    }
+
+    func identitySnapshotData() -> Data {
+        Data(identitySummary.snapshotText.utf8)
+    }
+
     func importIdentity(_ exportString: String) {
         Task {
             do {
@@ -4924,9 +4942,13 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func regenerateIdentity() {
+    func regenerateIdentity(securityLevel: Int = 8) {
         guard state == .disconnected else {
             lastError = "Disconnect before replacing your identity."
+            return
+        }
+        guard securityLevel >= 0 && securityLevel <= 32 else {
+            lastError = "Identity security level must be between 0 and 32."
             return
         }
         Task {
@@ -4936,7 +4958,7 @@ final class TS3AppModel: ObservableObject {
                     port: 9987,
                     nickname: nickname,
                     serverPassword: nil
-                )).regenerateIdentity()
+                )).regenerateIdentity(securityLevel: securityLevel)
                 await MainActor.run {
                     self.identitySummary = TS3IdentitySummary(
                         uid: snapshot.uid,
