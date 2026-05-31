@@ -11769,6 +11769,28 @@ enum ChannelEditorMode {
 }
 
 struct ChannelEditorSheet: View {
+    private struct ChannelDraft: Codable {
+        var name: String
+        var phoneticName: String
+        var topic: String
+        var description: String
+        var password: String
+        var clearPassword: Bool
+        var channelType: String
+        var isDefault: Bool
+        var neededTalkPower: String
+        var neededSubscribePower: String
+        var codec: String
+        var codecQuality: String
+        var deleteDelaySeconds: String
+        var maxClients: String
+        var maxFamilyClients: String
+        var maxClientsUnlimited: Bool
+        var maxFamilyClientsUnlimited: Bool
+        var maxFamilyClientsInherited: Bool
+        var iconId: String
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let mode: ChannelEditorMode
@@ -11792,6 +11814,11 @@ struct ChannelEditorSheet: View {
     @State private var maxFamilyClientsInherited = false
     @State private var iconId = ""
     @State private var isShowingIconImporter = false
+    @State private var isImportingDraft = false
+    @State private var isExportingDraft = false
+    @State private var isExportingSnapshot = false
+    @State private var draftDocument = TS3TextFileDocument()
+    @State private var snapshotDocument = TS3TextFileDocument()
 
     var title: String {
         switch mode {
@@ -11803,6 +11830,22 @@ struct ChannelEditorSheet: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Draft")) {
+                    Button("Copy Channel Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(channelDraftSnapshot)
+                    }
+                    Button("Export Channel Snapshot") {
+                        snapshotDocument = TS3TextFileDocument(data: Data(channelDraftSnapshot.utf8))
+                        isExportingSnapshot = true
+                    }
+                    Button("Export Channel Draft") {
+                        exportDraft()
+                    }
+                    Button("Import Channel Draft") {
+                        isImportingDraft = true
+                    }
+                }
+
                 Section(header: Text("Channel")) {
                     TextField("Name", text: $name)
                     TextField("Phonetic Name", text: $phoneticName)
@@ -11959,7 +12002,90 @@ struct ChannelEditorSheet: View {
                     }
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingDraft,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importDraft(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingDraft,
+                document: draftDocument,
+                contentType: .json,
+                defaultFilename: "ts3-channel-draft"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingSnapshot,
+                document: snapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-channel-settings"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var currentDraft: ChannelDraft {
+        ChannelDraft(
+            name: name,
+            phoneticName: phoneticName,
+            topic: topic,
+            description: description,
+            password: password,
+            clearPassword: clearPassword,
+            channelType: channelType.rawValue,
+            isDefault: isDefault,
+            neededTalkPower: neededTalkPower,
+            neededSubscribePower: neededSubscribePower,
+            codec: codec,
+            codecQuality: codecQuality,
+            deleteDelaySeconds: deleteDelaySeconds,
+            maxClients: maxClients,
+            maxFamilyClients: maxFamilyClients,
+            maxClientsUnlimited: maxClientsUnlimited,
+            maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: maxFamilyClientsInherited,
+            iconId: iconId
+        )
+    }
+
+    private var channelDraftSnapshot: String {
+        let draft = currentDraft
+        var rows: [(String, String)] = [
+            ("Mode", title),
+            ("Name", draft.name),
+            ("Phonetic Name", draft.phoneticName),
+            ("Topic", draft.topic),
+            ("Description", draft.description),
+            ("Password", draft.clearPassword ? "Clear Password" : (draft.password.isEmpty ? "Unchanged" : "New Password Set")),
+            ("Type", channelTypeTitle(draft.channelType)),
+            ("Default", draft.isDefault ? "Yes" : "No"),
+            ("Needed Talk Power", draft.neededTalkPower),
+            ("Needed Subscribe Power", draft.neededSubscribePower),
+            ("Codec", draft.codec),
+            ("Codec Quality", draft.codecQuality),
+            ("Delete Delay Seconds", draft.deleteDelaySeconds),
+            ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
+            ("Max Family Clients", draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)),
+            ("Icon ID", draft.iconId)
+        ]
+        rows.append(("Draft Valid", canSubmit ? "Yes" : "No"))
+        return rows.compactMap { label, value in
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            return "\(label): \(trimmed)"
+        }.joined(separator: "\n")
     }
 
     private var canSubmit: Bool {
@@ -11987,6 +12113,58 @@ struct ChannelEditorSheet: View {
     private func parsedOptionalInt(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : Int(trimmed)
+    }
+
+    private func exportDraft() {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            draftDocument = TS3TextFileDocument(data: try encoder.encode(currentDraft))
+            isExportingDraft = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importDraft(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let draft = try JSONDecoder().decode(ChannelDraft.self, from: Data(contentsOf: url))
+            applyDraft(draft)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyDraft(_ draft: ChannelDraft) {
+        name = draft.name
+        phoneticName = draft.phoneticName
+        topic = draft.topic
+        description = draft.description
+        password = draft.password
+        clearPassword = draft.clearPassword
+        channelType = TS3ChannelType(rawValue: draft.channelType) ?? .permanent
+        isDefault = draft.isDefault
+        neededTalkPower = draft.neededTalkPower
+        neededSubscribePower = draft.neededSubscribePower
+        codec = draft.codec
+        codecQuality = draft.codecQuality
+        deleteDelaySeconds = draft.deleteDelaySeconds
+        maxClients = draft.maxClients
+        maxFamilyClients = draft.maxFamilyClients
+        maxClientsUnlimited = draft.maxClientsUnlimited
+        maxFamilyClientsUnlimited = draft.maxFamilyClientsUnlimited
+        maxFamilyClientsInherited = draft.maxFamilyClientsInherited
+        iconId = draft.iconId
+    }
+
+    private func channelTypeTitle(_ rawValue: String) -> String {
+        (TS3ChannelType(rawValue: rawValue) ?? .permanent).title
     }
 
     private func isOptionalInt(_ text: String) -> Bool {
