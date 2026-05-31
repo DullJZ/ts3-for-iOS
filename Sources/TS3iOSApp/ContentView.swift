@@ -69,9 +69,51 @@ struct ConnectingView: View {
 }
 
 struct ConnectView: View {
+    private enum ConnectionFilter: String, CaseIterable, Identifiable {
+        case all
+        case withPassword
+        case withDefaultChannel
+        case withPrivilegeKey
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Entries"
+            case .withPassword: return "With Password"
+            case .withDefaultChannel: return "With Default Channel"
+            case .withPrivilegeKey: return "With Privilege Key"
+            }
+        }
+    }
+
+    private enum ConnectionSortMode: String, CaseIterable, Identifiable {
+        case savedOrder
+        case name
+        case host
+        case nickname
+        case port
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .savedOrder: return "Saved Order"
+            case .name: return "Name"
+            case .host: return "Host"
+            case .nickname: return "Nickname"
+            case .port: return "Port"
+            }
+        }
+    }
+
     @EnvironmentObject private var model: TS3AppModel
     @State private var bookmarkName = ""
     @State private var serverURLText = ""
+    @State private var connectionSearchText = ""
+    @State private var connectionFilter: ConnectionFilter = .all
+    @State private var connectionSortMode: ConnectionSortMode = .savedOrder
+    @State private var connectionSortAscending = true
     @State private var editingBookmark: TS3BookmarkSummary?
     @State private var isShowingIdentity = false
     @State private var isShowingBookmarkImporter = false
@@ -86,61 +128,126 @@ struct ConnectView: View {
         )
     }
 
+    private var displayedRecentConnections: [TS3ConnectionSnapshot] {
+        let entries = model.recentConnections.filter { snapshot in
+            matchesConnectionFilter(
+                serverPassword: snapshot.serverPassword,
+                defaultChannel: snapshot.defaultChannel,
+                privilegeKey: snapshot.privilegeKey
+            ) && matchesConnectionSearch(
+                name: snapshot.host,
+                host: snapshot.host,
+                port: snapshot.port,
+                nickname: snapshot.nickname,
+                defaultChannel: snapshot.defaultChannel
+            )
+        }
+        return sortedRecentConnections(entries)
+    }
+
+    private var displayedBookmarks: [TS3BookmarkSummary] {
+        let entries = model.bookmarks.filter { bookmark in
+            matchesConnectionFilter(
+                serverPassword: bookmark.serverPassword,
+                defaultChannel: bookmark.defaultChannel,
+                privilegeKey: bookmark.privilegeKey
+            ) && matchesConnectionSearch(
+                name: bookmark.name,
+                host: bookmark.host,
+                port: bookmark.port,
+                nickname: bookmark.nickname,
+                defaultChannel: bookmark.defaultChannel
+            )
+        }
+        return sortedBookmarks(entries)
+    }
+
     var body: some View {
         Form {
+            if !model.recentConnections.isEmpty || !model.bookmarks.isEmpty {
+                Section(header: Text("Saved Connections")) {
+                    Picker("Filter", selection: $connectionFilter) {
+                        ForEach(ConnectionFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $connectionSortMode) {
+                        ForEach(ConnectionSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $connectionSortAscending)
+                    TextField("Search saved servers", text: $connectionSearchText)
+                        .ts3PlainTextField()
+                    if hasSavedConnectionOptions {
+                        Button("Clear Saved Connection Filters") {
+                            connectionFilter = .all
+                            connectionSortMode = .savedOrder
+                            connectionSortAscending = true
+                            connectionSearchText = ""
+                        }
+                    }
+                }
+            }
+
             if !model.recentConnections.isEmpty {
                 Section(header: Text("Recent Servers")) {
-                    ForEach(model.recentConnections) { snapshot in
-                        HStack {
-                            Button {
-                                model.applyRecentConnection(snapshot)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(snapshot.host)
-                                    Text("\(snapshot.nickname) · \(snapshot.port)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                    if displayedRecentConnections.isEmpty {
+                        Text("No matching recent servers")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(displayedRecentConnections) { snapshot in
+                            HStack {
+                                Button {
+                                    model.applyRecentConnection(snapshot)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(snapshot.host)
+                                        Text("\(snapshot.nickname) · \(snapshot.port)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
-                            }
-                            .buttonStyle(.borderless)
-                            Spacer()
-                            Button {
-                                model.copyInviteLink(
-                                    for: TS3BookmarkSummary(
-                                        id: snapshot.id,
-                                        name: snapshot.host,
-                                        host: snapshot.host,
-                                        port: snapshot.port,
-                                        nickname: snapshot.nickname,
-                                        serverPassword: snapshot.serverPassword,
-                                        defaultChannel: snapshot.defaultChannel,
-                                        defaultChannelPassword: snapshot.defaultChannelPassword,
-                                        privilegeKey: snapshot.privilegeKey
+                                .buttonStyle(.borderless)
+                                Spacer()
+                                Button {
+                                    model.copyInviteLink(
+                                        for: TS3BookmarkSummary(
+                                            id: snapshot.id,
+                                            name: snapshot.host,
+                                            host: snapshot.host,
+                                            port: snapshot.port,
+                                            nickname: snapshot.nickname,
+                                            serverPassword: snapshot.serverPassword,
+                                            defaultChannel: snapshot.defaultChannel,
+                                            defaultChannelPassword: snapshot.defaultChannelPassword,
+                                            privilegeKey: snapshot.privilegeKey
+                                        )
                                     )
-                                )
-                            } label: {
-                                Image(systemName: "link")
+                                } label: {
+                                    Image(systemName: "link")
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    model.applyRecentConnection(snapshot)
+                                    model.connect()
+                                } label: {
+                                    Image(systemName: "arrow.clockwise")
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    model.saveCurrentBookmark(name: snapshot.host)
+                                } label: {
+                                    Image(systemName: "bookmark")
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    model.deleteRecentConnection(snapshot)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
                             }
-                            .buttonStyle(.borderless)
-                            Button {
-                                model.applyRecentConnection(snapshot)
-                                model.connect()
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                            .buttonStyle(.borderless)
-                            Button {
-                                model.saveCurrentBookmark(name: snapshot.host)
-                            } label: {
-                                Image(systemName: "bookmark")
-                            }
-                            .buttonStyle(.borderless)
-                            Button {
-                                model.deleteRecentConnection(snapshot)
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(.borderless)
                         }
                     }
                     Button("Clear Recent Servers") {
@@ -152,45 +259,50 @@ struct ConnectView: View {
 
             if !model.bookmarks.isEmpty {
                 Section(header: Text("Bookmarks")) {
-                    ForEach(model.bookmarks) { bookmark in
-                        HStack {
-                            Button {
-                                model.applyBookmark(bookmark)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(bookmark.name)
-                                    Text("\(bookmark.host):\(bookmark.port)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                    if displayedBookmarks.isEmpty {
+                        Text("No matching bookmarks")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(displayedBookmarks) { bookmark in
+                            HStack {
+                                Button {
+                                    model.applyBookmark(bookmark)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(bookmark.name)
+                                        Text("\(bookmark.host):\(bookmark.port)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
+                                .buttonStyle(.borderless)
+                                Spacer()
+                                Button {
+                                    model.applyBookmark(bookmark)
+                                    model.connect()
+                                } label: {
+                                    Image(systemName: "arrow.clockwise")
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    model.copyInviteLink(for: bookmark)
+                                } label: {
+                                    Image(systemName: "link")
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    editingBookmark = bookmark
+                                } label: {
+                                    Image(systemName: "pencil")
+                                }
+                                .buttonStyle(.borderless)
+                                Button {
+                                    model.deleteBookmark(bookmark)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
                             }
-                            .buttonStyle(.borderless)
-                            Spacer()
-                            Button {
-                                model.applyBookmark(bookmark)
-                                model.connect()
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                            .buttonStyle(.borderless)
-                            Button {
-                                model.copyInviteLink(for: bookmark)
-                            } label: {
-                                Image(systemName: "link")
-                            }
-                            .buttonStyle(.borderless)
-                            Button {
-                                editingBookmark = bookmark
-                            } label: {
-                                Image(systemName: "pencil")
-                            }
-                            .buttonStyle(.borderless)
-                            Button {
-                                model.deleteBookmark(bookmark)
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(.borderless)
                         }
                     }
                 }
@@ -359,6 +471,115 @@ struct ConnectView: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private var normalizedConnectionSearchText: String {
+        connectionSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearchingConnections: Bool {
+        !normalizedConnectionSearchText.isEmpty
+    }
+
+    private var hasSavedConnectionOptions: Bool {
+        isSearchingConnections || connectionFilter != .all || connectionSortMode != .savedOrder || !connectionSortAscending
+    }
+
+    private func matchesConnectionFilter(serverPassword: String, defaultChannel: String, privilegeKey: String) -> Bool {
+        switch connectionFilter {
+        case .all:
+            return true
+        case .withPassword:
+            return !serverPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .withDefaultChannel:
+            return !defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .withPrivilegeKey:
+            return !privilegeKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    private func matchesConnectionSearch(name: String, host: String, port: String, nickname: String, defaultChannel: String) -> Bool {
+        !isSearchingConnections
+            || containsConnectionSearch(name)
+            || containsConnectionSearch(host)
+            || containsConnectionSearch(port)
+            || containsConnectionSearch(nickname)
+            || containsConnectionSearch(defaultChannel)
+    }
+
+    private func containsConnectionSearch(_ value: String) -> Bool {
+        value.lowercased().contains(normalizedConnectionSearchText)
+    }
+
+    private func sortedBookmarks(_ bookmarks: [TS3BookmarkSummary]) -> [TS3BookmarkSummary] {
+        guard connectionSortMode != .savedOrder else { return bookmarks }
+        return bookmarks.sorted { lhs, rhs in
+            compareConnectionEntries(
+                lhsName: lhs.name,
+                lhsHost: lhs.host,
+                lhsNickname: lhs.nickname,
+                lhsPort: lhs.port,
+                rhsName: rhs.name,
+                rhsHost: rhs.host,
+                rhsNickname: rhs.nickname,
+                rhsPort: rhs.port
+            )
+        }
+    }
+
+    private func sortedRecentConnections(_ snapshots: [TS3ConnectionSnapshot]) -> [TS3ConnectionSnapshot] {
+        guard connectionSortMode != .savedOrder else { return snapshots }
+        return snapshots.sorted { lhs, rhs in
+            compareConnectionEntries(
+                lhsName: lhs.host,
+                lhsHost: lhs.host,
+                lhsNickname: lhs.nickname,
+                lhsPort: lhs.port,
+                rhsName: rhs.host,
+                rhsHost: rhs.host,
+                rhsNickname: rhs.nickname,
+                rhsPort: rhs.port
+            )
+        }
+    }
+
+    private func compareConnectionEntries(
+        lhsName: String,
+        lhsHost: String,
+        lhsNickname: String,
+        lhsPort: String,
+        rhsName: String,
+        rhsHost: String,
+        rhsNickname: String,
+        rhsPort: String
+    ) -> Bool {
+        let comparison: ComparisonResult
+        switch connectionSortMode {
+        case .savedOrder:
+            return false
+        case .name:
+            comparison = lhsName.localizedCaseInsensitiveCompare(rhsName)
+        case .host:
+            comparison = lhsHost.localizedCaseInsensitiveCompare(rhsHost)
+        case .nickname:
+            comparison = lhsNickname.localizedCaseInsensitiveCompare(rhsNickname)
+        case .port:
+            comparison = comparePorts(lhsPort, rhsPort)
+        }
+
+        if comparison == .orderedSame {
+            return lhsHost.localizedCaseInsensitiveCompare(rhsHost) == .orderedAscending
+        }
+        return connectionSortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+    }
+
+    private func comparePorts(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        let lhsPort = Int(lhs.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        let rhsPort = Int(rhs.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        if lhsPort == rhsPort {
+            return .orderedSame
+        }
+        return lhsPort < rhsPort ? .orderedAscending : .orderedDescending
     }
 }
 
