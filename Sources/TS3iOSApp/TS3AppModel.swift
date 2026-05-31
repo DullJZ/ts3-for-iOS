@@ -775,6 +775,34 @@ private struct TS3AudioSettings: Codable {
     )
 }
 
+struct TS3AudioProfile: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var playbackVolume: Double
+    var inputGain: Double
+    var transmitMode: String
+    var voiceActivationThreshold: Double
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        playbackVolume: Double,
+        inputGain: Double,
+        transmitMode: String,
+        voiceActivationThreshold: Double,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.playbackVolume = playbackVolume
+        self.inputGain = inputGain
+        self.transmitMode = transmitMode
+        self.voiceActivationThreshold = voiceActivationThreshold
+        self.updatedAt = updatedAt
+    }
+}
+
 private struct TS3NotificationSettings: Codable {
     var isEnabled: Bool
 
@@ -1137,6 +1165,7 @@ final class TS3AppModel: ObservableObject {
     @Published var inputGain: Double = 1.0
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
+    @Published private(set) var audioProfiles: [TS3AudioProfile] = []
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
     @Published private(set) var notificationsEnabled = false
     @Published private(set) var autoReconnectEnabled = false
@@ -1167,6 +1196,7 @@ final class TS3AppModel: ObservableObject {
 
     init() {
         loadAudioSettings()
+        loadAudioProfiles()
         loadNotificationSettings()
         loadConnectionRecoverySettings()
         loadUserPlaybackPreferences()
@@ -4894,6 +4924,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-audio-settings.json")
     }
 
+    private var audioProfilesURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-audio-profiles.json")
+    }
+
     private var userPlaybackPreferencesURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-user-playback-preferences.json")
@@ -4947,6 +4982,87 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(snapshot)
     }
 
+    private func loadAudioProfiles() {
+        guard let data = try? Data(contentsOf: audioProfilesURL),
+              let decoded = try? JSONDecoder().decode([TS3AudioProfile].self, from: data) else {
+            audioProfiles = []
+            return
+        }
+        audioProfiles = sanitizedAudioProfiles(decoded)
+    }
+
+    private func saveAudioProfiles() {
+        do {
+            let directory = audioProfilesURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(audioProfiles)
+            try data.write(to: audioProfilesURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func saveCurrentAudioProfile(name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            lastError = "Enter a name for the audio profile."
+            return
+        }
+        audioProfiles.removeAll { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame }
+        audioProfiles.insert(TS3AudioProfile(
+            name: trimmedName,
+            playbackVolume: playbackVolume,
+            inputGain: inputGain,
+            transmitMode: audioTransmitMode.rawValue,
+            voiceActivationThreshold: voiceActivationThreshold
+        ), at: 0)
+        saveAudioProfiles()
+        lastError = nil
+    }
+
+    func applyAudioProfile(_ profile: TS3AudioProfile) {
+        applyAudioSettingsSnapshot(TS3AudioSettings(
+            playbackVolume: profile.playbackVolume,
+            inputGain: profile.inputGain,
+            transmitMode: profile.transmitMode,
+            voiceActivationThreshold: profile.voiceActivationThreshold
+        ))
+        if isTalking {
+            client?.stopMicrophone()
+            isTalking = false
+        }
+        if let client {
+            applyAudioSettings(to: client)
+        }
+        saveAudioSettings()
+        lastError = nil
+    }
+
+    func deleteAudioProfile(_ profile: TS3AudioProfile) {
+        audioProfiles.removeAll { $0.id == profile.id }
+        saveAudioProfiles()
+    }
+
+    func audioProfilesExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(audioProfiles)
+    }
+
+    @discardableResult
+    func importAudioProfiles(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3AudioProfile].self, from: data)
+        var merged = audioProfiles
+        for profile in sanitizedAudioProfiles(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(profile.name) == .orderedSame }
+            merged.insert(profile, at: 0)
+        }
+        audioProfiles = sanitizedAudioProfiles(merged)
+        saveAudioProfiles()
+        lastError = nil
+        return imported.count
+    }
+
     func importAudioSettings(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3AudioSettings.self, from: data)
         applyAudioSettingsSnapshot(decoded)
@@ -4962,6 +5078,28 @@ final class TS3AppModel: ObservableObject {
         inputGain = min(max(settings.inputGain, 0), 4)
         audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
+    }
+
+    private func sanitizedAudioProfiles(_ profiles: [TS3AudioProfile]) -> [TS3AudioProfile] {
+        profiles.compactMap { profile in
+            let name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return nil }
+            return TS3AudioProfile(
+                id: profile.id,
+                name: name,
+                playbackVolume: min(max(profile.playbackVolume, 0), 4),
+                inputGain: min(max(profile.inputGain, 0), 4),
+                transmitMode: TS3AudioTransmitMode(rawValue: profile.transmitMode)?.rawValue ?? TS3AudioTransmitMode.pushToTalk.rawValue,
+                voiceActivationThreshold: min(max(profile.voiceActivationThreshold, 0.001), 0.5),
+                updatedAt: profile.updatedAt
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.updatedAt == rhs.updatedAt {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        }
     }
 
     private func loadUserPlaybackPreferences() {

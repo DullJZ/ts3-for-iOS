@@ -12151,8 +12151,10 @@ struct SelfStatusSheet: View {
 struct AudioSettingsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var audioProfileName = ""
     @State private var isExportingAudioSettings = false
     @State private var isImportingAudioSettings = false
+    @State private var isImportingAudioProfiles = false
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
@@ -12199,6 +12201,54 @@ struct AudioSettingsSheet: View {
                     }
                     Button("Import Audio Settings") {
                         isImportingAudioSettings = true
+                    }
+                }
+
+                Section(header: Text("Profiles")) {
+                    TextField("Profile Name", text: $audioProfileName)
+                        .ts3PlainTextField()
+                    Button("Save Current Profile") {
+                        model.saveCurrentAudioProfile(name: audioProfileName)
+                        audioProfileName = ""
+                    }
+                    .disabled(audioProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Export Profile Backup") {
+                        exportAudioProfiles()
+                    }
+                    .disabled(model.audioProfiles.isEmpty)
+                    Button("Import Profile Backup") {
+                        isImportingAudioProfiles = true
+                    }
+
+                    if model.audioProfiles.isEmpty {
+                        Text("No saved audio profiles")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.audioProfiles) { profile in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(profile.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(profileSummary(profile))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Menu {
+                                    Button("Apply Profile") {
+                                        model.applyAudioProfile(profile)
+                                    }
+                                    Button("Rename From Profile") {
+                                        audioProfileName = profile.name
+                                    }
+                                    Button("Delete Profile") {
+                                        model.deleteAudioProfile(profile)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -12329,12 +12379,32 @@ struct AudioSettingsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingAudioProfiles,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importAudioProfiles(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
     private func exportAudioSettings() {
         do {
             audioSettingsDocument = TS3TextFileDocument(data: try model.audioSettingsExportData())
+            isExportingAudioSettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportAudioProfiles() {
+        do {
+            audioSettingsDocument = TS3TextFileDocument(data: try model.audioProfilesExportData())
             isExportingAudioSettings = true
         } catch {
             model.lastError = error.localizedDescription
@@ -12355,16 +12425,43 @@ struct AudioSettingsSheet: View {
         }
     }
 
+    private func importAudioProfiles(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importAudioProfiles(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
     private var audioSettingsSnapshot: String {
         var rows = [
             "Transmit Mode: \(model.audioTransmitMode.rawValue)",
             "Input Gain: \(model.inputGainPercentText)",
-            "Playback Volume: \(model.playbackVolumePercentText)"
+            "Playback Volume: \(model.playbackVolumePercentText)",
+            "Saved Profiles: \(model.audioProfiles.count)"
         ]
         if model.audioTransmitMode == .voiceActivation {
             rows.append("Voice Activation Threshold: \(model.voiceActivationThresholdText)")
         }
         return rows.joined(separator: "\n")
+    }
+
+    private func profileSummary(_ profile: TS3AudioProfile) -> String {
+        let mode = TS3AudioTransmitMode(rawValue: profile.transmitMode)?.rawValue ?? TS3AudioTransmitMode.pushToTalk.rawValue
+        let input = Self.percentText(profile.inputGain)
+        let playback = Self.percentText(profile.playbackVolume)
+        let threshold = String(format: "%.3f", profile.voiceActivationThreshold)
+        return "\(mode), input \(input), playback \(playback), threshold \(threshold)"
+    }
+
+    private static func percentText(_ value: Double) -> String {
+        "\(Int((value * 100).rounded()))%"
     }
 }
 
