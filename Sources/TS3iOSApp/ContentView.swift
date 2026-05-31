@@ -7974,6 +7974,65 @@ struct RenameFileEntrySheet: View {
 }
 
 struct PermissionsSheet: View {
+    private enum AssignedPermissionFilter: String, CaseIterable, Identifiable {
+        case all
+        case negated
+        case skipped
+        case inherited
+        case positiveValue
+        case zeroValue
+        case negativeValue
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Permissions"
+            case .negated: return "Negated"
+            case .skipped: return "Skipped"
+            case .inherited: return "Inherited"
+            case .positiveValue: return "Positive Value"
+            case .zeroValue: return "Zero Value"
+            case .negativeValue: return "Negative Value"
+            }
+        }
+
+        func matches(_ permission: TS3PermissionSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .negated:
+                return permission.isNegated
+            case .skipped:
+                return permission.isSkipped
+            case .inherited:
+                return !permission.isNegated && !permission.isSkipped
+            case .positiveValue:
+                return permission.value > 0
+            case .zeroValue:
+                return permission.value == 0
+            case .negativeValue:
+                return permission.value < 0
+            }
+        }
+    }
+
+    private enum AssignedPermissionSortMode: String, CaseIterable, Identifiable {
+        case name
+        case value
+        case flags
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .name: return "Name"
+            case .value: return "Value"
+            case .flags: return "Flags"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
@@ -7982,6 +8041,9 @@ struct PermissionsSheet: View {
     @State private var permissionNegated = false
     @State private var permissionSkip = false
     @State private var assignedSearchText = ""
+    @State private var assignedFilter: AssignedPermissionFilter = .all
+    @State private var assignedSortMode: AssignedPermissionSortMode = .name
+    @State private var assignedSortAscending = true
     @State private var isExportingPermissionSnapshot = false
     @State private var isExportingPermissionBackup = false
     @State private var isImportingPermissions = false
@@ -8005,13 +8067,16 @@ struct PermissionsSheet: View {
 
     var filteredDisplayedPermissions: [TS3PermissionSummary] {
         let query = assignedSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return displayedPermissions }
-        return displayedPermissions.filter {
-            $0.name.localizedCaseInsensitiveContains(query)
-                || String($0.value).contains(query)
-                || ($0.isNegated && "negated".localizedCaseInsensitiveContains(query))
-                || ($0.isSkipped && "skipped".localizedCaseInsensitiveContains(query))
+        let filtered = displayedPermissions.filter { permission in
+            assignedFilter.matches(permission) && (
+                query.isEmpty
+                    || permission.name.localizedCaseInsensitiveContains(query)
+                    || String(permission.value).contains(query)
+                    || (permission.isNegated && "negated".localizedCaseInsensitiveContains(query))
+                    || (permission.isSkipped && "skipped".localizedCaseInsensitiveContains(query))
+            )
         }
+        return sortedDisplayedPermissions(filtered)
     }
 
     var visiblePermissionsSnapshot: String {
@@ -8163,10 +8228,24 @@ struct PermissionsSheet: View {
                     .disabled(filteredDisplayedPermissions.isEmpty)
                     .foregroundColor(.red)
 
+                    Picker("Filter", selection: $assignedFilter) {
+                        ForEach(AssignedPermissionFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $assignedSortMode) {
+                        ForEach(AssignedPermissionSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $assignedSortAscending)
                     TextField("Search assigned permissions", text: $assignedSearchText)
                         .ts3PlainTextField()
-                    if !assignedSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Button("Clear Search") {
+                    if hasAssignedPermissionOptions {
+                        Button("Clear Permission Filters") {
+                            assignedFilter = .all
+                            assignedSortMode = .name
+                            assignedSortAscending = true
                             assignedSearchText = ""
                         }
                     }
@@ -8304,6 +8383,54 @@ struct PermissionsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private var hasAssignedPermissionOptions: Bool {
+        !assignedSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || assignedFilter != .all
+            || assignedSortMode != .name
+            || !assignedSortAscending
+    }
+
+    private func sortedDisplayedPermissions(_ permissions: [TS3PermissionSummary]) -> [TS3PermissionSummary] {
+        permissions.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch assignedSortMode {
+            case .name:
+                comparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+            case .value:
+                comparison = compareInts(lhs.value, rhs.value)
+            case .flags:
+                comparison = flagText(lhs).localizedCaseInsensitiveCompare(flagText(rhs))
+            }
+
+            if comparison == .orderedSame {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return assignedSortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func flagText(_ permission: TS3PermissionSummary) -> String {
+        var flags: [String] = []
+        if permission.isNegated {
+            flags.append("Negated")
+        }
+        if permission.isSkipped {
+            flags.append("Skipped")
+        }
+        return flags.isEmpty ? "Inherited" : flags.joined(separator: " ")
     }
 
     private func importPermissionBackup(from url: URL) {
