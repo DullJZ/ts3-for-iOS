@@ -3355,24 +3355,75 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 }
 
 struct EventsSheet: View {
+    private enum EventFilter: String, CaseIterable, Identifiable {
+        case all
+        case activity
+        case pokes
+        case clientMovement
+        case channelChanges
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All"
+            case .activity: return "Activity"
+            case .pokes: return "Pokes"
+            case .clientMovement: return "Client Movement"
+            case .channelChanges: return "Channel Changes"
+            }
+        }
+
+        var includesPokes: Bool {
+            self == .all || self == .pokes
+        }
+
+        func includes(_ event: TS3ActivitySummary) -> Bool {
+            switch self {
+            case .all, .activity:
+                return true
+            case .pokes:
+                return false
+            case .clientMovement:
+                switch event.kind {
+                case .clientEntered, .clientLeft, .clientMoved:
+                    return true
+                case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
+                    return false
+                }
+            case .channelChanges:
+                switch event.kind {
+                case .clientEntered, .clientLeft, .clientMoved:
+                    return false
+                case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
+                    return true
+                }
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
+    @State private var eventFilter: EventFilter = .all
     @State private var searchText = ""
     @State private var isExportingEvents = false
     @State private var eventsDocument = TS3TextFileDocument()
 
     private var visibleActivityEvents: [TS3ActivitySummary] {
-        guard isSearching else { return model.activityEvents }
         return model.activityEvents.filter { event in
-            containsSearch(event.clientName)
-                || containsSearch(event.invokerName)
-                || containsSearch(event.channelName)
-                || containsSearch(event.reasonMessage)
-                || containsSearch(ActivityEventRow.snapshotMessage(for: event, in: model))
+            eventFilter.includes(event) && (
+                !isSearching
+                    || containsSearch(event.clientName)
+                    || containsSearch(event.invokerName)
+                    || containsSearch(event.channelName)
+                    || containsSearch(event.reasonMessage)
+                    || containsSearch(ActivityEventRow.snapshotMessage(for: event, in: model))
+            )
         }
     }
 
     private var visiblePokeEvents: [TS3PokeSummary] {
+        guard eventFilter.includesPokes else { return [] }
         guard isSearching else { return model.pokeEvents }
         return model.pokeEvents.filter { poke in
             containsSearch(poke.senderName)
@@ -3395,6 +3446,15 @@ struct EventsSheet: View {
         }
 
         var lines: [String] = []
+        if eventFilter != .all {
+            lines.append("Type Filter: \(eventFilter.title)")
+        }
+        if isSearching {
+            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !lines.isEmpty {
+            lines.append("")
+        }
         if !visibleActivityEvents.isEmpty {
             lines.append("Activity")
             for event in visibleActivityEvents {
@@ -3417,11 +3477,17 @@ struct EventsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Search")) {
+                Section(header: Text("Filters")) {
+                    Picker("Type", selection: $eventFilter) {
+                        ForEach(EventFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
                     TextField("Search events", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            eventFilter = .all
                             searchText = ""
                         }
                     }
@@ -3511,6 +3577,10 @@ struct EventsSheet: View {
 
     private var isSearching: Bool {
         !normalizedSearchText.isEmpty
+    }
+
+    private var hasLocalFilters: Bool {
+        isSearching || eventFilter != .all
     }
 
     private func containsSearch(_ value: String?) -> Bool {
