@@ -118,8 +118,13 @@ struct ConnectView: View {
     @State private var isShowingIdentity = false
     @State private var isShowingBookmarkImporter = false
     @State private var isExportingBookmarks = false
+    @State private var isImportingRecoverySettings = false
+    @State private var isExportingRecoverySettings = false
+    @State private var isExportingRecoverySnapshot = false
     @State private var isConfirmingClearRecentConnections = false
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
+    @State private var recoverySettingsDocument = TS3TextFileDocument()
+    @State private var recoverySnapshotDocument = TS3TextFileDocument()
 
     private var autoReconnectBinding: Binding<Bool> {
         Binding(
@@ -393,6 +398,19 @@ struct ConnectView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                Button("Copy Recovery Snapshot") {
+                    TS3PlatformSupport.copyToPasteboard(connectionRecoverySnapshot)
+                }
+                Button("Export Recovery Snapshot") {
+                    recoverySnapshotDocument = TS3TextFileDocument(data: Data(connectionRecoverySnapshot.utf8))
+                    isExportingRecoverySnapshot = true
+                }
+                Button("Export Recovery Settings") {
+                    exportRecoverySettings()
+                }
+                Button("Import Recovery Settings") {
+                    isImportingRecoverySettings = true
+                }
             }
 
             Section {
@@ -438,6 +456,37 @@ struct ConnectView: View {
                 model.lastError = error.localizedDescription
             }
         }
+        .fileImporter(
+            isPresented: $isImportingRecoverySettings,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                importRecoverySettings(from: url)
+            } else if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingRecoverySettings,
+            document: recoverySettingsDocument,
+            contentType: .json,
+            defaultFilename: "ts3-connection-recovery-settings"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingRecoverySnapshot,
+            document: recoverySnapshotDocument,
+            contentType: .plainText,
+            defaultFilename: "ts3-connection-recovery"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
         .alert(isPresented: $isConfirmingClearRecentConnections) {
             Alert(
                 title: Text("Clear Recent Servers?"),
@@ -448,6 +497,26 @@ struct ConnectView: View {
                 secondaryButton: .cancel()
             )
         }
+    }
+
+    private var connectionRecoverySnapshot: String {
+        var rows = [
+            "Auto Reconnect: \(model.autoReconnectEnabled ? "Enabled" : "Disabled")",
+            "Connection State: \(model.connectedStatus)"
+        ]
+        if let status = model.autoReconnectStatus, !status.isEmpty {
+            rows.append("Recovery Status: \(status)")
+        }
+        if let snapshot = model.lastConnectionSnapshot {
+            rows.append("Last Server: \(snapshot.host):\(snapshot.port)")
+            rows.append("Last Nickname: \(snapshot.nickname)")
+        }
+        if let message = model.lastDisconnectMessage, !message.isEmpty {
+            rows.append("Last Disconnect: \(message)")
+        }
+        rows.append("Recent Servers: \(model.recentConnections.count)")
+        rows.append("Bookmarks: \(model.bookmarks.count)")
+        return rows.joined(separator: "\n")
     }
 
     private func exportBookmarks() {
@@ -468,6 +537,29 @@ struct ConnectView: View {
         }
         do {
             _ = try model.importBookmarks(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportRecoverySettings() {
+        do {
+            recoverySettingsDocument = TS3TextFileDocument(data: try model.connectionRecoverySettingsExportData())
+            isExportingRecoverySettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importRecoverySettings(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importConnectionRecoverySettings(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }

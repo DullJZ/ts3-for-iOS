@@ -5211,6 +5211,18 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func connectionRecoverySettingsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled))
+    }
+
+    func importConnectionRecoverySettings(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3ConnectionRecoverySettings.self, from: data)
+        setAutoReconnectEnabled(decoded.autoReconnectEnabled)
+        lastError = nil
+    }
+
     private func notifyIfInactive(title: String, body: String, identifier: String) {
         #if canImport(UserNotifications)
         guard notificationsEnabled, !isAppActive else { return }
