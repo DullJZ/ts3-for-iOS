@@ -5434,23 +5434,82 @@ struct GroupManagementRow: View {
 }
 
 struct GroupClientListSheet: View {
+    private enum MemberFilter: String, CaseIterable, Identifiable {
+        case all
+        case online
+        case offline
+        case withUniqueId
+        case withoutUniqueId
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Members"
+            case .online: return "Online"
+            case .offline: return "Offline"
+            case .withUniqueId: return "With Unique ID"
+            case .withoutUniqueId: return "Without Unique ID"
+            }
+        }
+
+        func matches(_ client: TS3GroupClientSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .online:
+                return client.channelId != nil
+            case .offline:
+                return client.channelId == nil
+            case .withUniqueId:
+                return client.uniqueIdentifier?.isEmpty == false
+            case .withoutUniqueId:
+                return client.uniqueIdentifier?.isEmpty != false
+            }
+        }
+    }
+
+    private enum MemberSortMode: String, CaseIterable, Identifiable {
+        case nickname
+        case databaseId
+        case channel
+        case uniqueId
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .nickname: return "Nickname"
+            case .databaseId: return "Database ID"
+            case .channel: return "Channel"
+            case .uniqueId: return "Unique ID"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let group: TS3GroupSummary
     let target: TS3GroupManagementTarget
     @State private var searchText = ""
+    @State private var memberFilter: MemberFilter = .all
+    @State private var sortMode: MemberSortMode = .nickname
+    @State private var sortAscending = true
     @State private var isExportingMembers = false
     @State private var membersExportDocument = TS3TextFileDocument()
 
     private var filteredClients: [TS3GroupClientSummary] {
-        guard isSearching else { return model.groupClients }
-        return model.groupClients.filter { client in
-            containsSearch(client.displayName)
-                || containsSearch(client.uniqueIdentifier)
-                || client.channelId.map { String($0).contains(normalizedSearchText) } == true
-                || String(client.clientDatabaseId).contains(normalizedSearchText)
-                || client.channelId.flatMap { model.channelName(for: $0) }?.lowercased().contains(normalizedSearchText) == true
+        let clients = model.groupClients.filter { client in
+            memberFilter.matches(client) && (
+                !isSearching
+                    || containsSearch(client.displayName)
+                    || containsSearch(client.uniqueIdentifier)
+                    || client.channelId.map { String($0).contains(normalizedSearchText) } == true
+                    || String(client.clientDatabaseId).contains(normalizedSearchText)
+                    || client.channelId.flatMap { model.channelName(for: $0) }?.lowercased().contains(normalizedSearchText) == true
+            )
         }
+        return sortedClients(clients)
     }
 
     private var visibleMembersSnapshot: String {
@@ -5473,11 +5532,25 @@ struct GroupClientListSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Search")) {
+                Section(header: Text("Filters")) {
+                    Picker("Status", selection: $memberFilter) {
+                        ForEach(MemberFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(MemberSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search members", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            memberFilter = .all
+                            sortMode = .nickname
+                            sortAscending = true
                             searchText = ""
                         }
                     }
@@ -5535,9 +5608,50 @@ struct GroupClientListSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || memberFilter != .all || sortMode != .nickname || !sortAscending
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedClients(_ clients: [TS3GroupClientSummary]) -> [TS3GroupClientSummary] {
+        clients.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .nickname:
+                comparison = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
+            case .databaseId:
+                comparison = compareInts(lhs.clientDatabaseId, rhs.clientDatabaseId)
+            case .channel:
+                comparison = channelDisplayName(lhs).localizedCaseInsensitiveCompare(channelDisplayName(rhs))
+            case .uniqueId:
+                comparison = (lhs.uniqueIdentifier ?? "").localizedCaseInsensitiveCompare(rhs.uniqueIdentifier ?? "")
+            }
+
+            if comparison == .orderedSame {
+                return lhs.clientDatabaseId < rhs.clientDatabaseId
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func channelDisplayName(_ client: TS3GroupClientSummary) -> String {
+        guard let channelId = client.channelId else { return "" }
+        return model.channelName(for: channelId) ?? "Channel \(channelId)"
     }
 }
 
