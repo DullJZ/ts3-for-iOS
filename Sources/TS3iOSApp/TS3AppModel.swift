@@ -3367,6 +3367,20 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    func cancelActiveFileTransfers() {
+        let activeTransfers = fileTransfers.filter(\.canCancel)
+        guard !activeTransfers.isEmpty else { return }
+        for transfer in activeTransfers {
+            fileTransferTasks[transfer.id]?.cancel()
+            updateFileTransfer(
+                transfer.id,
+                state: .cancelled,
+                detail: "Cancelling...",
+                completedAt: Date()
+            )
+        }
+    }
+
     func clearCompletedFileTransfers() {
         fileTransfers.removeAll { !$0.canCancel }
         let activeIds = Set(fileTransfers.map(\.id))

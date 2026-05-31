@@ -8008,7 +8008,9 @@ struct FileBrowserSheet: View {
     @State private var downloadedFileDocument = TS3DownloadedFileDocument()
     @State private var downloadedFileExportName = "download"
     @State private var isExportingDirectorySnapshot = false
+    @State private var isExportingTransferSnapshot = false
     @State private var directorySnapshotDocument = TS3TextFileDocument()
+    @State private var transferSnapshotDocument = TS3TextFileDocument()
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadOverwriteNames: [String] = []
     @State private var isShowingUploadConflictActions = false
@@ -8155,6 +8157,24 @@ struct FileBrowserSheet: View {
                     }
 
                     if !model.fileTransfers.isEmpty {
+                        HStack(spacing: 12) {
+                            Button("Copy Queue") {
+                                TS3PlatformSupport.copyToPasteboard(transferQueueSnapshot)
+                            }
+                            .buttonStyle(.borderless)
+                            Button("Export Queue") {
+                                transferSnapshotDocument = TS3TextFileDocument(data: Data(transferQueueSnapshot.utf8))
+                                isExportingTransferSnapshot = true
+                            }
+                            .buttonStyle(.borderless)
+                            Button("Cancel Active") {
+                                model.cancelActiveFileTransfers()
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundColor(.red)
+                            .disabled(!model.fileTransfers.contains { $0.canCancel })
+                        }
+                        .font(.caption)
                         Button("Clear Completed Transfers") {
                             model.clearCompletedFileTransfers()
                         }
@@ -8251,6 +8271,16 @@ struct FileBrowserSheet: View {
                 document: directorySnapshotDocument,
                 contentType: .plainText,
                 defaultFilename: "ts3-directory-snapshot"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingTransferSnapshot,
+                document: transferSnapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-transfer-queue"
             ) { result in
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
@@ -8473,6 +8503,49 @@ struct FileBrowserSheet: View {
         .joined(separator: "\n\n")
         if !entries.isEmpty {
             lines.append(entries)
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private var transferQueueSnapshot: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        var lines = [
+            "Path: \(model.fileBrowserPath)",
+            "Transfers: \(model.fileTransfers.count)"
+        ]
+        let activeCount = model.fileTransfers.filter(\.canCancel).count
+        if activeCount > 0 {
+            lines.append("Active: \(activeCount)")
+        }
+        if !model.fileTransfers.isEmpty {
+            lines.append("")
+        }
+        let transfers = model.fileTransfers.map { transfer in
+            var rows = [
+                "Name: \(transfer.name)",
+                "Direction: \(transfer.direction.title)",
+                "State: \(transfer.state.title)",
+                "Remote Path: \(transfer.remotePath)",
+                "Detail: \(transfer.detail)",
+                "Started: \(formatter.string(from: transfer.startedAt))"
+            ]
+            if let progress = transfer.progress {
+                rows.append("Progress: \(Int((progress * 100).rounded()))%")
+            }
+            if let localPath = transfer.localPath, !localPath.isEmpty {
+                rows.append("Local Path: \(localPath)")
+            }
+            if let completedAt = transfer.completedAt {
+                rows.append("Completed: \(formatter.string(from: completedAt))")
+            }
+            return rows.joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
+        if !transfers.isEmpty {
+            lines.append(transfers)
         }
         return lines.joined(separator: "\n")
     }
