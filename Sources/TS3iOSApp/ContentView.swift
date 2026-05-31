@@ -7546,6 +7546,31 @@ struct DatabaseClientDetailRows: View {
 }
 
 struct ServerSettingsEditorSheet: View {
+    private struct ServerSettingsDraft: Codable {
+        var name: String
+        var welcomeMessage: String
+        var maxClients: String
+        var reservedSlots: String
+        var clearPassword: Bool
+        var password: String
+        var hostMessage: String
+        var hostMessageMode: String
+        var hostBannerURL: String
+        var hostBannerGraphicsURL: String
+        var hostButtonTooltip: String
+        var hostButtonURL: String
+        var hostButtonGraphicsURL: String
+        var iconId: String
+        var downloadQuota: String
+        var uploadQuota: String
+        var complainAutoBanCount: String
+        var complainAutoBanTime: String
+        var complainRemoveTime: String
+        var minClientsInChannelBeforeForcedSilence: String
+        var prioritySpeakerDimmModificator: String
+        var codecEncryptionMode: String
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
@@ -7571,10 +7596,31 @@ struct ServerSettingsEditorSheet: View {
     @State private var prioritySpeakerDimmModificator = ""
     @State private var codecEncryptionMode = ""
     @State private var isShowingIconImporter = false
+    @State private var isImportingDraft = false
+    @State private var isExportingDraft = false
+    @State private var isExportingSnapshot = false
+    @State private var draftDocument = TS3TextFileDocument()
+    @State private var snapshotDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Draft")) {
+                    Button("Copy Settings Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(settingsSnapshot)
+                    }
+                    Button("Export Settings Snapshot") {
+                        snapshotDocument = TS3TextFileDocument(data: Data(settingsSnapshot.utf8))
+                        isExportingSnapshot = true
+                    }
+                    Button("Export Settings Draft") {
+                        exportDraft()
+                    }
+                    Button("Import Settings Draft") {
+                        isImportingDraft = true
+                    }
+                }
+
                 Section(header: Text("General")) {
                     TextField("Server Name", text: $name)
                         .ts3PlainTextField()
@@ -7669,7 +7715,7 @@ struct ServerSettingsEditorSheet: View {
                         save()
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!isDraftValid)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
@@ -7688,7 +7734,98 @@ struct ServerSettingsEditorSheet: View {
                     }
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingDraft,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importDraft(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingDraft,
+                document: draftDocument,
+                contentType: .json,
+                defaultFilename: "ts3-server-settings-draft"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingSnapshot,
+                document: snapshotDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-server-settings"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
+    }
+
+    private var currentDraft: ServerSettingsDraft {
+        ServerSettingsDraft(
+            name: name,
+            welcomeMessage: welcomeMessage,
+            maxClients: maxClients,
+            reservedSlots: reservedSlots,
+            clearPassword: clearPassword,
+            password: password,
+            hostMessage: hostMessage,
+            hostMessageMode: hostMessageMode,
+            hostBannerURL: hostBannerURL,
+            hostBannerGraphicsURL: hostBannerGraphicsURL,
+            hostButtonTooltip: hostButtonTooltip,
+            hostButtonURL: hostButtonURL,
+            hostButtonGraphicsURL: hostButtonGraphicsURL,
+            iconId: iconId,
+            downloadQuota: downloadQuota,
+            uploadQuota: uploadQuota,
+            complainAutoBanCount: complainAutoBanCount,
+            complainAutoBanTime: complainAutoBanTime,
+            complainRemoveTime: complainRemoveTime,
+            minClientsInChannelBeforeForcedSilence: minClientsInChannelBeforeForcedSilence,
+            prioritySpeakerDimmModificator: prioritySpeakerDimmModificator,
+            codecEncryptionMode: codecEncryptionMode
+        )
+    }
+
+    private var settingsSnapshot: String {
+        let draft = currentDraft
+        var rows: [(String, String)] = [
+            ("Server Name", draft.name),
+            ("Welcome Message", draft.welcomeMessage),
+            ("Max Clients", draft.maxClients),
+            ("Reserved Slots", draft.reservedSlots),
+            ("Password", draft.clearPassword ? "Clear Password" : (draft.password.isEmpty ? "Unchanged" : "New Password Set")),
+            ("Icon ID", draft.iconId),
+            ("Host Message Mode", hostMessageModeTitle(draft.hostMessageMode)),
+            ("Host Message", draft.hostMessage),
+            ("Banner Link URL", draft.hostBannerURL),
+            ("Banner Image URL", draft.hostBannerGraphicsURL),
+            ("Host Button Tooltip", draft.hostButtonTooltip),
+            ("Host Button URL", draft.hostButtonURL),
+            ("Host Button Image URL", draft.hostButtonGraphicsURL),
+            ("Download Quota Bytes", draft.downloadQuota),
+            ("Upload Quota Bytes", draft.uploadQuota),
+            ("Codec Encryption Mode", draft.codecEncryptionMode),
+            ("Auto-Ban Complaint Count", draft.complainAutoBanCount),
+            ("Auto-Ban Seconds", draft.complainAutoBanTime),
+            ("Complaint Remove Seconds", draft.complainRemoveTime),
+            ("Forced Silence Client Count", draft.minClientsInChannelBeforeForcedSilence),
+            ("Priority Speaker Dimming", draft.prioritySpeakerDimmModificator)
+        ]
+        rows.append(("Draft Valid", isDraftValid ? "Yes" : "No"))
+        return rows.compactMap { label, value in
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            return "\(label): \(trimmed)"
+        }.joined(separator: "\n")
     }
 
     private func loadCurrentValues() {
@@ -7716,6 +7853,22 @@ struct ServerSettingsEditorSheet: View {
         codecEncryptionMode = model.serverInfo.codecEncryptionMode.map(String.init) ?? ""
     }
 
+    private var isDraftValid: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && isOptionalInt(maxClients)
+            && isOptionalInt(reservedSlots)
+            && isOptionalInt(hostMessageMode)
+            && isOptionalInt(iconId)
+            && isOptionalInt64(downloadQuota)
+            && isOptionalInt64(uploadQuota)
+            && isOptionalInt(complainAutoBanCount)
+            && isOptionalInt(complainAutoBanTime)
+            && isOptionalInt(complainRemoveTime)
+            && isOptionalInt(minClientsInChannelBeforeForcedSilence)
+            && isOptionalDouble(prioritySpeakerDimmModificator)
+            && isOptionalInt(codecEncryptionMode)
+    }
+
     private func save() {
         model.editServerSettings(
             name: name,
@@ -7740,6 +7893,82 @@ struct ServerSettingsEditorSheet: View {
             prioritySpeakerDimmModificator: Double(prioritySpeakerDimmModificator.trimmingCharacters(in: .whitespacesAndNewlines)),
             codecEncryptionMode: Int(codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
         )
+    }
+
+    private func exportDraft() {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            draftDocument = TS3TextFileDocument(data: try encoder.encode(currentDraft))
+            isExportingDraft = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importDraft(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let draft = try JSONDecoder().decode(ServerSettingsDraft.self, from: Data(contentsOf: url))
+            applyDraft(draft)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyDraft(_ draft: ServerSettingsDraft) {
+        name = draft.name
+        welcomeMessage = draft.welcomeMessage
+        maxClients = draft.maxClients
+        reservedSlots = draft.reservedSlots
+        clearPassword = draft.clearPassword
+        password = draft.password
+        hostMessage = draft.hostMessage
+        hostMessageMode = draft.hostMessageMode
+        hostBannerURL = draft.hostBannerURL
+        hostBannerGraphicsURL = draft.hostBannerGraphicsURL
+        hostButtonTooltip = draft.hostButtonTooltip
+        hostButtonURL = draft.hostButtonURL
+        hostButtonGraphicsURL = draft.hostButtonGraphicsURL
+        iconId = draft.iconId
+        downloadQuota = draft.downloadQuota
+        uploadQuota = draft.uploadQuota
+        complainAutoBanCount = draft.complainAutoBanCount
+        complainAutoBanTime = draft.complainAutoBanTime
+        complainRemoveTime = draft.complainRemoveTime
+        minClientsInChannelBeforeForcedSilence = draft.minClientsInChannelBeforeForcedSilence
+        prioritySpeakerDimmModificator = draft.prioritySpeakerDimmModificator
+        codecEncryptionMode = draft.codecEncryptionMode
+    }
+
+    private func hostMessageModeTitle(_ value: String) -> String {
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "0": return "None"
+        case "1": return "Log"
+        case "2": return "Modal"
+        case "3": return "Modal Quit"
+        default: return value
+        }
+    }
+
+    private func isOptionalInt(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Int(trimmed) != nil
+    }
+
+    private func isOptionalInt64(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Int64(trimmed) != nil
+    }
+
+    private func isOptionalDouble(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Double(trimmed) != nil
     }
 
     private static func decimalText(_ value: Double) -> String {
