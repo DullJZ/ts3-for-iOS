@@ -3827,6 +3827,44 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 }
 
 struct EventsSheet: View {
+    private enum EventSourceFilter: String, CaseIterable, Identifiable {
+        case all
+        case own
+        case others
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Sources"
+            case .own: return "My Events"
+            case .others: return "Other Users"
+            }
+        }
+
+        func includes(_ event: TS3ActivitySummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .own:
+                return event.isOwnClient
+            case .others:
+                return !event.isOwnClient
+            }
+        }
+
+        func includes(_ poke: TS3PokeSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .own:
+                return poke.isOwnPoke
+            case .others:
+                return !poke.isOwnPoke
+            }
+        }
+    }
+
     private enum EventFilter: String, CaseIterable, Identifiable {
         case all
         case activity
@@ -3877,13 +3915,15 @@ struct EventsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var eventFilter: EventFilter = .all
+    @State private var sourceFilter: EventSourceFilter = .all
+    @State private var newestFirst = true
     @State private var searchText = ""
     @State private var isExportingEvents = false
     @State private var eventsDocument = TS3TextFileDocument()
 
     private var visibleActivityEvents: [TS3ActivitySummary] {
-        return model.activityEvents.filter { event in
-            eventFilter.includes(event) && (
+        let events = model.activityEvents.filter { event in
+            eventFilter.includes(event) && sourceFilter.includes(event) && (
                 !isSearching
                     || containsSearch(event.clientName)
                     || containsSearch(event.invokerName)
@@ -3892,16 +3932,20 @@ struct EventsSheet: View {
                     || containsSearch(ActivityEventRow.snapshotMessage(for: event, in: model))
             )
         }
+        return sortedActivityEvents(events)
     }
 
     private var visiblePokeEvents: [TS3PokeSummary] {
         guard eventFilter.includesPokes else { return [] }
-        guard isSearching else { return model.pokeEvents }
-        return model.pokeEvents.filter { poke in
-            containsSearch(poke.senderName)
-                || containsSearch(poke.senderUniqueIdentifier)
-                || containsSearch(poke.message)
+        let pokes = model.pokeEvents.filter { poke in
+            sourceFilter.includes(poke) && (
+                !isSearching
+                    || containsSearch(poke.senderName)
+                    || containsSearch(poke.senderUniqueIdentifier)
+                    || containsSearch(poke.message)
+            )
         }
+        return sortedPokeEvents(pokes)
     }
 
     private var hasVisibleEvents: Bool {
@@ -3921,6 +3965,10 @@ struct EventsSheet: View {
         if eventFilter != .all {
             lines.append("Type Filter: \(eventFilter.title)")
         }
+        if sourceFilter != .all {
+            lines.append("Source Filter: \(sourceFilter.title)")
+        }
+        lines.append("Sort: \(newestFirst ? "Newest First" : "Oldest First")")
         if isSearching {
             lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
         }
@@ -3955,11 +4003,19 @@ struct EventsSheet: View {
                             Text(filter.title).tag(filter)
                         }
                     }
+                    Picker("Source", selection: $sourceFilter) {
+                        ForEach(EventSourceFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Toggle("Newest First", isOn: $newestFirst)
                     TextField("Search events", text: $searchText)
                         .ts3PlainTextField()
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             eventFilter = .all
+                            sourceFilter = .all
+                            newestFirst = true
                             searchText = ""
                         }
                     }
@@ -4052,12 +4108,36 @@ struct EventsSheet: View {
     }
 
     private var hasLocalFilters: Bool {
-        isSearching || eventFilter != .all
+        isSearching || eventFilter != .all || sourceFilter != .all || !newestFirst
     }
 
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedActivityEvents(_ events: [TS3ActivitySummary]) -> [TS3ActivitySummary] {
+        events.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+            if lhs.timestamp == rhs.timestamp {
+                return lhs.clientName.localizedCaseInsensitiveCompare(rhs.clientName) == .orderedAscending
+            }
+            return newestFirst ? lhs.timestamp > rhs.timestamp : lhs.timestamp < rhs.timestamp
+        }
+    }
+
+    private func sortedPokeEvents(_ pokes: [TS3PokeSummary]) -> [TS3PokeSummary] {
+        pokes.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+            if lhs.timestamp == rhs.timestamp {
+                return lhs.senderName.localizedCaseInsensitiveCompare(rhs.senderName) == .orderedAscending
+            }
+            return newestFirst ? lhs.timestamp > rhs.timestamp : lhs.timestamp < rhs.timestamp
+        }
     }
 }
 
