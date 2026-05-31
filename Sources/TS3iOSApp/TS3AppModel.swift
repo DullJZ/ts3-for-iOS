@@ -5451,6 +5451,27 @@ final class TS3AppModel: ObservableObject {
         saveChatHistory()
     }
 
+    func chatHistoryBackupData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(Array(chatMessages.suffix(chatHistoryLimit)))
+    }
+
+    @discardableResult
+    func importChatHistoryBackup(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ChatMessageSummary].self, from: data)
+        var merged = chatMessages
+        for message in imported {
+            merged.removeAll { $0.id == message.id }
+            merged.append(message)
+        }
+        chatMessages = Array(merged.sorted { $0.timestamp < $1.timestamp }.suffix(chatHistoryLimit))
+        unreadChatMessageCount = isViewingChat ? 0 : chatMessages.count
+        saveChatHistory()
+        lastError = nil
+        return imported.count
+    }
+
     func chatTranscriptData(messages: [TS3ChatMessageSummary]) -> Data {
         let lines = messages.map { message in
             let mode: String

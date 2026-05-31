@@ -3509,7 +3509,10 @@ struct ChatSheet: View {
     @State private var isShowingOfflineMessages = false
     @State private var isConfirmingClearHistory = false
     @State private var isExportingTranscript = false
+    @State private var isImportingChatHistory = false
+    @State private var isExportingChatHistory = false
     @State private var transcriptDocument = TS3TextFileDocument()
+    @State private var chatHistoryDocument = TS3BookmarkFileDocument()
 
     var body: some View {
         NavigationView {
@@ -3612,11 +3615,22 @@ struct ChatSheet: View {
                         isConfirmingClearHistory = true
                     }
                     .disabled(model.chatMessages.isEmpty)
-                    Button("Export") {
-                        transcriptDocument = TS3TextFileDocument(data: model.chatTranscriptData(messages: filteredMessages))
-                        isExportingTranscript = true
+                    Menu {
+                        Button("Export Transcript") {
+                            transcriptDocument = TS3TextFileDocument(data: model.chatTranscriptData(messages: filteredMessages))
+                            isExportingTranscript = true
+                        }
+                        .disabled(filteredMessages.isEmpty)
+                        Button("Export History Backup") {
+                            exportChatHistory()
+                        }
+                        .disabled(model.chatMessages.isEmpty)
+                        Button("Import History Backup") {
+                            isImportingChatHistory = true
+                        }
+                    } label: {
+                        Label("History", systemImage: "ellipsis.circle")
                     }
-                    .disabled(filteredMessages.isEmpty)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -3635,6 +3649,27 @@ struct ChatSheet: View {
                 defaultFilename: "ts3-chat-transcript"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingChatHistory,
+                document: chatHistoryDocument,
+                contentType: .json,
+                defaultFilename: "ts3-chat-history"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingChatHistory,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importChatHistory(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -3716,6 +3751,29 @@ struct ChatSheet: View {
         guard target == .client else { return }
         if !privateMessageTargets.contains(where: { $0.id == selectedPrivateClientId }) {
             selectedPrivateClientId = privateMessageTargets.first?.id ?? 0
+        }
+    }
+
+    private func exportChatHistory() {
+        do {
+            chatHistoryDocument = TS3BookmarkFileDocument(data: try model.chatHistoryBackupData())
+            isExportingChatHistory = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importChatHistory(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importChatHistoryBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 }
