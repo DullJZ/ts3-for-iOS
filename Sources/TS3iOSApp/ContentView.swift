@@ -8213,6 +8213,65 @@ private extension TS3PermissionSummary {
 }
 
 struct PrivilegeKeysSheet: View {
+    private enum KeyFilter: String, CaseIterable, Identifiable {
+        case all
+        case serverGroup
+        case channelGroup
+        case unknown
+        case withDescription
+        case withCustomSet
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Keys"
+            case .serverGroup: return "Server Group"
+            case .channelGroup: return "Channel Group"
+            case .unknown: return "Unknown Type"
+            case .withDescription: return "With Description"
+            case .withCustomSet: return "With Custom Set"
+            }
+        }
+
+        func matches(_ key: TS3PrivilegeKeySummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .serverGroup:
+                return key.type == .serverGroup
+            case .channelGroup:
+                return key.type == .channelGroup
+            case .unknown:
+                return key.type == nil
+            case .withDescription:
+                return key.description?.isEmpty == false
+            case .withCustomSet:
+                return key.customSet?.isEmpty == false
+            }
+        }
+    }
+
+    private enum KeySortMode: String, CaseIterable, Identifiable {
+        case created
+        case type
+        case group
+        case channel
+        case description
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .created: return "Created"
+            case .type: return "Type"
+            case .group: return "Group"
+            case .channel: return "Channel"
+            case .description: return "Description"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let initialTargetType: TS3PrivilegeKeyTargetType?
@@ -8226,6 +8285,9 @@ struct PrivilegeKeysSheet: View {
     @State private var description = ""
     @State private var customSet = ""
     @State private var searchText = ""
+    @State private var keyFilter: KeyFilter = .all
+    @State private var sortMode: KeySortMode = .created
+    @State private var sortAscending = false
     @State private var isExportingKeys = false
     @State private var isExportingKeyBackup = false
     @State private var keysExportDocument = TS3TextFileDocument()
@@ -8310,10 +8372,24 @@ struct PrivilegeKeysSheet: View {
                 }
 
                 Section(header: Text("Existing Keys")) {
+                    Picker("Type", selection: $keyFilter) {
+                        ForEach(KeyFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(KeySortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search keys", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            keyFilter = .all
+                            sortMode = .created
+                            sortAscending = false
                             searchText = ""
                         }
                     }
@@ -8438,21 +8514,99 @@ struct PrivilegeKeysSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || keyFilter != .all || sortMode != .created || sortAscending
+    }
+
     private var filteredPrivilegeKeys: [TS3PrivilegeKeySummary] {
-        guard isSearching else { return model.privilegeKeys }
-        return model.privilegeKeys.filter { key in
-            containsSearch(key.key)
-                || containsSearch(key.description)
-                || containsSearch(key.customSet)
-                || key.type.map { String($0.rawValue).contains(normalizedSearchText) } == true
-                || String(key.groupId).contains(normalizedSearchText)
-                || key.channelId.map { String($0).contains(normalizedSearchText) } == true
+        let keys = model.privilegeKeys.filter { key in
+            keyFilter.matches(key) && (
+                !isSearching
+                    || containsSearch(key.key)
+                    || containsSearch(key.description)
+                    || containsSearch(key.customSet)
+                    || key.type.map { String($0.rawValue).contains(normalizedSearchText) } == true
+                    || String(key.groupId).contains(normalizedSearchText)
+                    || key.channelId.map { String($0).contains(normalizedSearchText) } == true
+            )
         }
+        return sortedPrivilegeKeys(keys)
     }
 
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedPrivilegeKeys(_ keys: [TS3PrivilegeKeySummary]) -> [TS3PrivilegeKeySummary] {
+        keys.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .created:
+                comparison = compareDates(lhs.createdAt, rhs.createdAt)
+            case .type:
+                comparison = typeText(lhs).localizedCaseInsensitiveCompare(typeText(rhs))
+            case .group:
+                comparison = compareInts(lhs.groupId, rhs.groupId)
+            case .channel:
+                comparison = compareOptionalInts(lhs.channelId, rhs.channelId)
+            case .description:
+                comparison = (lhs.description ?? "").localizedCaseInsensitiveCompare(rhs.description ?? "")
+            }
+
+            if comparison == .orderedSame {
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareDates(_ lhs: Date?, _ rhs: Date?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs.compare(rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func compareOptionalInts(_ lhs: Int?, _ rhs: Int?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return compareInts(lhs, rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
+    }
+
+    private func typeText(_ key: TS3PrivilegeKeySummary) -> String {
+        switch key.type {
+        case .serverGroup:
+            return "Server Group"
+        case .channelGroup:
+            return "Channel Group"
+        case nil:
+            return "Unknown"
+        }
     }
 
     private func normalizeSelections() {
