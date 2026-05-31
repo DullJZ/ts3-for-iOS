@@ -6617,11 +6617,31 @@ struct ServerSettingsEditorSheet: View {
 }
 
 struct FileBrowserSheet: View {
+    private enum FileSortMode: String, CaseIterable, Identifiable {
+        case name
+        case type
+        case size
+        case modified
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .name: return "Name"
+            case .type: return "Type"
+            case .size: return "Size"
+            case .modified: return "Modified"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var directoryName = ""
     @State private var pathText = "/"
     @State private var searchText = ""
+    @State private var sortMode: FileSortMode = .name
+    @State private var sortAscending = true
     @State private var selectedEntryIDs: Set<String> = []
     @State private var isShowingFileImporter = false
     @State private var isExportingDownloadedFile = false
@@ -6670,10 +6690,18 @@ struct FileBrowserSheet: View {
                 }
 
                 Section(header: Text("Search")) {
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(FileSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search files", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            sortMode = .name
+                            sortAscending = true
                             searchText = ""
                         }
                     }
@@ -6715,11 +6743,11 @@ struct FileBrowserSheet: View {
                         .font(.caption)
                     }
 
-                    if filteredFileEntries.isEmpty {
+                    if visibleFileEntries.isEmpty {
                         Text(isSearching ? "No matching files" : "No files")
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(filteredFileEntries) { entry in
+                        ForEach(visibleFileEntries) { entry in
                             FileEntryRow(
                                 entry: entry,
                                 isSelected: selectedEntryIDs.contains(entry.id),
@@ -6820,12 +6848,12 @@ struct FileBrowserSheet: View {
                         Button("Copy Directory Snapshot") {
                             TS3PlatformSupport.copyToPasteboard(directorySnapshot)
                         }
-                        .disabled(filteredFileEntries.isEmpty)
+                        .disabled(visibleFileEntries.isEmpty)
                         Button("Export Directory Snapshot") {
                             directorySnapshotDocument = TS3TextFileDocument(data: Data(directorySnapshot.utf8))
                             isExportingDirectorySnapshot = true
                         }
-                        .disabled(filteredFileEntries.isEmpty)
+                        .disabled(visibleFileEntries.isEmpty)
                         Button("Refresh") {
                             model.refreshFileList()
                         }
@@ -6947,7 +6975,7 @@ struct FileBrowserSheet: View {
     }
 
     private var selectedEntries: [TS3FileEntrySummary] {
-        model.fileEntries.filter { selectedEntryIDs.contains($0.id) }
+        visibleFileEntries.filter { selectedEntryIDs.contains($0.id) }
     }
 
     private var hasSelection: Bool {
@@ -6972,12 +7000,68 @@ struct FileBrowserSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || sortMode != .name || !sortAscending
+    }
+
     private var filteredFileEntries: [TS3FileEntrySummary] {
         guard isSearching else { return model.fileEntries }
         return model.fileEntries.filter { entry in
             containsSearch(entry.name)
                 || containsSearch(entry.path)
                 || containsSearch(entry.parentPath)
+        }
+    }
+
+    private var visibleFileEntries: [TS3FileEntrySummary] {
+        sortedFileEntries(filteredFileEntries)
+    }
+
+    private func sortedFileEntries(_ entries: [TS3FileEntrySummary]) -> [TS3FileEntrySummary] {
+        entries.sorted { lhs, rhs in
+            if lhs.isDirectory != rhs.isDirectory {
+                return lhs.isDirectory && !rhs.isDirectory
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .name:
+                comparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+            case .type:
+                comparison = fileExtension(lhs).localizedCaseInsensitiveCompare(fileExtension(rhs))
+            case .size:
+                comparison = compare(lhs.size, rhs.size)
+            case .modified:
+                comparison = compare(lhs.modifiedAt, rhs.modifiedAt)
+            }
+
+            if comparison == .orderedSame {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func fileExtension(_ entry: TS3FileEntrySummary) -> String {
+        entry.isDirectory ? "" : URL(fileURLWithPath: entry.name).pathExtension
+    }
+
+    private func compare<T: Comparable>(_ lhs: T, _ rhs: T) -> ComparisonResult {
+        if lhs < rhs { return .orderedAscending }
+        if lhs > rhs { return .orderedDescending }
+        return .orderedSame
+    }
+
+    private func compare(_ lhs: Date?, _ rhs: Date?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return compare(lhs, rhs)
+        case (_?, nil):
+            return .orderedDescending
+        case (nil, _?):
+            return .orderedAscending
+        case (nil, nil):
+            return .orderedSame
         }
     }
 
@@ -7001,7 +7085,17 @@ struct FileBrowserSheet: View {
             return formatter.string(from: date)
         }
 
-        return filteredFileEntries.map { entry in
+        var lines = [
+            "Path: \(model.fileBrowserPath)",
+            "Sort: \(sortMode.title) \(sortAscending ? "Ascending" : "Descending")"
+        ]
+        if isSearching {
+            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !visibleFileEntries.isEmpty {
+            lines.append("")
+        }
+        let entries = visibleFileEntries.map { entry in
             var rows = [
                 "Name: \(entry.name)",
                 "Path: \(entry.path)",
@@ -7017,6 +7111,10 @@ struct FileBrowserSheet: View {
             return rows.joined(separator: "\n")
         }
         .joined(separator: "\n\n")
+        if !entries.isEmpty {
+            lines.append(entries)
+        }
+        return lines.joined(separator: "\n")
     }
 
     private var channelSelection: Binding<Int> {
