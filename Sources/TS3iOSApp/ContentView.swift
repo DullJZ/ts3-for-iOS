@@ -10574,6 +10574,53 @@ private extension TS3BanEntrySummary {
 }
 
 struct WhisperSheet: View {
+    private enum WhisperPresetFilter: String, CaseIterable, Identifiable {
+        case all
+        case channels
+        case users
+        case mixed
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Presets"
+            case .channels: return "Channels"
+            case .users: return "Users"
+            case .mixed: return "Mixed"
+            }
+        }
+
+        func includes(_ preset: TS3WhisperPreset) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .channels:
+                return !preset.channelIds.isEmpty && preset.clientIds.isEmpty
+            case .users:
+                return preset.channelIds.isEmpty && !preset.clientIds.isEmpty
+            case .mixed:
+                return !preset.channelIds.isEmpty && !preset.clientIds.isEmpty
+            }
+        }
+    }
+
+    private enum WhisperPresetSort: String, CaseIterable, Identifiable {
+        case updated
+        case name
+        case targets
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .updated: return "Recent"
+            case .name: return "Name"
+            case .targets: return "Targets"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var groupWhisperType: TS3GroupWhisperType = .allClients
@@ -10583,6 +10630,8 @@ struct WhisperSheet: View {
     @State private var selectedWhisperChannelIds: Set<Int> = []
     @State private var selectedWhisperClientIds: Set<Int> = []
     @State private var whisperPresetName = ""
+    @State private var presetFilter: WhisperPresetFilter = .all
+    @State private var presetSort: WhisperPresetSort = .updated
     @State private var searchText = ""
     @State private var isExportingRoute = false
     @State private var isExportingPresetBackup = false
@@ -10639,14 +10688,30 @@ struct WhisperSheet: View {
         }
     }
 
+    private var filteredWhisperPresets: [TS3WhisperPreset] {
+        let presets = model.whisperPresets.filter { preset in
+            presetFilter.includes(preset) && (
+                !isSearching
+                    || containsSearch(preset.name)
+                    || containsSearch(presetSummary(preset))
+                    || preset.channelIds.contains { String($0).contains(normalizedSearchText) }
+                    || preset.clientIds.contains { String($0).contains(normalizedSearchText) }
+            )
+        }
+        return sortedWhisperPresets(presets)
+    }
+
     private var whisperRouteSnapshot: String {
         [
             "Route: \(model.whisperRouteDescription)",
             "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
+            "Preset Filter: \(presetFilter.title)",
+            "Preset Sort: \(presetSort.title)",
             "Group Type: \(groupWhisperType.title)",
             "Group Scope: \(groupWhisperTarget.title)",
             "Selected Channels: \(selectedWhisperChannelIds.count)",
             "Selected Users: \(selectedWhisperClientIds.count)",
+            "Presets: \(filteredWhisperPresets.count)",
             "Server Groups: \(filteredServerGroups.count)",
             "Channel Groups: \(filteredChannelGroups.count)",
             "Channels: \(filteredChannels.count)",
@@ -10660,9 +10725,21 @@ struct WhisperSheet: View {
                 Section(header: Text("Search")) {
                     TextField("Search whisper targets", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    Picker("Preset Filter", selection: $presetFilter) {
+                        ForEach(WhisperPresetFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Preset Sort", selection: $presetSort) {
+                        ForEach(WhisperPresetSort.allCases) { sort in
+                            Text(sort.title).tag(sort)
+                        }
+                    }
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
                             searchText = ""
+                            presetFilter = .all
+                            presetSort = .updated
                         }
                     }
                     Button("Copy Route Snapshot") {
@@ -10730,8 +10807,11 @@ struct WhisperSheet: View {
                     if model.whisperPresets.isEmpty {
                         Text("No saved whisper presets")
                             .foregroundColor(.secondary)
+                    } else if filteredWhisperPresets.isEmpty {
+                        Text("No matching whisper presets")
+                            .foregroundColor(.secondary)
                     } else {
-                        ForEach(model.whisperPresets) { preset in
+                        ForEach(filteredWhisperPresets) { preset in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -10958,6 +11038,38 @@ struct WhisperSheet: View {
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private var hasLocalFilters: Bool {
+        isSearching || presetFilter != .all || presetSort != .updated
+    }
+
+    private func sortedWhisperPresets(_ presets: [TS3WhisperPreset]) -> [TS3WhisperPreset] {
+        presets.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+            switch presetSort {
+            case .updated:
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            case .name:
+                let comparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+                if comparison == .orderedSame {
+                    return lhs.updatedAt > rhs.updatedAt
+                }
+                return comparison == .orderedAscending
+            case .targets:
+                let lhsTargets = lhs.channelIds.count + lhs.clientIds.count
+                let rhsTargets = rhs.channelIds.count + rhs.clientIds.count
+                if lhsTargets == rhsTargets {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhsTargets > rhsTargets
+            }
+        }
     }
 
     private func updateSelectedGroups() {
