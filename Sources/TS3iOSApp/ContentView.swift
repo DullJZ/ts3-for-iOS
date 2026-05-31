@@ -4274,6 +4274,59 @@ struct PokeOfflineReplySheet: View {
 }
 
 struct OfflineMessagesSheet: View {
+    private enum OfflineContentFilter: String, CaseIterable, Identifiable {
+        case all
+        case withBody
+        case bodyNotLoaded
+        case canReply
+        case unknownSender
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Messages"
+            case .withBody: return "With Body"
+            case .bodyNotLoaded: return "Body Not Loaded"
+            case .canReply: return "Can Reply"
+            case .unknownSender: return "Unknown Sender"
+            }
+        }
+
+        func matches(_ message: TS3OfflineMessageSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .withBody:
+                return message.message?.isEmpty == false
+            case .bodyNotLoaded:
+                return message.message?.isEmpty != false
+            case .canReply:
+                return message.senderUniqueIdentifier?.isEmpty == false
+            case .unknownSender:
+                return message.senderName?.isEmpty != false && message.senderUniqueIdentifier?.isEmpty != false
+            }
+        }
+    }
+
+    private enum OfflineSortMode: String, CaseIterable, Identifiable {
+        case timestamp
+        case sender
+        case subject
+        case id
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .timestamp: return "Timestamp"
+            case .sender: return "Sender"
+            case .subject: return "Subject"
+            case .id: return "Message ID"
+            }
+        }
+    }
+
     private enum ReadFilter: String, CaseIterable, Identifiable {
         case all
         case unread
@@ -4302,12 +4355,15 @@ struct OfflineMessagesSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
     @State private var readFilter: ReadFilter = .all
+    @State private var contentFilter: OfflineContentFilter = .all
+    @State private var sortMode: OfflineSortMode = .timestamp
+    @State private var sortAscending = false
     @State private var isExportingInbox = false
     @State private var inboxDocument = TS3TextFileDocument()
 
     private var filteredMessages: [TS3OfflineMessageSummary] {
-        return model.offlineMessages.filter { message in
-            readFilter.matches(message) && (
+        let messages = model.offlineMessages.filter { message in
+            readFilter.matches(message) && contentFilter.matches(message) && (
                 !isSearching
                     || containsSearch(message.subject)
                     || containsSearch(message.senderName)
@@ -4316,6 +4372,7 @@ struct OfflineMessagesSheet: View {
                     || containsSearch(message.isRead ? "read" : "unread")
             )
         }
+        return sortedMessages(messages)
     }
 
     private var visibleInboxSnapshot: String {
@@ -4358,11 +4415,25 @@ struct OfflineMessagesSheet: View {
                             Text(filter.title).tag(filter)
                         }
                     }
+                    Picker("Content", selection: $contentFilter) {
+                        ForEach(OfflineContentFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(OfflineSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search inbox", text: $searchText)
                         .ts3PlainTextField()
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             readFilter = .all
+                            contentFilter = .all
+                            sortMode = .timestamp
+                            sortAscending = false
                             searchText = ""
                         }
                     }
@@ -4443,12 +4514,61 @@ struct OfflineMessagesSheet: View {
     }
 
     private var hasLocalFilters: Bool {
-        isSearching || readFilter != .all
+        isSearching || readFilter != .all || contentFilter != .all || sortMode != .timestamp || sortAscending
     }
 
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedMessages(_ messages: [TS3OfflineMessageSummary]) -> [TS3OfflineMessageSummary] {
+        messages.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .timestamp:
+                comparison = compareDates(lhs.timestamp, rhs.timestamp)
+            case .sender:
+                comparison = senderText(lhs).localizedCaseInsensitiveCompare(senderText(rhs))
+            case .subject:
+                comparison = lhs.subject.localizedCaseInsensitiveCompare(rhs.subject)
+            case .id:
+                comparison = compareInts(lhs.id, rhs.id)
+            }
+
+            if comparison == .orderedSame {
+                return lhs.id < rhs.id
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareDates(_ lhs: Date?, _ rhs: Date?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs.compare(rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func senderText(_ message: TS3OfflineMessageSummary) -> String {
+        message.senderName ?? message.senderUniqueIdentifier ?? ""
     }
 }
 
