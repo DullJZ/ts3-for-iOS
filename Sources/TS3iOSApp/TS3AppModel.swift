@@ -247,7 +247,7 @@ struct TS3ContactEntry: Identifiable, Codable {
     var id: String { uniqueIdentifier }
 }
 
-struct TS3UserPlaybackPreference {
+struct TS3UserPlaybackPreference: Codable {
     var volume: Double = 1.0
     var isMuted = false
 }
@@ -1133,7 +1133,7 @@ final class TS3AppModel: ObservableObject {
     @Published var lastError: String?
     @Published var avatarDownloadStatus: String?
     @Published var playbackVolume: Double = 1.0
-    @Published var userPlaybackPreferences: [Int: TS3UserPlaybackPreference] = [:]
+    @Published var userPlaybackPreferences: [String: TS3UserPlaybackPreference] = [:]
     @Published var inputGain: Double = 1.0
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
@@ -1169,6 +1169,7 @@ final class TS3AppModel: ObservableObject {
         loadAudioSettings()
         loadNotificationSettings()
         loadConnectionRecoverySettings()
+        loadUserPlaybackPreferences()
         loadBookmarks()
         loadRecentConnections()
         loadContacts()
@@ -1213,27 +1214,50 @@ final class TS3AppModel: ObservableObject {
     }
 
     func userPlaybackPreference(for user: TS3UserSummary) -> TS3UserPlaybackPreference {
-        userPlaybackPreferences[user.id] ?? TS3UserPlaybackPreference()
+        userPlaybackPreferences[userPlaybackPreferenceKey(for: user)] ?? TS3UserPlaybackPreference()
     }
 
     func updatePlaybackVolume(_ volume: Double, for user: TS3UserSummary) {
         let clamped = min(max(volume, 0), 4)
+        let key = userPlaybackPreferenceKey(for: user)
         var preference = userPlaybackPreference(for: user)
         preference.volume = clamped
-        userPlaybackPreferences[user.id] = preference
+        setUserPlaybackPreference(preference, forKey: key)
         client?.setPlaybackGain(Float(clamped), forClientId: user.id)
         applyPlaybackMute(for: user)
     }
 
     func setPlaybackMuted(_ isMuted: Bool, for user: TS3UserSummary) {
+        let key = userPlaybackPreferenceKey(for: user)
         var preference = userPlaybackPreference(for: user)
         preference.isMuted = isMuted
-        userPlaybackPreferences[user.id] = preference
+        setUserPlaybackPreference(preference, forKey: key)
         applyPlaybackMute(for: user)
     }
 
     func isPlaybackMuted(for user: TS3UserSummary) -> Bool {
         userPlaybackPreference(for: user).isMuted || contactStatus(for: user) == .blocked
+    }
+
+    private func userPlaybackPreferenceKey(for user: TS3UserSummary) -> String {
+        if let uniqueIdentifier = user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !uniqueIdentifier.isEmpty {
+            return "uid:\(uniqueIdentifier)"
+        }
+        return "client:\(user.id)"
+    }
+
+    private func setUserPlaybackPreference(_ preference: TS3UserPlaybackPreference, forKey key: String) {
+        let normalized = TS3UserPlaybackPreference(
+            volume: min(max(preference.volume, 0), 4),
+            isMuted: preference.isMuted
+        )
+        if normalized.volume == 1, !normalized.isMuted {
+            userPlaybackPreferences.removeValue(forKey: key)
+        } else {
+            userPlaybackPreferences[key] = normalized
+        }
+        saveUserPlaybackPreferences()
     }
 
     var transmitButtonTitle: String {
@@ -1466,6 +1490,15 @@ final class TS3AppModel: ObservableObject {
     private func syncBlockedContactPlayback() {
         for user in clients {
             applyPlaybackMute(for: user)
+        }
+    }
+
+    private func applyOnlineUserPlaybackPreferences() {
+        guard let client else { return }
+        for user in clients {
+            let preference = userPlaybackPreference(for: user)
+            client.setPlaybackGain(Float(preference.volume), forClientId: user.id)
+            client.setPlaybackMuted(preference.isMuted, forClientId: user.id)
         }
     }
 
@@ -1899,7 +1932,6 @@ final class TS3AppModel: ObservableObject {
         isRequestingTalkPower = false
         talkRequestMessage = ""
         whisperRoute = .none
-        userPlaybackPreferences = [:]
         microphonePermissionPrompt = nil
         iconURLs = [:]
         iconDownloads = []
@@ -4862,6 +4894,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-audio-settings.json")
     }
 
+    private var userPlaybackPreferencesURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-user-playback-preferences.json")
+    }
+
     private var notificationSettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-notification-settings.json")
@@ -4925,6 +4962,36 @@ final class TS3AppModel: ObservableObject {
         inputGain = min(max(settings.inputGain, 0), 4)
         audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
+    }
+
+    private func loadUserPlaybackPreferences() {
+        guard let data = try? Data(contentsOf: userPlaybackPreferencesURL),
+              let decoded = try? JSONDecoder().decode([String: TS3UserPlaybackPreference].self, from: data) else {
+            userPlaybackPreferences = [:]
+            return
+        }
+        userPlaybackPreferences = decoded.reduce(into: [:]) { result, item in
+            let key = item.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty else { return }
+            let preference = TS3UserPlaybackPreference(
+                volume: min(max(item.value.volume, 0), 4),
+                isMuted: item.value.isMuted
+            )
+            if preference.volume != 1 || preference.isMuted {
+                result[key] = preference
+            }
+        }
+    }
+
+    private func saveUserPlaybackPreferences() {
+        do {
+            let directory = userPlaybackPreferencesURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(userPlaybackPreferences)
+            try data.write(to: userPlaybackPreferencesURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func loadNotificationSettings() {
@@ -5446,9 +5513,10 @@ final class TS3AppModel: ObservableObject {
 
     private func applyAudioSettings(to client: TS3Client) {
         client.setPlaybackVolume(Float(playbackVolume))
-        for (clientId, preference) in userPlaybackPreferences {
-            client.setPlaybackGain(Float(preference.volume), forClientId: clientId)
-            client.setPlaybackMuted(preference.isMuted, forClientId: clientId)
+        for user in clients {
+            let preference = userPlaybackPreference(for: user)
+            client.setPlaybackGain(Float(preference.volume), forClientId: user.id)
+            client.setPlaybackMuted(preference.isMuted, forClientId: user.id)
         }
         for user in clients where contactStatus(for: user) == .blocked {
             client.setPlaybackMuted(true, forClientId: user.id)
@@ -5795,6 +5863,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 )
             }
             self.refreshMissingIcons()
+            self.applyOnlineUserPlaybackPreferences()
             self.syncBlockedContactPlayback()
             if let ownClient = clients.first(where: { $0.isCurrentUser }) {
                 self.nickname = ownClient.nickname
