@@ -5986,10 +5986,75 @@ extension TS3PermissionGroupDatabaseType {
 }
 
 struct ClientDatabaseSheet: View {
+    private enum DatabaseRecordFilter: String, CaseIterable, Identifiable {
+        case all
+        case withUniqueId
+        case withoutUniqueId
+        case withDescription
+        case withLastIP
+        case withConnections
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Records"
+            case .withUniqueId: return "With Unique ID"
+            case .withoutUniqueId: return "Without Unique ID"
+            case .withDescription: return "With Description"
+            case .withLastIP: return "With Last IP"
+            case .withConnections: return "With Connections"
+            }
+        }
+
+        func matches(_ record: TS3DatabaseClientSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .withUniqueId:
+                return record.uniqueIdentifier?.isEmpty == false
+            case .withoutUniqueId:
+                return record.uniqueIdentifier?.isEmpty != false
+            case .withDescription:
+                return record.description?.isEmpty == false
+            case .withLastIP:
+                return record.lastIP?.isEmpty == false
+            case .withConnections:
+                return record.totalConnections != nil
+            }
+        }
+    }
+
+    private enum DatabaseRecordSortMode: String, CaseIterable, Identifiable {
+        case nickname
+        case databaseId
+        case created
+        case lastConnected
+        case connections
+        case lastIP
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .nickname: return "Nickname"
+            case .databaseId: return "Database ID"
+            case .created: return "Created"
+            case .lastConnected: return "Last Connected"
+            case .connections: return "Connections"
+            case .lastIP: return "Last IP"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
     @State private var uniqueIdSearchText = ""
+    @State private var localFilterText = ""
+    @State private var recordFilter: DatabaseRecordFilter = .all
+    @State private var sortMode: DatabaseRecordSortMode = .nickname
+    @State private var sortAscending = true
     @State private var databaseBatchSize = "100"
     @State private var isShowingDescriptionEditor = false
     @State private var actionMode: DatabaseClientActionMode?
@@ -6003,7 +6068,19 @@ struct ClientDatabaseSheet: View {
     @State private var databaseBackupDocument = TS3TextFileDocument()
 
     var displayedRecords: [TS3DatabaseClientSummary] {
-        model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
+        let source = model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
+        let filtered = source.filter { record in
+            recordFilter.matches(record) && (
+                !isLocalFiltering
+                    || containsLocalFilter(record.nickname)
+                    || containsLocalFilter(record.uniqueIdentifier)
+                    || containsLocalFilter(record.description)
+                    || containsLocalFilter(record.lastIP)
+                    || String(record.id).contains(normalizedLocalFilterText)
+                    || record.totalConnections.map { String($0).contains(normalizedLocalFilterText) } == true
+            )
+        }
+        return sortedRecords(filtered)
     }
 
     var body: some View {
@@ -6031,6 +6108,30 @@ struct ClientDatabaseSheet: View {
                         model.findDatabaseClient(uniqueIdentifier: uniqueIdSearchText)
                     }
                     .disabled(uniqueIdSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                Section(header: Text("List View")) {
+                    Picker("Filter", selection: $recordFilter) {
+                        ForEach(DatabaseRecordFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(DatabaseRecordSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
+                    TextField("Filter loaded records", text: $localFilterText)
+                        .ts3PlainTextField()
+                    if hasLocalViewOptions {
+                        Button("Clear List View") {
+                            recordFilter = .all
+                            sortMode = .nickname
+                            sortAscending = true
+                            localFilterText = ""
+                        }
+                    }
                 }
 
                 Section(header: Text("Database Range")) {
@@ -6254,6 +6355,85 @@ struct ClientDatabaseSheet: View {
 
     private var parsedDatabaseBatchSize: Int {
         max(1, Int(databaseBatchSize.trimmingCharacters(in: .whitespacesAndNewlines)) ?? model.databaseClientBatchSize)
+    }
+
+    private var normalizedLocalFilterText: String {
+        localFilterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isLocalFiltering: Bool {
+        !normalizedLocalFilterText.isEmpty
+    }
+
+    private var hasLocalViewOptions: Bool {
+        isLocalFiltering || recordFilter != .all || sortMode != .nickname || !sortAscending
+    }
+
+    private func containsLocalFilter(_ value: String?) -> Bool {
+        guard let value, isLocalFiltering else { return false }
+        return value.lowercased().contains(normalizedLocalFilterText)
+    }
+
+    private func sortedRecords(_ records: [TS3DatabaseClientSummary]) -> [TS3DatabaseClientSummary] {
+        records.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .nickname:
+                comparison = lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname)
+            case .databaseId:
+                comparison = compareInts(lhs.id, rhs.id)
+            case .created:
+                comparison = compareDates(lhs.createdAt, rhs.createdAt)
+            case .lastConnected:
+                comparison = compareDates(lhs.lastConnectedAt, rhs.lastConnectedAt)
+            case .connections:
+                comparison = compareOptionalInts(lhs.totalConnections, rhs.totalConnections)
+            case .lastIP:
+                comparison = (lhs.lastIP ?? "").localizedCaseInsensitiveCompare(rhs.lastIP ?? "")
+            }
+
+            if comparison == .orderedSame {
+                return lhs.id < rhs.id
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareDates(_ lhs: Date?, _ rhs: Date?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs.compare(rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func compareOptionalInts(_ lhs: Int?, _ rhs: Int?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return compareInts(lhs, rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
     }
 
     private var databaseSnapshot: String {
