@@ -167,6 +167,13 @@ struct ConnectView: View {
                             .buttonStyle(.borderless)
                             Spacer()
                             Button {
+                                model.applyBookmark(bookmark)
+                                model.connect()
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .buttonStyle(.borderless)
+                            Button {
                                 model.copyInviteLink(for: bookmark)
                             } label: {
                                 Image(systemName: "link")
@@ -431,6 +438,14 @@ struct BookmarkEditorSheet: View {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Apply") {
                         model.applyBookmark(bookmark)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canSubmit)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Connect") {
+                        model.applyBookmark(bookmark)
+                        model.connect()
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!canSubmit)
