@@ -8380,6 +8380,45 @@ private extension TS3PrivilegeKeySummary {
 }
 
 struct BanListSheet: View {
+    private enum BanFilter: String, CaseIterable, Identifiable {
+        case all
+        case ip
+        case name
+        case uniqueIdentifier
+        case permanent
+        case temporary
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Bans"
+            case .ip: return "IP"
+            case .name: return "Name"
+            case .uniqueIdentifier: return "Unique ID"
+            case .permanent: return "Permanent"
+            case .temporary: return "Temporary"
+            }
+        }
+
+        func matches(_ entry: TS3BanEntrySummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .ip:
+                return entry.ip?.isEmpty == false
+            case .name:
+                return entry.name?.isEmpty == false || entry.lastNickname?.isEmpty == false
+            case .uniqueIdentifier:
+                return entry.uniqueIdentifier?.isEmpty == false
+            case .permanent:
+                return entry.durationSeconds == nil || entry.durationSeconds == 0
+            case .temporary:
+                return (entry.durationSeconds ?? 0) > 0
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isConfirmingDeleteAll = false
@@ -8390,6 +8429,7 @@ struct BanListSheet: View {
     @State private var banExportDocument = TS3TextFileDocument()
     @State private var banBackupDocument = TS3TextFileDocument()
     @State private var searchText = ""
+    @State private var banFilter: BanFilter = .all
     @State private var ip = ""
     @State private var name = ""
     @State private var uniqueIdentifier = ""
@@ -8436,11 +8476,17 @@ struct BanListSheet: View {
                     .disabled(isAddDisabled)
                 }
 
-                Section(header: Text("Search")) {
+                Section(header: Text("Filters")) {
+                    Picker("Type", selection: $banFilter) {
+                        ForEach(BanFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
                     TextField("Search bans", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            banFilter = .all
                             searchText = ""
                         }
                     }
@@ -8589,15 +8635,21 @@ struct BanListSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || banFilter != .all
+    }
+
     private var filteredBanEntries: [TS3BanEntrySummary] {
-        guard isSearching else { return model.banEntries }
         return model.banEntries.filter { entry in
-            containsSearch(entry.name)
-                || containsSearch(entry.lastNickname)
-                || containsSearch(entry.ip)
-                || containsSearch(entry.uniqueIdentifier)
-                || containsSearch(entry.invokerName)
-                || containsSearch(entry.reason)
+            banFilter.matches(entry) && (
+                !isSearching
+                    || containsSearch(entry.name)
+                    || containsSearch(entry.lastNickname)
+                    || containsSearch(entry.ip)
+                    || containsSearch(entry.uniqueIdentifier)
+                    || containsSearch(entry.invokerName)
+                    || containsSearch(entry.reason)
+            )
         }
     }
 
