@@ -344,7 +344,7 @@ struct TS3ComplaintSummary: Identifiable {
     }
 }
 
-private struct TS3SelfStatusBackup: Codable {
+struct TS3SelfStatusBackup: Codable {
     var nickname: String
     var description: String
     var isAway: Bool
@@ -354,6 +354,25 @@ private struct TS3SelfStatusBackup: Codable {
     var isChannelCommander: Bool
     var talkRequestMessage: String
     var iconId: Int?
+}
+
+struct TS3SelfStatusProfile: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var status: TS3SelfStatusBackup
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        status: TS3SelfStatusBackup,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.status = status
+        self.updatedAt = updatedAt
+    }
 }
 
 struct TS3DatabaseClientSummary: Identifiable {
@@ -1179,6 +1198,7 @@ final class TS3AppModel: ObservableObject {
     @Published var privilegeKey = ""
     @Published var nickname = TS3PlatformSupport.defaultNickname
     @Published var awayMessage = ""
+    @Published private(set) var selfStatusProfiles: [TS3SelfStatusProfile] = []
     @Published private(set) var recentConnections: [TS3ConnectionSnapshot] = []
     @Published private(set) var lastConnectionSnapshot: TS3ConnectionSnapshot?
     @Published private(set) var lastDisconnectMessage: String?
@@ -1205,6 +1225,7 @@ final class TS3AppModel: ObservableObject {
         loadContacts()
         loadChatHistory()
         loadWhisperPresets()
+        loadSelfStatusProfiles()
         Task { @MainActor in
             await refreshIdentitySummary()
         }
@@ -4924,6 +4945,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-audio-settings.json")
     }
 
+    private var selfStatusProfilesURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-self-status-profiles.json")
+    }
+
     private var audioProfilesURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-audio-profiles.json")
@@ -5361,7 +5387,11 @@ final class TS3AppModel: ObservableObject {
     func selfStatusBackupData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let snapshot = TS3SelfStatusBackup(
+        return try encoder.encode(currentSelfStatusBackup())
+    }
+
+    private func currentSelfStatusBackup() -> TS3SelfStatusBackup {
+        TS3SelfStatusBackup(
             nickname: nickname,
             description: clients.first(where: { $0.isCurrentUser })?.description ?? "",
             isAway: isAway,
@@ -5372,11 +5402,16 @@ final class TS3AppModel: ObservableObject {
             talkRequestMessage: talkRequestMessage,
             iconId: clients.first(where: { $0.isCurrentUser })?.iconId
         )
-        return try encoder.encode(snapshot)
     }
 
     func importSelfStatusBackup(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3SelfStatusBackup.self, from: data)
+        applySelfStatusBackup(decoded, sendCommands: false)
+        lastError = nil
+    }
+
+    private func applySelfStatusBackup(_ backup: TS3SelfStatusBackup, sendCommands: Bool) {
+        let decoded = sanitizedSelfStatusBackup(backup)
         nickname = decoded.nickname
         awayMessage = decoded.awayMessage
         isAway = decoded.isAway
@@ -5384,13 +5419,122 @@ final class TS3AppModel: ObservableObject {
         isOutputMuted = decoded.isOutputMuted
         isChannelCommander = decoded.isChannelCommander
         talkRequestMessage = decoded.talkRequestMessage
+        if sendCommands {
+            updateNickname(to: decoded.nickname)
+            setAway(decoded.isAway, message: decoded.awayMessage)
+            setInputMuted(decoded.isInputMuted)
+            setOutputMuted(decoded.isOutputMuted)
+            setChannelCommander(decoded.isChannelCommander)
+            if decoded.talkRequestMessage.isEmpty {
+                setTalkRequest(false, message: "")
+            } else {
+                setTalkRequest(true, message: decoded.talkRequestMessage)
+            }
+        }
         if let client = clients.first(where: { $0.isCurrentUser }) {
             updateUser(clientId: client.id) { existing in
                 self.copyUser(existing, description: decoded.description, iconId: decoded.iconId)
             }
         }
         saveAudioSettings()
+    }
+
+    private func loadSelfStatusProfiles() {
+        guard let data = try? Data(contentsOf: selfStatusProfilesURL),
+              let decoded = try? JSONDecoder().decode([TS3SelfStatusProfile].self, from: data) else {
+            selfStatusProfiles = []
+            return
+        }
+        selfStatusProfiles = sanitizedSelfStatusProfiles(decoded)
+    }
+
+    private func saveSelfStatusProfiles() {
+        do {
+            let directory = selfStatusProfilesURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(selfStatusProfiles)
+            try data.write(to: selfStatusProfilesURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func saveCurrentSelfStatusProfile(name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            lastError = "Enter a name for the status profile."
+            return
+        }
+        selfStatusProfiles.removeAll { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame }
+        selfStatusProfiles.insert(TS3SelfStatusProfile(
+            name: trimmedName,
+            status: currentSelfStatusBackup()
+        ), at: 0)
+        saveSelfStatusProfiles()
         lastError = nil
+    }
+
+    func applySelfStatusProfile(_ profile: TS3SelfStatusProfile) {
+        applySelfStatusBackup(profile.status, sendCommands: true)
+        lastError = nil
+    }
+
+    func deleteSelfStatusProfile(_ profile: TS3SelfStatusProfile) {
+        selfStatusProfiles.removeAll { $0.id == profile.id }
+        saveSelfStatusProfiles()
+    }
+
+    func selfStatusProfilesExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(selfStatusProfiles)
+    }
+
+    @discardableResult
+    func importSelfStatusProfiles(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3SelfStatusProfile].self, from: data)
+        var merged = selfStatusProfiles
+        for profile in sanitizedSelfStatusProfiles(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(profile.name) == .orderedSame }
+            merged.insert(profile, at: 0)
+        }
+        selfStatusProfiles = sanitizedSelfStatusProfiles(merged)
+        saveSelfStatusProfiles()
+        lastError = nil
+        return imported.count
+    }
+
+    private func sanitizedSelfStatusProfiles(_ profiles: [TS3SelfStatusProfile]) -> [TS3SelfStatusProfile] {
+        profiles.compactMap { profile in
+            let name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return nil }
+            return TS3SelfStatusProfile(
+                id: profile.id,
+                name: name,
+                status: sanitizedSelfStatusBackup(profile.status),
+                updatedAt: profile.updatedAt
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.updatedAt == rhs.updatedAt {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        }
+    }
+
+    private func sanitizedSelfStatusBackup(_ backup: TS3SelfStatusBackup) -> TS3SelfStatusBackup {
+        TS3SelfStatusBackup(
+            nickname: backup.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            description: backup.description.trimmingCharacters(in: .whitespacesAndNewlines),
+            isAway: backup.isAway,
+            awayMessage: backup.awayMessage.trimmingCharacters(in: .whitespacesAndNewlines),
+            isInputMuted: backup.isInputMuted,
+            isOutputMuted: backup.isOutputMuted,
+            isChannelCommander: backup.isChannelCommander,
+            talkRequestMessage: String(backup.talkRequestMessage.trimmingCharacters(in: .whitespacesAndNewlines).prefix(50)),
+            iconId: backup.iconId
+        )
     }
 
     func channelName(for id: Int?) -> String? {

@@ -11776,6 +11776,7 @@ struct SelfStatusSheet: View {
     @State private var isChannelCommander = false
     @State private var talkRequestMessage = ""
     @State private var selfIconId = ""
+    @State private var statusProfileName = ""
     @State private var isShowingIconImporter = false
     @State private var isShowingAvatarImporter = false
     @State private var isConfirmingClearIcon = false
@@ -11783,6 +11784,7 @@ struct SelfStatusSheet: View {
     @State private var isExportingStatus = false
     @State private var isExportingStatusBackup = false
     @State private var isImportingStatus = false
+    @State private var isImportingStatusProfiles = false
     @State private var statusDocument = TS3TextFileDocument()
     @State private var statusBackupDocument = TS3TextFileDocument()
 
@@ -11803,6 +11805,13 @@ struct SelfStatusSheet: View {
                     Button("Import Status Backup") {
                         isImportingStatus = true
                     }
+                    Button("Export Profile Backup") {
+                        exportStatusProfiles()
+                    }
+                    .disabled(model.selfStatusProfiles.isEmpty)
+                    Button("Import Profile Backup") {
+                        isImportingStatusProfiles = true
+                    }
                     if let currentUser {
                         Menu("Copy Identifiers") {
                             Button("Copy Client ID") {
@@ -11821,6 +11830,48 @@ struct SelfStatusSheet: View {
                             if let avatarHash = currentUser.avatarHash, !avatarHash.isEmpty {
                                 Button("Copy Avatar Hash") {
                                     TS3PlatformSupport.copyToPasteboard(avatarHash)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Profiles")) {
+                    TextField("Profile Name", text: $statusProfileName)
+                        .ts3PlainTextField()
+                    Button("Save Current Profile") {
+                        model.saveCurrentSelfStatusProfile(name: statusProfileName)
+                        statusProfileName = ""
+                    }
+                    .disabled(statusProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    if model.selfStatusProfiles.isEmpty {
+                        Text("No saved status profiles")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.selfStatusProfiles) { profile in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(profile.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(statusProfileSummary(profile))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Menu {
+                                    Button("Apply Profile") {
+                                        model.applySelfStatusProfile(profile)
+                                        refreshDraft()
+                                    }
+                                    Button("Rename From Profile") {
+                                        statusProfileName = profile.name
+                                    }
+                                    Button("Delete Profile") {
+                                        model.deleteSelfStatusProfile(profile)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
                                 }
                             }
                         }
@@ -12026,6 +12077,17 @@ struct SelfStatusSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingStatusProfiles,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importStatusProfiles(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -12044,6 +12106,7 @@ struct SelfStatusSheet: View {
         if !model.talkRequestMessage.isEmpty {
             rows.append("Talk Request Message: \(model.talkRequestMessage)")
         }
+        rows.append("Saved Profiles: \(model.selfStatusProfiles.count)")
         if let selfUser = model.clients.first(where: { $0.isCurrentUser }) {
             rows.append("Client ID: \(selfUser.id)")
             if let databaseId = selfUser.databaseId {
@@ -12098,6 +12161,15 @@ struct SelfStatusSheet: View {
         }
     }
 
+    private func exportStatusProfiles() {
+        do {
+            statusBackupDocument = TS3TextFileDocument(data: try model.selfStatusProfilesExportData())
+            isExportingStatusBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
     private func importStatusBackup(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -12111,6 +12183,41 @@ struct SelfStatusSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func importStatusProfiles(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importSelfStatusProfiles(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func statusProfileSummary(_ profile: TS3SelfStatusProfile) -> String {
+        var parts: [String] = []
+        if !profile.status.nickname.isEmpty {
+            parts.append(profile.status.nickname)
+        }
+        parts.append(profile.status.isAway ? "away" : "available")
+        if profile.status.isInputMuted {
+            parts.append("mic muted")
+        }
+        if profile.status.isOutputMuted {
+            parts.append("sound muted")
+        }
+        if profile.status.isChannelCommander {
+            parts.append("commander")
+        }
+        if !profile.status.talkRequestMessage.isEmpty {
+            parts.append("talk request")
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var currentUser: TS3UserSummary? {
