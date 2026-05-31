@@ -5012,12 +5012,66 @@ enum TS3GroupManagementTarget: String, CaseIterable, Identifiable {
 }
 
 struct GroupManagementSheet: View {
+    private enum GroupTypeFilter: String, CaseIterable, Identifiable {
+        case all
+        case template
+        case regular
+        case query
+        case unknown
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Groups"
+            case .template: return "Template"
+            case .regular: return "Regular"
+            case .query: return "Query"
+            case .unknown: return "Unknown"
+            }
+        }
+
+        func matches(_ group: TS3GroupSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .template:
+                return group.type == .template
+            case .regular:
+                return group.type == .regular
+            case .query:
+                return group.type == .query
+            case .unknown:
+                return group.type == nil
+            }
+        }
+    }
+
+    private enum GroupSortMode: String, CaseIterable, Identifiable {
+        case name
+        case id
+        case type
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .name: return "Name"
+            case .id: return "ID"
+            case .type: return "Type"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var target: TS3GroupManagementTarget = .server
     @State private var newGroupName = ""
     @State private var newGroupType: TS3PermissionGroupDatabaseType = .regular
     @State private var searchText = ""
+    @State private var groupTypeFilter: GroupTypeFilter = .all
+    @State private var sortMode: GroupSortMode = .name
+    @State private var sortAscending = true
     @State private var isExportingGroups = false
     @State private var groupsExportDocument = TS3TextFileDocument()
 
@@ -5031,12 +5085,15 @@ struct GroupManagementSheet: View {
     }
 
     private var filteredGroups: [TS3GroupSummary] {
-        guard isSearching else { return groups }
-        return groups.filter { group in
-            containsSearch(group.name)
-                || containsSearch(group.typeTitle)
-                || String(group.id).contains(normalizedSearchText)
+        let entries = groups.filter { group in
+            groupTypeFilter.matches(group) && (
+                !isSearching
+                    || containsSearch(group.name)
+                    || containsSearch(group.typeTitle)
+                    || String(group.id).contains(normalizedSearchText)
+            )
         }
+        return sortedGroups(entries)
     }
 
     private var visibleGroupsSnapshot: String {
@@ -5072,11 +5129,25 @@ struct GroupManagementSheet: View {
                     .disabled(newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
-                Section(header: Text("Search")) {
+                Section(header: Text("Filters")) {
+                    Picker("Type", selection: $groupTypeFilter) {
+                        ForEach(GroupTypeFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(GroupSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search groups", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            groupTypeFilter = .all
+                            sortMode = .name
+                            sortAscending = true
                             searchText = ""
                         }
                     }
@@ -5155,9 +5226,43 @@ struct GroupManagementSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || groupTypeFilter != .all || sortMode != .name || !sortAscending
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedGroups(_ groups: [TS3GroupSummary]) -> [TS3GroupSummary] {
+        groups.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .name:
+                comparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+            case .id:
+                comparison = compareInts(lhs.id, rhs.id)
+            case .type:
+                comparison = lhs.typeTitle.localizedCaseInsensitiveCompare(rhs.typeTitle)
+            }
+
+            if comparison == .orderedSame {
+                return lhs.id < rhs.id
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
     }
 }
 
