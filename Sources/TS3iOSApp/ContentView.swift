@@ -3378,12 +3378,41 @@ enum TS3BanDuration: String, CaseIterable, Identifiable {
 }
 
 struct ChatSheet: View {
+    private enum ChatSenderFilter: String, CaseIterable, Identifiable {
+        case all
+        case own
+        case others
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Senders"
+            case .own: return "My Messages"
+            case .others: return "Other Users"
+            }
+        }
+
+        func includes(_ message: TS3ChatMessageSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .own:
+                return message.isOwnMessage
+            case .others:
+                return !message.isOwnMessage
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var message = ""
     @State private var target: TS3TextMessageTargetMode = .channel
     @State private var selectedPrivateClientId = 0
     @State private var filter: ChatMessageFilter = .all
+    @State private var senderFilter: ChatSenderFilter = .all
+    @State private var newestFirst = false
     @State private var searchText = ""
     @State private var isShowingOfflineMessages = false
     @State private var isConfirmingClearHistory = false
@@ -3423,8 +3452,25 @@ struct ChatSheet: View {
                     }
                     .pickerStyle(.segmented)
 
+                    Picker("Sender", selection: $senderFilter) {
+                        ForEach(ChatSenderFilter.allCases) { item in
+                            Text(item.title).tag(item)
+                        }
+                    }
+
+                    Toggle("Newest First", isOn: $newestFirst)
+
                     TextField("Search chat", text: $searchText)
                         .textFieldStyle(.roundedBorder)
+
+                    if hasChatFilters {
+                        Button("Clear Chat Filters") {
+                            filter = .all
+                            senderFilter = .all
+                            newestFirst = false
+                            searchText = ""
+                        }
+                    }
                 }
                 .padding()
 
@@ -3541,16 +3587,28 @@ struct ChatSheet: View {
 
     private var filteredMessages: [TS3ChatMessageSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return model.chatMessages.filter { item in
+        let messages = model.chatMessages.filter { item in
             filter.includes(item.targetMode)
+                && senderFilter.includes(item)
                 && (query.isEmpty
                     || item.senderName.localizedCaseInsensitiveContains(query)
                     || item.message.localizedCaseInsensitiveContains(query))
         }
+        if newestFirst {
+            return messages.sorted { $0.timestamp > $1.timestamp }
+        }
+        return messages.sorted { $0.timestamp < $1.timestamp }
     }
 
     private var emptyMessageText: String {
         model.chatMessages.isEmpty ? "No chat messages" : "No matching messages"
+    }
+
+    private var hasChatFilters: Bool {
+        filter != .all
+            || senderFilter != .all
+            || newestFirst
+            || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func replyUser(for item: TS3ChatMessageSummary) -> TS3UserSummary? {
