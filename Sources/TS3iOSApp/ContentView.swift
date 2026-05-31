@@ -12583,6 +12583,8 @@ struct AudioSettingsSheet: View {
     @State private var isExportingAudioSettings = false
     @State private var isImportingAudioSettings = false
     @State private var isImportingAudioProfiles = false
+    @State private var isImportingUserPlayback = false
+    @State private var isConfirmingResetUserPlayback = false
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
@@ -12771,6 +12773,52 @@ struct AudioSettingsSheet: View {
                     .padding(.vertical, 4)
                 }
 
+                Section(header: Text("User Playback")) {
+                    Button("Copy User Playback Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(userPlaybackSnapshot)
+                    }
+                    .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
+                    Button("Export User Playback Snapshot") {
+                        audioSettingsDocument = TS3TextFileDocument(data: Data(userPlaybackSnapshot.utf8))
+                        isExportingAudioSettings = true
+                    }
+                    .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
+                    Button("Export User Playback Backup") {
+                        exportUserPlayback()
+                    }
+                    .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
+                    Button("Import User Playback Backup") {
+                        isImportingUserPlayback = true
+                    }
+                    Button("Reset User Playback") {
+                        isConfirmingResetUserPlayback = true
+                    }
+                    .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
+
+                    if model.userPlaybackPreferenceSummaries.isEmpty {
+                        Text("No per-user playback preferences")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.userPlaybackPreferenceSummaries) { preference in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack {
+                                    Text(preference.nickname ?? preference.key)
+                                        .font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Text(preference.isOnline ? "Online" : "Saved")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Text(userPlaybackSummary(preference))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                        }
+                    }
+                }
+
                 Section {
                     Button("Reset Audio Settings") {
                         model.resetAudioSettings()
@@ -12818,6 +12866,27 @@ struct AudioSettingsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingUserPlayback,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importUserPlayback(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .alert(isPresented: $isConfirmingResetUserPlayback) {
+                Alert(
+                    title: Text("Reset User Playback?"),
+                    message: Text("This clears all local per-user volume and mute overrides."),
+                    primaryButton: .destructive(Text("Reset")) {
+                        model.resetUserPlaybackPreferences()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
@@ -12833,6 +12902,15 @@ struct AudioSettingsSheet: View {
     private func exportAudioProfiles() {
         do {
             audioSettingsDocument = TS3TextFileDocument(data: try model.audioProfilesExportData())
+            isExportingAudioSettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportUserPlayback() {
+        do {
+            audioSettingsDocument = TS3TextFileDocument(data: try model.userPlaybackPreferencesExportData())
             isExportingAudioSettings = true
         } catch {
             model.lastError = error.localizedDescription
@@ -12867,17 +12945,40 @@ struct AudioSettingsSheet: View {
         }
     }
 
+    private func importUserPlayback(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importUserPlaybackPreferences(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
     private var audioSettingsSnapshot: String {
         var rows = [
             "Transmit Mode: \(model.audioTransmitMode.rawValue)",
             "Input Gain: \(model.inputGainPercentText)",
             "Playback Volume: \(model.playbackVolumePercentText)",
-            "Saved Profiles: \(model.audioProfiles.count)"
+            "Saved Profiles: \(model.audioProfiles.count)",
+            "User Playback Overrides: \(model.userPlaybackPreferenceSummaries.count)"
         ]
         if model.audioTransmitMode == .voiceActivation {
             rows.append("Voice Activation Threshold: \(model.voiceActivationThresholdText)")
         }
         return rows.joined(separator: "\n")
+    }
+
+    private var userPlaybackSnapshot: String {
+        model.userPlaybackPreferenceSummaries.map { preference in
+            let name = preference.nickname ?? preference.key
+            return "\(name): \(userPlaybackSummary(preference))"
+        }
+        .joined(separator: "\n")
     }
 
     private func profileSummary(_ profile: TS3AudioProfile) -> String {
@@ -12890,6 +12991,12 @@ struct AudioSettingsSheet: View {
 
     private static func percentText(_ value: Double) -> String {
         "\(Int((value * 100).rounded()))%"
+    }
+
+    private func userPlaybackSummary(_ preference: TS3UserPlaybackPreferenceSummary) -> String {
+        let volume = Self.percentText(preference.volume)
+        let muted = preference.isMuted ? "muted" : "unmuted"
+        return "\(volume), \(muted), key \(preference.key)"
     }
 }
 

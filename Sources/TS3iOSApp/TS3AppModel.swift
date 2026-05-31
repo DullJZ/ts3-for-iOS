@@ -252,6 +252,16 @@ struct TS3UserPlaybackPreference: Codable {
     var isMuted = false
 }
 
+struct TS3UserPlaybackPreferenceSummary: Identifiable {
+    let key: String
+    let nickname: String?
+    let volume: Double
+    let isMuted: Bool
+    let isOnline: Bool
+
+    var id: String { key }
+}
+
 struct TS3OfflineMessageSummary: Identifiable {
     let id: Int
     let senderUniqueIdentifier: String?
@@ -1288,6 +1298,49 @@ final class TS3AppModel: ObservableObject {
 
     func isPlaybackMuted(for user: TS3UserSummary) -> Bool {
         userPlaybackPreference(for: user).isMuted || contactStatus(for: user) == .blocked
+    }
+
+    var userPlaybackPreferenceSummaries: [TS3UserPlaybackPreferenceSummary] {
+        userPlaybackPreferences.map { key, preference in
+            let user = clients.first { userPlaybackPreferenceKey(for: $0) == key }
+            return TS3UserPlaybackPreferenceSummary(
+                key: key,
+                nickname: user?.nickname,
+                volume: preference.volume,
+                isMuted: preference.isMuted,
+                isOnline: user != nil
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.isOnline != rhs.isOnline {
+                return lhs.isOnline && !rhs.isOnline
+            }
+            let lhsName = lhs.nickname ?? lhs.key
+            let rhsName = rhs.nickname ?? rhs.key
+            return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
+        }
+    }
+
+    func resetUserPlaybackPreferences() {
+        userPlaybackPreferences = [:]
+        saveUserPlaybackPreferences()
+        applyOnlineUserPlaybackPreferences()
+        syncBlockedContactPlayback()
+    }
+
+    func userPlaybackPreferencesExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(userPlaybackPreferences)
+    }
+
+    func importUserPlaybackPreferences(from data: Data) throws {
+        let decoded = try JSONDecoder().decode([String: TS3UserPlaybackPreference].self, from: data)
+        userPlaybackPreferences = sanitizedUserPlaybackPreferences(decoded)
+        saveUserPlaybackPreferences()
+        applyOnlineUserPlaybackPreferences()
+        syncBlockedContactPlayback()
+        lastError = nil
     }
 
     private func userPlaybackPreferenceKey(for user: TS3UserSummary) -> String {
@@ -5134,7 +5187,11 @@ final class TS3AppModel: ObservableObject {
             userPlaybackPreferences = [:]
             return
         }
-        userPlaybackPreferences = decoded.reduce(into: [:]) { result, item in
+        userPlaybackPreferences = sanitizedUserPlaybackPreferences(decoded)
+    }
+
+    private func sanitizedUserPlaybackPreferences(_ preferences: [String: TS3UserPlaybackPreference]) -> [String: TS3UserPlaybackPreference] {
+        preferences.reduce(into: [:]) { result, item in
             let key = item.key.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !key.isEmpty else { return }
             let preference = TS3UserPlaybackPreference(
