@@ -3732,20 +3732,47 @@ struct PokeOfflineReplySheet: View {
 }
 
 struct OfflineMessagesSheet: View {
+    private enum ReadFilter: String, CaseIterable, Identifiable {
+        case all
+        case unread
+        case read
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Messages"
+            case .unread: return "Unread"
+            case .read: return "Read"
+            }
+        }
+
+        func matches(_ message: TS3OfflineMessageSummary) -> Bool {
+            switch self {
+            case .all: return true
+            case .unread: return !message.isRead
+            case .read: return message.isRead
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var readFilter: ReadFilter = .all
     @State private var isExportingInbox = false
     @State private var inboxDocument = TS3TextFileDocument()
 
     private var filteredMessages: [TS3OfflineMessageSummary] {
-        guard isSearching else { return model.offlineMessages }
         return model.offlineMessages.filter { message in
-            containsSearch(message.subject)
-                || containsSearch(message.senderName)
-                || containsSearch(message.senderUniqueIdentifier)
-                || containsSearch(message.message)
-                || containsSearch(message.isRead ? "read" : "unread")
+            readFilter.matches(message) && (
+                !isSearching
+                    || containsSearch(message.subject)
+                    || containsSearch(message.senderName)
+                    || containsSearch(message.senderUniqueIdentifier)
+                    || containsSearch(message.message)
+                    || containsSearch(message.isRead ? "read" : "unread")
+            )
         }
     }
 
@@ -3784,10 +3811,16 @@ struct OfflineMessagesSheet: View {
         NavigationView {
             List {
                 Section(header: Text("Search")) {
+                    Picker("Status", selection: $readFilter) {
+                        ForEach(ReadFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
                     TextField("Search inbox", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            readFilter = .all
                             searchText = ""
                         }
                     }
@@ -3865,6 +3898,10 @@ struct OfflineMessagesSheet: View {
 
     private var isSearching: Bool {
         !normalizedSearchText.isEmpty
+    }
+
+    private var hasLocalFilters: Bool {
+        isSearching || readFilter != .all
     }
 
     private func containsSearch(_ value: String?) -> Bool {
