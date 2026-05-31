@@ -2492,9 +2492,29 @@ struct UserIconView: View {
 }
 
 struct ContactsSheet: View {
+    private enum ContactSortMode: String, CaseIterable, Identifiable {
+        case nickname
+        case status
+        case updated
+        case note
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .nickname: return "Nickname"
+            case .status: return "Status"
+            case .updated: return "Updated"
+            case .note: return "Note"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
+    @State private var sortMode: ContactSortMode = .nickname
+    @State private var sortAscending = true
     @State private var isShowingNewContact = false
     @State private var isExportingContacts = false
     @State private var isImportingContacts = false
@@ -2503,7 +2523,6 @@ struct ContactsSheet: View {
     private var notedContacts: [TS3ContactEntry] {
         model.contacts
             .filter { !$0.note.isEmpty && $0.status == .neutral }
-            .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
     }
 
     private var normalizedSearchText: String {
@@ -2535,11 +2554,19 @@ struct ContactsSheet: View {
                     }
                 }
 
-                Section(header: Text("Search")) {
+                Section(header: Text("Filters")) {
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(ContactSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search contacts", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            sortMode = .nickname
+                            sortAscending = true
                             searchText = ""
                         }
                     }
@@ -2622,17 +2649,47 @@ struct ContactsSheet: View {
     }
 
     private func filterContacts(_ contacts: [TS3ContactEntry]) -> [TS3ContactEntry] {
-        guard isSearching else { return contacts }
-        return contacts.filter { contact in
-            containsSearch(contact.nickname)
+        let entries = contacts.filter { contact in
+            !isSearching
+                || containsSearch(contact.nickname)
                 || containsSearch(contact.uniqueIdentifier)
                 || containsSearch(contact.note)
                 || containsSearch(contact.status.title)
         }
+        return sortedContacts(entries)
     }
 
     private func containsSearch(_ value: String) -> Bool {
         value.lowercased().contains(normalizedSearchText)
+    }
+
+    private var hasLocalFilters: Bool {
+        isSearching || sortMode != .nickname || !sortAscending
+    }
+
+    private func sortedContacts(_ contacts: [TS3ContactEntry]) -> [TS3ContactEntry] {
+        contacts.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .nickname:
+                comparison = lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname)
+            case .status:
+                comparison = lhs.status.title.localizedCaseInsensitiveCompare(rhs.status.title)
+            case .updated:
+                comparison = lhs.updatedAt.compare(rhs.updatedAt)
+            case .note:
+                comparison = lhs.note.localizedCaseInsensitiveCompare(rhs.note)
+            }
+
+            if comparison == .orderedSame {
+                return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
     }
 
     private func exportContacts() {
