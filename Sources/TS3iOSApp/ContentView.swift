@@ -3185,6 +3185,9 @@ struct ChatMessageRow: View {
                 Text(item.senderName)
                     .font(.subheadline.weight(.semibold))
                 Spacer()
+                Text(Self.dateText(item.timestamp))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Text(targetModeText(item.targetMode))
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -3207,6 +3210,9 @@ struct ChatMessageRow: View {
             Button("Copy Sender") {
                 TS3PlatformSupport.copyToPasteboard(item.senderName)
             }
+            Button("Copy Entry") {
+                TS3PlatformSupport.copyToPasteboard(clipboardText)
+            }
         }
         .sheet(item: $replyTarget) { user in
             ChatPrivateReplySheet(user: user)
@@ -3223,6 +3229,17 @@ struct ChatMessageRow: View {
         case .client:
             return "Private"
         }
+    }
+
+    private var clipboardText: String {
+        "\(Self.dateText(item.timestamp)) [\(targetModeText(item.targetMode))] \(item.senderName): \(item.message)"
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
