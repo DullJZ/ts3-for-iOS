@@ -695,6 +695,74 @@ struct BookmarkEditorSheet: View {
 }
 
 struct ChannelListView: View {
+    private enum ChannelTreeFilter: String, CaseIterable, Identifiable {
+        case all
+        case current
+        case `default`
+        case passwordProtected
+        case unsubscribed
+        case populated
+        case empty
+        case mutedUsers
+        case awayUsers
+        case talkRequests
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Channels"
+            case .current: return "Current Channel"
+            case .default: return "Default Channel"
+            case .passwordProtected: return "Password Protected"
+            case .unsubscribed: return "Unsubscribed"
+            case .populated: return "With Users"
+            case .empty: return "Empty"
+            case .mutedUsers: return "Muted Users"
+            case .awayUsers: return "Away Users"
+            case .talkRequests: return "Talk Requests"
+            }
+        }
+
+        func matches(channel: TS3ChannelSummary, members: [TS3UserSummary]) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .current:
+                return channel.isCurrent
+            case .default:
+                return channel.isDefault
+            case .passwordProtected:
+                return channel.isPasswordProtected
+            case .unsubscribed:
+                return channel.isSubscribed == false
+            case .populated:
+                return !members.isEmpty
+            case .empty:
+                return members.isEmpty
+            case .mutedUsers:
+                return members.contains { $0.isInputMuted || $0.isOutputMuted }
+            case .awayUsers:
+                return members.contains { $0.isAway }
+            case .talkRequests:
+                return members.contains { $0.isRequestingTalkPower }
+            }
+        }
+
+        func matches(user: TS3UserSummary) -> Bool {
+            switch self {
+            case .mutedUsers:
+                return user.isInputMuted || user.isOutputMuted
+            case .awayUsers:
+                return user.isAway
+            case .talkRequests:
+                return user.isRequestingTalkPower
+            case .all, .current, .default, .passwordProtected, .unsubscribed, .populated, .empty:
+                return true
+            }
+        }
+    }
+
     @EnvironmentObject private var model: TS3AppModel
     @State private var isShowingServerTools = false
     @State private var isShowingChat = false
@@ -705,6 +773,7 @@ struct ChannelListView: View {
     @State private var isExportingChannelTree = false
     @State private var channelTreeDocument = TS3TextFileDocument()
     @State private var channelSearchText = ""
+    @State private var channelTreeFilter: ChannelTreeFilter = .all
 
     var body: some View {
         VStack(spacing: 12) {
@@ -752,6 +821,24 @@ struct ChannelListView: View {
 
             ChannelSearchField(text: $channelSearchText)
                 .padding(.horizontal)
+
+            HStack(spacing: 10) {
+                Picker("Filter", selection: $channelTreeFilter) {
+                    ForEach(ChannelTreeFilter.allCases) { filter in
+                        Text(filter.title).tag(filter)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+
+                if hasChannelTreeFilters {
+                    Button("Clear") {
+                        channelTreeFilter = .all
+                        channelSearchText = ""
+                    }
+                    .buttonStyle(TS3BorderedButtonStyle())
+                }
+            }
+            .padding(.horizontal)
 
             List {
                 Section(header: Text(channelSectionTitle)) {
@@ -842,11 +929,15 @@ struct ChannelListView: View {
     }
 
     private var channelSectionTitle: String {
-        isSearching ? "Search Results" : "Channels"
+        hasChannelTreeFilters ? "Filtered Channels" : "Channels"
     }
 
     private var isSearching: Bool {
         !normalizedSearchText.isEmpty
+    }
+
+    private var hasChannelTreeFilters: Bool {
+        isSearching || channelTreeFilter != .all
     }
 
     private var normalizedSearchText: String {
@@ -854,9 +945,9 @@ struct ChannelListView: View {
     }
 
     private var filteredChannels: [TS3ChannelSummary] {
-        guard isSearching else { return model.channels }
-        let matchingChannelIds = Set(model.channels.filter(channelMatchesSearch).map(\.id))
-        let matchingMemberChannelIds = Set(model.clients.filter(userMatchesSearch).map(\.channelId))
+        guard hasChannelTreeFilters else { return model.channels }
+        let matchingChannelIds = Set(model.channels.filter(channelMatchesFilters).map(\.id))
+        let matchingMemberChannelIds = Set(model.clients.filter(userMatchesFilters).map(\.channelId))
         var included = matchingChannelIds.union(matchingMemberChannelIds)
 
         let channelsById = Dictionary(uniqueKeysWithValues: model.channels.map { ($0.id, $0) })
@@ -902,10 +993,23 @@ struct ChannelListView: View {
 
     private func members(in channelId: Int) -> [TS3UserSummary] {
         let members = model.members(in: channelId)
-        guard isSearching, !channelMatchesSearch(model.channels.first { $0.id == channelId }) else {
+        guard hasChannelTreeFilters,
+              !channelMatchesFilters(model.channels.first { $0.id == channelId }) else {
             return members
         }
-        return members.filter(userMatchesSearch)
+        return members.filter(userMatchesFilters)
+    }
+
+    private func channelMatchesFilters(_ channel: TS3ChannelSummary?) -> Bool {
+        guard let channel else { return false }
+        let channelMembers = model.members(in: channel.id)
+        let matchesState = channelTreeFilter.matches(channel: channel, members: channelMembers)
+        let matchesSearch = !isSearching || channelMatchesSearch(channel)
+        return matchesState && matchesSearch
+    }
+
+    private func userMatchesFilters(_ user: TS3UserSummary) -> Bool {
+        channelTreeFilter.matches(user: user) && (!isSearching || userMatchesSearch(user))
     }
 
     private func channelMatchesSearch(_ channel: TS3ChannelSummary?) -> Bool {
