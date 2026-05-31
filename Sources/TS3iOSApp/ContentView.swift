@@ -8683,6 +8683,63 @@ struct BanListSheet: View {
 }
 
 struct ComplaintListSheet: View {
+    private enum ComplaintFilter: String, CaseIterable, Identifiable {
+        case all
+        case namedSource
+        case anonymousSource
+        case withMessage
+        case withoutMessage
+        case withTimestamp
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Complaints"
+            case .namedSource: return "Named Source"
+            case .anonymousSource: return "Anonymous Source"
+            case .withMessage: return "With Message"
+            case .withoutMessage: return "Without Message"
+            case .withTimestamp: return "With Date"
+            }
+        }
+
+        func matches(_ entry: TS3ComplaintSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .namedSource:
+                return entry.sourceName?.isEmpty == false
+            case .anonymousSource:
+                return entry.sourceName?.isEmpty != false
+            case .withMessage:
+                return entry.message?.isEmpty == false
+            case .withoutMessage:
+                return entry.message?.isEmpty != false
+            case .withTimestamp:
+                return entry.timestamp != nil
+            }
+        }
+    }
+
+    private enum ComplaintSortMode: String, CaseIterable, Identifiable {
+        case date
+        case source
+        case sourceDatabaseId
+        case message
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .date: return "Date"
+            case .source: return "Source"
+            case .sourceDatabaseId: return "Source DB"
+            case .message: return "Message"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isConfirmingDeleteAll = false
@@ -8690,6 +8747,9 @@ struct ComplaintListSheet: View {
     @State private var isExportingComplaints = false
     @State private var complaintExportDocument = TS3TextFileDocument()
     @State private var searchText = ""
+    @State private var complaintFilter: ComplaintFilter = .all
+    @State private var sortMode: ComplaintSortMode = .date
+    @State private var sortAscending = false
 
     private var complaintSnapshot: String {
         filteredComplaintEntries.map(\.clipboardSummary).joined(separator: "\n")
@@ -8717,11 +8777,25 @@ struct ComplaintListSheet: View {
                     }
                 }
 
-                Section(header: Text("Search")) {
+                Section(header: Text("Filters")) {
+                    Picker("Type", selection: $complaintFilter) {
+                        ForEach(ComplaintFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(ComplaintSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search complaints", text: $searchText)
                         .ts3PlainTextField()
-                    if isSearching {
-                        Button("Clear Search") {
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            complaintFilter = .all
+                            sortMode = .date
+                            sortAscending = false
                             searchText = ""
                         }
                     }
@@ -8839,20 +8913,79 @@ struct ComplaintListSheet: View {
         !normalizedSearchText.isEmpty
     }
 
+    private var hasLocalFilters: Bool {
+        isSearching || complaintFilter != .all || sortMode != .date || sortAscending
+    }
+
     private var filteredComplaintEntries: [TS3ComplaintSummary] {
-        guard isSearching else { return model.complaintEntries }
-        return model.complaintEntries.filter { entry in
-            containsSearch(entry.targetName)
-                || containsSearch(entry.sourceName)
-                || containsSearch(entry.message)
-                || String(entry.targetClientDatabaseId).contains(normalizedSearchText)
-                || String(entry.sourceClientDatabaseId).contains(normalizedSearchText)
+        let entries = model.complaintEntries.filter { entry in
+            complaintFilter.matches(entry) && (
+                !isSearching
+                    || containsSearch(entry.targetName)
+                    || containsSearch(entry.sourceName)
+                    || containsSearch(entry.message)
+                    || String(entry.targetClientDatabaseId).contains(normalizedSearchText)
+                    || String(entry.sourceClientDatabaseId).contains(normalizedSearchText)
+            )
         }
+        return sortedComplaintEntries(entries)
     }
 
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedComplaintEntries(_ entries: [TS3ComplaintSummary]) -> [TS3ComplaintSummary] {
+        entries.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .date:
+                comparison = compareDates(lhs.timestamp, rhs.timestamp)
+            case .source:
+                comparison = sourceDisplayName(lhs).localizedCaseInsensitiveCompare(sourceDisplayName(rhs))
+            case .sourceDatabaseId:
+                comparison = compareInts(lhs.sourceClientDatabaseId, rhs.sourceClientDatabaseId)
+            case .message:
+                comparison = (lhs.message ?? "").localizedCaseInsensitiveCompare(rhs.message ?? "")
+            }
+
+            if comparison == .orderedSame {
+                return lhs.sourceClientDatabaseId < rhs.sourceClientDatabaseId
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareDates(_ lhs: Date?, _ rhs: Date?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs.compare(rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs {
+            return .orderedSame
+        }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func sourceDisplayName(_ entry: TS3ComplaintSummary) -> String {
+        if let sourceName = entry.sourceName, !sourceName.isEmpty {
+            return sourceName
+        }
+        return "Client DB \(entry.sourceClientDatabaseId)"
     }
 }
 
