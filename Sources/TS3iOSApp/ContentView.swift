@@ -12,6 +12,7 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isShowingKeyboardShortcuts = false
 
     private var debugButton: some View {
         Button {
@@ -26,6 +27,13 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 HStack {
                     Spacer()
+                    Button {
+                        isShowingKeyboardShortcuts = true
+                    } label: {
+                        Label("快捷键", systemImage: "keyboard")
+                    }
+                    .buttonStyle(TS3BorderedButtonStyle())
+                    .keyboardShortcut("/", modifiers: [.command])
                     debugButton
                         .buttonStyle(TS3BorderedButtonStyle())
                         .keyboardShortcut("l", modifiers: [.command, .shift])
@@ -48,9 +56,97 @@ struct ContentView: View {
                 DebugLogView()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingKeyboardShortcuts) {
+                KeyboardShortcutsSheet()
+                    .environmentObject(model)
+            }
         }
         .ts3InlineNavigationTitle()
     }
+}
+
+struct TS3KeyboardShortcutSummary: Identifiable {
+    let id = UUID()
+    let group: String
+    let action: String
+    let keys: String
+}
+
+struct KeyboardShortcutsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var isExportingShortcuts = false
+    @State private var shortcutsDocument = TS3TextFileDocument()
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Actions")) {
+                    ForEach(Self.shortcuts) { shortcut in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(shortcut.action)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(shortcut.group)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text(shortcut.keys)
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("Export")) {
+                    Button("Copy Shortcuts") {
+                        TS3PlatformSupport.copyToPasteboard(shortcutsSnapshot)
+                    }
+                    Button("Export Shortcuts") {
+                        shortcutsDocument = TS3TextFileDocument(data: Data(shortcutsSnapshot.utf8))
+                        isExportingShortcuts = true
+                    }
+                }
+            }
+            .navigationTitle("Keyboard Shortcuts")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingShortcuts,
+                document: shortcutsDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-keyboard-shortcuts"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private var shortcutsSnapshot: String {
+        Self.shortcuts.map { "\($0.group): \($0.action) - \($0.keys)" }.joined(separator: "\n")
+    }
+
+    private static let shortcuts: [TS3KeyboardShortcutSummary] = [
+        TS3KeyboardShortcutSummary(group: "Global", action: "Show Keyboard Shortcuts", keys: "Command-/"),
+        TS3KeyboardShortcutSummary(group: "Global", action: "Show Debug Log", keys: "Command-Shift-L"),
+        TS3KeyboardShortcutSummary(group: "Voice", action: "Talk / Stop Talking", keys: "Command-T"),
+        TS3KeyboardShortcutSummary(group: "Voice", action: "Mute / Unmute Microphone", keys: "Command-Shift-M"),
+        TS3KeyboardShortcutSummary(group: "Voice", action: "Mute / Unmute Sound", keys: "Command-Shift-S"),
+        TS3KeyboardShortcutSummary(group: "Profile", action: "Set / Clear Away", keys: "Command-Shift-A"),
+        TS3KeyboardShortcutSummary(group: "Profile", action: "Apply Nickname", keys: "Command-Return"),
+        TS3KeyboardShortcutSummary(group: "Server", action: "Refresh Channels and Clients", keys: "Command-Shift-R"),
+        TS3KeyboardShortcutSummary(group: "Server", action: "View Server Logs", keys: "Command-Shift-G"),
+        TS3KeyboardShortcutSummary(group: "Server", action: "Manage Contacts", keys: "Command-Shift-C")
+    ]
 }
 
 struct ConnectingView: View {
@@ -12383,6 +12479,20 @@ struct TalkControlBar: View {
                     .foregroundColor(.secondary)
                 Spacer()
                 Button {
+                    model.toggleInputMuted()
+                } label: {
+                    Label(model.isInputMuted ? "Mic Muted" : "Mic", systemImage: model.isInputMuted ? "mic.slash" : "mic")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                Button {
+                    model.toggleOutputMuted()
+                } label: {
+                    Label(model.isOutputMuted ? "Sound Muted" : "Sound", systemImage: model.isOutputMuted ? "speaker.slash" : "speaker.wave.2")
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                Button {
                     isShowingSelfStatus = true
                 } label: {
                     Label(model.isAway ? "Away" : "Self", systemImage: model.isAway ? "moon.zzz" : "person.crop.circle")
@@ -12408,6 +12518,7 @@ struct TalkControlBar: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
+            .keyboardShortcut("t", modifiers: [.command])
         }
         .padding()
         .sheet(isPresented: $isShowingAudioSettings) {
