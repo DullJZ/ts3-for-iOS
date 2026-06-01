@@ -214,11 +214,14 @@ struct ConnectView: View {
     @State private var isShowingIdentity = false
     @State private var isShowingBookmarkImporter = false
     @State private var isExportingBookmarks = false
+    @State private var isImportingRecentConnections = false
+    @State private var isExportingRecentConnections = false
     @State private var isImportingRecoverySettings = false
     @State private var isExportingRecoverySettings = false
     @State private var isExportingRecoverySnapshot = false
     @State private var isConfirmingClearRecentConnections = false
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
+    @State private var recentConnectionsDocument = TS3BookmarkFileDocument()
     @State private var recoverySettingsDocument = TS3TextFileDocument()
     @State private var recoverySnapshotDocument = TS3TextFileDocument()
 
@@ -355,6 +358,12 @@ struct ConnectView: View {
                         isConfirmingClearRecentConnections = true
                     }
                     .foregroundColor(.red)
+                    Button("Export Recent Servers") {
+                        exportRecentConnections()
+                    }
+                    Button("Import Recent Servers") {
+                        isImportingRecentConnections = true
+                    }
                 }
             }
 
@@ -553,6 +562,27 @@ struct ConnectView: View {
             }
         }
         .fileImporter(
+            isPresented: $isImportingRecentConnections,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                importRecentConnections(from: url)
+            } else if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingRecentConnections,
+            document: recentConnectionsDocument,
+            contentType: .json,
+            defaultFilename: "ts3-recent-servers"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileImporter(
             isPresented: $isImportingRecoverySettings,
             allowedContentTypes: [.json, .data],
             allowsMultipleSelection: false
@@ -633,6 +663,29 @@ struct ConnectView: View {
         }
         do {
             _ = try model.importBookmarks(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportRecentConnections() {
+        do {
+            recentConnectionsDocument = TS3BookmarkFileDocument(data: try model.recentConnectionsExportData())
+            isExportingRecentConnections = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importRecentConnections(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importRecentConnections(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }

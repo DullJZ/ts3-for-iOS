@@ -1810,6 +1810,41 @@ final class TS3AppModel: ObservableObject {
         saveRecentConnections()
     }
 
+    func recentConnectionsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(recentConnections)
+    }
+
+    @discardableResult
+    func importRecentConnections(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ConnectionSnapshot].self, from: data)
+        var merged = recentConnections
+        for snapshot in imported.reversed() {
+            let host = snapshot.host.trimmingCharacters(in: .whitespacesAndNewlines)
+            let port = snapshot.port.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !host.isEmpty, !port.isEmpty else { continue }
+            let normalized = TS3ConnectionSnapshot(
+                id: snapshot.id,
+                host: host,
+                port: port,
+                nickname: snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+                serverPassword: snapshot.serverPassword,
+                defaultChannel: snapshot.defaultChannel,
+                defaultChannelPassword: snapshot.defaultChannelPassword,
+                privilegeKey: snapshot.privilegeKey
+            )
+            merged.removeAll {
+                $0.host.caseInsensitiveCompare(host) == .orderedSame && $0.port == port
+            }
+            merged.insert(normalized, at: 0)
+        }
+        recentConnections = Array(merged.prefix(12))
+        saveRecentConnections()
+        lastError = nil
+        return imported.count
+    }
+
     func applyBookmark(_ bookmark: TS3BookmarkSummary) {
         serverHost = bookmark.host
         serverPort = bookmark.port
