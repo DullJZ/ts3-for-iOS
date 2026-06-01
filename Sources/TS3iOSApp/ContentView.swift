@@ -11324,11 +11324,15 @@ struct BanListSheet: View {
     @State private var isConfirmingDeleteVisible = false
     @State private var isExportingBans = false
     @State private var isExportingBanBackup = false
+    @State private var isExportingPresets = false
     @State private var isImportingBans = false
+    @State private var isImportingPresets = false
     @State private var banExportDocument = TS3TextFileDocument()
     @State private var banBackupDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var searchText = ""
     @State private var banFilter: BanFilter = .all
+    @State private var presetName = ""
     @State private var ip = ""
     @State private var name = ""
     @State private var uniqueIdentifier = ""
@@ -11383,6 +11387,50 @@ struct BanListSheet: View {
                     }
                     TextField("Search bans", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveBanFilterPreset(
+                                name: presetName,
+                                banFilter: banFilter.rawValue,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.banFilterPresets.isEmpty {
+                            Text("No saved ban filter presets")
+                        } else {
+                            ForEach(model.banFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteBanFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.banFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             banFilter = .all
@@ -11456,6 +11504,16 @@ struct BanListSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-ban-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .fileImporter(
                 isPresented: $isImportingBans,
                 allowedContentTypes: [.json, .data],
@@ -11463,6 +11521,17 @@ struct BanListSheet: View {
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
                     importBanBackup(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -11555,6 +11624,45 @@ struct BanListSheet: View {
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func applyPreset(_ preset: TS3BanFilterPreset) {
+        banFilter = BanFilter(rawValue: preset.banFilter) ?? .all
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3BanFilterPreset) -> String {
+        var parts = [
+            (BanFilter(rawValue: preset.banFilter) ?? .all).title
+        ]
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.banFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importBanFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private func exportBanBackup() {

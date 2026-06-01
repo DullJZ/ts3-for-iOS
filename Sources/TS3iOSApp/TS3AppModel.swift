@@ -785,6 +785,28 @@ struct TS3OfflineMessageFilterPreset: Identifiable, Codable {
     }
 }
 
+struct TS3BanFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var banFilter: String
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        banFilter: String,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.banFilter = banFilter
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3DownloadedFileSummary: Identifiable {
     let id = UUID()
     let name: String
@@ -995,6 +1017,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var chatFilterPresets: [TS3ChatFilterPreset]
     var fileBrowserBookmarks: [TS3FileBrowserBookmark]
     var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset]
+    var banFilterPresets: [TS3BanFilterPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -1017,6 +1040,7 @@ private struct TS3ClientMigrationPackage: Codable {
         chatFilterPresets: [TS3ChatFilterPreset],
         fileBrowserBookmarks: [TS3FileBrowserBookmark],
         offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset],
+        banFilterPresets: [TS3BanFilterPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -1038,6 +1062,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.chatFilterPresets = chatFilterPresets
         self.fileBrowserBookmarks = fileBrowserBookmarks
         self.offlineMessageFilterPresets = offlineMessageFilterPresets
+        self.banFilterPresets = banFilterPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -1061,6 +1086,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case chatFilterPresets
         case fileBrowserBookmarks
         case offlineMessageFilterPresets
+        case banFilterPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1108,6 +1134,10 @@ private struct TS3ClientMigrationPackage: Codable {
         offlineMessageFilterPresets = try container.decodeIfPresent(
             [TS3OfflineMessageFilterPreset].self,
             forKey: .offlineMessageFilterPresets
+        ) ?? []
+        banFilterPresets = try container.decodeIfPresent(
+            [TS3BanFilterPreset].self,
+            forKey: .banFilterPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1572,6 +1602,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset] = []
     @Published private(set) var eventFilterPresets: [TS3EventFilterPreset] = []
     @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
+    @Published private(set) var banFilterPresets: [TS3BanFilterPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1668,6 +1699,7 @@ final class TS3AppModel: ObservableObject {
         loadChannelSubscriptionPresets()
         loadEventFilterPresets()
         loadChatFilterPresets()
+        loadBanFilterPresets()
         loadContacts()
         loadChatHistory()
         loadFileBrowserBookmarks()
@@ -5144,6 +5176,48 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveBanFilterPreset(name: String, banFilter: String, searchText: String) {
+        let preset = sanitizedBanFilterPreset(TS3BanFilterPreset(
+            name: name,
+            banFilter: banFilter,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the ban filter preset."
+            return
+        }
+        banFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        banFilterPresets.insert(preset, at: 0)
+        banFilterPresets = sanitizedBanFilterPresets(banFilterPresets)
+        saveBanFilterPresets()
+        lastError = nil
+    }
+
+    func deleteBanFilterPreset(_ preset: TS3BanFilterPreset) {
+        banFilterPresets.removeAll { $0.id == preset.id }
+        saveBanFilterPresets()
+    }
+
+    func banFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(banFilterPresets)
+    }
+
+    @discardableResult
+    func importBanFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3BanFilterPreset].self, from: data)
+        var merged = banFilterPresets
+        for preset in sanitizedBanFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        banFilterPresets = sanitizedBanFilterPresets(merged)
+        saveBanFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -5842,6 +5916,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-offline-message-filter-presets.json")
     }
 
+    private var banFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-ban-filter-presets.json")
+    }
+
     private var whisperPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-whisper-presets.json")
@@ -6497,6 +6576,51 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadBanFilterPresets() {
+        guard let data = try? Data(contentsOf: banFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3BanFilterPreset].self, from: data) else {
+            banFilterPresets = []
+            return
+        }
+        banFilterPresets = sanitizedBanFilterPresets(decoded)
+    }
+
+    private func saveBanFilterPresets() {
+        do {
+            let directory = banFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(banFilterPresets)
+            try data.write(to: banFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedBanFilterPresets(_ presets: [TS3BanFilterPreset]) -> [TS3BanFilterPreset] {
+        presets.compactMap(sanitizedBanFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedBanFilterPreset(_ preset: TS3BanFilterPreset) -> TS3BanFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let banFilter = ["all", "ip", "name", "uniqueIdentifier", "permanent", "temporary"].contains(preset.banFilter)
+            ? preset.banFilter
+            : "all"
+        return TS3BanFilterPreset(
+            id: preset.id,
+            name: name,
+            banFilter: banFilter,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -6577,6 +6701,7 @@ final class TS3AppModel: ObservableObject {
             chatFilterPresets: chatFilterPresets,
             fileBrowserBookmarks: fileBrowserBookmarks,
             offlineMessageFilterPresets: offlineMessageFilterPresets,
+            banFilterPresets: banFilterPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -6601,6 +6726,7 @@ final class TS3AppModel: ObservableObject {
         try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
         try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
         try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
+        try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))
