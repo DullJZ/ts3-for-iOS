@@ -1237,6 +1237,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var exportedAt: Date
     var bookmarks: [TS3BookmarkSummary]
     var recentConnections: [TS3ConnectionSnapshot]
+    var connectionFilterPresets: [TS3ConnectionFilterPreset]
     var contacts: [TS3ContactEntry]
     var contactFilterPresets: [TS3ContactFilterPreset]
     var notificationSettings: TS3NotificationSettings
@@ -1269,6 +1270,7 @@ private struct TS3ClientMigrationPackage: Codable {
         exportedAt: Date = Date(),
         bookmarks: [TS3BookmarkSummary],
         recentConnections: [TS3ConnectionSnapshot],
+        connectionFilterPresets: [TS3ConnectionFilterPreset],
         contacts: [TS3ContactEntry],
         contactFilterPresets: [TS3ContactFilterPreset],
         notificationSettings: TS3NotificationSettings,
@@ -1300,6 +1302,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.exportedAt = exportedAt
         self.bookmarks = bookmarks
         self.recentConnections = recentConnections
+        self.connectionFilterPresets = connectionFilterPresets
         self.contacts = contacts
         self.contactFilterPresets = contactFilterPresets
         self.notificationSettings = notificationSettings
@@ -1333,6 +1336,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case exportedAt
         case bookmarks
         case recentConnections
+        case connectionFilterPresets
         case contacts
         case contactFilterPresets
         case notificationSettings
@@ -1367,6 +1371,10 @@ private struct TS3ClientMigrationPackage: Codable {
         exportedAt = try container.decodeIfPresent(Date.self, forKey: .exportedAt) ?? Date()
         bookmarks = try container.decodeIfPresent([TS3BookmarkSummary].self, forKey: .bookmarks) ?? []
         recentConnections = try container.decodeIfPresent([TS3ConnectionSnapshot].self, forKey: .recentConnections) ?? []
+        connectionFilterPresets = try container.decodeIfPresent(
+            [TS3ConnectionFilterPreset].self,
+            forKey: .connectionFilterPresets
+        ) ?? []
         contacts = try container.decodeIfPresent([TS3ContactEntry].self, forKey: .contacts) ?? []
         contactFilterPresets = try container.decodeIfPresent(
             [TS3ContactFilterPreset].self,
@@ -1524,6 +1532,37 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         defaultChannel = try container.decode(String.self, forKey: .defaultChannel)
         defaultChannelPassword = try container.decode(String.self, forKey: .defaultChannelPassword)
         privilegeKey = try container.decodeIfPresent(String.self, forKey: .privilegeKey) ?? ""
+    }
+}
+
+struct TS3ConnectionFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var connectionFilter: String
+    var sortMode: String
+    var sortAscending: Bool
+    var bookmarkFolderFilter: String
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        connectionFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        bookmarkFolderFilter: String,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.connectionFilter = connectionFilter
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.bookmarkFolderFilter = bookmarkFolderFilter
+        self.searchText = searchText
+        self.updatedAt = updatedAt
     }
 }
 
@@ -2008,6 +2047,7 @@ final class TS3AppModel: ObservableObject {
     @Published var awayMessage = ""
     @Published private(set) var selfStatusProfiles: [TS3SelfStatusProfile] = []
     @Published private(set) var recentConnections: [TS3ConnectionSnapshot] = []
+    @Published private(set) var connectionFilterPresets: [TS3ConnectionFilterPreset] = []
     @Published private(set) var lastConnectionSnapshot: TS3ConnectionSnapshot?
     @Published private(set) var lastDisconnectMessage: String?
 
@@ -2031,6 +2071,7 @@ final class TS3AppModel: ObservableObject {
         loadUserPlaybackPreferences()
         loadBookmarks()
         loadRecentConnections()
+        loadConnectionFilterPresets()
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
         loadEventFilterPresets()
@@ -2761,6 +2802,58 @@ final class TS3AppModel: ObservableObject {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(bookmarks)
+    }
+
+    func saveConnectionFilterPreset(
+        name: String,
+        connectionFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        bookmarkFolderFilter: String,
+        searchText: String
+    ) {
+        let preset = sanitizedConnectionFilterPreset(TS3ConnectionFilterPreset(
+            name: name,
+            connectionFilter: connectionFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            bookmarkFolderFilter: bookmarkFolderFilter,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the connection filter preset."
+            return
+        }
+        connectionFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        connectionFilterPresets.insert(preset, at: 0)
+        connectionFilterPresets = sanitizedConnectionFilterPresets(connectionFilterPresets)
+        saveConnectionFilterPresets()
+        lastError = nil
+    }
+
+    func deleteConnectionFilterPreset(_ preset: TS3ConnectionFilterPreset) {
+        connectionFilterPresets.removeAll { $0.id == preset.id }
+        saveConnectionFilterPresets()
+    }
+
+    func connectionFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(connectionFilterPresets)
+    }
+
+    @discardableResult
+    func importConnectionFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ConnectionFilterPreset].self, from: data)
+        var merged = connectionFilterPresets
+        for preset in sanitizedConnectionFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        connectionFilterPresets = sanitizedConnectionFilterPresets(merged)
+        saveConnectionFilterPresets()
+        lastError = nil
+        return imported.count
     }
 
     @discardableResult
@@ -6597,6 +6690,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-bookmarks.json")
     }
 
+    private var connectionFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-connection-filter-presets.json")
+    }
+
     private var contactsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-contacts.json")
@@ -7829,6 +7927,7 @@ final class TS3AppModel: ObservableObject {
         let package = TS3ClientMigrationPackage(
             bookmarks: bookmarks,
             recentConnections: recentConnections,
+            connectionFilterPresets: connectionFilterPresets,
             contacts: contacts,
             contactFilterPresets: contactFilterPresets,
             notificationSettings: notificationSettingsSnapshot,
@@ -7863,6 +7962,7 @@ final class TS3AppModel: ObservableObject {
         let package = try JSONDecoder().decode(TS3ClientMigrationPackage.self, from: data)
         try importBookmarks(from: encodedPackageSection(package.bookmarks))
         try importRecentConnections(from: encodedPackageSection(package.recentConnections))
+        try importConnectionFilterPresets(from: encodedPackageSection(package.connectionFilterPresets))
         try importContacts(from: encodedPackageSection(package.contacts))
         try importContactFilterPresets(from: encodedPackageSection(package.contactFilterPresets))
         try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
@@ -7949,6 +8049,63 @@ final class TS3AppModel: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func loadConnectionFilterPresets() {
+        guard let data = try? Data(contentsOf: connectionFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ConnectionFilterPreset].self, from: data) else {
+            connectionFilterPresets = []
+            return
+        }
+        connectionFilterPresets = sanitizedConnectionFilterPresets(decoded)
+    }
+
+    private func saveConnectionFilterPresets() {
+        do {
+            let directory = connectionFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(connectionFilterPresets)
+            try data.write(to: connectionFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedConnectionFilterPresets(
+        _ presets: [TS3ConnectionFilterPreset]
+    ) -> [TS3ConnectionFilterPreset] {
+        presets.compactMap(sanitizedConnectionFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedConnectionFilterPreset(
+        _ preset: TS3ConnectionFilterPreset
+    ) -> TS3ConnectionFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let connectionFilter = ["all", "withPassword", "withDefaultChannel", "withPrivilegeKey"].contains(preset.connectionFilter)
+            ? preset.connectionFilter
+            : "all"
+        let sortMode = ["savedOrder", "name", "host", "nickname", "port"].contains(preset.sortMode)
+            ? preset.sortMode
+            : "savedOrder"
+        let folder = preset.bookmarkFolderFilter.trimmingCharacters(in: .whitespacesAndNewlines)
+        let bookmarkFolderFilter = folder == "__unfiled__" ? folder : String(folder.prefix(120))
+        return TS3ConnectionFilterPreset(
+            id: preset.id,
+            name: name,
+            connectionFilter: connectionFilter,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            bookmarkFolderFilter: bookmarkFolderFilter,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
     }
 
     private func loadContactFilterPresets() {

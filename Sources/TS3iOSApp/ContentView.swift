@@ -279,6 +279,7 @@ struct ConnectView: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var bookmarkName = ""
     @State private var bookmarkFolder = ""
+    @State private var connectionPresetName = ""
     @State private var serverURLText = ""
     @State private var connectionSearchText = ""
     @State private var connectionFilter: ConnectionFilter = .all
@@ -289,6 +290,8 @@ struct ConnectView: View {
     @State private var isShowingIdentity = false
     @State private var isShowingBookmarkImporter = false
     @State private var isExportingBookmarks = false
+    @State private var isImportingConnectionPresets = false
+    @State private var isExportingConnectionPresets = false
     @State private var isImportingRecentConnections = false
     @State private var isExportingRecentConnections = false
     @State private var isImportingRecoverySettings = false
@@ -298,6 +301,7 @@ struct ConnectView: View {
     @State private var isExportingClientPackage = false
     @State private var isConfirmingClearRecentConnections = false
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
+    @State private var connectionPresetsDocument = TS3BookmarkFileDocument()
     @State private var recentConnectionsDocument = TS3BookmarkFileDocument()
     @State private var recoverySettingsDocument = TS3TextFileDocument()
     @State private var recoverySnapshotDocument = TS3TextFileDocument()
@@ -377,6 +381,53 @@ struct ConnectView: View {
                     Toggle("Ascending", isOn: $connectionSortAscending)
                     TextField("Search saved servers", text: $connectionSearchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $connectionPresetName)
+                        Button("Save Current Filters") {
+                            model.saveConnectionFilterPreset(
+                                name: connectionPresetName,
+                                connectionFilter: connectionFilter.rawValue,
+                                sortMode: connectionSortMode.rawValue,
+                                sortAscending: connectionSortAscending,
+                                bookmarkFolderFilter: bookmarkFolderFilter,
+                                searchText: connectionSearchText
+                            )
+                            connectionPresetName = ""
+                        }
+                        .disabled(connectionPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.connectionFilterPresets.isEmpty {
+                            Text("No saved connection filter presets")
+                        } else {
+                            ForEach(model.connectionFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyConnectionPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        connectionPresetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteConnectionFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(connectionPresetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportConnectionPresets()
+                        }
+                        .disabled(model.connectionFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingConnectionPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasSavedConnectionOptions {
                         Button("Clear Saved Connection Filters") {
                             connectionFilter = .all
@@ -674,6 +725,27 @@ struct ConnectView: View {
             }
         }
         .fileImporter(
+            isPresented: $isImportingConnectionPresets,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                importConnectionPresets(from: url)
+            } else if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingConnectionPresets,
+            document: connectionPresetsDocument,
+            contentType: .json,
+            defaultFilename: "ts3-connection-filter-presets"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileImporter(
             isPresented: $isImportingRecentConnections,
             allowedContentTypes: [.json, .data],
             allowsMultipleSelection: false
@@ -796,6 +868,59 @@ struct ConnectView: View {
         }
         do {
             _ = try model.importBookmarks(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyConnectionPreset(_ preset: TS3ConnectionFilterPreset) {
+        connectionFilter = ConnectionFilter(rawValue: preset.connectionFilter) ?? .all
+        connectionSortMode = ConnectionSortMode(rawValue: preset.sortMode) ?? .savedOrder
+        connectionSortAscending = preset.sortAscending
+        bookmarkFolderFilter = preset.bookmarkFolderFilter
+        connectionSearchText = preset.searchText
+        connectionPresetName = preset.name
+    }
+
+    private func connectionPresetSummary(_ preset: TS3ConnectionFilterPreset) -> String {
+        var parts = [
+            (ConnectionFilter(rawValue: preset.connectionFilter) ?? .all).title,
+            "Sort \((ConnectionSortMode(rawValue: preset.sortMode) ?? .savedOrder).title)"
+        ]
+        if !preset.sortAscending {
+            parts.append("Descending")
+        }
+        if !preset.bookmarkFolderFilter.isEmpty {
+            parts.append("Folder \(folderFilterTitle(preset.bookmarkFolderFilter))")
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func folderFilterTitle(_ value: String) -> String {
+        value == "__unfiled__" ? "Unfiled" : value
+    }
+
+    private func exportConnectionPresets() {
+        do {
+            connectionPresetsDocument = TS3BookmarkFileDocument(data: try model.connectionFilterPresetsExportData())
+            isExportingConnectionPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importConnectionPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importConnectionFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
