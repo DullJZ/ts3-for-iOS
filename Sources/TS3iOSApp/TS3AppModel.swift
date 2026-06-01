@@ -754,6 +754,31 @@ struct TS3FileBrowserBookmark: Identifiable, Codable {
     }
 }
 
+struct TS3FileBrowserFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var sortMode: String
+    var sortAscending: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3OfflineMessageFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -1196,6 +1221,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var eventFilterPresets: [TS3EventFilterPreset]
     var chatFilterPresets: [TS3ChatFilterPreset]
     var fileBrowserBookmarks: [TS3FileBrowserBookmark]
+    var fileBrowserFilterPresets: [TS3FileBrowserFilterPreset]
     var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset]
     var banFilterPresets: [TS3BanFilterPreset]
     var complaintFilterPresets: [TS3ComplaintFilterPreset]
@@ -1225,6 +1251,7 @@ private struct TS3ClientMigrationPackage: Codable {
         eventFilterPresets: [TS3EventFilterPreset],
         chatFilterPresets: [TS3ChatFilterPreset],
         fileBrowserBookmarks: [TS3FileBrowserBookmark],
+        fileBrowserFilterPresets: [TS3FileBrowserFilterPreset],
         offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset],
         banFilterPresets: [TS3BanFilterPreset],
         complaintFilterPresets: [TS3ComplaintFilterPreset],
@@ -1253,6 +1280,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.eventFilterPresets = eventFilterPresets
         self.chatFilterPresets = chatFilterPresets
         self.fileBrowserBookmarks = fileBrowserBookmarks
+        self.fileBrowserFilterPresets = fileBrowserFilterPresets
         self.offlineMessageFilterPresets = offlineMessageFilterPresets
         self.banFilterPresets = banFilterPresets
         self.complaintFilterPresets = complaintFilterPresets
@@ -1283,6 +1311,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case eventFilterPresets
         case chatFilterPresets
         case fileBrowserBookmarks
+        case fileBrowserFilterPresets
         case offlineMessageFilterPresets
         case banFilterPresets
         case complaintFilterPresets
@@ -1334,6 +1363,10 @@ private struct TS3ClientMigrationPackage: Codable {
         fileBrowserBookmarks = try container.decodeIfPresent(
             [TS3FileBrowserBookmark].self,
             forKey: .fileBrowserBookmarks
+        ) ?? []
+        fileBrowserFilterPresets = try container.decodeIfPresent(
+            [TS3FileBrowserFilterPreset].self,
+            forKey: .fileBrowserFilterPresets
         ) ?? []
         offlineMessageFilterPresets = try container.decodeIfPresent(
             [TS3OfflineMessageFilterPreset].self,
@@ -1862,6 +1895,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileTransferProgress: Double?
     @Published var fileTransfers: [TS3FileTransferSummary] = []
     @Published private(set) var fileBrowserBookmarks: [TS3FileBrowserBookmark] = []
+    @Published private(set) var fileBrowserFilterPresets: [TS3FileBrowserFilterPreset] = []
     @Published private(set) var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset] = []
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
     @Published var bookmarks: [TS3BookmarkSummary] = []
@@ -1943,6 +1977,7 @@ final class TS3AppModel: ObservableObject {
         loadContacts()
         loadChatHistory()
         loadFileBrowserBookmarks()
+        loadFileBrowserFilterPresets()
         loadOfflineMessageFilterPresets()
         loadWhisperPresets()
         loadSelfStatusProfiles()
@@ -5364,6 +5399,54 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveFileBrowserFilterPreset(
+        name: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) {
+        let preset = sanitizedFileBrowserFilterPreset(TS3FileBrowserFilterPreset(
+            name: name,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the file filter preset."
+            return
+        }
+        fileBrowserFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        fileBrowserFilterPresets.insert(preset, at: 0)
+        fileBrowserFilterPresets = sanitizedFileBrowserFilterPresets(fileBrowserFilterPresets)
+        saveFileBrowserFilterPresets()
+        lastError = nil
+    }
+
+    func deleteFileBrowserFilterPreset(_ preset: TS3FileBrowserFilterPreset) {
+        fileBrowserFilterPresets.removeAll { $0.id == preset.id }
+        saveFileBrowserFilterPresets()
+    }
+
+    func fileBrowserFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(fileBrowserFilterPresets)
+    }
+
+    @discardableResult
+    func importFileBrowserFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3FileBrowserFilterPreset].self, from: data)
+        var merged = fileBrowserFilterPresets
+        for preset in sanitizedFileBrowserFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        fileBrowserFilterPresets = sanitizedFileBrowserFilterPresets(merged)
+        saveFileBrowserFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func saveOfflineMessageFilterPreset(
         name: String,
         readFilter: String,
@@ -6459,6 +6542,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-file-browser-bookmarks.json")
     }
 
+    private var fileBrowserFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-file-browser-filter-presets.json")
+    }
+
     private var offlineMessageFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-offline-message-filter-presets.json")
@@ -7100,6 +7188,56 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadFileBrowserFilterPresets() {
+        guard let data = try? Data(contentsOf: fileBrowserFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3FileBrowserFilterPreset].self, from: data) else {
+            fileBrowserFilterPresets = []
+            return
+        }
+        fileBrowserFilterPresets = sanitizedFileBrowserFilterPresets(decoded)
+    }
+
+    private func saveFileBrowserFilterPresets() {
+        do {
+            let directory = fileBrowserFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(fileBrowserFilterPresets)
+            try data.write(to: fileBrowserFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedFileBrowserFilterPresets(
+        _ presets: [TS3FileBrowserFilterPreset]
+    ) -> [TS3FileBrowserFilterPreset] {
+        presets.compactMap(sanitizedFileBrowserFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedFileBrowserFilterPreset(
+        _ preset: TS3FileBrowserFilterPreset
+    ) -> TS3FileBrowserFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let sortMode = ["name", "type", "size", "modified"].contains(preset.sortMode)
+            ? preset.sortMode
+            : "name"
+        return TS3FileBrowserFilterPreset(
+            id: preset.id,
+            name: name,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func loadOfflineMessageFilterPresets() {
         guard let data = try? Data(contentsOf: offlineMessageFilterPresetsURL),
               let decoded = try? JSONDecoder().decode([TS3OfflineMessageFilterPreset].self, from: data) else {
@@ -7620,6 +7758,7 @@ final class TS3AppModel: ObservableObject {
             eventFilterPresets: eventFilterPresets,
             chatFilterPresets: chatFilterPresets,
             fileBrowserBookmarks: fileBrowserBookmarks,
+            fileBrowserFilterPresets: fileBrowserFilterPresets,
             offlineMessageFilterPresets: offlineMessageFilterPresets,
             banFilterPresets: banFilterPresets,
             complaintFilterPresets: complaintFilterPresets,
@@ -7651,6 +7790,7 @@ final class TS3AppModel: ObservableObject {
         try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
         try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
         try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
+        try importFileBrowserFilterPresets(from: encodedPackageSection(package.fileBrowserFilterPresets))
         try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
         try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
         try importComplaintFilterPresets(from: encodedPackageSection(package.complaintFilterPresets))

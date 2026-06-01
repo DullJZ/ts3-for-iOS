@@ -9435,6 +9435,7 @@ struct FileBrowserSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var directoryName = ""
     @State private var bookmarkName = ""
+    @State private var presetName = ""
     @State private var pathText = "/"
     @State private var searchText = ""
     @State private var sortMode: FileSortMode = .name
@@ -9448,9 +9449,12 @@ struct FileBrowserSheet: View {
     @State private var isExportingTransferSnapshot = false
     @State private var isImportingBookmarks = false
     @State private var isExportingBookmarks = false
+    @State private var isImportingPresets = false
+    @State private var isExportingPresets = false
     @State private var directorySnapshotDocument = TS3TextFileDocument()
     @State private var transferSnapshotDocument = TS3TextFileDocument()
     @State private var bookmarksDocument = TS3BookmarkFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadOverwriteNames: [String] = []
     @State private var isShowingUploadConflictActions = false
@@ -9547,6 +9551,51 @@ struct FileBrowserSheet: View {
                     Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search files", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveFileBrowserFilterPreset(
+                                name: presetName,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.fileBrowserFilterPresets.isEmpty {
+                            Text("No saved file filter presets")
+                        } else {
+                            ForEach(model.fileBrowserFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteFileBrowserFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.fileBrowserFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             sortMode = .name
@@ -9798,6 +9847,27 @@ struct FileBrowserSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-file-browser-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .sheet(isPresented: $isShowingUploadConflictActions) {
                 UploadConflictSheet(
                     message: uploadOverwriteMessage,
@@ -9890,6 +9960,49 @@ struct FileBrowserSheet: View {
         }
         do {
             _ = try model.importFileBrowserBookmarks(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyPreset(_ preset: TS3FileBrowserFilterPreset) {
+        sortMode = FileSortMode(rawValue: preset.sortMode) ?? .name
+        sortAscending = preset.sortAscending
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3FileBrowserFilterPreset) -> String {
+        var parts = [
+            "Sort \((FileSortMode(rawValue: preset.sortMode) ?? .name).title)"
+        ]
+        if !preset.sortAscending {
+            parts.append("Descending")
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.fileBrowserFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importFileBrowserFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
