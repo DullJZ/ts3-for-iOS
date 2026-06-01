@@ -1984,6 +1984,19 @@ final class TS3AppModel: ObservableObject {
         return contactStatus(for: sender) == .blocked
     }
 
+    private func isBlockedPoke(_ poke: TS3ClientPoke) -> Bool {
+        guard !poke.isOwnPoke else { return false }
+        if let uniqueIdentifier = poke.senderUniqueIdentifier,
+           contacts.first(where: { $0.uniqueIdentifier == uniqueIdentifier })?.status == .blocked {
+            return true
+        }
+        guard let senderId = poke.senderId,
+              let sender = clients.first(where: { $0.id == senderId }) else {
+            return false
+        }
+        return contactStatus(for: sender) == .blocked
+    }
+
     private func applyPlaybackMute(for user: TS3UserSummary) {
         client?.setPlaybackMuted(isPlaybackMuted(for: user), forClientId: user.id)
     }
@@ -7450,6 +7463,7 @@ extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3Client(_ client: TS3Client, didReceiveClientPoke poke: TS3ClientPoke) {
         Task { @MainActor in
             guard !poke.isOwnPoke else { return }
+            guard !self.isBlockedPoke(poke) else { return }
             self.pokeEvents.insert(TS3PokeSummary(poke: poke), at: 0)
             if self.pokeEvents.count > 50 {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
