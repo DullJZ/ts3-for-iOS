@@ -729,6 +729,31 @@ struct TS3FileEntrySummary: Identifiable {
     }
 }
 
+struct TS3FileBrowserBookmark: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var channelId: Int
+    var channelName: String
+    var path: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        channelId: Int,
+        channelName: String,
+        path: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.channelId = channelId
+        self.channelName = channelName
+        self.path = path
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3DownloadedFileSummary: Identifiable {
     let id = UUID()
     let name: String
@@ -937,6 +962,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
     var eventFilterPresets: [TS3EventFilterPreset]
     var chatFilterPresets: [TS3ChatFilterPreset]
+    var fileBrowserBookmarks: [TS3FileBrowserBookmark]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -957,6 +983,7 @@ private struct TS3ClientMigrationPackage: Codable {
         channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
         eventFilterPresets: [TS3EventFilterPreset],
         chatFilterPresets: [TS3ChatFilterPreset],
+        fileBrowserBookmarks: [TS3FileBrowserBookmark],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -976,6 +1003,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.channelSubscriptionPresets = channelSubscriptionPresets
         self.eventFilterPresets = eventFilterPresets
         self.chatFilterPresets = chatFilterPresets
+        self.fileBrowserBookmarks = fileBrowserBookmarks
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -997,6 +1025,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case channelSubscriptionPresets
         case eventFilterPresets
         case chatFilterPresets
+        case fileBrowserBookmarks
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1036,6 +1065,10 @@ private struct TS3ClientMigrationPackage: Codable {
         chatFilterPresets = try container.decodeIfPresent(
             [TS3ChatFilterPreset].self,
             forKey: .chatFilterPresets
+        ) ?? []
+        fileBrowserBookmarks = try container.decodeIfPresent(
+            [TS3FileBrowserBookmark].self,
+            forKey: .fileBrowserBookmarks
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1524,6 +1557,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileTransferStatus: String?
     @Published var fileTransferProgress: Double?
     @Published var fileTransfers: [TS3FileTransferSummary] = []
+    @Published private(set) var fileBrowserBookmarks: [TS3FileBrowserBookmark] = []
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var contacts: [TS3ContactEntry] = []
@@ -1596,6 +1630,7 @@ final class TS3AppModel: ObservableObject {
         loadChatFilterPresets()
         loadContacts()
         loadChatHistory()
+        loadFileBrowserBookmarks()
         loadWhisperPresets()
         loadSelfStatusProfiles()
         Task { @MainActor in
@@ -4948,6 +4983,61 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveCurrentFileBrowserBookmark(name: String) {
+        guard let channelId = fileBrowserChannelId else {
+            lastError = "No channel is selected for file browsing."
+            return
+        }
+        let channelName = channels.first { $0.id == channelId }?.name ?? "Channel \(channelId)"
+        let bookmark = sanitizedFileBrowserBookmark(TS3FileBrowserBookmark(
+            name: name,
+            channelId: channelId,
+            channelName: channelName,
+            path: fileBrowserPath
+        ))
+        guard let bookmark else {
+            lastError = "Enter a name for the file bookmark."
+            return
+        }
+        fileBrowserBookmarks.removeAll { $0.name.caseInsensitiveCompare(bookmark.name) == .orderedSame }
+        fileBrowserBookmarks.insert(bookmark, at: 0)
+        fileBrowserBookmarks = sanitizedFileBrowserBookmarks(fileBrowserBookmarks)
+        saveFileBrowserBookmarks()
+        lastError = nil
+    }
+
+    func applyFileBrowserBookmark(_ bookmark: TS3FileBrowserBookmark) {
+        let sanitized = sanitizedFileBrowserBookmark(bookmark) ?? bookmark
+        fileBrowserChannelId = sanitized.channelId
+        fileBrowserPath = sanitized.path
+        refreshFileList()
+    }
+
+    func deleteFileBrowserBookmark(_ bookmark: TS3FileBrowserBookmark) {
+        fileBrowserBookmarks.removeAll { $0.id == bookmark.id }
+        saveFileBrowserBookmarks()
+    }
+
+    func fileBrowserBookmarksExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(fileBrowserBookmarks)
+    }
+
+    @discardableResult
+    func importFileBrowserBookmarks(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3FileBrowserBookmark].self, from: data)
+        var merged = fileBrowserBookmarks
+        for bookmark in sanitizedFileBrowserBookmarks(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(bookmark.name) == .orderedSame }
+            merged.insert(bookmark, at: 0)
+        }
+        fileBrowserBookmarks = sanitizedFileBrowserBookmarks(merged)
+        saveFileBrowserBookmarks()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -5636,6 +5726,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-chat-history.json")
     }
 
+    private var fileBrowserBookmarksURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-file-browser-bookmarks.json")
+    }
+
     private var whisperPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-whisper-presets.json")
@@ -6193,6 +6288,50 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadFileBrowserBookmarks() {
+        guard let data = try? Data(contentsOf: fileBrowserBookmarksURL),
+              let decoded = try? JSONDecoder().decode([TS3FileBrowserBookmark].self, from: data) else {
+            fileBrowserBookmarks = []
+            return
+        }
+        fileBrowserBookmarks = sanitizedFileBrowserBookmarks(decoded)
+    }
+
+    private func saveFileBrowserBookmarks() {
+        do {
+            let directory = fileBrowserBookmarksURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(fileBrowserBookmarks)
+            try data.write(to: fileBrowserBookmarksURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedFileBrowserBookmarks(_ bookmarks: [TS3FileBrowserBookmark]) -> [TS3FileBrowserBookmark] {
+        bookmarks.compactMap(sanitizedFileBrowserBookmark)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedFileBrowserBookmark(_ bookmark: TS3FileBrowserBookmark) -> TS3FileBrowserBookmark? {
+        let name = bookmark.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, bookmark.channelId > 0 else { return nil }
+        let channelName = bookmark.channelName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return TS3FileBrowserBookmark(
+            id: bookmark.id,
+            name: name,
+            channelId: bookmark.channelId,
+            channelName: channelName.isEmpty ? "Channel \(bookmark.channelId)" : String(channelName.prefix(120)),
+            path: normalizedFileDirectoryPath(bookmark.path),
+            updatedAt: bookmark.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -6271,6 +6410,7 @@ final class TS3AppModel: ObservableObject {
             channelSubscriptionPresets: channelSubscriptionPresets,
             eventFilterPresets: eventFilterPresets,
             chatFilterPresets: chatFilterPresets,
+            fileBrowserBookmarks: fileBrowserBookmarks,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -6293,6 +6433,7 @@ final class TS3AppModel: ObservableObject {
         try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
         try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
         try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
+        try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

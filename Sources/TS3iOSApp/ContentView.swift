@@ -8959,6 +8959,7 @@ struct FileBrowserSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var directoryName = ""
+    @State private var bookmarkName = ""
     @State private var pathText = "/"
     @State private var searchText = ""
     @State private var sortMode: FileSortMode = .name
@@ -8970,8 +8971,11 @@ struct FileBrowserSheet: View {
     @State private var downloadedFileExportName = "download"
     @State private var isExportingDirectorySnapshot = false
     @State private var isExportingTransferSnapshot = false
+    @State private var isImportingBookmarks = false
+    @State private var isExportingBookmarks = false
     @State private var directorySnapshotDocument = TS3TextFileDocument()
     @State private var transferSnapshotDocument = TS3TextFileDocument()
+    @State private var bookmarksDocument = TS3BookmarkFileDocument()
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadOverwriteNames: [String] = []
     @State private var isShowingUploadConflictActions = false
@@ -9009,6 +9013,53 @@ struct FileBrowserSheet: View {
                     }
                     Button("Copy Current Path") {
                         TS3PlatformSupport.copyToPasteboard(model.fileBrowserPath)
+                    }
+                }
+
+                Section(header: Text("File Bookmarks")) {
+                    TextField("Bookmark Name", text: $bookmarkName)
+                        .ts3PlainTextField()
+                    Button("Save Current Location") {
+                        model.saveCurrentFileBrowserBookmark(name: bookmarkName)
+                        bookmarkName = ""
+                    }
+                    .disabled(bookmarkName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if model.fileBrowserBookmarks.isEmpty {
+                        Text("No saved file bookmarks")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.fileBrowserBookmarks) { bookmark in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(bookmark.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(fileBookmarkSummary(bookmark))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Menu {
+                                    Button("Open Bookmark") {
+                                        model.applyFileBrowserBookmark(bookmark)
+                                    }
+                                    Button("Use Name") {
+                                        bookmarkName = bookmark.name
+                                    }
+                                    Button("Delete Bookmark") {
+                                        model.deleteFileBrowserBookmark(bookmark)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                }
+                            }
+                        }
+                    }
+                    Button("Export Bookmarks") {
+                        exportBookmarks()
+                    }
+                    .disabled(model.fileBrowserBookmarks.isEmpty)
+                    Button("Import Bookmarks") {
+                        isImportingBookmarks = true
                     }
                 }
 
@@ -9198,6 +9249,10 @@ struct FileBrowserSheet: View {
                         Button("Refresh") {
                             model.refreshFileList()
                         }
+                        Button("Export File Bookmarks") {
+                            exportBookmarks()
+                        }
+                        .disabled(model.fileBrowserBookmarks.isEmpty)
                     } label: {
                         Label("Directory", systemImage: "ellipsis.circle")
                     }
@@ -9244,6 +9299,27 @@ struct FileBrowserSheet: View {
                 defaultFilename: "ts3-transfer-queue"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingBookmarks,
+                document: bookmarksDocument,
+                contentType: .json,
+                defaultFilename: "ts3-file-bookmarks"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingBookmarks,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importBookmarks(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -9315,6 +9391,33 @@ struct FileBrowserSheet: View {
         pendingUploadURLs = []
         uploadOverwriteNames = []
         isShowingUploadConflictActions = false
+    }
+
+    private func fileBookmarkSummary(_ bookmark: TS3FileBrowserBookmark) -> String {
+        "\(bookmark.channelName) · \(bookmark.path)"
+    }
+
+    private func exportBookmarks() {
+        do {
+            bookmarksDocument = TS3BookmarkFileDocument(data: try model.fileBrowserBookmarksExportData())
+            isExportingBookmarks = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importBookmarks(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importFileBrowserBookmarks(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private func toggleSelection(for entry: TS3FileEntrySummary) {
