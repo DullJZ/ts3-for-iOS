@@ -175,6 +175,24 @@ struct TS3PokeSummary: Identifiable {
     let message: String
     let isOwnPoke: Bool
 
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        senderId: Int?,
+        senderName: String,
+        senderUniqueIdentifier: String?,
+        message: String,
+        isOwnPoke: Bool
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.senderId = senderId
+        self.senderName = senderName
+        self.senderUniqueIdentifier = senderUniqueIdentifier
+        self.message = message
+        self.isOwnPoke = isOwnPoke
+    }
+
     init(poke: TS3ClientPoke) {
         id = poke.id
         timestamp = poke.timestamp
@@ -4562,8 +4580,21 @@ final class TS3AppModel: ObservableObject {
     }
 
     func pokeUser(_ user: TS3UserSummary, message: String) {
+        let pokeMessage = message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Poke" : message
         runClientCommand { client in
-            try await client.pokeClient(clientId: user.id, message: message.isEmpty ? "Poke" : message)
+            try await client.pokeClient(clientId: user.id, message: pokeMessage)
+            await MainActor.run {
+                self.pokeEvents.insert(TS3PokeSummary(
+                    senderId: user.id,
+                    senderName: user.nickname,
+                    senderUniqueIdentifier: user.uniqueIdentifier,
+                    message: pokeMessage,
+                    isOwnPoke: true
+                ), at: 0)
+                if self.pokeEvents.count > 50 {
+                    self.pokeEvents.removeLast(self.pokeEvents.count - 50)
+                }
+            }
         }
     }
 

@@ -4234,7 +4234,7 @@ struct EventsSheet: View {
             if !lines.isEmpty { lines.append("") }
             lines.append("Pokes")
             for poke in visiblePokeEvents {
-                lines.append("[\(dateText(poke.timestamp))] \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)")
+                lines.append("[\(dateText(poke.timestamp))] \(poke.isOwnPoke ? "Sent to" : "Received from") \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)")
             }
         }
         return lines.joined(separator: "\n")
@@ -4495,7 +4495,7 @@ struct PokeEventRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(poke.senderName)
+                Text(pokeTitle)
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(Self.dateText(poke.timestamp))
@@ -4527,6 +4527,22 @@ struct PokeEventRow: View {
             }
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button("Copy Poke") {
+                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+            }
+            Button("Copy Message") {
+                TS3PlatformSupport.copyToPasteboard(poke.message.isEmpty ? "Poke" : poke.message)
+            }
+            Button("Copy User") {
+                TS3PlatformSupport.copyToPasteboard(poke.senderName)
+            }
+            if let uniqueIdentifier = poke.senderUniqueIdentifier, !uniqueIdentifier.isEmpty {
+                Button("Copy Unique ID") {
+                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+            }
+        }
         .sheet(item: $replyTarget) { user in
             ChatPrivateReplySheet(user: user)
                 .environmentObject(model)
@@ -4540,6 +4556,14 @@ struct PokeEventRow: View {
     private var onlineSender: TS3UserSummary? {
         guard let senderId = poke.senderId else { return nil }
         return model.clients.first { $0.id == senderId }
+    }
+
+    private var pokeTitle: String {
+        "\(poke.isOwnPoke ? "Sent to" : "From") \(poke.senderName)"
+    }
+
+    private var clipboardSummary: String {
+        "\(Self.dateText(poke.timestamp)) \(poke.isOwnPoke ? "Sent to" : "Received from") \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)"
     }
 
     private static func dateText(_ date: Date) -> String {
