@@ -850,6 +850,33 @@ struct TS3AudioProfile: Identifiable, Codable {
     }
 }
 
+struct TS3KeyboardShortcutBinding: Identifiable, Codable {
+    var actionId: String
+    var group: String
+    var action: String
+    var defaultKeys: String
+    var keys: String
+    var isEnabled: Bool
+
+    var id: String { actionId }
+
+    init(
+        actionId: String,
+        group: String,
+        action: String,
+        defaultKeys: String,
+        keys: String? = nil,
+        isEnabled: Bool = true
+    ) {
+        self.actionId = actionId
+        self.group = group
+        self.action = action
+        self.defaultKeys = defaultKeys
+        self.keys = keys ?? defaultKeys
+        self.isEnabled = isEnabled
+    }
+}
+
 private struct TS3NotificationSettings: Codable {
     var isEnabled: Bool
     var privateMessagesEnabled: Bool
@@ -906,6 +933,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var notificationSettings: TS3NotificationSettings
     var connectionRecoverySettings: TS3ConnectionRecoverySettings
     var serverLogQueryPresets: [TS3ServerLogQueryPreset]
+    var keyboardShortcuts: [TS3KeyboardShortcutBinding]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -922,6 +950,7 @@ private struct TS3ClientMigrationPackage: Codable {
         notificationSettings: TS3NotificationSettings,
         connectionRecoverySettings: TS3ConnectionRecoverySettings,
         serverLogQueryPresets: [TS3ServerLogQueryPreset],
+        keyboardShortcuts: [TS3KeyboardShortcutBinding],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -937,6 +966,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.notificationSettings = notificationSettings
         self.connectionRecoverySettings = connectionRecoverySettings
         self.serverLogQueryPresets = serverLogQueryPresets
+        self.keyboardShortcuts = keyboardShortcuts
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -954,6 +984,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case notificationSettings
         case connectionRecoverySettings
         case serverLogQueryPresets
+        case keyboardShortcuts
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -977,6 +1008,10 @@ private struct TS3ClientMigrationPackage: Codable {
         serverLogQueryPresets = try container.decodeIfPresent(
             [TS3ServerLogQueryPreset].self,
             forKey: .serverLogQueryPresets
+        ) ?? []
+        keyboardShortcuts = try container.decodeIfPresent(
+            [TS3KeyboardShortcutBinding].self,
+            forKey: .keyboardShortcuts
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1329,6 +1364,19 @@ struct MicrophonePermissionPrompt: Identifiable {
 
 @MainActor
 final class TS3AppModel: ObservableObject {
+    static let defaultKeyboardShortcuts: [TS3KeyboardShortcutBinding] = [
+        TS3KeyboardShortcutBinding(actionId: "show-shortcuts", group: "Global", action: "Show Keyboard Shortcuts", defaultKeys: "Command-/"),
+        TS3KeyboardShortcutBinding(actionId: "show-debug-log", group: "Global", action: "Show Debug Log", defaultKeys: "Command-Shift-L"),
+        TS3KeyboardShortcutBinding(actionId: "toggle-talk", group: "Voice", action: "Talk / Stop Talking", defaultKeys: "Command-T"),
+        TS3KeyboardShortcutBinding(actionId: "toggle-input-muted", group: "Voice", action: "Mute / Unmute Microphone", defaultKeys: "Command-Shift-M"),
+        TS3KeyboardShortcutBinding(actionId: "toggle-output-muted", group: "Voice", action: "Mute / Unmute Sound", defaultKeys: "Command-Shift-S"),
+        TS3KeyboardShortcutBinding(actionId: "toggle-away", group: "Profile", action: "Set / Clear Away", defaultKeys: "Command-Shift-A"),
+        TS3KeyboardShortcutBinding(actionId: "apply-nickname", group: "Profile", action: "Apply Nickname", defaultKeys: "Command-Return"),
+        TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
+        TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
+        TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C")
+    ]
+
     @Published var state: UIConnectionState = .disconnected
     @Published var channels: [TS3ChannelSummary] = []
     @Published var clients: [TS3UserSummary] = []
@@ -1398,6 +1446,7 @@ final class TS3AppModel: ObservableObject {
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
     @Published private(set) var audioProfiles: [TS3AudioProfile] = []
+    @Published private(set) var keyboardShortcuts: [TS3KeyboardShortcutBinding] = TS3AppModel.defaultKeyboardShortcuts
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
     @Published private(set) var notificationsEnabled = false
     @Published var privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
@@ -1433,6 +1482,7 @@ final class TS3AppModel: ObservableObject {
     init() {
         loadAudioSettings()
         loadAudioProfiles()
+        loadKeyboardShortcuts()
         loadNotificationSettings()
         loadConnectionRecoverySettings()
         loadUserPlaybackPreferences()
@@ -5360,6 +5410,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-audio-profiles.json")
     }
 
+    private var keyboardShortcutsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-keyboard-shortcuts.json")
+    }
+
     private var userPlaybackPreferencesURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-user-playback-preferences.json")
@@ -5494,6 +5549,73 @@ final class TS3AppModel: ObservableObject {
         saveAudioProfiles()
         lastError = nil
         return imported.count
+    }
+
+    private func loadKeyboardShortcuts() {
+        guard let data = try? Data(contentsOf: keyboardShortcutsURL),
+              let decoded = try? JSONDecoder().decode([TS3KeyboardShortcutBinding].self, from: data) else {
+            keyboardShortcuts = Self.defaultKeyboardShortcuts
+            return
+        }
+        keyboardShortcuts = sanitizedKeyboardShortcuts(decoded)
+    }
+
+    private func saveKeyboardShortcuts() {
+        do {
+            let directory = keyboardShortcutsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(keyboardShortcuts)
+            try data.write(to: keyboardShortcutsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func updateKeyboardShortcut(_ shortcut: TS3KeyboardShortcutBinding, keys: String, isEnabled: Bool) {
+        let trimmedKeys = String(keys.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        guard let index = keyboardShortcuts.firstIndex(where: { $0.actionId == shortcut.actionId }) else { return }
+        keyboardShortcuts[index].keys = trimmedKeys.isEmpty ? keyboardShortcuts[index].defaultKeys : trimmedKeys
+        keyboardShortcuts[index].isEnabled = isEnabled
+        keyboardShortcuts = sanitizedKeyboardShortcuts(keyboardShortcuts)
+        saveKeyboardShortcuts()
+        lastError = nil
+    }
+
+    func resetKeyboardShortcuts() {
+        keyboardShortcuts = Self.defaultKeyboardShortcuts
+        saveKeyboardShortcuts()
+        lastError = nil
+    }
+
+    func keyboardShortcutsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(keyboardShortcuts)
+    }
+
+    func importKeyboardShortcuts(from data: Data) throws {
+        let decoded = try JSONDecoder().decode([TS3KeyboardShortcutBinding].self, from: data)
+        keyboardShortcuts = sanitizedKeyboardShortcuts(decoded)
+        saveKeyboardShortcuts()
+        lastError = nil
+    }
+
+    private func sanitizedKeyboardShortcuts(_ shortcuts: [TS3KeyboardShortcutBinding]) -> [TS3KeyboardShortcutBinding] {
+        let importedById = Dictionary(shortcuts.map { ($0.actionId, $0) }, uniquingKeysWith: { first, _ in first })
+        return Self.defaultKeyboardShortcuts.map { defaultShortcut in
+            guard let imported = importedById[defaultShortcut.actionId] else {
+                return defaultShortcut
+            }
+            let keys = String(imported.keys.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+            return TS3KeyboardShortcutBinding(
+                actionId: defaultShortcut.actionId,
+                group: defaultShortcut.group,
+                action: defaultShortcut.action,
+                defaultKeys: defaultShortcut.defaultKeys,
+                keys: keys.isEmpty ? defaultShortcut.defaultKeys : keys,
+                isEnabled: imported.isEnabled
+            )
+        }
     }
 
     func importAudioSettings(from data: Data) throws {
@@ -5742,6 +5864,7 @@ final class TS3AppModel: ObservableObject {
             notificationSettings: notificationSettingsSnapshot,
             connectionRecoverySettings: TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled),
             serverLogQueryPresets: serverLogQueryPresets,
+            keyboardShortcuts: keyboardShortcuts,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -5760,6 +5883,7 @@ final class TS3AppModel: ObservableObject {
         try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
         try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
         try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
+        try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

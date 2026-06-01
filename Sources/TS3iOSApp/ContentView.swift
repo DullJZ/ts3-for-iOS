@@ -76,25 +76,41 @@ struct KeyboardShortcutsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isExportingShortcuts = false
+    @State private var isExportingShortcutBackup = false
+    @State private var isImportingShortcutBackup = false
     @State private var shortcutsDocument = TS3TextFileDocument()
+    @State private var shortcutBackupDocument = TS3BookmarkFileDocument()
 
     var body: some View {
         NavigationView {
             List {
                 Section(header: Text("Actions")) {
-                    ForEach(Self.shortcuts) { shortcut in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(shortcut.action)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(shortcut.group)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                    ForEach(model.keyboardShortcuts) { shortcut in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(shortcut.action)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(shortcut.group)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Toggle("", isOn: shortcutEnabledBinding(shortcut))
+                                    .labelsHidden()
                             }
-                            Spacer()
-                            Text(shortcut.keys)
+                            TextField("Keys", text: shortcutKeysBinding(shortcut))
                                 .font(.system(.body, design: .monospaced))
-                                .foregroundColor(.secondary)
+                                .ts3PlainTextField()
+                            if shortcut.keys != shortcut.defaultKeys {
+                                Button("Reset to \(shortcut.defaultKeys)") {
+                                    model.updateKeyboardShortcut(
+                                        shortcut,
+                                        keys: shortcut.defaultKeys,
+                                        isEnabled: shortcut.isEnabled
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -106,6 +122,15 @@ struct KeyboardShortcutsSheet: View {
                     Button("Export Shortcuts") {
                         shortcutsDocument = TS3TextFileDocument(data: Data(shortcutsSnapshot.utf8))
                         isExportingShortcuts = true
+                    }
+                    Button("Export Shortcut Backup") {
+                        exportShortcutBackup()
+                    }
+                    Button("Import Shortcut Backup") {
+                        isImportingShortcutBackup = true
+                    }
+                    Button("Reset Shortcuts") {
+                        model.resetKeyboardShortcuts()
                     }
                 }
             }
@@ -128,25 +153,73 @@ struct KeyboardShortcutsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingShortcutBackup,
+                document: shortcutBackupDocument,
+                contentType: .json,
+                defaultFilename: "ts3-keyboard-shortcuts"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingShortcutBackup,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importShortcutBackup(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
     private var shortcutsSnapshot: String {
-        Self.shortcuts.map { "\($0.group): \($0.action) - \($0.keys)" }.joined(separator: "\n")
+        model.keyboardShortcuts.map { shortcut in
+            let state = shortcut.isEnabled ? "enabled" : "disabled"
+            return "\(shortcut.group): \(shortcut.action) - \(shortcut.keys) [\(state)]"
+        }.joined(separator: "\n")
     }
 
-    private static let shortcuts: [TS3KeyboardShortcutSummary] = [
-        TS3KeyboardShortcutSummary(group: "Global", action: "Show Keyboard Shortcuts", keys: "Command-/"),
-        TS3KeyboardShortcutSummary(group: "Global", action: "Show Debug Log", keys: "Command-Shift-L"),
-        TS3KeyboardShortcutSummary(group: "Voice", action: "Talk / Stop Talking", keys: "Command-T"),
-        TS3KeyboardShortcutSummary(group: "Voice", action: "Mute / Unmute Microphone", keys: "Command-Shift-M"),
-        TS3KeyboardShortcutSummary(group: "Voice", action: "Mute / Unmute Sound", keys: "Command-Shift-S"),
-        TS3KeyboardShortcutSummary(group: "Profile", action: "Set / Clear Away", keys: "Command-Shift-A"),
-        TS3KeyboardShortcutSummary(group: "Profile", action: "Apply Nickname", keys: "Command-Return"),
-        TS3KeyboardShortcutSummary(group: "Server", action: "Refresh Channels and Clients", keys: "Command-Shift-R"),
-        TS3KeyboardShortcutSummary(group: "Server", action: "View Server Logs", keys: "Command-Shift-G"),
-        TS3KeyboardShortcutSummary(group: "Server", action: "Manage Contacts", keys: "Command-Shift-C")
-    ]
+    private func shortcutKeysBinding(_ shortcut: TS3KeyboardShortcutBinding) -> Binding<String> {
+        Binding(
+            get: { model.keyboardShortcuts.first { $0.actionId == shortcut.actionId }?.keys ?? shortcut.keys },
+            set: { model.updateKeyboardShortcut(shortcut, keys: $0, isEnabled: shortcut.isEnabled) }
+        )
+    }
+
+    private func shortcutEnabledBinding(_ shortcut: TS3KeyboardShortcutBinding) -> Binding<Bool> {
+        Binding(
+            get: { model.keyboardShortcuts.first { $0.actionId == shortcut.actionId }?.isEnabled ?? shortcut.isEnabled },
+            set: { model.updateKeyboardShortcut(shortcut, keys: shortcut.keys, isEnabled: $0) }
+        )
+    }
+
+    private func exportShortcutBackup() {
+        do {
+            shortcutBackupDocument = TS3BookmarkFileDocument(data: try model.keyboardShortcutsExportData())
+            isExportingShortcutBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importShortcutBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importKeyboardShortcuts(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
 }
 
 struct ConnectingView: View {
