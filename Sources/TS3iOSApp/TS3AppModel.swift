@@ -1003,6 +1003,7 @@ private struct TS3ClientMigrationPackage: Codable {
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
+    var folder: String
     var host: String
     var port: String
     var nickname: String
@@ -1014,6 +1015,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     init(
         id: UUID = UUID(),
         name: String,
+        folder: String = "",
         host: String,
         port: String,
         nickname: String,
@@ -1024,6 +1026,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     ) {
         self.id = id
         self.name = name
+        self.folder = folder
         self.host = host
         self.port = port
         self.nickname = nickname
@@ -1036,6 +1039,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case name
+        case folder
         case host
         case port
         case nickname
@@ -1049,6 +1053,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
+        folder = try container.decodeIfPresent(String.self, forKey: .folder) ?? ""
         host = try container.decode(String.self, forKey: .host)
         port = try container.decode(String.self, forKey: .port)
         nickname = try container.decode(String.self, forKey: .nickname)
@@ -2064,12 +2069,14 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func saveCurrentBookmark(name: String) {
+    func saveCurrentBookmark(name: String, folder: String = "") {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = trimmedName.isEmpty ? serverHost : trimmedName
+        let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let bookmark = TS3BookmarkSummary(
             name: title,
+            folder: folder,
             host: serverHost,
             port: serverPort,
             nickname: nickname,
@@ -2112,6 +2119,7 @@ final class TS3AppModel: ObservableObject {
         guard !trimmedName.isEmpty, !trimmedHost.isEmpty else { return }
         var updated = bookmark
         updated.name = trimmedName
+        updated.folder = bookmark.folder.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.host = trimmedHost
         updated.port = bookmark.port.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.nickname = bookmark.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2146,6 +2154,7 @@ final class TS3AppModel: ObservableObject {
             normalized.host = host
             normalized.port = port
             normalized.name = bookmark.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            normalized.folder = bookmark.folder.trimmingCharacters(in: .whitespacesAndNewlines)
             normalized.nickname = bookmark.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
             if normalized.name.isEmpty {
                 normalized.name = host

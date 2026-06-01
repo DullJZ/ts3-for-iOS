@@ -205,11 +205,13 @@ struct ConnectView: View {
 
     @EnvironmentObject private var model: TS3AppModel
     @State private var bookmarkName = ""
+    @State private var bookmarkFolder = ""
     @State private var serverURLText = ""
     @State private var connectionSearchText = ""
     @State private var connectionFilter: ConnectionFilter = .all
     @State private var connectionSortMode: ConnectionSortMode = .savedOrder
     @State private var connectionSortAscending = true
+    @State private var bookmarkFolderFilter = ""
     @State private var editingBookmark: TS3BookmarkSummary?
     @State private var isShowingIdentity = false
     @State private var isShowingBookmarkImporter = false
@@ -254,19 +256,26 @@ struct ConnectView: View {
 
     private var displayedBookmarks: [TS3BookmarkSummary] {
         let entries = model.bookmarks.filter { bookmark in
-            matchesConnectionFilter(
+            matchesBookmarkFolder(bookmark.folder) && matchesConnectionFilter(
                 serverPassword: bookmark.serverPassword,
                 defaultChannel: bookmark.defaultChannel,
                 privilegeKey: bookmark.privilegeKey
-            ) && matchesConnectionSearch(
-                name: bookmark.name,
-                host: bookmark.host,
-                port: bookmark.port,
-                nickname: bookmark.nickname,
-                defaultChannel: bookmark.defaultChannel
+            ) && (
+                matchesConnectionSearch(
+                    name: bookmark.name,
+                    host: bookmark.host,
+                    port: bookmark.port,
+                    nickname: bookmark.nickname,
+                    defaultChannel: bookmark.defaultChannel
+                ) || isSearchingConnections && containsConnectionSearch(bookmark.folder)
             )
         }
         return sortedBookmarks(entries)
+    }
+
+    private var bookmarkFolders: [String] {
+        Array(Set(model.bookmarks.map { $0.folder.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }))
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     var body: some View {
@@ -283,6 +292,15 @@ struct ConnectView: View {
                             Text(mode.title).tag(mode)
                         }
                     }
+                    if !bookmarkFolders.isEmpty {
+                        Picker("Bookmark Folder", selection: $bookmarkFolderFilter) {
+                            Text("All Folders").tag("")
+                            Text("Unfiled").tag("__unfiled__")
+                            ForEach(bookmarkFolders, id: \.self) { folder in
+                                Text(folder).tag(folder)
+                            }
+                        }
+                    }
                     Toggle("Ascending", isOn: $connectionSortAscending)
                     TextField("Search saved servers", text: $connectionSearchText)
                         .ts3PlainTextField()
@@ -291,6 +309,7 @@ struct ConnectView: View {
                             connectionFilter = .all
                             connectionSortMode = .savedOrder
                             connectionSortAscending = true
+                            bookmarkFolderFilter = ""
                             connectionSearchText = ""
                         }
                     }
@@ -322,6 +341,7 @@ struct ConnectView: View {
                                         for: TS3BookmarkSummary(
                                             id: snapshot.id,
                                             name: snapshot.host,
+                                            folder: "",
                                             host: snapshot.host,
                                             port: snapshot.port,
                                             nickname: snapshot.nickname,
@@ -343,6 +363,7 @@ struct ConnectView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 Button {
+                                    model.applyRecentConnection(snapshot)
                                     model.saveCurrentBookmark(name: snapshot.host)
                                 } label: {
                                     Image(systemName: "bookmark")
@@ -383,7 +404,7 @@ struct ConnectView: View {
                                 } label: {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(bookmark.name)
-                                        Text("\(bookmark.host):\(bookmark.port)")
+                                        Text(bookmarkSubtitle(bookmark))
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -453,9 +474,12 @@ struct ConnectView: View {
 
             Section(header: Text("Bookmark")) {
                 TextField("Bookmark Name", text: $bookmarkName)
+                TextField("Folder (optional)", text: $bookmarkFolder)
+                    .ts3PlainTextField()
                 Button("Save Current Server") {
-                    model.saveCurrentBookmark(name: bookmarkName)
+                    model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
                     bookmarkName = ""
+                    bookmarkFolder = ""
                 }
                 .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button("Copy Invite Link") {
@@ -782,7 +806,23 @@ struct ConnectView: View {
     }
 
     private var hasSavedConnectionOptions: Bool {
-        isSearchingConnections || connectionFilter != .all || connectionSortMode != .savedOrder || !connectionSortAscending
+        isSearchingConnections
+            || connectionFilter != .all
+            || connectionSortMode != .savedOrder
+            || !connectionSortAscending
+            || !bookmarkFolderFilter.isEmpty
+    }
+
+    private func matchesBookmarkFolder(_ folder: String) -> Bool {
+        let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch bookmarkFolderFilter {
+        case "":
+            return true
+        case "__unfiled__":
+            return folder.isEmpty
+        default:
+            return folder.caseInsensitiveCompare(bookmarkFolderFilter) == .orderedSame
+        }
     }
 
     private func matchesConnectionFilter(serverPassword: String, defaultChannel: String, privilegeKey: String) -> Bool {
@@ -809,6 +849,12 @@ struct ConnectView: View {
 
     private func containsConnectionSearch(_ value: String) -> Bool {
         value.lowercased().contains(normalizedConnectionSearchText)
+    }
+
+    private func bookmarkSubtitle(_ bookmark: TS3BookmarkSummary) -> String {
+        let server = "\(bookmark.host):\(bookmark.port)"
+        let folder = bookmark.folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        return folder.isEmpty ? server : "\(folder) · \(server)"
     }
 
     private func sortedBookmarks(_ bookmarks: [TS3BookmarkSummary]) -> [TS3BookmarkSummary] {
@@ -935,6 +981,8 @@ struct BookmarkEditorSheet: View {
             Form {
                 Section(header: Text("Bookmark")) {
                     TextField("Name", text: $bookmark.name)
+                        .ts3PlainTextField()
+                    TextField("Folder", text: $bookmark.folder)
                         .ts3PlainTextField()
                     TextField("Host", text: $bookmark.host)
                         .ts3URLTextField()
