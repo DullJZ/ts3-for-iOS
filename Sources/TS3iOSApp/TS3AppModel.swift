@@ -835,6 +835,37 @@ struct TS3ComplaintFilterPreset: Identifiable, Codable {
     }
 }
 
+struct TS3DatabaseClientFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var recordFilter: String
+    var sortMode: String
+    var sortAscending: Bool
+    var localFilterText: String
+    var batchSize: Int
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        recordFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        localFilterText: String,
+        batchSize: Int,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.recordFilter = recordFilter
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.localFilterText = localFilterText
+        self.batchSize = batchSize
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3DownloadedFileSummary: Identifiable {
     let id = UUID()
     let name: String
@@ -1047,6 +1078,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset]
     var banFilterPresets: [TS3BanFilterPreset]
     var complaintFilterPresets: [TS3ComplaintFilterPreset]
+    var databaseClientFilterPresets: [TS3DatabaseClientFilterPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -1071,6 +1103,7 @@ private struct TS3ClientMigrationPackage: Codable {
         offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset],
         banFilterPresets: [TS3BanFilterPreset],
         complaintFilterPresets: [TS3ComplaintFilterPreset],
+        databaseClientFilterPresets: [TS3DatabaseClientFilterPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -1094,6 +1127,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.offlineMessageFilterPresets = offlineMessageFilterPresets
         self.banFilterPresets = banFilterPresets
         self.complaintFilterPresets = complaintFilterPresets
+        self.databaseClientFilterPresets = databaseClientFilterPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -1119,6 +1153,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case offlineMessageFilterPresets
         case banFilterPresets
         case complaintFilterPresets
+        case databaseClientFilterPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1174,6 +1209,10 @@ private struct TS3ClientMigrationPackage: Codable {
         complaintFilterPresets = try container.decodeIfPresent(
             [TS3ComplaintFilterPreset].self,
             forKey: .complaintFilterPresets
+        ) ?? []
+        databaseClientFilterPresets = try container.decodeIfPresent(
+            [TS3DatabaseClientFilterPreset].self,
+            forKey: .databaseClientFilterPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1640,6 +1679,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
     @Published private(set) var banFilterPresets: [TS3BanFilterPreset] = []
     @Published private(set) var complaintFilterPresets: [TS3ComplaintFilterPreset] = []
+    @Published private(set) var databaseClientFilterPresets: [TS3DatabaseClientFilterPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1738,6 +1778,7 @@ final class TS3AppModel: ObservableObject {
         loadChatFilterPresets()
         loadBanFilterPresets()
         loadComplaintFilterPresets()
+        loadDatabaseClientFilterPresets()
         loadContacts()
         loadChatHistory()
         loadFileBrowserBookmarks()
@@ -5306,6 +5347,58 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveDatabaseClientFilterPreset(
+        name: String,
+        recordFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        localFilterText: String,
+        batchSize: Int
+    ) {
+        let preset = sanitizedDatabaseClientFilterPreset(TS3DatabaseClientFilterPreset(
+            name: name,
+            recordFilter: recordFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            localFilterText: localFilterText,
+            batchSize: batchSize
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the database filter preset."
+            return
+        }
+        databaseClientFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        databaseClientFilterPresets.insert(preset, at: 0)
+        databaseClientFilterPresets = sanitizedDatabaseClientFilterPresets(databaseClientFilterPresets)
+        saveDatabaseClientFilterPresets()
+        lastError = nil
+    }
+
+    func deleteDatabaseClientFilterPreset(_ preset: TS3DatabaseClientFilterPreset) {
+        databaseClientFilterPresets.removeAll { $0.id == preset.id }
+        saveDatabaseClientFilterPresets()
+    }
+
+    func databaseClientFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(databaseClientFilterPresets)
+    }
+
+    @discardableResult
+    func importDatabaseClientFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3DatabaseClientFilterPreset].self, from: data)
+        var merged = databaseClientFilterPresets
+        for preset in sanitizedDatabaseClientFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        databaseClientFilterPresets = sanitizedDatabaseClientFilterPresets(merged)
+        saveDatabaseClientFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -6012,6 +6105,11 @@ final class TS3AppModel: ObservableObject {
     private var complaintFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-complaint-filter-presets.json")
+    }
+
+    private var databaseClientFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-database-client-filter-presets.json")
     }
 
     private var whisperPresetsURL: URL {
@@ -6769,6 +6867,68 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadDatabaseClientFilterPresets() {
+        guard let data = try? Data(contentsOf: databaseClientFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3DatabaseClientFilterPreset].self, from: data) else {
+            databaseClientFilterPresets = []
+            return
+        }
+        databaseClientFilterPresets = sanitizedDatabaseClientFilterPresets(decoded)
+    }
+
+    private func saveDatabaseClientFilterPresets() {
+        do {
+            let directory = databaseClientFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(databaseClientFilterPresets)
+            try data.write(to: databaseClientFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedDatabaseClientFilterPresets(_ presets: [TS3DatabaseClientFilterPreset]) -> [TS3DatabaseClientFilterPreset] {
+        presets.compactMap(sanitizedDatabaseClientFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedDatabaseClientFilterPreset(_ preset: TS3DatabaseClientFilterPreset) -> TS3DatabaseClientFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let recordFilter = [
+            "all",
+            "withUniqueId",
+            "withoutUniqueId",
+            "withDescription",
+            "withLastIP",
+            "withConnections"
+        ].contains(preset.recordFilter) ? preset.recordFilter : "all"
+        let sortMode = [
+            "nickname",
+            "databaseId",
+            "created",
+            "lastConnected",
+            "connections",
+            "lastIP"
+        ].contains(preset.sortMode) ? preset.sortMode : "nickname"
+        let batchSize = min(max(preset.batchSize, 1), 1_000)
+        return TS3DatabaseClientFilterPreset(
+            id: preset.id,
+            name: name,
+            recordFilter: recordFilter,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            localFilterText: String(preset.localFilterText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            batchSize: batchSize,
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -6851,6 +7011,7 @@ final class TS3AppModel: ObservableObject {
             offlineMessageFilterPresets: offlineMessageFilterPresets,
             banFilterPresets: banFilterPresets,
             complaintFilterPresets: complaintFilterPresets,
+            databaseClientFilterPresets: databaseClientFilterPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -6877,6 +7038,7 @@ final class TS3AppModel: ObservableObject {
         try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
         try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
         try importComplaintFilterPresets(from: encodedPackageSection(package.complaintFilterPresets))
+        try importDatabaseClientFilterPresets(from: encodedPackageSection(package.databaseClientFilterPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

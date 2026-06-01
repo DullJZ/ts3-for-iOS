@@ -7813,6 +7813,7 @@ struct ClientDatabaseSheet: View {
     @State private var sortMode: DatabaseRecordSortMode = .nickname
     @State private var sortAscending = true
     @State private var databaseBatchSize = "100"
+    @State private var presetName = ""
     @State private var isShowingDescriptionEditor = false
     @State private var actionMode: DatabaseClientActionMode?
     @State private var isShowingPermissions = false
@@ -7820,9 +7821,12 @@ struct ClientDatabaseSheet: View {
     @State private var isConfirmingDelete = false
     @State private var isExportingDatabase = false
     @State private var isExportingDatabaseBackup = false
+    @State private var isExportingPresets = false
     @State private var isImportingDatabase = false
+    @State private var isImportingPresets = false
     @State private var databaseExportDocument = TS3TextFileDocument()
     @State private var databaseBackupDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     var displayedRecords: [TS3DatabaseClientSummary] {
         let source = model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
@@ -7881,6 +7885,53 @@ struct ClientDatabaseSheet: View {
                     Toggle("Ascending", isOn: $sortAscending)
                     TextField("Filter loaded records", text: $localFilterText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current View") {
+                            model.saveDatabaseClientFilterPreset(
+                                name: presetName,
+                                recordFilter: recordFilter.rawValue,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                localFilterText: localFilterText,
+                                batchSize: parsedDatabaseBatchSize
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.databaseClientFilterPresets.isEmpty {
+                            Text("No saved database filter presets")
+                        } else {
+                            ForEach(model.databaseClientFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteDatabaseClientFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.databaseClientFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalViewOptions {
                         Button("Clear List View") {
                             recordFilter = .all
@@ -8093,6 +8144,16 @@ struct ClientDatabaseSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-database-client-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .fileImporter(
                 isPresented: $isImportingDatabase,
                 allowedContentTypes: [.json, .data],
@@ -8100,6 +8161,17 @@ struct ClientDatabaseSheet: View {
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
                     importDatabaseBackup(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -8270,6 +8342,53 @@ struct ClientDatabaseSheet: View {
         do {
             databaseBackupDocument = TS3TextFileDocument(data: try model.databaseClientBackupData())
             isExportingDatabaseBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyPreset(_ preset: TS3DatabaseClientFilterPreset) {
+        recordFilter = DatabaseRecordFilter(rawValue: preset.recordFilter) ?? .all
+        sortMode = DatabaseRecordSortMode(rawValue: preset.sortMode) ?? .nickname
+        sortAscending = preset.sortAscending
+        localFilterText = preset.localFilterText
+        databaseBatchSize = String(preset.batchSize)
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3DatabaseClientFilterPreset) -> String {
+        var parts = [
+            (DatabaseRecordFilter(rawValue: preset.recordFilter) ?? .all).title,
+            "Sort \((DatabaseRecordSortMode(rawValue: preset.sortMode) ?? .nickname).title)",
+            "Batch \(preset.batchSize)"
+        ]
+        if !preset.sortAscending {
+            parts.append("Descending")
+        }
+        if !preset.localFilterText.isEmpty {
+            parts.append("Filter \(preset.localFilterText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.databaseClientFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importDatabaseClientFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
