@@ -7348,8 +7348,23 @@ struct ServerInfoDetailRow: View {
                 Button("Copy Row") {
                     TS3PlatformSupport.copyToPasteboard("\(label): \(value)")
                 }
+                if let url = parsedURL {
+                    Button("Open URL") {
+                        TS3PlatformSupport.openURL(url)
+                    }
+                }
             }
         }
+    }
+
+    private var parsedURL: URL? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              ["http", "https", "ts3server", "teamspeak"].contains(scheme) else {
+            return nil
+        }
+        return url
     }
 }
 
