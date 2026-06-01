@@ -1802,6 +1802,8 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
     var treeFilter: String
+    var sortMode: String
+    var sortAscending: Bool
     var searchText: String
     var updatedAt: Date
 
@@ -1809,14 +1811,39 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
         id: UUID = UUID(),
         name: String,
         treeFilter: String,
+        sortMode: String = "serverOrder",
+        sortAscending: Bool = true,
         searchText: String,
         updatedAt: Date = Date()
     ) {
         self.id = id
         self.name = name
         self.treeFilter = treeFilter
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
         self.searchText = searchText
         self.updatedAt = updatedAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case treeFilter
+        case sortMode
+        case sortAscending
+        case searchText
+        case updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        treeFilter = try container.decode(String.self, forKey: .treeFilter)
+        sortMode = try container.decodeIfPresent(String.self, forKey: .sortMode) ?? "serverOrder"
+        sortAscending = try container.decodeIfPresent(Bool.self, forKey: .sortAscending) ?? true
+        searchText = try container.decodeIfPresent(String.self, forKey: .searchText) ?? ""
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
 }
 
@@ -5451,10 +5478,18 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
-    func saveChannelTreeFilterPreset(name: String, treeFilter: String, searchText: String) {
+    func saveChannelTreeFilterPreset(
+        name: String,
+        treeFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) {
         let preset = sanitizedChannelTreeFilterPreset(TS3ChannelTreeFilterPreset(
             name: name,
             treeFilter: treeFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
             searchText: searchText
         ))
         guard let preset else {
@@ -7351,10 +7386,14 @@ final class TS3AppModel: ObservableObject {
             "talkRequests"
         ]
         let treeFilter = validFilters.contains(preset.treeFilter) ? preset.treeFilter : "all"
+        let validSortModes: Set<String> = ["serverOrder", "name", "channelId"]
+        let sortMode = validSortModes.contains(preset.sortMode) ? preset.sortMode : "serverOrder"
         return TS3ChannelTreeFilterPreset(
             id: preset.id,
             name: name,
             treeFilter: treeFilter,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
             searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
             updatedAt: preset.updatedAt
         )

@@ -1324,6 +1324,8 @@ struct ChannelListView: View {
     @State private var channelTreePresetsDocument = TS3BookmarkFileDocument()
     @State private var channelSearchText = ""
     @State private var channelTreeFilter: ChannelTreeFilter = .all
+    @State private var channelTreeSortMode: ChannelTreeItem.SiblingSortMode = .serverOrder
+    @State private var channelTreeSortAscending = true
     @State private var channelTreePresetName = ""
 
     var body: some View {
@@ -1381,12 +1383,23 @@ struct ChannelListView: View {
                 }
                 .pickerStyle(MenuPickerStyle())
 
+                Picker("Sort", selection: $channelTreeSortMode) {
+                    ForEach(ChannelTreeItem.SiblingSortMode.allCases) { sortMode in
+                        Text(sortMode.title).tag(sortMode)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+
+                Toggle("Ascending", isOn: $channelTreeSortAscending)
+
                 Menu {
                     TextField("Preset Name", text: $channelTreePresetName)
                     Button("Save Current Filters") {
                         model.saveChannelTreeFilterPreset(
                             name: channelTreePresetName,
                             treeFilter: channelTreeFilter.rawValue,
+                            sortMode: channelTreeSortMode.rawValue,
+                            sortAscending: channelTreeSortAscending,
                             searchText: channelSearchText
                         )
                         channelTreePresetName = ""
@@ -1426,9 +1439,11 @@ struct ChannelListView: View {
                     Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                 }
 
-                if hasChannelTreeFilters {
+                if hasChannelTreeOptions {
                     Button("Clear") {
                         channelTreeFilter = .all
+                        channelTreeSortMode = .serverOrder
+                        channelTreeSortAscending = true
                         channelSearchText = ""
                     }
                     .buttonStyle(TS3BorderedButtonStyle())
@@ -1549,7 +1564,11 @@ struct ChannelListView: View {
     }
 
     private var channelTree: [ChannelTreeItem] {
-        ChannelTreeItem.flatten(channels: filteredChannels)
+        ChannelTreeItem.flatten(
+            channels: filteredChannels,
+            sortMode: channelTreeSortMode,
+            sortAscending: channelTreeSortAscending
+        )
     }
 
     private var channelSectionTitle: String {
@@ -1562,6 +1581,10 @@ struct ChannelListView: View {
 
     private var hasChannelTreeFilters: Bool {
         isSearching || channelTreeFilter != .all
+    }
+
+    private var hasChannelTreeOptions: Bool {
+        hasChannelTreeFilters || channelTreeSortMode != .serverOrder || !channelTreeSortAscending
     }
 
     private var normalizedSearchText: String {
@@ -1663,12 +1686,20 @@ struct ChannelListView: View {
 
     private func applyChannelTreePreset(_ preset: TS3ChannelTreeFilterPreset) {
         channelTreeFilter = ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all
+        channelTreeSortMode = ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder
+        channelTreeSortAscending = preset.sortAscending
         channelSearchText = preset.searchText
         channelTreePresetName = preset.name
     }
 
     private func channelTreePresetSummary(_ preset: TS3ChannelTreeFilterPreset) -> String {
-        var parts = [(ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all).title]
+        var parts = [
+            (ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all).title,
+            "Sort \((ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder).title)"
+        ]
+        if !preset.sortAscending {
+            parts.append("Descending")
+        }
         if !preset.searchText.isEmpty {
             parts.append("Search \(preset.searchText)")
         }
@@ -2130,12 +2161,32 @@ struct ServerHeaderLinkAction: Identifiable {
 }
 
 struct ChannelTreeItem: Identifiable {
+    enum SiblingSortMode: String, CaseIterable, Identifiable {
+        case serverOrder
+        case name
+        case channelId
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .serverOrder: return "Server Order"
+            case .name: return "Name"
+            case .channelId: return "Channel ID"
+            }
+        }
+    }
+
     let channel: TS3ChannelSummary
     let depth: Int
 
     var id: Int { channel.id }
 
-    static func flatten(channels: [TS3ChannelSummary]) -> [ChannelTreeItem] {
+    static func flatten(
+        channels: [TS3ChannelSummary],
+        sortMode: SiblingSortMode = .serverOrder,
+        sortAscending: Bool = true
+    ) -> [ChannelTreeItem] {
         let children = Dictionary(grouping: channels) { channel in
             normalizedParentId(channel.parentId)
         }
@@ -2146,18 +2197,22 @@ struct ChannelTreeItem: Identifiable {
             of: nil,
             depth: 0,
             children: children,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
             visited: &visited,
             result: &result
         )
 
         let remaining = channels
             .filter { !visited.contains($0.id) }
-            .sorted(by: stableChannelSort)
+            .sorted { compareChannels($0, $1, sortMode: sortMode, sortAscending: sortAscending) }
         for channel in remaining {
             appendChannel(
                 channel,
                 depth: 0,
                 children: children,
+                sortMode: sortMode,
+                sortAscending: sortAscending,
                 visited: &visited,
                 result: &result
             )
@@ -2169,15 +2224,23 @@ struct ChannelTreeItem: Identifiable {
         of parentId: Int?,
         depth: Int,
         children: [Int?: [TS3ChannelSummary]],
+        sortMode: SiblingSortMode,
+        sortAscending: Bool,
         visited: inout Set<Int>,
         result: inout [ChannelTreeItem]
     ) {
-        let sortedChildren = orderedSiblings(children[parentId] ?? [])
+        let sortedChildren = sortedSiblings(
+            children[parentId] ?? [],
+            sortMode: sortMode,
+            sortAscending: sortAscending
+        )
         for channel in sortedChildren {
             appendChannel(
                 channel,
                 depth: depth,
                 children: children,
+                sortMode: sortMode,
+                sortAscending: sortAscending,
                 visited: &visited,
                 result: &result
             )
@@ -2188,6 +2251,8 @@ struct ChannelTreeItem: Identifiable {
         _ channel: TS3ChannelSummary,
         depth: Int,
         children: [Int?: [TS3ChannelSummary]],
+        sortMode: SiblingSortMode,
+        sortAscending: Bool,
         visited: inout Set<Int>,
         result: inout [ChannelTreeItem]
     ) {
@@ -2198,6 +2263,8 @@ struct ChannelTreeItem: Identifiable {
             of: channel.id,
             depth: depth + 1,
             children: children,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
             visited: &visited,
             result: &result
         )
@@ -2206,6 +2273,22 @@ struct ChannelTreeItem: Identifiable {
     private static func normalizedParentId(_ parentId: Int?) -> Int? {
         guard let parentId, parentId > 0 else { return nil }
         return parentId
+    }
+
+    private static func sortedSiblings(
+        _ channels: [TS3ChannelSummary],
+        sortMode: SiblingSortMode,
+        sortAscending: Bool
+    ) -> [TS3ChannelSummary] {
+        switch sortMode {
+        case .serverOrder:
+            let ordered = orderedSiblings(channels)
+            return sortAscending ? ordered : Array(ordered.reversed())
+        case .name, .channelId:
+            return channels.sorted {
+                compareChannels($0, $1, sortMode: sortMode, sortAscending: sortAscending)
+            }
+        }
     }
 
     private static func orderedSiblings(_ channels: [TS3ChannelSummary]) -> [TS3ChannelSummary] {
@@ -2241,6 +2324,27 @@ struct ChannelTreeItem: Identifiable {
 
     private static func stableChannelSort(_ lhs: TS3ChannelSummary, _ rhs: TS3ChannelSummary) -> Bool {
         lhs.id < rhs.id
+    }
+
+    private static func compareChannels(
+        _ lhs: TS3ChannelSummary,
+        _ rhs: TS3ChannelSummary,
+        sortMode: SiblingSortMode,
+        sortAscending: Bool
+    ) -> Bool {
+        let comparison: ComparisonResult
+        switch sortMode {
+        case .serverOrder:
+            comparison = lhs.id == rhs.id ? .orderedSame : (lhs.id < rhs.id ? .orderedAscending : .orderedDescending)
+        case .name:
+            comparison = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+        case .channelId:
+            comparison = lhs.id == rhs.id ? .orderedSame : (lhs.id < rhs.id ? .orderedAscending : .orderedDescending)
+        }
+        if comparison == .orderedSame {
+            return stableChannelSort(lhs, rhs)
+        }
+        return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
     }
 }
 
