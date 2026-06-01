@@ -905,6 +905,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var contacts: [TS3ContactEntry]
     var notificationSettings: TS3NotificationSettings
     var connectionRecoverySettings: TS3ConnectionRecoverySettings
+    var serverLogQueryPresets: [TS3ServerLogQueryPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -920,6 +921,7 @@ private struct TS3ClientMigrationPackage: Codable {
         contacts: [TS3ContactEntry],
         notificationSettings: TS3NotificationSettings,
         connectionRecoverySettings: TS3ConnectionRecoverySettings,
+        serverLogQueryPresets: [TS3ServerLogQueryPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -934,6 +936,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.contacts = contacts
         self.notificationSettings = notificationSettings
         self.connectionRecoverySettings = connectionRecoverySettings
+        self.serverLogQueryPresets = serverLogQueryPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -950,6 +953,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case contacts
         case notificationSettings
         case connectionRecoverySettings
+        case serverLogQueryPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -970,6 +974,10 @@ private struct TS3ClientMigrationPackage: Codable {
             TS3ConnectionRecoverySettings.self,
             forKey: .connectionRecoverySettings
         ) ?? .defaults
+        serverLogQueryPresets = try container.decodeIfPresent(
+            [TS3ServerLogQueryPreset].self,
+            forKey: .serverLogQueryPresets
+        ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
         userPlaybackPreferences = try container.decodeIfPresent(
@@ -1225,6 +1233,37 @@ struct TS3ServerLogSummary: Identifiable {
     }
 }
 
+struct TS3ServerLogQueryPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var limit: Int
+    var reverse: Bool
+    var instance: Bool
+    var levelFilter: String
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        limit: Int,
+        reverse: Bool,
+        instance: Bool,
+        levelFilter: String,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.limit = limit
+        self.reverse = reverse
+        self.instance = instance
+        self.levelFilter = levelFilter
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 enum TS3WhisperRoute: Equatable {
     case none
     case server
@@ -1305,6 +1344,7 @@ final class TS3AppModel: ObservableObject {
     @Published var clientLocations: [TS3ClientLocationSummary] = []
     @Published var selectedDatabaseClient: TS3DatabaseClientSummary?
     @Published var serverLogEntries: [TS3ServerLogSummary] = []
+    @Published private(set) var serverLogQueryPresets: [TS3ServerLogQueryPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1393,6 +1433,7 @@ final class TS3AppModel: ObservableObject {
         loadUserPlaybackPreferences()
         loadBookmarks()
         loadRecentConnections()
+        loadServerLogQueryPresets()
         loadContacts()
         loadChatHistory()
         loadWhisperPresets()
@@ -3039,6 +3080,58 @@ final class TS3AppModel: ObservableObject {
                 self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
             }
         }
+    }
+
+    func saveServerLogQueryPreset(
+        name: String,
+        limit: Int,
+        reverse: Bool,
+        instance: Bool,
+        levelFilter: String,
+        searchText: String
+    ) {
+        let preset = sanitizedServerLogQueryPreset(TS3ServerLogQueryPreset(
+            name: name,
+            limit: limit,
+            reverse: reverse,
+            instance: instance,
+            levelFilter: levelFilter,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the log query preset."
+            return
+        }
+        serverLogQueryPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        serverLogQueryPresets.insert(preset, at: 0)
+        serverLogQueryPresets = sanitizedServerLogQueryPresets(serverLogQueryPresets)
+        saveServerLogQueryPresets()
+        lastError = nil
+    }
+
+    func deleteServerLogQueryPreset(_ preset: TS3ServerLogQueryPreset) {
+        serverLogQueryPresets.removeAll { $0.id == preset.id }
+        saveServerLogQueryPresets()
+    }
+
+    func serverLogQueryPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(serverLogQueryPresets)
+    }
+
+    @discardableResult
+    func importServerLogQueryPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ServerLogQueryPreset].self, from: data)
+        var merged = serverLogQueryPresets
+        for preset in sanitizedServerLogQueryPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        serverLogQueryPresets = sanitizedServerLogQueryPresets(merged)
+        saveServerLogQueryPresets()
+        lastError = nil
+        return imported.count
     }
 
     func refreshClientDatabase(limit: Int? = nil) {
@@ -5268,6 +5361,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-notification-settings.json")
     }
 
+    private var serverLogQueryPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-server-log-query-presets.json")
+    }
+
     private var connectionRecoverySettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-connection-recovery-settings.json")
@@ -5513,6 +5611,54 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadServerLogQueryPresets() {
+        guard let data = try? Data(contentsOf: serverLogQueryPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ServerLogQueryPreset].self, from: data) else {
+            serverLogQueryPresets = []
+            return
+        }
+        serverLogQueryPresets = sanitizedServerLogQueryPresets(decoded)
+    }
+
+    private func saveServerLogQueryPresets() {
+        do {
+            let directory = serverLogQueryPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(serverLogQueryPresets)
+            try data.write(to: serverLogQueryPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedServerLogQueryPresets(_ presets: [TS3ServerLogQueryPreset]) -> [TS3ServerLogQueryPreset] {
+        presets.compactMap(sanitizedServerLogQueryPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedServerLogQueryPreset(_ preset: TS3ServerLogQueryPreset) -> TS3ServerLogQueryPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let normalizedLevel = ["all", "info", "warning", "error", "debug"].contains(preset.levelFilter.lowercased())
+            ? preset.levelFilter.lowercased()
+            : "all"
+        return TS3ServerLogQueryPreset(
+            id: preset.id,
+            name: name,
+            limit: min(max(preset.limit, 1), 1_000),
+            reverse: preset.reverse,
+            instance: preset.instance,
+            levelFilter: normalizedLevel,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -5586,6 +5732,7 @@ final class TS3AppModel: ObservableObject {
             contacts: contacts,
             notificationSettings: notificationSettingsSnapshot,
             connectionRecoverySettings: TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled),
+            serverLogQueryPresets: serverLogQueryPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -5603,6 +5750,7 @@ final class TS3AppModel: ObservableObject {
         try importContacts(from: encodedPackageSection(package.contacts))
         try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
         try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
+        try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

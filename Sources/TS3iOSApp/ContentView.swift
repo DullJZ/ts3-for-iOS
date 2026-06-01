@@ -5529,6 +5529,10 @@ struct ServerLogsSheet: View {
     @State private var logExportDocument = TS3TextFileDocument()
     @State private var isExportingSnapshot = false
     @State private var snapshotDocument = TS3TextFileDocument()
+    @State private var presetName = ""
+    @State private var isImportingPresets = false
+    @State private var isExportingPresets = false
+    @State private var presetDocument = TS3BookmarkFileDocument()
 
     var body: some View {
         NavigationView {
@@ -5577,6 +5581,62 @@ struct ServerLogsSheet: View {
                         isExportingSnapshot = true
                     }
                     .disabled(model.serverLogEntries.isEmpty)
+                }
+
+                Section(header: Text("Query Presets")) {
+                    TextField("Preset Name", text: $presetName)
+                        .ts3PlainTextField()
+                    Button("Save Current Query") {
+                        model.saveServerLogQueryPreset(
+                            name: presetName,
+                            limit: parsedLineLimit,
+                            reverse: reverseOrder,
+                            instance: instanceLogs,
+                            levelFilter: levelFilter.rawValue,
+                            searchText: searchText
+                        )
+                        presetName = ""
+                    }
+                    .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Export Query Presets") {
+                        exportPresets()
+                    }
+                    .disabled(model.serverLogQueryPresets.isEmpty)
+                    Button("Import Query Presets") {
+                        isImportingPresets = true
+                    }
+                    if model.serverLogQueryPresets.isEmpty {
+                        Text("No saved log query presets")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.serverLogQueryPresets) { preset in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(preset.name)
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(presetSummary(preset))
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Menu {
+                                        Button("Apply and Refresh") {
+                                            applyPreset(preset, refresh: true)
+                                        }
+                                        Button("Apply Only") {
+                                            applyPreset(preset, refresh: false)
+                                        }
+                                        Button("Delete Preset") {
+                                            model.deleteServerLogQueryPreset(preset)
+                                        }
+                                    } label: {
+                                        Image(systemName: "ellipsis.circle")
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Section(header: Text("Add Entry")) {
@@ -5656,6 +5716,27 @@ struct ServerLogsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetDocument,
+                contentType: .json,
+                defaultFilename: "ts3-server-log-query-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
         }
     }
 
@@ -5712,6 +5793,60 @@ struct ServerLogsSheet: View {
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func applyPreset(_ preset: TS3ServerLogQueryPreset, refresh: Bool) {
+        lineLimit = String(preset.limit)
+        reverseOrder = preset.reverse
+        instanceLogs = preset.instance
+        levelFilter = LogLevelFilter(rawValue: preset.levelFilter) ?? .all
+        searchText = preset.searchText
+        presetName = preset.name
+        if refresh {
+            model.refreshServerLogs(
+                limit: preset.limit,
+                reverse: preset.reverse,
+                instance: preset.instance
+            )
+        }
+    }
+
+    private func exportPresets() {
+        do {
+            presetDocument = TS3BookmarkFileDocument(data: try model.serverLogQueryPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importServerLogQueryPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func presetSummary(_ preset: TS3ServerLogQueryPreset) -> String {
+        var parts = [
+            "Limit \(preset.limit)",
+            preset.reverse ? "Reverse" : "Forward",
+            preset.instance ? "Instance" : "Server"
+        ]
+        if preset.levelFilter != LogLevelFilter.all.rawValue {
+            parts.append((LogLevelFilter(rawValue: preset.levelFilter) ?? .all).title)
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]
