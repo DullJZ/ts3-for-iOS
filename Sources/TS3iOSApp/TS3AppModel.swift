@@ -936,6 +936,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var keyboardShortcuts: [TS3KeyboardShortcutBinding]
     var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
     var eventFilterPresets: [TS3EventFilterPreset]
+    var chatFilterPresets: [TS3ChatFilterPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -955,6 +956,7 @@ private struct TS3ClientMigrationPackage: Codable {
         keyboardShortcuts: [TS3KeyboardShortcutBinding],
         channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
         eventFilterPresets: [TS3EventFilterPreset],
+        chatFilterPresets: [TS3ChatFilterPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -973,6 +975,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.keyboardShortcuts = keyboardShortcuts
         self.channelSubscriptionPresets = channelSubscriptionPresets
         self.eventFilterPresets = eventFilterPresets
+        self.chatFilterPresets = chatFilterPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -993,6 +996,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case keyboardShortcuts
         case channelSubscriptionPresets
         case eventFilterPresets
+        case chatFilterPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1028,6 +1032,10 @@ private struct TS3ClientMigrationPackage: Codable {
         eventFilterPresets = try container.decodeIfPresent(
             [TS3EventFilterPreset].self,
             forKey: .eventFilterPresets
+        ) ?? []
+        chatFilterPresets = try container.decodeIfPresent(
+            [TS3ChatFilterPreset].self,
+            forKey: .chatFilterPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1367,6 +1375,34 @@ struct TS3EventFilterPreset: Identifiable, Codable {
     }
 }
 
+struct TS3ChatFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var messageFilter: String
+    var senderFilter: String
+    var newestFirst: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        messageFilter: String,
+        senderFilter: String,
+        newestFirst: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.messageFilter = messageFilter
+        self.senderFilter = senderFilter
+        self.newestFirst = newestFirst
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 enum TS3WhisperRoute: Equatable {
     case none
     case server
@@ -1463,6 +1499,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var serverLogQueryPresets: [TS3ServerLogQueryPreset] = []
     @Published private(set) var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset] = []
     @Published private(set) var eventFilterPresets: [TS3EventFilterPreset] = []
+    @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1556,6 +1593,7 @@ final class TS3AppModel: ObservableObject {
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
         loadEventFilterPresets()
+        loadChatFilterPresets()
         loadContacts()
         loadChatHistory()
         loadWhisperPresets()
@@ -4866,6 +4904,50 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveChatFilterPreset(name: String, messageFilter: String, senderFilter: String, newestFirst: Bool, searchText: String) {
+        let preset = sanitizedChatFilterPreset(TS3ChatFilterPreset(
+            name: name,
+            messageFilter: messageFilter,
+            senderFilter: senderFilter,
+            newestFirst: newestFirst,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the chat filter preset."
+            return
+        }
+        chatFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        chatFilterPresets.insert(preset, at: 0)
+        chatFilterPresets = sanitizedChatFilterPresets(chatFilterPresets)
+        saveChatFilterPresets()
+        lastError = nil
+    }
+
+    func deleteChatFilterPreset(_ preset: TS3ChatFilterPreset) {
+        chatFilterPresets.removeAll { $0.id == preset.id }
+        saveChatFilterPresets()
+    }
+
+    func chatFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(chatFilterPresets)
+    }
+
+    @discardableResult
+    func importChatFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ChatFilterPreset].self, from: data)
+        var merged = chatFilterPresets
+        for preset in sanitizedChatFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        chatFilterPresets = sanitizedChatFilterPresets(merged)
+        saveChatFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -5604,6 +5686,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-event-filter-presets.json")
     }
 
+    private var chatFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-chat-filter-presets.json")
+    }
+
     private var connectionRecoverySettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-connection-recovery-settings.json")
@@ -6056,6 +6143,56 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadChatFilterPresets() {
+        guard let data = try? Data(contentsOf: chatFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ChatFilterPreset].self, from: data) else {
+            chatFilterPresets = []
+            return
+        }
+        chatFilterPresets = sanitizedChatFilterPresets(decoded)
+    }
+
+    private func saveChatFilterPresets() {
+        do {
+            let directory = chatFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(chatFilterPresets)
+            try data.write(to: chatFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedChatFilterPresets(_ presets: [TS3ChatFilterPreset]) -> [TS3ChatFilterPreset] {
+        presets.compactMap(sanitizedChatFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedChatFilterPreset(_ preset: TS3ChatFilterPreset) -> TS3ChatFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let messageFilter = ["all", "channel", "server", "privateMessage"].contains(preset.messageFilter)
+            ? preset.messageFilter
+            : "all"
+        let senderFilter = ["all", "own", "others"].contains(preset.senderFilter)
+            ? preset.senderFilter
+            : "all"
+        return TS3ChatFilterPreset(
+            id: preset.id,
+            name: name,
+            messageFilter: messageFilter,
+            senderFilter: senderFilter,
+            newestFirst: preset.newestFirst,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -6133,6 +6270,7 @@ final class TS3AppModel: ObservableObject {
             keyboardShortcuts: keyboardShortcuts,
             channelSubscriptionPresets: channelSubscriptionPresets,
             eventFilterPresets: eventFilterPresets,
+            chatFilterPresets: chatFilterPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -6154,6 +6292,7 @@ final class TS3AppModel: ObservableObject {
         try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
         try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
         try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
+        try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

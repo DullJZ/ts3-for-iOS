@@ -3983,13 +3983,17 @@ struct ChatSheet: View {
     @State private var senderFilter: ChatSenderFilter = .all
     @State private var newestFirst = false
     @State private var searchText = ""
+    @State private var presetName = ""
     @State private var isShowingOfflineMessages = false
     @State private var isConfirmingClearHistory = false
     @State private var isExportingTranscript = false
     @State private var isImportingChatHistory = false
     @State private var isExportingChatHistory = false
+    @State private var isImportingPresets = false
+    @State private var isExportingPresets = false
     @State private var transcriptDocument = TS3TextFileDocument()
     @State private var chatHistoryDocument = TS3BookmarkFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     var body: some View {
         NavigationView {
@@ -4034,6 +4038,53 @@ struct ChatSheet: View {
 
                     TextField("Search chat", text: $searchText)
                         .textFieldStyle(.roundedBorder)
+
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveChatFilterPreset(
+                                name: presetName,
+                                messageFilter: filter.rawValue,
+                                senderFilter: senderFilter.rawValue,
+                                newestFirst: newestFirst,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.chatFilterPresets.isEmpty {
+                            Text("No saved chat filter presets")
+                        } else {
+                            ForEach(model.chatFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteChatFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.chatFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
 
                     if hasChatFilters {
                         Button("Clear Chat Filters") {
@@ -4130,12 +4181,33 @@ struct ChatSheet: View {
                 }
             }
             .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-chat-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
                 isPresented: $isExportingChatHistory,
                 document: chatHistoryDocument,
                 contentType: .json,
                 defaultFilename: "ts3-chat-history"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -4249,6 +4321,49 @@ struct ChatSheet: View {
         }
         do {
             _ = try model.importChatHistoryBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyPreset(_ preset: TS3ChatFilterPreset) {
+        filter = ChatMessageFilter(rawValue: preset.messageFilter) ?? .all
+        senderFilter = ChatSenderFilter(rawValue: preset.senderFilter) ?? .all
+        newestFirst = preset.newestFirst
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3ChatFilterPreset) -> String {
+        var parts = [
+            (ChatMessageFilter(rawValue: preset.messageFilter) ?? .all).title,
+            (ChatSenderFilter(rawValue: preset.senderFilter) ?? .all).title,
+            preset.newestFirst ? "Newest" : "Oldest"
+        ]
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.chatFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importChatFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
