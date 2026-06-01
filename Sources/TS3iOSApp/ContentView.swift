@@ -6886,8 +6886,12 @@ struct GroupManagementSheet: View {
     @State private var groupTypeFilter: GroupTypeFilter = .all
     @State private var sortMode: GroupSortMode = .name
     @State private var sortAscending = true
+    @State private var presetName = ""
     @State private var isExportingGroups = false
+    @State private var isExportingPresets = false
+    @State private var isImportingPresets = false
     @State private var groupsExportDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     private var groups: [TS3GroupSummary] {
         switch target {
@@ -6957,6 +6961,53 @@ struct GroupManagementSheet: View {
                     Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search groups", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveGroupFilterPreset(
+                                name: presetName,
+                                target: target.rawValue,
+                                groupTypeFilter: groupTypeFilter.rawValue,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.groupFilterPresets.isEmpty {
+                            Text("No saved group filter presets")
+                        } else {
+                            ForEach(model.groupFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteGroupFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.groupFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             groupTypeFilter = .all
@@ -7003,6 +7054,27 @@ struct GroupManagementSheet: View {
                 defaultFilename: target == .server ? "ts3-server-groups" : "ts3-channel-groups"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-group-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -7077,6 +7149,53 @@ struct GroupManagementSheet: View {
             return .orderedSame
         }
         return lhs < rhs ? .orderedAscending : .orderedDescending
+    }
+
+    private func applyPreset(_ preset: TS3GroupFilterPreset) {
+        target = TS3GroupManagementTarget(rawValue: preset.target) ?? .server
+        groupTypeFilter = GroupTypeFilter(rawValue: preset.groupTypeFilter) ?? .all
+        sortMode = GroupSortMode(rawValue: preset.sortMode) ?? .name
+        sortAscending = preset.sortAscending
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3GroupFilterPreset) -> String {
+        var parts = [
+            (TS3GroupManagementTarget(rawValue: preset.target) ?? .server).title,
+            (GroupTypeFilter(rawValue: preset.groupTypeFilter) ?? .all).title,
+            "Sort \((GroupSortMode(rawValue: preset.sortMode) ?? .name).title)"
+        ]
+        if !preset.sortAscending {
+            parts.append("Descending")
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.groupFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importGroupFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 

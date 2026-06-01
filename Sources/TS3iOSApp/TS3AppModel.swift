@@ -928,6 +928,37 @@ struct TS3PermissionFilterPreset: Identifiable, Codable {
     }
 }
 
+struct TS3GroupFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var target: String
+    var groupTypeFilter: String
+    var sortMode: String
+    var sortAscending: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        target: String,
+        groupTypeFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.target = target
+        self.groupTypeFilter = groupTypeFilter
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3DownloadedFileSummary: Identifiable {
     let id = UUID()
     let name: String
@@ -1143,6 +1174,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var databaseClientFilterPresets: [TS3DatabaseClientFilterPreset]
     var privilegeKeyFilterPresets: [TS3PrivilegeKeyFilterPreset]
     var permissionFilterPresets: [TS3PermissionFilterPreset]
+    var groupFilterPresets: [TS3GroupFilterPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -1170,6 +1202,7 @@ private struct TS3ClientMigrationPackage: Codable {
         databaseClientFilterPresets: [TS3DatabaseClientFilterPreset],
         privilegeKeyFilterPresets: [TS3PrivilegeKeyFilterPreset],
         permissionFilterPresets: [TS3PermissionFilterPreset],
+        groupFilterPresets: [TS3GroupFilterPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -1196,6 +1229,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.databaseClientFilterPresets = databaseClientFilterPresets
         self.privilegeKeyFilterPresets = privilegeKeyFilterPresets
         self.permissionFilterPresets = permissionFilterPresets
+        self.groupFilterPresets = groupFilterPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -1224,6 +1258,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case databaseClientFilterPresets
         case privilegeKeyFilterPresets
         case permissionFilterPresets
+        case groupFilterPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1291,6 +1326,10 @@ private struct TS3ClientMigrationPackage: Codable {
         permissionFilterPresets = try container.decodeIfPresent(
             [TS3PermissionFilterPreset].self,
             forKey: .permissionFilterPresets
+        ) ?? []
+        groupFilterPresets = try container.decodeIfPresent(
+            [TS3GroupFilterPreset].self,
+            forKey: .groupFilterPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1760,6 +1799,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var databaseClientFilterPresets: [TS3DatabaseClientFilterPreset] = []
     @Published private(set) var privilegeKeyFilterPresets: [TS3PrivilegeKeyFilterPreset] = []
     @Published private(set) var permissionFilterPresets: [TS3PermissionFilterPreset] = []
+    @Published private(set) var groupFilterPresets: [TS3GroupFilterPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1861,6 +1901,7 @@ final class TS3AppModel: ObservableObject {
         loadDatabaseClientFilterPresets()
         loadPrivilegeKeyFilterPresets()
         loadPermissionFilterPresets()
+        loadGroupFilterPresets()
         loadContacts()
         loadChatHistory()
         loadFileBrowserBookmarks()
@@ -5585,6 +5626,58 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveGroupFilterPreset(
+        name: String,
+        target: String,
+        groupTypeFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) {
+        let preset = sanitizedGroupFilterPreset(TS3GroupFilterPreset(
+            name: name,
+            target: target,
+            groupTypeFilter: groupTypeFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the group filter preset."
+            return
+        }
+        groupFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        groupFilterPresets.insert(preset, at: 0)
+        groupFilterPresets = sanitizedGroupFilterPresets(groupFilterPresets)
+        saveGroupFilterPresets()
+        lastError = nil
+    }
+
+    func deleteGroupFilterPreset(_ preset: TS3GroupFilterPreset) {
+        groupFilterPresets.removeAll { $0.id == preset.id }
+        saveGroupFilterPresets()
+    }
+
+    func groupFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(groupFilterPresets)
+    }
+
+    @discardableResult
+    func importGroupFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3GroupFilterPreset].self, from: data)
+        var merged = groupFilterPresets
+        for preset in sanitizedGroupFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        groupFilterPresets = sanitizedGroupFilterPresets(merged)
+        saveGroupFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -6306,6 +6399,11 @@ final class TS3AppModel: ObservableObject {
     private var permissionFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-permission-filter-presets.json")
+    }
+
+    private var groupFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-group-filter-presets.json")
     }
 
     private var whisperPresetsURL: URL {
@@ -7246,6 +7344,56 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadGroupFilterPresets() {
+        guard let data = try? Data(contentsOf: groupFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3GroupFilterPreset].self, from: data) else {
+            groupFilterPresets = []
+            return
+        }
+        groupFilterPresets = sanitizedGroupFilterPresets(decoded)
+    }
+
+    private func saveGroupFilterPresets() {
+        do {
+            let directory = groupFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(groupFilterPresets)
+            try data.write(to: groupFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedGroupFilterPresets(_ presets: [TS3GroupFilterPreset]) -> [TS3GroupFilterPreset] {
+        presets.compactMap(sanitizedGroupFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedGroupFilterPreset(_ preset: TS3GroupFilterPreset) -> TS3GroupFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let target = ["server", "channel"].contains(preset.target) ? preset.target : "server"
+        let groupTypeFilter = ["all", "template", "regular", "query", "unknown"].contains(preset.groupTypeFilter)
+            ? preset.groupTypeFilter
+            : "all"
+        let sortMode = ["name", "id", "type"].contains(preset.sortMode) ? preset.sortMode : "name"
+        return TS3GroupFilterPreset(
+            id: preset.id,
+            name: name,
+            target: target,
+            groupTypeFilter: groupTypeFilter,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -7331,6 +7479,7 @@ final class TS3AppModel: ObservableObject {
             databaseClientFilterPresets: databaseClientFilterPresets,
             privilegeKeyFilterPresets: privilegeKeyFilterPresets,
             permissionFilterPresets: permissionFilterPresets,
+            groupFilterPresets: groupFilterPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -7360,6 +7509,7 @@ final class TS3AppModel: ObservableObject {
         try importDatabaseClientFilterPresets(from: encodedPackageSection(package.databaseClientFilterPresets))
         try importPrivilegeKeyFilterPresets(from: encodedPackageSection(package.privilegeKeyFilterPresets))
         try importPermissionFilterPresets(from: encodedPackageSection(package.permissionFilterPresets))
+        try importGroupFilterPresets(from: encodedPackageSection(package.groupFilterPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))
