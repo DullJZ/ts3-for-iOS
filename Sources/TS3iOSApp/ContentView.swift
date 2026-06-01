@@ -314,6 +314,45 @@ struct ConnectView: View {
         )
     }
 
+    private var autoReconnectInitialDelayBinding: Binding<Int> {
+        Binding(
+            get: { model.autoReconnectInitialDelaySeconds },
+            set: {
+                model.updateConnectionRecoveryPolicy(
+                    initialDelaySeconds: $0,
+                    maxDelaySeconds: model.autoReconnectMaxDelaySeconds,
+                    maxAttempts: model.autoReconnectMaxAttempts
+                )
+            }
+        )
+    }
+
+    private var autoReconnectMaxDelayBinding: Binding<Int> {
+        Binding(
+            get: { model.autoReconnectMaxDelaySeconds },
+            set: {
+                model.updateConnectionRecoveryPolicy(
+                    initialDelaySeconds: model.autoReconnectInitialDelaySeconds,
+                    maxDelaySeconds: $0,
+                    maxAttempts: model.autoReconnectMaxAttempts
+                )
+            }
+        )
+    }
+
+    private var autoReconnectMaxAttemptsBinding: Binding<Int> {
+        Binding(
+            get: { model.autoReconnectMaxAttempts },
+            set: {
+                model.updateConnectionRecoveryPolicy(
+                    initialDelaySeconds: model.autoReconnectInitialDelaySeconds,
+                    maxDelaySeconds: model.autoReconnectMaxDelaySeconds,
+                    maxAttempts: $0
+                )
+            }
+        )
+    }
+
     private var displayedRecentConnections: [TS3ConnectionSnapshot] {
         let entries = model.recentConnections.filter { snapshot in
             matchesConnectionFilter(
@@ -661,6 +700,23 @@ struct ConnectView: View {
 
             Section(header: Text("Connection Recovery")) {
                 Toggle("Reconnect Automatically", isOn: autoReconnectBinding)
+                Stepper(
+                    "Initial Delay: \(model.autoReconnectInitialDelaySeconds)s",
+                    value: autoReconnectInitialDelayBinding,
+                    in: 1...300
+                )
+                Stepper(
+                    "Max Delay: \(model.autoReconnectMaxDelaySeconds)s",
+                    value: autoReconnectMaxDelayBinding,
+                    in: 1...600
+                )
+                Stepper(
+                    model.autoReconnectMaxAttempts == 0
+                        ? "Max Attempts: Unlimited"
+                        : "Max Attempts: \(model.autoReconnectMaxAttempts)",
+                    value: autoReconnectMaxAttemptsBinding,
+                    in: 0...100
+                )
                 if let status = model.autoReconnectStatus {
                     Text(status)
                         .font(.caption)
@@ -833,6 +889,9 @@ struct ConnectView: View {
     private var connectionRecoverySnapshot: String {
         var rows = [
             "Auto Reconnect: \(model.autoReconnectEnabled ? "Enabled" : "Disabled")",
+            "Initial Delay: \(model.autoReconnectInitialDelaySeconds)s",
+            "Max Delay: \(model.autoReconnectMaxDelaySeconds)s",
+            "Max Attempts: \(model.autoReconnectMaxAttempts == 0 ? "Unlimited" : String(model.autoReconnectMaxAttempts))",
             "Connection State: \(model.connectedStatus)"
         ]
         if let status = model.autoReconnectStatus, !status.isEmpty {

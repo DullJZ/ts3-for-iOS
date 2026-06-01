@@ -1228,8 +1228,43 @@ private struct TS3NotificationSettings: Codable {
 
 private struct TS3ConnectionRecoverySettings: Codable {
     var autoReconnectEnabled: Bool
+    var initialDelaySeconds: Int
+    var maxDelaySeconds: Int
+    var maxAttempts: Int
 
-    static let defaults = TS3ConnectionRecoverySettings(autoReconnectEnabled: false)
+    static let defaults = TS3ConnectionRecoverySettings(
+        autoReconnectEnabled: false,
+        initialDelaySeconds: 3,
+        maxDelaySeconds: 30,
+        maxAttempts: 0
+    )
+
+    init(
+        autoReconnectEnabled: Bool,
+        initialDelaySeconds: Int = 3,
+        maxDelaySeconds: Int = 30,
+        maxAttempts: Int = 0
+    ) {
+        self.autoReconnectEnabled = autoReconnectEnabled
+        self.initialDelaySeconds = initialDelaySeconds
+        self.maxDelaySeconds = maxDelaySeconds
+        self.maxAttempts = maxAttempts
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case autoReconnectEnabled
+        case initialDelaySeconds
+        case maxDelaySeconds
+        case maxAttempts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        autoReconnectEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoReconnectEnabled) ?? false
+        initialDelaySeconds = try container.decodeIfPresent(Int.self, forKey: .initialDelaySeconds) ?? Self.defaults.initialDelaySeconds
+        maxDelaySeconds = try container.decodeIfPresent(Int.self, forKey: .maxDelaySeconds) ?? Self.defaults.maxDelaySeconds
+        maxAttempts = try container.decodeIfPresent(Int.self, forKey: .maxAttempts) ?? Self.defaults.maxAttempts
+    }
 }
 
 private struct TS3ClientMigrationPackage: Codable {
@@ -2108,6 +2143,9 @@ final class TS3AppModel: ObservableObject {
     @Published var pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
     @Published var activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
     @Published private(set) var autoReconnectEnabled = false
+    @Published var autoReconnectInitialDelaySeconds = TS3ConnectionRecoverySettings.defaults.initialDelaySeconds
+    @Published var autoReconnectMaxDelaySeconds = TS3ConnectionRecoverySettings.defaults.maxDelaySeconds
+    @Published var autoReconnectMaxAttempts = TS3ConnectionRecoverySettings.defaults.maxAttempts
     @Published private(set) var autoReconnectStatus: String?
 
     @Published var serverHost = ""
@@ -2981,9 +3019,19 @@ final class TS3AppModel: ObservableObject {
               !snapshot.nickname.isEmpty else {
             return
         }
+        if autoReconnectMaxAttempts > 0, reconnectAttempt >= autoReconnectMaxAttempts {
+            autoReconnectStatus = "Reconnect stopped after \(autoReconnectMaxAttempts) attempt\(autoReconnectMaxAttempts == 1 ? "" : "s")"
+            return
+        }
         reconnectAttempt += 1
-        let delaySeconds = min(30, max(3, reconnectAttempt * 3))
-        autoReconnectStatus = "Reconnect attempt \(reconnectAttempt) in \(delaySeconds)s"
+        let delaySeconds = min(
+            autoReconnectMaxDelaySeconds,
+            max(autoReconnectInitialDelaySeconds, reconnectAttempt * autoReconnectInitialDelaySeconds)
+        )
+        let attemptText = autoReconnectMaxAttempts > 0
+            ? "\(reconnectAttempt)/\(autoReconnectMaxAttempts)"
+            : "\(reconnectAttempt)"
+        autoReconnectStatus = "Reconnect attempt \(attemptText) in \(delaySeconds)s"
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delaySeconds) * 1_000_000_000)
             guard !Task.isCancelled else { return }
@@ -3246,6 +3294,23 @@ final class TS3AppModel: ObservableObject {
         if !isEnabled {
             cancelReconnectSchedule(resetAttempts: true)
         }
+    }
+
+    func updateConnectionRecoveryPolicy(
+        initialDelaySeconds: Int,
+        maxDelaySeconds: Int,
+        maxAttempts: Int
+    ) {
+        let sanitized = sanitizedConnectionRecoverySettings(TS3ConnectionRecoverySettings(
+            autoReconnectEnabled: autoReconnectEnabled,
+            initialDelaySeconds: initialDelaySeconds,
+            maxDelaySeconds: maxDelaySeconds,
+            maxAttempts: maxAttempts
+        ))
+        autoReconnectInitialDelaySeconds = sanitized.initialDelaySeconds
+        autoReconnectMaxDelaySeconds = sanitized.maxDelaySeconds
+        autoReconnectMaxAttempts = sanitized.maxAttempts
+        saveConnectionRecoverySettings()
     }
 
     var inputGainPercentText: String {
@@ -8095,17 +8160,17 @@ final class TS3AppModel: ObservableObject {
     private func loadConnectionRecoverySettings() {
         guard let data = try? Data(contentsOf: connectionRecoverySettingsURL),
               let decoded = try? JSONDecoder().decode(TS3ConnectionRecoverySettings.self, from: data) else {
-            autoReconnectEnabled = TS3ConnectionRecoverySettings.defaults.autoReconnectEnabled
+            applyConnectionRecoverySettings(.defaults)
             return
         }
-        autoReconnectEnabled = decoded.autoReconnectEnabled
+        applyConnectionRecoverySettings(decoded)
     }
 
     private func saveConnectionRecoverySettings() {
         do {
             let directory = connectionRecoverySettingsURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled))
+            let data = try JSONEncoder().encode(currentConnectionRecoverySettings)
             try data.write(to: connectionRecoverySettingsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
@@ -8115,13 +8180,48 @@ final class TS3AppModel: ObservableObject {
     func connectionRecoverySettingsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled))
+        return try encoder.encode(currentConnectionRecoverySettings)
     }
 
     func importConnectionRecoverySettings(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3ConnectionRecoverySettings.self, from: data)
-        setAutoReconnectEnabled(decoded.autoReconnectEnabled)
+        applyConnectionRecoverySettings(decoded)
+        saveConnectionRecoverySettings()
+        if !autoReconnectEnabled {
+            cancelReconnectSchedule(resetAttempts: true)
+        }
         lastError = nil
+    }
+
+    private var currentConnectionRecoverySettings: TS3ConnectionRecoverySettings {
+        sanitizedConnectionRecoverySettings(TS3ConnectionRecoverySettings(
+            autoReconnectEnabled: autoReconnectEnabled,
+            initialDelaySeconds: autoReconnectInitialDelaySeconds,
+            maxDelaySeconds: autoReconnectMaxDelaySeconds,
+            maxAttempts: autoReconnectMaxAttempts
+        ))
+    }
+
+    private func applyConnectionRecoverySettings(_ settings: TS3ConnectionRecoverySettings) {
+        let sanitized = sanitizedConnectionRecoverySettings(settings)
+        autoReconnectEnabled = sanitized.autoReconnectEnabled
+        autoReconnectInitialDelaySeconds = sanitized.initialDelaySeconds
+        autoReconnectMaxDelaySeconds = sanitized.maxDelaySeconds
+        autoReconnectMaxAttempts = sanitized.maxAttempts
+    }
+
+    private func sanitizedConnectionRecoverySettings(
+        _ settings: TS3ConnectionRecoverySettings
+    ) -> TS3ConnectionRecoverySettings {
+        let initialDelay = min(max(settings.initialDelaySeconds, 1), 300)
+        let maxDelay = min(max(settings.maxDelaySeconds, initialDelay), 600)
+        let maxAttempts = min(max(settings.maxAttempts, 0), 100)
+        return TS3ConnectionRecoverySettings(
+            autoReconnectEnabled: settings.autoReconnectEnabled,
+            initialDelaySeconds: initialDelay,
+            maxDelaySeconds: maxDelay,
+            maxAttempts: maxAttempts
+        )
     }
 
     func clientMigrationPackageExportData() throws -> Data {
@@ -8134,7 +8234,7 @@ final class TS3AppModel: ObservableObject {
             contacts: contacts,
             contactFilterPresets: contactFilterPresets,
             notificationSettings: notificationSettingsSnapshot,
-            connectionRecoverySettings: TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled),
+            connectionRecoverySettings: currentConnectionRecoverySettings,
             serverLogQueryPresets: serverLogQueryPresets,
             keyboardShortcuts: keyboardShortcuts,
             channelSubscriptionPresets: channelSubscriptionPresets,
