@@ -1309,6 +1309,24 @@ struct ChannelListView: View {
         }
     }
 
+    private enum ChannelMemberSortMode: String, CaseIterable, Identifiable {
+        case nickname
+        case clientId
+        case talkPower
+        case status
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .nickname: return "Nickname"
+            case .clientId: return "Client ID"
+            case .talkPower: return "Talk Power"
+            case .status: return "Status"
+            }
+        }
+    }
+
     @EnvironmentObject private var model: TS3AppModel
     @State private var isShowingServerTools = false
     @State private var isShowingChat = false
@@ -1326,6 +1344,9 @@ struct ChannelListView: View {
     @State private var channelTreeFilter: ChannelTreeFilter = .all
     @State private var channelTreeSortMode: ChannelTreeItem.SiblingSortMode = .serverOrder
     @State private var channelTreeSortAscending = true
+    @State private var channelMemberSortMode: ChannelMemberSortMode = .nickname
+    @State private var channelMemberSortAscending = true
+    @State private var channelCurrentUserFirst = true
     @State private var channelTreePresetName = ""
 
     var body: some View {
@@ -1393,6 +1414,18 @@ struct ChannelListView: View {
                 Toggle("Ascending", isOn: $channelTreeSortAscending)
 
                 Menu {
+                    Picker("Sort Members", selection: $channelMemberSortMode) {
+                        ForEach(ChannelMemberSortMode.allCases) { sortMode in
+                            Text(sortMode.title).tag(sortMode)
+                        }
+                    }
+                    Toggle("Member Ascending", isOn: $channelMemberSortAscending)
+                    Toggle("Current User First", isOn: $channelCurrentUserFirst)
+                } label: {
+                    Label("Members", systemImage: "person.2")
+                }
+
+                Menu {
                     TextField("Preset Name", text: $channelTreePresetName)
                     Button("Save Current Filters") {
                         model.saveChannelTreeFilterPreset(
@@ -1400,6 +1433,9 @@ struct ChannelListView: View {
                             treeFilter: channelTreeFilter.rawValue,
                             sortMode: channelTreeSortMode.rawValue,
                             sortAscending: channelTreeSortAscending,
+                            memberSortMode: channelMemberSortMode.rawValue,
+                            memberSortAscending: channelMemberSortAscending,
+                            currentUserFirst: channelCurrentUserFirst,
                             searchText: channelSearchText
                         )
                         channelTreePresetName = ""
@@ -1444,6 +1480,9 @@ struct ChannelListView: View {
                         channelTreeFilter = .all
                         channelTreeSortMode = .serverOrder
                         channelTreeSortAscending = true
+                        channelMemberSortMode = .nickname
+                        channelMemberSortAscending = true
+                        channelCurrentUserFirst = true
                         channelSearchText = ""
                     }
                     .buttonStyle(TS3BorderedButtonStyle())
@@ -1584,7 +1623,12 @@ struct ChannelListView: View {
     }
 
     private var hasChannelTreeOptions: Bool {
-        hasChannelTreeFilters || channelTreeSortMode != .serverOrder || !channelTreeSortAscending
+        hasChannelTreeFilters
+            || channelTreeSortMode != .serverOrder
+            || !channelTreeSortAscending
+            || channelMemberSortMode != .nickname
+            || !channelMemberSortAscending
+            || !channelCurrentUserFirst
     }
 
     private var normalizedSearchText: String {
@@ -1642,9 +1686,9 @@ struct ChannelListView: View {
         let members = model.members(in: channelId)
         guard hasChannelTreeFilters,
               !channelMatchesFilters(model.channels.first { $0.id == channelId }) else {
-            return members
+            return sortedMembers(members)
         }
-        return members.filter(userMatchesFilters)
+        return sortedMembers(members.filter(userMatchesFilters))
     }
 
     private func channelMatchesFilters(_ channel: TS3ChannelSummary?) -> Bool {
@@ -1688,6 +1732,9 @@ struct ChannelListView: View {
         channelTreeFilter = ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all
         channelTreeSortMode = ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder
         channelTreeSortAscending = preset.sortAscending
+        channelMemberSortMode = ChannelMemberSortMode(rawValue: preset.memberSortMode) ?? .nickname
+        channelMemberSortAscending = preset.memberSortAscending
+        channelCurrentUserFirst = preset.currentUserFirst
         channelSearchText = preset.searchText
         channelTreePresetName = preset.name
     }
@@ -1695,15 +1742,63 @@ struct ChannelListView: View {
     private func channelTreePresetSummary(_ preset: TS3ChannelTreeFilterPreset) -> String {
         var parts = [
             (ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all).title,
-            "Sort \((ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder).title)"
+            "Sort \((ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder).title)",
+            "Members \((ChannelMemberSortMode(rawValue: preset.memberSortMode) ?? .nickname).title)"
         ]
         if !preset.sortAscending {
-            parts.append("Descending")
+            parts.append("Channels Descending")
+        }
+        if !preset.memberSortAscending {
+            parts.append("Members Descending")
+        }
+        if !preset.currentUserFirst {
+            parts.append("No Current User Pin")
         }
         if !preset.searchText.isEmpty {
             parts.append("Search \(preset.searchText)")
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func sortedMembers(_ members: [TS3UserSummary]) -> [TS3UserSummary] {
+        members.sorted { lhs, rhs in
+            if channelCurrentUserFirst, lhs.isCurrentUser != rhs.isCurrentUser {
+                return lhs.isCurrentUser && !rhs.isCurrentUser
+            }
+            let comparison = memberComparison(lhs, rhs)
+            if comparison == .orderedSame {
+                return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
+            }
+            return channelMemberSortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func memberComparison(_ lhs: TS3UserSummary, _ rhs: TS3UserSummary) -> ComparisonResult {
+        switch channelMemberSortMode {
+        case .nickname:
+            return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname)
+        case .clientId:
+            return compareInts(lhs.id, rhs.id)
+        case .talkPower:
+            return compareInts(lhs.talkPower ?? Int.min, rhs.talkPower ?? Int.min)
+        case .status:
+            return compareInts(memberStatusRank(lhs), memberStatusRank(rhs))
+        }
+    }
+
+    private func memberStatusRank(_ user: TS3UserSummary) -> Int {
+        if user.isRequestingTalkPower { return 0 }
+        if user.isPrioritySpeaker { return 1 }
+        if user.isChannelCommander { return 2 }
+        if user.isTalker { return 3 }
+        if user.isAway { return 4 }
+        if user.isInputMuted || user.isOutputMuted { return 5 }
+        return 6
+    }
+
+    private func compareInts(_ lhs: Int, _ rhs: Int) -> ComparisonResult {
+        if lhs == rhs { return .orderedSame }
+        return lhs < rhs ? .orderedAscending : .orderedDescending
     }
 
     private func exportChannelTreePresets() {

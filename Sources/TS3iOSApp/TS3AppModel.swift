@@ -1804,6 +1804,9 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
     var treeFilter: String
     var sortMode: String
     var sortAscending: Bool
+    var memberSortMode: String
+    var memberSortAscending: Bool
+    var currentUserFirst: Bool
     var searchText: String
     var updatedAt: Date
 
@@ -1813,6 +1816,9 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
         treeFilter: String,
         sortMode: String = "serverOrder",
         sortAscending: Bool = true,
+        memberSortMode: String = "nickname",
+        memberSortAscending: Bool = true,
+        currentUserFirst: Bool = true,
         searchText: String,
         updatedAt: Date = Date()
     ) {
@@ -1821,6 +1827,9 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
         self.treeFilter = treeFilter
         self.sortMode = sortMode
         self.sortAscending = sortAscending
+        self.memberSortMode = memberSortMode
+        self.memberSortAscending = memberSortAscending
+        self.currentUserFirst = currentUserFirst
         self.searchText = searchText
         self.updatedAt = updatedAt
     }
@@ -1831,6 +1840,9 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
         case treeFilter
         case sortMode
         case sortAscending
+        case memberSortMode
+        case memberSortAscending
+        case currentUserFirst
         case searchText
         case updatedAt
     }
@@ -1842,6 +1854,9 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
         treeFilter = try container.decode(String.self, forKey: .treeFilter)
         sortMode = try container.decodeIfPresent(String.self, forKey: .sortMode) ?? "serverOrder"
         sortAscending = try container.decodeIfPresent(Bool.self, forKey: .sortAscending) ?? true
+        memberSortMode = try container.decodeIfPresent(String.self, forKey: .memberSortMode) ?? "nickname"
+        memberSortAscending = try container.decodeIfPresent(Bool.self, forKey: .memberSortAscending) ?? true
+        currentUserFirst = try container.decodeIfPresent(Bool.self, forKey: .currentUserFirst) ?? true
         searchText = try container.decodeIfPresent(String.self, forKey: .searchText) ?? ""
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
@@ -5483,6 +5498,9 @@ final class TS3AppModel: ObservableObject {
         treeFilter: String,
         sortMode: String,
         sortAscending: Bool,
+        memberSortMode: String,
+        memberSortAscending: Bool,
+        currentUserFirst: Bool,
         searchText: String
     ) {
         let preset = sanitizedChannelTreeFilterPreset(TS3ChannelTreeFilterPreset(
@@ -5490,6 +5508,9 @@ final class TS3AppModel: ObservableObject {
             treeFilter: treeFilter,
             sortMode: sortMode,
             sortAscending: sortAscending,
+            memberSortMode: memberSortMode,
+            memberSortAscending: memberSortAscending,
+            currentUserFirst: currentUserFirst,
             searchText: searchText
         ))
         guard let preset else {
@@ -7388,12 +7409,17 @@ final class TS3AppModel: ObservableObject {
         let treeFilter = validFilters.contains(preset.treeFilter) ? preset.treeFilter : "all"
         let validSortModes: Set<String> = ["serverOrder", "name", "channelId"]
         let sortMode = validSortModes.contains(preset.sortMode) ? preset.sortMode : "serverOrder"
+        let validMemberSortModes: Set<String> = ["nickname", "clientId", "talkPower", "status"]
+        let memberSortMode = validMemberSortModes.contains(preset.memberSortMode) ? preset.memberSortMode : "nickname"
         return TS3ChannelTreeFilterPreset(
             id: preset.id,
             name: name,
             treeFilter: treeFilter,
             sortMode: sortMode,
             sortAscending: preset.sortAscending,
+            memberSortMode: memberSortMode,
+            memberSortAscending: preset.memberSortAscending,
+            currentUserFirst: preset.currentUserFirst,
             searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
             updatedAt: preset.updatedAt
         )
