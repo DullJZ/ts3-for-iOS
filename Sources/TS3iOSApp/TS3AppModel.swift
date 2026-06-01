@@ -934,6 +934,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var connectionRecoverySettings: TS3ConnectionRecoverySettings
     var serverLogQueryPresets: [TS3ServerLogQueryPreset]
     var keyboardShortcuts: [TS3KeyboardShortcutBinding]
+    var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -951,6 +952,7 @@ private struct TS3ClientMigrationPackage: Codable {
         connectionRecoverySettings: TS3ConnectionRecoverySettings,
         serverLogQueryPresets: [TS3ServerLogQueryPreset],
         keyboardShortcuts: [TS3KeyboardShortcutBinding],
+        channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -967,6 +969,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.connectionRecoverySettings = connectionRecoverySettings
         self.serverLogQueryPresets = serverLogQueryPresets
         self.keyboardShortcuts = keyboardShortcuts
+        self.channelSubscriptionPresets = channelSubscriptionPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -985,6 +988,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case connectionRecoverySettings
         case serverLogQueryPresets
         case keyboardShortcuts
+        case channelSubscriptionPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1012,6 +1016,10 @@ private struct TS3ClientMigrationPackage: Codable {
         keyboardShortcuts = try container.decodeIfPresent(
             [TS3KeyboardShortcutBinding].self,
             forKey: .keyboardShortcuts
+        ) ?? []
+        channelSubscriptionPresets = try container.decodeIfPresent(
+            [TS3ChannelSubscriptionPreset].self,
+            forKey: .channelSubscriptionPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1304,6 +1312,25 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
     }
 }
 
+struct TS3ChannelSubscriptionPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var channelIds: [Int]
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        channelIds: [Int],
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.channelIds = channelIds
+        self.updatedAt = updatedAt
+    }
+}
+
 enum TS3WhisperRoute: Equatable {
     case none
     case server
@@ -1398,6 +1425,7 @@ final class TS3AppModel: ObservableObject {
     @Published var selectedDatabaseClient: TS3DatabaseClientSummary?
     @Published var serverLogEntries: [TS3ServerLogSummary] = []
     @Published private(set) var serverLogQueryPresets: [TS3ServerLogQueryPreset] = []
+    @Published private(set) var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1489,6 +1517,7 @@ final class TS3AppModel: ObservableObject {
         loadBookmarks()
         loadRecentConnections()
         loadServerLogQueryPresets()
+        loadChannelSubscriptionPresets()
         loadContacts()
         loadChatHistory()
         loadWhisperPresets()
@@ -4702,6 +4731,59 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func saveCurrentChannelSubscriptionPreset(name: String) {
+        let preset = sanitizedChannelSubscriptionPreset(TS3ChannelSubscriptionPreset(
+            name: name,
+            channelIds: channels.filter { $0.isSubscribed == true }.map(\.id)
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the subscription preset."
+            return
+        }
+        channelSubscriptionPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        channelSubscriptionPresets.insert(preset, at: 0)
+        channelSubscriptionPresets = sanitizedChannelSubscriptionPresets(channelSubscriptionPresets)
+        saveChannelSubscriptionPresets()
+        lastError = nil
+    }
+
+    func applyChannelSubscriptionPreset(_ preset: TS3ChannelSubscriptionPreset) {
+        let channelIds = Array(Set(preset.channelIds.filter { id in
+            channels.contains { $0.id == id }
+        })).sorted()
+        runClientCommand { client in
+            try await client.setAllChannelsSubscribed(false)
+            for channelId in channelIds {
+                try await client.setChannelSubscribed(channelId: channelId, isSubscribed: true)
+            }
+        }
+    }
+
+    func deleteChannelSubscriptionPreset(_ preset: TS3ChannelSubscriptionPreset) {
+        channelSubscriptionPresets.removeAll { $0.id == preset.id }
+        saveChannelSubscriptionPresets()
+    }
+
+    func channelSubscriptionPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(channelSubscriptionPresets)
+    }
+
+    @discardableResult
+    func importChannelSubscriptionPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ChannelSubscriptionPreset].self, from: data)
+        var merged = channelSubscriptionPresets
+        for preset in sanitizedChannelSubscriptionPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        channelSubscriptionPresets = sanitizedChannelSubscriptionPresets(merged)
+        saveChannelSubscriptionPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -5430,6 +5512,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-server-log-query-presets.json")
     }
 
+    private var channelSubscriptionPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-channel-subscription-presets.json")
+    }
+
     private var connectionRecoverySettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-connection-recovery-settings.json")
@@ -5790,6 +5877,48 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadChannelSubscriptionPresets() {
+        guard let data = try? Data(contentsOf: channelSubscriptionPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ChannelSubscriptionPreset].self, from: data) else {
+            channelSubscriptionPresets = []
+            return
+        }
+        channelSubscriptionPresets = sanitizedChannelSubscriptionPresets(decoded)
+    }
+
+    private func saveChannelSubscriptionPresets() {
+        do {
+            let directory = channelSubscriptionPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(channelSubscriptionPresets)
+            try data.write(to: channelSubscriptionPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedChannelSubscriptionPresets(_ presets: [TS3ChannelSubscriptionPreset]) -> [TS3ChannelSubscriptionPreset] {
+        presets.compactMap(sanitizedChannelSubscriptionPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedChannelSubscriptionPreset(_ preset: TS3ChannelSubscriptionPreset) -> TS3ChannelSubscriptionPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let channelIds = Array(Set(preset.channelIds.filter { $0 > 0 })).sorted()
+        guard !name.isEmpty else { return nil }
+        return TS3ChannelSubscriptionPreset(
+            id: preset.id,
+            name: name,
+            channelIds: channelIds,
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -5865,6 +5994,7 @@ final class TS3AppModel: ObservableObject {
             connectionRecoverySettings: TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled),
             serverLogQueryPresets: serverLogQueryPresets,
             keyboardShortcuts: keyboardShortcuts,
+            channelSubscriptionPresets: channelSubscriptionPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -5884,6 +6014,7 @@ final class TS3AppModel: ObservableObject {
         try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
         try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
         try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
+        try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

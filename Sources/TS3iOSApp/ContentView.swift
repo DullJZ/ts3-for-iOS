@@ -1191,6 +1191,7 @@ struct ChannelListView: View {
     @State private var isShowingWhisper = false
     @State private var isShowingCreateChannel = false
     @State private var isShowingDisconnect = false
+    @State private var isShowingSubscriptionPresets = false
     @State private var isExportingChannelTree = false
     @State private var channelTreeDocument = TS3TextFileDocument()
     @State private var channelSearchText = ""
@@ -1297,6 +1298,9 @@ struct ChannelListView: View {
                     Button("Unsubscribe All Channels") {
                         model.setAllChannelsSubscribed(false)
                     }
+                    Button("Subscription Presets") {
+                        isShowingSubscriptionPresets = true
+                    }
                 } label: {
                     Label("Channel Tools", systemImage: "list.bullet.rectangle")
                 }
@@ -1331,6 +1335,10 @@ struct ChannelListView: View {
         }
         .sheet(isPresented: $isShowingCreateChannel) {
             ChannelEditorSheet(mode: .create(parent: model.currentChannel))
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingSubscriptionPresets) {
+            ChannelSubscriptionPresetsSheet()
                 .environmentObject(model)
         }
         .fileExporter(
@@ -1456,6 +1464,146 @@ struct ChannelListView: View {
     private func normalizedParentId(_ parentId: Int?) -> Int? {
         guard let parentId, parentId > 0 else { return nil }
         return parentId
+    }
+}
+
+struct ChannelSubscriptionPresetsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var presetName = ""
+    @State private var isImportingPresets = false
+    @State private var isExportingPresets = false
+    @State private var presetsDocument = TS3BookmarkFileDocument()
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Current Subscriptions")) {
+                    Text("Subscribed Channels: \(subscribedChannelCount)")
+                        .foregroundColor(.secondary)
+                    TextField("Preset Name", text: $presetName)
+                        .ts3PlainTextField()
+                    Button("Save Current Subscriptions") {
+                        model.saveCurrentChannelSubscriptionPreset(name: presetName)
+                        presetName = ""
+                    }
+                    .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Subscribe All Channels") {
+                        model.setAllChannelsSubscribed(true)
+                    }
+                    Button("Unsubscribe All Channels") {
+                        model.setAllChannelsSubscribed(false)
+                    }
+                }
+
+                Section(header: Text("Presets")) {
+                    if model.channelSubscriptionPresets.isEmpty {
+                        Text("No saved subscription presets")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.channelSubscriptionPresets) { preset in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(presetSummary(preset))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Menu {
+                                    Button("Apply Preset") {
+                                        model.applyChannelSubscriptionPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteChannelSubscriptionPreset(preset)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Backup")) {
+                    Button("Export Presets") {
+                        exportPresets()
+                    }
+                    .disabled(model.channelSubscriptionPresets.isEmpty)
+                    Button("Import Presets") {
+                        isImportingPresets = true
+                    }
+                }
+            }
+            .navigationTitle("Subscription Presets")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-channel-subscription-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private var subscribedChannelCount: Int {
+        model.channels.filter { $0.isSubscribed == true }.count
+    }
+
+    private func presetSummary(_ preset: TS3ChannelSubscriptionPreset) -> String {
+        let availableCount = preset.channelIds.filter { id in
+            model.channels.contains { $0.id == id }
+        }.count
+        return "\(preset.channelIds.count) channels · \(availableCount) available"
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.channelSubscriptionPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importChannelSubscriptionPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 
