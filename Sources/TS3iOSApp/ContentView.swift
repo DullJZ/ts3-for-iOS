@@ -219,11 +219,14 @@ struct ConnectView: View {
     @State private var isImportingRecoverySettings = false
     @State private var isExportingRecoverySettings = false
     @State private var isExportingRecoverySnapshot = false
+    @State private var isImportingClientPackage = false
+    @State private var isExportingClientPackage = false
     @State private var isConfirmingClearRecentConnections = false
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
     @State private var recentConnectionsDocument = TS3BookmarkFileDocument()
     @State private var recoverySettingsDocument = TS3TextFileDocument()
     @State private var recoverySnapshotDocument = TS3TextFileDocument()
+    @State private var clientPackageDocument = TS3BookmarkFileDocument()
 
     private var autoReconnectBinding: Binding<Bool> {
         Binding(
@@ -471,6 +474,18 @@ struct ConnectView: View {
                     .foregroundColor(.secondary)
             }
 
+            Section(header: Text("Client Migration")) {
+                Button("Export Client Package") {
+                    exportClientPackage()
+                }
+                Button("Import Client Package") {
+                    isImportingClientPackage = true
+                }
+                Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, audio, status, playback, and whisper presets.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
             if let error = model.lastError {
                 Section {
                     Text(error)
@@ -613,6 +628,27 @@ struct ConnectView: View {
                 model.lastError = error.localizedDescription
             }
         }
+        .fileImporter(
+            isPresented: $isImportingClientPackage,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                importClientPackage(from: url)
+            } else if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingClientPackage,
+            document: clientPackageDocument,
+            contentType: .json,
+            defaultFilename: "ts3-client-package"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
         .alert(isPresented: $isConfirmingClearRecentConnections) {
             Alert(
                 title: Text("Clear Recent Servers?"),
@@ -709,6 +745,29 @@ struct ConnectView: View {
         }
         do {
             try model.importConnectionRecoverySettings(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportClientPackage() {
+        do {
+            clientPackageDocument = TS3BookmarkFileDocument(data: try model.clientMigrationPackageExportData())
+            isExportingClientPackage = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importClientPackage(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importClientMigrationPackage(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }

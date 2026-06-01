@@ -897,6 +897,101 @@ private struct TS3ConnectionRecoverySettings: Codable {
     static let defaults = TS3ConnectionRecoverySettings(autoReconnectEnabled: false)
 }
 
+private struct TS3ClientMigrationPackage: Codable {
+    var schemaVersion: Int
+    var exportedAt: Date
+    var bookmarks: [TS3BookmarkSummary]
+    var recentConnections: [TS3ConnectionSnapshot]
+    var contacts: [TS3ContactEntry]
+    var notificationSettings: TS3NotificationSettings
+    var connectionRecoverySettings: TS3ConnectionRecoverySettings
+    var audioSettings: TS3AudioSettings
+    var audioProfiles: [TS3AudioProfile]
+    var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
+    var selfStatus: TS3SelfStatusBackup
+    var selfStatusProfiles: [TS3SelfStatusProfile]
+    var whisperPresets: [TS3WhisperPreset]
+
+    init(
+        schemaVersion: Int = 1,
+        exportedAt: Date = Date(),
+        bookmarks: [TS3BookmarkSummary],
+        recentConnections: [TS3ConnectionSnapshot],
+        contacts: [TS3ContactEntry],
+        notificationSettings: TS3NotificationSettings,
+        connectionRecoverySettings: TS3ConnectionRecoverySettings,
+        audioSettings: TS3AudioSettings,
+        audioProfiles: [TS3AudioProfile],
+        userPlaybackPreferences: [String: TS3UserPlaybackPreference],
+        selfStatus: TS3SelfStatusBackup,
+        selfStatusProfiles: [TS3SelfStatusProfile],
+        whisperPresets: [TS3WhisperPreset]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.exportedAt = exportedAt
+        self.bookmarks = bookmarks
+        self.recentConnections = recentConnections
+        self.contacts = contacts
+        self.notificationSettings = notificationSettings
+        self.connectionRecoverySettings = connectionRecoverySettings
+        self.audioSettings = audioSettings
+        self.audioProfiles = audioProfiles
+        self.userPlaybackPreferences = userPlaybackPreferences
+        self.selfStatus = selfStatus
+        self.selfStatusProfiles = selfStatusProfiles
+        self.whisperPresets = whisperPresets
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case exportedAt
+        case bookmarks
+        case recentConnections
+        case contacts
+        case notificationSettings
+        case connectionRecoverySettings
+        case audioSettings
+        case audioProfiles
+        case userPlaybackPreferences
+        case selfStatus
+        case selfStatusProfiles
+        case whisperPresets
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        exportedAt = try container.decodeIfPresent(Date.self, forKey: .exportedAt) ?? Date()
+        bookmarks = try container.decodeIfPresent([TS3BookmarkSummary].self, forKey: .bookmarks) ?? []
+        recentConnections = try container.decodeIfPresent([TS3ConnectionSnapshot].self, forKey: .recentConnections) ?? []
+        contacts = try container.decodeIfPresent([TS3ContactEntry].self, forKey: .contacts) ?? []
+        notificationSettings = try container.decodeIfPresent(TS3NotificationSettings.self, forKey: .notificationSettings) ?? .defaults
+        connectionRecoverySettings = try container.decodeIfPresent(
+            TS3ConnectionRecoverySettings.self,
+            forKey: .connectionRecoverySettings
+        ) ?? .defaults
+        audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
+        audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
+        userPlaybackPreferences = try container.decodeIfPresent(
+            [String: TS3UserPlaybackPreference].self,
+            forKey: .userPlaybackPreferences
+        ) ?? [:]
+        selfStatus = try container.decodeIfPresent(TS3SelfStatusBackup.self, forKey: .selfStatus) ?? TS3SelfStatusBackup(
+            nickname: "",
+            description: "",
+            isAway: false,
+            awayMessage: "",
+            isInputMuted: false,
+            isOutputMuted: false,
+            isChannelCommander: false,
+            talkRequestMessage: "",
+            iconId: nil
+        )
+        selfStatusProfiles = try container.decodeIfPresent([TS3SelfStatusProfile].self, forKey: .selfStatusProfiles) ?? []
+        whisperPresets = try container.decodeIfPresent([TS3WhisperPreset].self, forKey: .whisperPresets) ?? []
+    }
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -5191,13 +5286,7 @@ final class TS3AppModel: ObservableObject {
         do {
             let directory = audioSettingsURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let snapshot = TS3AudioSettings(
-                playbackVolume: playbackVolume,
-                inputGain: inputGain,
-                transmitMode: audioTransmitMode.rawValue,
-                voiceActivationThreshold: voiceActivationThreshold
-            )
-            let data = try JSONEncoder().encode(snapshot)
+            let data = try JSONEncoder().encode(currentAudioSettingsSnapshot)
             try data.write(to: audioSettingsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
@@ -5207,13 +5296,16 @@ final class TS3AppModel: ObservableObject {
     func audioSettingsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let snapshot = TS3AudioSettings(
+        return try encoder.encode(currentAudioSettingsSnapshot)
+    }
+
+    private var currentAudioSettingsSnapshot: TS3AudioSettings {
+        TS3AudioSettings(
             playbackVolume: playbackVolume,
             inputGain: inputGain,
             transmitMode: audioTransmitMode.rawValue,
             voiceActivationThreshold: voiceActivationThreshold
         )
-        return try encoder.encode(snapshot)
     }
 
     private func loadAudioProfiles() {
@@ -5483,6 +5575,45 @@ final class TS3AppModel: ObservableObject {
         let decoded = try JSONDecoder().decode(TS3ConnectionRecoverySettings.self, from: data)
         setAutoReconnectEnabled(decoded.autoReconnectEnabled)
         lastError = nil
+    }
+
+    func clientMigrationPackageExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let package = TS3ClientMigrationPackage(
+            bookmarks: bookmarks,
+            recentConnections: recentConnections,
+            contacts: contacts,
+            notificationSettings: notificationSettingsSnapshot,
+            connectionRecoverySettings: TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled),
+            audioSettings: currentAudioSettingsSnapshot,
+            audioProfiles: audioProfiles,
+            userPlaybackPreferences: userPlaybackPreferences,
+            selfStatus: currentSelfStatusBackup(),
+            selfStatusProfiles: selfStatusProfiles,
+            whisperPresets: whisperPresets
+        )
+        return try encoder.encode(package)
+    }
+
+    func importClientMigrationPackage(from data: Data) throws {
+        let package = try JSONDecoder().decode(TS3ClientMigrationPackage.self, from: data)
+        try importBookmarks(from: encodedPackageSection(package.bookmarks))
+        try importRecentConnections(from: encodedPackageSection(package.recentConnections))
+        try importContacts(from: encodedPackageSection(package.contacts))
+        try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
+        try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
+        try importAudioSettings(from: encodedPackageSection(package.audioSettings))
+        try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
+        try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))
+        try importSelfStatusBackup(from: encodedPackageSection(package.selfStatus))
+        try importSelfStatusProfiles(from: encodedPackageSection(package.selfStatusProfiles))
+        try importWhisperPresetBackup(from: encodedPackageSection(package.whisperPresets))
+        lastError = nil
+    }
+
+    private func encodedPackageSection<T: Encodable>(_ value: T) throws -> Data {
+        try JSONEncoder().encode(value)
     }
 
     private func notifyIfInactive(title: String, body: String, identifier: String) {
