@@ -265,6 +265,31 @@ struct TS3ContactEntry: Identifiable, Codable {
     var id: String { uniqueIdentifier }
 }
 
+struct TS3ContactFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var sortMode: String
+    var sortAscending: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3UserPlaybackPreference: Codable {
     var volume: Double = 1.0
     var isMuted = false
@@ -1213,6 +1238,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var bookmarks: [TS3BookmarkSummary]
     var recentConnections: [TS3ConnectionSnapshot]
     var contacts: [TS3ContactEntry]
+    var contactFilterPresets: [TS3ContactFilterPreset]
     var notificationSettings: TS3NotificationSettings
     var connectionRecoverySettings: TS3ConnectionRecoverySettings
     var serverLogQueryPresets: [TS3ServerLogQueryPreset]
@@ -1243,6 +1269,7 @@ private struct TS3ClientMigrationPackage: Codable {
         bookmarks: [TS3BookmarkSummary],
         recentConnections: [TS3ConnectionSnapshot],
         contacts: [TS3ContactEntry],
+        contactFilterPresets: [TS3ContactFilterPreset],
         notificationSettings: TS3NotificationSettings,
         connectionRecoverySettings: TS3ConnectionRecoverySettings,
         serverLogQueryPresets: [TS3ServerLogQueryPreset],
@@ -1272,6 +1299,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.bookmarks = bookmarks
         self.recentConnections = recentConnections
         self.contacts = contacts
+        self.contactFilterPresets = contactFilterPresets
         self.notificationSettings = notificationSettings
         self.connectionRecoverySettings = connectionRecoverySettings
         self.serverLogQueryPresets = serverLogQueryPresets
@@ -1303,6 +1331,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case bookmarks
         case recentConnections
         case contacts
+        case contactFilterPresets
         case notificationSettings
         case connectionRecoverySettings
         case serverLogQueryPresets
@@ -1335,6 +1364,10 @@ private struct TS3ClientMigrationPackage: Codable {
         bookmarks = try container.decodeIfPresent([TS3BookmarkSummary].self, forKey: .bookmarks) ?? []
         recentConnections = try container.decodeIfPresent([TS3ConnectionSnapshot].self, forKey: .recentConnections) ?? []
         contacts = try container.decodeIfPresent([TS3ContactEntry].self, forKey: .contacts) ?? []
+        contactFilterPresets = try container.decodeIfPresent(
+            [TS3ContactFilterPreset].self,
+            forKey: .contactFilterPresets
+        ) ?? []
         notificationSettings = try container.decodeIfPresent(TS3NotificationSettings.self, forKey: .notificationSettings) ?? .defaults
         connectionRecoverySettings = try container.decodeIfPresent(
             TS3ConnectionRecoverySettings.self,
@@ -1900,6 +1933,7 @@ final class TS3AppModel: ObservableObject {
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var contacts: [TS3ContactEntry] = []
+    @Published private(set) var contactFilterPresets: [TS3ContactFilterPreset] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
     @Published var isTalking = false
@@ -1975,6 +2009,7 @@ final class TS3AppModel: ObservableObject {
         loadGroupFilterPresets()
         loadGroupClientFilterPresets()
         loadContacts()
+        loadContactFilterPresets()
         loadChatHistory()
         loadFileBrowserBookmarks()
         loadFileBrowserFilterPresets()
@@ -6532,6 +6567,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-contacts.json")
     }
 
+    private var contactFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-contact-filter-presets.json")
+    }
+
     private var chatHistoryURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-chat-history.json")
@@ -7750,6 +7790,7 @@ final class TS3AppModel: ObservableObject {
             bookmarks: bookmarks,
             recentConnections: recentConnections,
             contacts: contacts,
+            contactFilterPresets: contactFilterPresets,
             notificationSettings: notificationSettingsSnapshot,
             connectionRecoverySettings: TS3ConnectionRecoverySettings(autoReconnectEnabled: autoReconnectEnabled),
             serverLogQueryPresets: serverLogQueryPresets,
@@ -7782,6 +7823,7 @@ final class TS3AppModel: ObservableObject {
         try importBookmarks(from: encodedPackageSection(package.bookmarks))
         try importRecentConnections(from: encodedPackageSection(package.recentConnections))
         try importContacts(from: encodedPackageSection(package.contacts))
+        try importContactFilterPresets(from: encodedPackageSection(package.contactFilterPresets))
         try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
         try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
         try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
@@ -7867,6 +7909,52 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    private func loadContactFilterPresets() {
+        guard let data = try? Data(contentsOf: contactFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ContactFilterPreset].self, from: data) else {
+            contactFilterPresets = []
+            return
+        }
+        contactFilterPresets = sanitizedContactFilterPresets(decoded)
+    }
+
+    private func saveContactFilterPresets() {
+        do {
+            let directory = contactFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(contactFilterPresets)
+            try data.write(to: contactFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedContactFilterPresets(_ presets: [TS3ContactFilterPreset]) -> [TS3ContactFilterPreset] {
+        presets.compactMap(sanitizedContactFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedContactFilterPreset(_ preset: TS3ContactFilterPreset) -> TS3ContactFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let sortMode = ["nickname", "status", "updated", "note"].contains(preset.sortMode)
+            ? preset.sortMode
+            : "nickname"
+        return TS3ContactFilterPreset(
+            id: preset.id,
+            name: name,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func loadWhisperPresets() {
         guard let data = try? Data(contentsOf: whisperPresetsURL),
               let decoded = try? JSONDecoder().decode([TS3WhisperPreset].self, from: data) else {
@@ -7891,6 +7979,54 @@ final class TS3AppModel: ObservableObject {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(contacts)
+    }
+
+    func saveContactFilterPreset(
+        name: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) {
+        let preset = sanitizedContactFilterPreset(TS3ContactFilterPreset(
+            name: name,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the contact filter preset."
+            return
+        }
+        contactFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        contactFilterPresets.insert(preset, at: 0)
+        contactFilterPresets = sanitizedContactFilterPresets(contactFilterPresets)
+        saveContactFilterPresets()
+        lastError = nil
+    }
+
+    func deleteContactFilterPreset(_ preset: TS3ContactFilterPreset) {
+        contactFilterPresets.removeAll { $0.id == preset.id }
+        saveContactFilterPresets()
+    }
+
+    func contactFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(contactFilterPresets)
+    }
+
+    @discardableResult
+    func importContactFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ContactFilterPreset].self, from: data)
+        var merged = contactFilterPresets
+        for preset in sanitizedContactFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        contactFilterPresets = sanitizedContactFilterPresets(merged)
+        saveContactFilterPresets()
+        lastError = nil
+        return imported.count
     }
 
     @discardableResult

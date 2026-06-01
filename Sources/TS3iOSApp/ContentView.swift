@@ -3409,10 +3409,14 @@ struct ContactsSheet: View {
     @State private var searchText = ""
     @State private var sortMode: ContactSortMode = .nickname
     @State private var sortAscending = true
+    @State private var presetName = ""
     @State private var isShowingNewContact = false
     @State private var isExportingContacts = false
     @State private var isImportingContacts = false
+    @State private var isExportingPresets = false
+    @State private var isImportingPresets = false
     @State private var contactsDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     private var notedContacts: [TS3ContactEntry] {
         model.contacts
@@ -3457,6 +3461,51 @@ struct ContactsSheet: View {
                     Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search contacts", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveContactFilterPreset(
+                                name: presetName,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.contactFilterPresets.isEmpty {
+                            Text("No saved contact filter presets")
+                        } else {
+                            ForEach(model.contactFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteContactFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.contactFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             sortMode = .nickname
@@ -3518,6 +3567,27 @@ struct ContactsSheet: View {
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
                     importContacts(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-contact-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -3604,6 +3674,49 @@ struct ContactsSheet: View {
         }
         do {
             _ = try model.importContacts(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyPreset(_ preset: TS3ContactFilterPreset) {
+        sortMode = ContactSortMode(rawValue: preset.sortMode) ?? .nickname
+        sortAscending = preset.sortAscending
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3ContactFilterPreset) -> String {
+        var parts = [
+            "Sort \((ContactSortMode(rawValue: preset.sortMode) ?? .nickname).title)"
+        ]
+        if !preset.sortAscending {
+            parts.append("Descending")
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.contactFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importContactFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
