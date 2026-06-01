@@ -935,6 +935,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var serverLogQueryPresets: [TS3ServerLogQueryPreset]
     var keyboardShortcuts: [TS3KeyboardShortcutBinding]
     var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
+    var eventFilterPresets: [TS3EventFilterPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -953,6 +954,7 @@ private struct TS3ClientMigrationPackage: Codable {
         serverLogQueryPresets: [TS3ServerLogQueryPreset],
         keyboardShortcuts: [TS3KeyboardShortcutBinding],
         channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
+        eventFilterPresets: [TS3EventFilterPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -970,6 +972,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.serverLogQueryPresets = serverLogQueryPresets
         self.keyboardShortcuts = keyboardShortcuts
         self.channelSubscriptionPresets = channelSubscriptionPresets
+        self.eventFilterPresets = eventFilterPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -989,6 +992,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case serverLogQueryPresets
         case keyboardShortcuts
         case channelSubscriptionPresets
+        case eventFilterPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1020,6 +1024,10 @@ private struct TS3ClientMigrationPackage: Codable {
         channelSubscriptionPresets = try container.decodeIfPresent(
             [TS3ChannelSubscriptionPreset].self,
             forKey: .channelSubscriptionPresets
+        ) ?? []
+        eventFilterPresets = try container.decodeIfPresent(
+            [TS3EventFilterPreset].self,
+            forKey: .eventFilterPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1331,6 +1339,34 @@ struct TS3ChannelSubscriptionPreset: Identifiable, Codable {
     }
 }
 
+struct TS3EventFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var eventFilter: String
+    var sourceFilter: String
+    var newestFirst: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        eventFilter: String,
+        sourceFilter: String,
+        newestFirst: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.eventFilter = eventFilter
+        self.sourceFilter = sourceFilter
+        self.newestFirst = newestFirst
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 enum TS3WhisperRoute: Equatable {
     case none
     case server
@@ -1426,6 +1462,7 @@ final class TS3AppModel: ObservableObject {
     @Published var serverLogEntries: [TS3ServerLogSummary] = []
     @Published private(set) var serverLogQueryPresets: [TS3ServerLogQueryPreset] = []
     @Published private(set) var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset] = []
+    @Published private(set) var eventFilterPresets: [TS3EventFilterPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1518,6 +1555,7 @@ final class TS3AppModel: ObservableObject {
         loadRecentConnections()
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
+        loadEventFilterPresets()
         loadContacts()
         loadChatHistory()
         loadWhisperPresets()
@@ -4784,6 +4822,50 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveEventFilterPreset(name: String, eventFilter: String, sourceFilter: String, newestFirst: Bool, searchText: String) {
+        let preset = sanitizedEventFilterPreset(TS3EventFilterPreset(
+            name: name,
+            eventFilter: eventFilter,
+            sourceFilter: sourceFilter,
+            newestFirst: newestFirst,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the event filter preset."
+            return
+        }
+        eventFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        eventFilterPresets.insert(preset, at: 0)
+        eventFilterPresets = sanitizedEventFilterPresets(eventFilterPresets)
+        saveEventFilterPresets()
+        lastError = nil
+    }
+
+    func deleteEventFilterPreset(_ preset: TS3EventFilterPreset) {
+        eventFilterPresets.removeAll { $0.id == preset.id }
+        saveEventFilterPresets()
+    }
+
+    func eventFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(eventFilterPresets)
+    }
+
+    @discardableResult
+    func importEventFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3EventFilterPreset].self, from: data)
+        var merged = eventFilterPresets
+        for preset in sanitizedEventFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        eventFilterPresets = sanitizedEventFilterPresets(merged)
+        saveEventFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -5517,6 +5599,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-channel-subscription-presets.json")
     }
 
+    private var eventFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-event-filter-presets.json")
+    }
+
     private var connectionRecoverySettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-connection-recovery-settings.json")
@@ -5919,6 +6006,56 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadEventFilterPresets() {
+        guard let data = try? Data(contentsOf: eventFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3EventFilterPreset].self, from: data) else {
+            eventFilterPresets = []
+            return
+        }
+        eventFilterPresets = sanitizedEventFilterPresets(decoded)
+    }
+
+    private func saveEventFilterPresets() {
+        do {
+            let directory = eventFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(eventFilterPresets)
+            try data.write(to: eventFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedEventFilterPresets(_ presets: [TS3EventFilterPreset]) -> [TS3EventFilterPreset] {
+        presets.compactMap(sanitizedEventFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedEventFilterPreset(_ preset: TS3EventFilterPreset) -> TS3EventFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let eventFilter = ["all", "activity", "pokes", "clientMovement", "channelChanges"].contains(preset.eventFilter)
+            ? preset.eventFilter
+            : "all"
+        let sourceFilter = ["all", "own", "others"].contains(preset.sourceFilter)
+            ? preset.sourceFilter
+            : "all"
+        return TS3EventFilterPreset(
+            id: preset.id,
+            name: name,
+            eventFilter: eventFilter,
+            sourceFilter: sourceFilter,
+            newestFirst: preset.newestFirst,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -5995,6 +6132,7 @@ final class TS3AppModel: ObservableObject {
             serverLogQueryPresets: serverLogQueryPresets,
             keyboardShortcuts: keyboardShortcuts,
             channelSubscriptionPresets: channelSubscriptionPresets,
+            eventFilterPresets: eventFilterPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -6015,6 +6153,7 @@ final class TS3AppModel: ObservableObject {
         try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
         try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
         try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
+        try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))

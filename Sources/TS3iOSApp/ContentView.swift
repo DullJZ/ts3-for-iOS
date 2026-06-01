@@ -4545,8 +4545,12 @@ struct EventsSheet: View {
     @State private var sourceFilter: EventSourceFilter = .all
     @State private var newestFirst = true
     @State private var searchText = ""
+    @State private var presetName = ""
     @State private var isExportingEvents = false
+    @State private var isExportingPresets = false
+    @State private var isImportingPresets = false
     @State private var eventsDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     private var visibleActivityEvents: [TS3ActivitySummary] {
         let events = model.activityEvents.filter { event in
@@ -4648,6 +4652,59 @@ struct EventsSheet: View {
                     }
                 }
 
+                Section(header: Text("Filter Presets")) {
+                    TextField("Preset Name", text: $presetName)
+                        .ts3PlainTextField()
+                    Button("Save Current Filters") {
+                        model.saveEventFilterPreset(
+                            name: presetName,
+                            eventFilter: eventFilter.rawValue,
+                            sourceFilter: sourceFilter.rawValue,
+                            newestFirst: newestFirst,
+                            searchText: searchText
+                        )
+                        presetName = ""
+                    }
+                    .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if model.eventFilterPresets.isEmpty {
+                        Text("No saved event filter presets")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.eventFilterPresets) { preset in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(presetSummary(preset))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteEventFilterPreset(preset)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                }
+                            }
+                        }
+                    }
+                    Button("Export Presets") {
+                        exportPresets()
+                    }
+                    .disabled(model.eventFilterPresets.isEmpty)
+                    Button("Import Presets") {
+                        isImportingPresets = true
+                    }
+                }
+
                 Section(header: Text("Activity")) {
                     if model.activityEvents.isEmpty {
                         Text("No activity")
@@ -4703,6 +4760,10 @@ struct EventsSheet: View {
                             model.clearEventHistory()
                         }
                         .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        Button("Export Filter Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.eventFilterPresets.isEmpty)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -4720,6 +4781,27 @@ struct EventsSheet: View {
                 defaultFilename: "ts3-events"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-event-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -4764,6 +4846,49 @@ struct EventsSheet: View {
                 return lhs.senderName.localizedCaseInsensitiveCompare(rhs.senderName) == .orderedAscending
             }
             return newestFirst ? lhs.timestamp > rhs.timestamp : lhs.timestamp < rhs.timestamp
+        }
+    }
+
+    private func applyPreset(_ preset: TS3EventFilterPreset) {
+        eventFilter = EventFilter(rawValue: preset.eventFilter) ?? .all
+        sourceFilter = EventSourceFilter(rawValue: preset.sourceFilter) ?? .all
+        newestFirst = preset.newestFirst
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3EventFilterPreset) -> String {
+        var parts = [
+            (EventFilter(rawValue: preset.eventFilter) ?? .all).title,
+            (EventSourceFilter(rawValue: preset.sourceFilter) ?? .all).title,
+            preset.newestFirst ? "Newest" : "Oldest"
+        ]
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.eventFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importEventFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
         }
     }
 }
