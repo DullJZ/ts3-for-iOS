@@ -807,6 +807,34 @@ struct TS3BanFilterPreset: Identifiable, Codable {
     }
 }
 
+struct TS3ComplaintFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var complaintFilter: String
+    var sortMode: String
+    var sortAscending: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        complaintFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.complaintFilter = complaintFilter
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3DownloadedFileSummary: Identifiable {
     let id = UUID()
     let name: String
@@ -1018,6 +1046,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var fileBrowserBookmarks: [TS3FileBrowserBookmark]
     var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset]
     var banFilterPresets: [TS3BanFilterPreset]
+    var complaintFilterPresets: [TS3ComplaintFilterPreset]
     var audioSettings: TS3AudioSettings
     var audioProfiles: [TS3AudioProfile]
     var userPlaybackPreferences: [String: TS3UserPlaybackPreference]
@@ -1041,6 +1070,7 @@ private struct TS3ClientMigrationPackage: Codable {
         fileBrowserBookmarks: [TS3FileBrowserBookmark],
         offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset],
         banFilterPresets: [TS3BanFilterPreset],
+        complaintFilterPresets: [TS3ComplaintFilterPreset],
         audioSettings: TS3AudioSettings,
         audioProfiles: [TS3AudioProfile],
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
@@ -1063,6 +1093,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.fileBrowserBookmarks = fileBrowserBookmarks
         self.offlineMessageFilterPresets = offlineMessageFilterPresets
         self.banFilterPresets = banFilterPresets
+        self.complaintFilterPresets = complaintFilterPresets
         self.audioSettings = audioSettings
         self.audioProfiles = audioProfiles
         self.userPlaybackPreferences = userPlaybackPreferences
@@ -1087,6 +1118,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case fileBrowserBookmarks
         case offlineMessageFilterPresets
         case banFilterPresets
+        case complaintFilterPresets
         case audioSettings
         case audioProfiles
         case userPlaybackPreferences
@@ -1138,6 +1170,10 @@ private struct TS3ClientMigrationPackage: Codable {
         banFilterPresets = try container.decodeIfPresent(
             [TS3BanFilterPreset].self,
             forKey: .banFilterPresets
+        ) ?? []
+        complaintFilterPresets = try container.decodeIfPresent(
+            [TS3ComplaintFilterPreset].self,
+            forKey: .complaintFilterPresets
         ) ?? []
         audioSettings = try container.decodeIfPresent(TS3AudioSettings.self, forKey: .audioSettings) ?? .defaults
         audioProfiles = try container.decodeIfPresent([TS3AudioProfile].self, forKey: .audioProfiles) ?? []
@@ -1603,6 +1639,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var eventFilterPresets: [TS3EventFilterPreset] = []
     @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
     @Published private(set) var banFilterPresets: [TS3BanFilterPreset] = []
+    @Published private(set) var complaintFilterPresets: [TS3ComplaintFilterPreset] = []
     @Published var serverGroups: [TS3GroupSummary] = []
     @Published var channelGroups: [TS3GroupSummary] = []
     @Published var groupClients: [TS3GroupClientSummary] = []
@@ -1700,6 +1737,7 @@ final class TS3AppModel: ObservableObject {
         loadEventFilterPresets()
         loadChatFilterPresets()
         loadBanFilterPresets()
+        loadComplaintFilterPresets()
         loadContacts()
         loadChatHistory()
         loadFileBrowserBookmarks()
@@ -5218,6 +5256,56 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveComplaintFilterPreset(
+        name: String,
+        complaintFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) {
+        let preset = sanitizedComplaintFilterPreset(TS3ComplaintFilterPreset(
+            name: name,
+            complaintFilter: complaintFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the complaint filter preset."
+            return
+        }
+        complaintFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        complaintFilterPresets.insert(preset, at: 0)
+        complaintFilterPresets = sanitizedComplaintFilterPresets(complaintFilterPresets)
+        saveComplaintFilterPresets()
+        lastError = nil
+    }
+
+    func deleteComplaintFilterPreset(_ preset: TS3ComplaintFilterPreset) {
+        complaintFilterPresets.removeAll { $0.id == preset.id }
+        saveComplaintFilterPresets()
+    }
+
+    func complaintFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(complaintFilterPresets)
+    }
+
+    @discardableResult
+    func importComplaintFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ComplaintFilterPreset].self, from: data)
+        var merged = complaintFilterPresets
+        for preset in sanitizedComplaintFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        complaintFilterPresets = sanitizedComplaintFilterPresets(merged)
+        saveComplaintFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
         runClientCommand { client in
             try await client.moveClient(clientId: user.id, to: channel.id, password: password)
@@ -5921,6 +6009,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-ban-filter-presets.json")
     }
 
+    private var complaintFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-complaint-filter-presets.json")
+    }
+
     private var whisperPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-whisper-presets.json")
@@ -6621,6 +6714,61 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadComplaintFilterPresets() {
+        guard let data = try? Data(contentsOf: complaintFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ComplaintFilterPreset].self, from: data) else {
+            complaintFilterPresets = []
+            return
+        }
+        complaintFilterPresets = sanitizedComplaintFilterPresets(decoded)
+    }
+
+    private func saveComplaintFilterPresets() {
+        do {
+            let directory = complaintFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(complaintFilterPresets)
+            try data.write(to: complaintFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedComplaintFilterPresets(_ presets: [TS3ComplaintFilterPreset]) -> [TS3ComplaintFilterPreset] {
+        presets.compactMap(sanitizedComplaintFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedComplaintFilterPreset(_ preset: TS3ComplaintFilterPreset) -> TS3ComplaintFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let complaintFilter = [
+            "all",
+            "namedSource",
+            "anonymousSource",
+            "withMessage",
+            "withoutMessage",
+            "withTimestamp"
+        ].contains(preset.complaintFilter) ? preset.complaintFilter : "all"
+        let sortMode = ["date", "source", "sourceDatabaseId", "message"].contains(preset.sortMode)
+            ? preset.sortMode
+            : "date"
+        return TS3ComplaintFilterPreset(
+            id: preset.id,
+            name: name,
+            complaintFilter: complaintFilter,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
         switch event.kind {
         case .clientEntered, .clientLeft, .clientMoved:
@@ -6702,6 +6850,7 @@ final class TS3AppModel: ObservableObject {
             fileBrowserBookmarks: fileBrowserBookmarks,
             offlineMessageFilterPresets: offlineMessageFilterPresets,
             banFilterPresets: banFilterPresets,
+            complaintFilterPresets: complaintFilterPresets,
             audioSettings: currentAudioSettingsSnapshot,
             audioProfiles: audioProfiles,
             userPlaybackPreferences: userPlaybackPreferences,
@@ -6727,6 +6876,7 @@ final class TS3AppModel: ObservableObject {
         try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
         try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
         try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
+        try importComplaintFilterPresets(from: encodedPackageSection(package.complaintFilterPresets))
         try importAudioSettings(from: encodedPackageSection(package.audioSettings))
         try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
         try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))
