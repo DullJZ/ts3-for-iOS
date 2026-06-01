@@ -10933,10 +10933,14 @@ struct PrivilegeKeysSheet: View {
     @State private var keyFilter: KeyFilter = .all
     @State private var sortMode: KeySortMode = .created
     @State private var sortAscending = false
+    @State private var presetName = ""
     @State private var isExportingKeys = false
     @State private var isExportingKeyBackup = false
+    @State private var isExportingPresets = false
+    @State private var isImportingPresets = false
     @State private var keysExportDocument = TS3TextFileDocument()
     @State private var keysBackupDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var isConfirmingDeleteAll = false
 
     private var privilegeKeysSnapshot: String {
@@ -11030,6 +11034,52 @@ struct PrivilegeKeysSheet: View {
                     Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search keys", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.savePrivilegeKeyFilterPreset(
+                                name: presetName,
+                                keyFilter: keyFilter.rawValue,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.privilegeKeyFilterPresets.isEmpty {
+                            Text("No saved privilege key filter presets")
+                        } else {
+                            ForEach(model.privilegeKeyFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deletePrivilegeKeyFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.privilegeKeyFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             keyFilter = .all
@@ -11092,6 +11142,27 @@ struct PrivilegeKeysSheet: View {
                 defaultFilename: "ts3-privilege-key-backup"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-privilege-key-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -11285,6 +11356,51 @@ struct PrivilegeKeysSheet: View {
         do {
             keysBackupDocument = TS3TextFileDocument(data: try model.privilegeKeyBackupData())
             isExportingKeyBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyPreset(_ preset: TS3PrivilegeKeyFilterPreset) {
+        keyFilter = KeyFilter(rawValue: preset.keyFilter) ?? .all
+        sortMode = KeySortMode(rawValue: preset.sortMode) ?? .created
+        sortAscending = preset.sortAscending
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3PrivilegeKeyFilterPreset) -> String {
+        var parts = [
+            (KeyFilter(rawValue: preset.keyFilter) ?? .all).title,
+            "Sort \((KeySortMode(rawValue: preset.sortMode) ?? .created).title)"
+        ]
+        if preset.sortAscending {
+            parts.append("Ascending")
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.privilegeKeyFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importPrivilegeKeyFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
