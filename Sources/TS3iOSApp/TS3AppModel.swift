@@ -1262,6 +1262,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var selfStatus: TS3SelfStatusBackup
     var selfStatusProfiles: [TS3SelfStatusProfile]
     var whisperPresets: [TS3WhisperPreset]
+    var whisperFilterPresets: [TS3WhisperFilterPreset]
 
     init(
         schemaVersion: Int = 1,
@@ -1292,7 +1293,8 @@ private struct TS3ClientMigrationPackage: Codable {
         userPlaybackPreferences: [String: TS3UserPlaybackPreference],
         selfStatus: TS3SelfStatusBackup,
         selfStatusProfiles: [TS3SelfStatusProfile],
-        whisperPresets: [TS3WhisperPreset]
+        whisperPresets: [TS3WhisperPreset],
+        whisperFilterPresets: [TS3WhisperFilterPreset]
     ) {
         self.schemaVersion = schemaVersion
         self.exportedAt = exportedAt
@@ -1323,6 +1325,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.selfStatus = selfStatus
         self.selfStatusProfiles = selfStatusProfiles
         self.whisperPresets = whisperPresets
+        self.whisperFilterPresets = whisperFilterPresets
     }
 
     enum CodingKeys: String, CodingKey {
@@ -1355,6 +1358,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case selfStatus
         case selfStatusProfiles
         case whisperPresets
+        case whisperFilterPresets
     }
 
     init(from decoder: Decoder) throws {
@@ -1452,6 +1456,10 @@ private struct TS3ClientMigrationPackage: Codable {
         )
         selfStatusProfiles = try container.decodeIfPresent([TS3SelfStatusProfile].self, forKey: .selfStatusProfiles) ?? []
         whisperPresets = try container.decodeIfPresent([TS3WhisperPreset].self, forKey: .whisperPresets) ?? []
+        whisperFilterPresets = try container.decodeIfPresent(
+            [TS3WhisperFilterPreset].self,
+            forKey: .whisperFilterPresets
+        ) ?? []
     }
 }
 
@@ -1830,6 +1838,31 @@ struct TS3WhisperPreset: Identifiable, Codable {
     }
 }
 
+struct TS3WhisperFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var presetFilter: String
+    var presetSort: String
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        presetFilter: String,
+        presetSort: String,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.presetFilter = presetFilter
+        self.presetSort = presetSort
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct MicrophonePermissionPrompt: Identifiable {
     enum Action {
         case requestAccess
@@ -1945,6 +1978,7 @@ final class TS3AppModel: ObservableObject {
     @Published var talkRequestMessage = ""
     @Published var whisperRoute: TS3WhisperRoute = .none
     @Published private(set) var whisperPresets: [TS3WhisperPreset] = []
+    @Published private(set) var whisperFilterPresets: [TS3WhisperFilterPreset] = []
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
     @Published var lastError: String?
@@ -2015,6 +2049,7 @@ final class TS3AppModel: ObservableObject {
         loadFileBrowserFilterPresets()
         loadOfflineMessageFilterPresets()
         loadWhisperPresets()
+        loadWhisperFilterPresets()
         loadSelfStatusProfiles()
         Task { @MainActor in
             await refreshIdentitySummary()
@@ -6632,6 +6667,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-whisper-presets.json")
     }
 
+    private var whisperFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-whisper-filter-presets.json")
+    }
+
     private var audioSettingsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-audio-settings.json")
@@ -7813,7 +7853,8 @@ final class TS3AppModel: ObservableObject {
             userPlaybackPreferences: userPlaybackPreferences,
             selfStatus: currentSelfStatusBackup(),
             selfStatusProfiles: selfStatusProfiles,
-            whisperPresets: whisperPresets
+            whisperPresets: whisperPresets,
+            whisperFilterPresets: whisperFilterPresets
         )
         return try encoder.encode(package)
     }
@@ -7847,6 +7888,7 @@ final class TS3AppModel: ObservableObject {
         try importSelfStatusBackup(from: encodedPackageSection(package.selfStatus))
         try importSelfStatusProfiles(from: encodedPackageSection(package.selfStatusProfiles))
         try importWhisperPresetBackup(from: encodedPackageSection(package.whisperPresets))
+        try importWhisperFilterPresets(from: encodedPackageSection(package.whisperFilterPresets))
         lastError = nil
     }
 
@@ -7973,6 +8015,55 @@ final class TS3AppModel: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func loadWhisperFilterPresets() {
+        guard let data = try? Data(contentsOf: whisperFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3WhisperFilterPreset].self, from: data) else {
+            whisperFilterPresets = []
+            return
+        }
+        whisperFilterPresets = sanitizedWhisperFilterPresets(decoded)
+    }
+
+    private func saveWhisperFilterPresets() {
+        do {
+            let directory = whisperFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(whisperFilterPresets)
+            try data.write(to: whisperFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedWhisperFilterPresets(_ presets: [TS3WhisperFilterPreset]) -> [TS3WhisperFilterPreset] {
+        presets.compactMap(sanitizedWhisperFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedWhisperFilterPreset(_ preset: TS3WhisperFilterPreset) -> TS3WhisperFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let presetFilter = ["all", "channels", "users", "mixed"].contains(preset.presetFilter)
+            ? preset.presetFilter
+            : "all"
+        let presetSort = ["updated", "name", "targets"].contains(preset.presetSort)
+            ? preset.presetSort
+            : "updated"
+        return TS3WhisperFilterPreset(
+            id: preset.id,
+            name: name,
+            presetFilter: presetFilter,
+            presetSort: presetSort,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
     }
 
     func contactsExportData() throws -> Data {
@@ -8402,6 +8493,54 @@ final class TS3AppModel: ObservableObject {
     func deleteWhisperPreset(_ preset: TS3WhisperPreset) {
         whisperPresets.removeAll { $0.id == preset.id }
         saveWhisperPresets()
+    }
+
+    func saveWhisperFilterPreset(
+        name: String,
+        presetFilter: String,
+        presetSort: String,
+        searchText: String
+    ) {
+        let preset = sanitizedWhisperFilterPreset(TS3WhisperFilterPreset(
+            name: name,
+            presetFilter: presetFilter,
+            presetSort: presetSort,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the whisper filter preset."
+            return
+        }
+        whisperFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        whisperFilterPresets.insert(preset, at: 0)
+        whisperFilterPresets = sanitizedWhisperFilterPresets(whisperFilterPresets)
+        saveWhisperFilterPresets()
+        lastError = nil
+    }
+
+    func deleteWhisperFilterPreset(_ preset: TS3WhisperFilterPreset) {
+        whisperFilterPresets.removeAll { $0.id == preset.id }
+        saveWhisperFilterPresets()
+    }
+
+    func whisperFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(whisperFilterPresets)
+    }
+
+    @discardableResult
+    func importWhisperFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3WhisperFilterPreset].self, from: data)
+        var merged = whisperFilterPresets
+        for preset in sanitizedWhisperFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        whisperFilterPresets = sanitizedWhisperFilterPresets(merged)
+        saveWhisperFilterPresets()
+        lastError = nil
+        return imported.count
     }
 
     func whisperPresetBackupData() throws -> Data {

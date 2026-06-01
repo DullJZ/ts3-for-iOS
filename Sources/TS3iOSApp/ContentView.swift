@@ -13257,12 +13257,16 @@ struct WhisperSheet: View {
     @State private var whisperPresetName = ""
     @State private var presetFilter: WhisperPresetFilter = .all
     @State private var presetSort: WhisperPresetSort = .updated
+    @State private var filterPresetName = ""
     @State private var searchText = ""
     @State private var isExportingRoute = false
     @State private var isExportingPresetBackup = false
     @State private var isImportingPresetBackup = false
+    @State private var isExportingFilterPresets = false
+    @State private var isImportingFilterPresets = false
     @State private var routeDocument = TS3TextFileDocument()
     @State private var presetBackupDocument = TS3TextFileDocument()
+    @State private var filterPresetsDocument = TS3BookmarkFileDocument()
 
     private var normalizedSearchText: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -13359,6 +13363,51 @@ struct WhisperSheet: View {
                         ForEach(WhisperPresetSort.allCases) { sort in
                             Text(sort.title).tag(sort)
                         }
+                    }
+                    Menu {
+                        TextField("Preset Name", text: $filterPresetName)
+                        Button("Save Current Filters") {
+                            model.saveWhisperFilterPreset(
+                                name: filterPresetName,
+                                presetFilter: presetFilter.rawValue,
+                                presetSort: presetSort.rawValue,
+                                searchText: searchText
+                            )
+                            filterPresetName = ""
+                        }
+                        .disabled(filterPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.whisperFilterPresets.isEmpty {
+                            Text("No saved whisper filter presets")
+                        } else {
+                            ForEach(model.whisperFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyFilterPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        filterPresetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteWhisperFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(filterPresetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportFilterPresets()
+                        }
+                        .disabled(model.whisperFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingFilterPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
                         Button("Clear Filters") {
@@ -13588,6 +13637,27 @@ struct WhisperSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingFilterPresets,
+                document: filterPresetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-whisper-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingFilterPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importFilterPresets(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -13616,6 +13686,47 @@ struct WhisperSheet: View {
         }
         do {
             try model.importWhisperPresetBackup(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func applyFilterPreset(_ preset: TS3WhisperFilterPreset) {
+        presetFilter = WhisperPresetFilter(rawValue: preset.presetFilter) ?? .all
+        presetSort = WhisperPresetSort(rawValue: preset.presetSort) ?? .updated
+        searchText = preset.searchText
+        filterPresetName = preset.name
+    }
+
+    private func filterPresetSummary(_ preset: TS3WhisperFilterPreset) -> String {
+        var parts = [
+            (WhisperPresetFilter(rawValue: preset.presetFilter) ?? .all).title,
+            "Sort \((WhisperPresetSort(rawValue: preset.presetSort) ?? .updated).title)"
+        ]
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportFilterPresets() {
+        do {
+            filterPresetsDocument = TS3BookmarkFileDocument(data: try model.whisperFilterPresetsExportData())
+            isExportingFilterPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importFilterPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importWhisperFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
