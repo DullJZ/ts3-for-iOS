@@ -1318,9 +1318,13 @@ struct ChannelListView: View {
     @State private var isShowingDisconnect = false
     @State private var isShowingSubscriptionPresets = false
     @State private var isExportingChannelTree = false
+    @State private var isImportingChannelTreePresets = false
+    @State private var isExportingChannelTreePresets = false
     @State private var channelTreeDocument = TS3TextFileDocument()
+    @State private var channelTreePresetsDocument = TS3BookmarkFileDocument()
     @State private var channelSearchText = ""
     @State private var channelTreeFilter: ChannelTreeFilter = .all
+    @State private var channelTreePresetName = ""
 
     var body: some View {
         VStack(spacing: 12) {
@@ -1376,6 +1380,51 @@ struct ChannelListView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
+
+                Menu {
+                    TextField("Preset Name", text: $channelTreePresetName)
+                    Button("Save Current Filters") {
+                        model.saveChannelTreeFilterPreset(
+                            name: channelTreePresetName,
+                            treeFilter: channelTreeFilter.rawValue,
+                            searchText: channelSearchText
+                        )
+                        channelTreePresetName = ""
+                    }
+                    .disabled(channelTreePresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if model.channelTreeFilterPresets.isEmpty {
+                        Text("No saved channel tree filter presets")
+                    } else {
+                        ForEach(model.channelTreeFilterPresets) { preset in
+                            Menu {
+                                Button("Apply Preset") {
+                                    applyChannelTreePreset(preset)
+                                }
+                                Button("Use Name") {
+                                    channelTreePresetName = preset.name
+                                }
+                                Button("Delete Preset") {
+                                    model.deleteChannelTreeFilterPreset(preset)
+                                }
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(preset.name)
+                                    Text(channelTreePresetSummary(preset))
+                                }
+                            }
+                        }
+                    }
+                    Divider()
+                    Button("Export Presets") {
+                        exportChannelTreePresets()
+                    }
+                    .disabled(model.channelTreeFilterPresets.isEmpty)
+                    Button("Import Presets") {
+                        isImportingChannelTreePresets = true
+                    }
+                } label: {
+                    Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                }
 
                 if hasChannelTreeFilters {
                     Button("Clear") {
@@ -1473,6 +1522,27 @@ struct ChannelListView: View {
             defaultFilename: "ts3-channel-tree"
         ) { result in
             if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileExporter(
+            isPresented: $isExportingChannelTreePresets,
+            document: channelTreePresetsDocument,
+            contentType: .json,
+            defaultFilename: "ts3-channel-tree-filter-presets"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
+        .fileImporter(
+            isPresented: $isImportingChannelTreePresets,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                importChannelTreePresets(from: url)
+            } else if case .failure(let error) = result {
                 model.lastError = error.localizedDescription
             }
         }
@@ -1589,6 +1659,43 @@ struct ChannelListView: View {
     private func normalizedParentId(_ parentId: Int?) -> Int? {
         guard let parentId, parentId > 0 else { return nil }
         return parentId
+    }
+
+    private func applyChannelTreePreset(_ preset: TS3ChannelTreeFilterPreset) {
+        channelTreeFilter = ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all
+        channelSearchText = preset.searchText
+        channelTreePresetName = preset.name
+    }
+
+    private func channelTreePresetSummary(_ preset: TS3ChannelTreeFilterPreset) -> String {
+        var parts = [(ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all).title]
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportChannelTreePresets() {
+        do {
+            channelTreePresetsDocument = TS3BookmarkFileDocument(data: try model.channelTreeFilterPresetsExportData())
+            isExportingChannelTreePresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importChannelTreePresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importChannelTreeFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 

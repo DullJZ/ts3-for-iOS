@@ -1245,6 +1245,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var serverLogQueryPresets: [TS3ServerLogQueryPreset]
     var keyboardShortcuts: [TS3KeyboardShortcutBinding]
     var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
+    var channelTreeFilterPresets: [TS3ChannelTreeFilterPreset]
     var eventFilterPresets: [TS3EventFilterPreset]
     var chatFilterPresets: [TS3ChatFilterPreset]
     var fileBrowserBookmarks: [TS3FileBrowserBookmark]
@@ -1278,6 +1279,7 @@ private struct TS3ClientMigrationPackage: Codable {
         serverLogQueryPresets: [TS3ServerLogQueryPreset],
         keyboardShortcuts: [TS3KeyboardShortcutBinding],
         channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
+        channelTreeFilterPresets: [TS3ChannelTreeFilterPreset],
         eventFilterPresets: [TS3EventFilterPreset],
         chatFilterPresets: [TS3ChatFilterPreset],
         fileBrowserBookmarks: [TS3FileBrowserBookmark],
@@ -1310,6 +1312,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.serverLogQueryPresets = serverLogQueryPresets
         self.keyboardShortcuts = keyboardShortcuts
         self.channelSubscriptionPresets = channelSubscriptionPresets
+        self.channelTreeFilterPresets = channelTreeFilterPresets
         self.eventFilterPresets = eventFilterPresets
         self.chatFilterPresets = chatFilterPresets
         self.fileBrowserBookmarks = fileBrowserBookmarks
@@ -1344,6 +1347,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case serverLogQueryPresets
         case keyboardShortcuts
         case channelSubscriptionPresets
+        case channelTreeFilterPresets
         case eventFilterPresets
         case chatFilterPresets
         case fileBrowserBookmarks
@@ -1396,6 +1400,10 @@ private struct TS3ClientMigrationPackage: Codable {
         channelSubscriptionPresets = try container.decodeIfPresent(
             [TS3ChannelSubscriptionPreset].self,
             forKey: .channelSubscriptionPresets
+        ) ?? []
+        channelTreeFilterPresets = try container.decodeIfPresent(
+            [TS3ChannelTreeFilterPreset].self,
+            forKey: .channelTreeFilterPresets
         ) ?? []
         eventFilterPresets = try container.decodeIfPresent(
             [TS3EventFilterPreset].self,
@@ -1790,6 +1798,28 @@ struct TS3ChannelSubscriptionPreset: Identifiable, Codable {
     }
 }
 
+struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var treeFilter: String
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        treeFilter: String,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.treeFilter = treeFilter
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3EventFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -1966,6 +1996,7 @@ final class TS3AppModel: ObservableObject {
     @Published var serverLogEntries: [TS3ServerLogSummary] = []
     @Published private(set) var serverLogQueryPresets: [TS3ServerLogQueryPreset] = []
     @Published private(set) var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset] = []
+    @Published private(set) var channelTreeFilterPresets: [TS3ChannelTreeFilterPreset] = []
     @Published private(set) var eventFilterPresets: [TS3EventFilterPreset] = []
     @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
     @Published private(set) var banFilterPresets: [TS3BanFilterPreset] = []
@@ -2074,6 +2105,7 @@ final class TS3AppModel: ObservableObject {
         loadConnectionFilterPresets()
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
+        loadChannelTreeFilterPresets()
         loadEventFilterPresets()
         loadChatFilterPresets()
         loadBanFilterPresets()
@@ -5419,6 +5451,48 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveChannelTreeFilterPreset(name: String, treeFilter: String, searchText: String) {
+        let preset = sanitizedChannelTreeFilterPreset(TS3ChannelTreeFilterPreset(
+            name: name,
+            treeFilter: treeFilter,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the channel tree filter preset."
+            return
+        }
+        channelTreeFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        channelTreeFilterPresets.insert(preset, at: 0)
+        channelTreeFilterPresets = sanitizedChannelTreeFilterPresets(channelTreeFilterPresets)
+        saveChannelTreeFilterPresets()
+        lastError = nil
+    }
+
+    func deleteChannelTreeFilterPreset(_ preset: TS3ChannelTreeFilterPreset) {
+        channelTreeFilterPresets.removeAll { $0.id == preset.id }
+        saveChannelTreeFilterPresets()
+    }
+
+    func channelTreeFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(channelTreeFilterPresets)
+    }
+
+    @discardableResult
+    func importChannelTreeFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3ChannelTreeFilterPreset].self, from: data)
+        var merged = channelTreeFilterPresets
+        for preset in sanitizedChannelTreeFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        channelTreeFilterPresets = sanitizedChannelTreeFilterPresets(merged)
+        saveChannelTreeFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func saveEventFilterPreset(name: String, eventFilter: String, sourceFilter: String, newestFirst: Bool, searchText: String) {
         let preset = sanitizedEventFilterPreset(TS3EventFilterPreset(
             name: name,
@@ -6810,6 +6884,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-channel-subscription-presets.json")
     }
 
+    private var channelTreeFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-channel-tree-filter-presets.json")
+    }
+
     private var eventFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-event-filter-presets.json")
@@ -7218,6 +7297,65 @@ final class TS3AppModel: ObservableObject {
             id: preset.id,
             name: name,
             channelIds: channelIds,
+            updatedAt: preset.updatedAt
+        )
+    }
+
+    private func loadChannelTreeFilterPresets() {
+        guard let data = try? Data(contentsOf: channelTreeFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3ChannelTreeFilterPreset].self, from: data) else {
+            channelTreeFilterPresets = []
+            return
+        }
+        channelTreeFilterPresets = sanitizedChannelTreeFilterPresets(decoded)
+    }
+
+    private func saveChannelTreeFilterPresets() {
+        do {
+            let directory = channelTreeFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(channelTreeFilterPresets)
+            try data.write(to: channelTreeFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedChannelTreeFilterPresets(
+        _ presets: [TS3ChannelTreeFilterPreset]
+    ) -> [TS3ChannelTreeFilterPreset] {
+        presets.compactMap(sanitizedChannelTreeFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedChannelTreeFilterPreset(
+        _ preset: TS3ChannelTreeFilterPreset
+    ) -> TS3ChannelTreeFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let validFilters: Set<String> = [
+            "all",
+            "current",
+            "default",
+            "passwordProtected",
+            "unsubscribed",
+            "populated",
+            "empty",
+            "mutedUsers",
+            "awayUsers",
+            "talkRequests"
+        ]
+        let treeFilter = validFilters.contains(preset.treeFilter) ? preset.treeFilter : "all"
+        return TS3ChannelTreeFilterPreset(
+            id: preset.id,
+            name: name,
+            treeFilter: treeFilter,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
             updatedAt: preset.updatedAt
         )
     }
@@ -7935,6 +8073,7 @@ final class TS3AppModel: ObservableObject {
             serverLogQueryPresets: serverLogQueryPresets,
             keyboardShortcuts: keyboardShortcuts,
             channelSubscriptionPresets: channelSubscriptionPresets,
+            channelTreeFilterPresets: channelTreeFilterPresets,
             eventFilterPresets: eventFilterPresets,
             chatFilterPresets: chatFilterPresets,
             fileBrowserBookmarks: fileBrowserBookmarks,
@@ -7970,6 +8109,7 @@ final class TS3AppModel: ObservableObject {
         try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
         try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
         try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
+        try importChannelTreeFilterPresets(from: encodedPackageSection(package.channelTreeFilterPresets))
         try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
         try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
         try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
