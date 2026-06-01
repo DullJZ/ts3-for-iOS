@@ -5116,6 +5116,27 @@ struct ServerToolsSheet: View {
         )
     }
 
+    private var privateMessageNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.privateMessageNotificationsEnabled },
+            set: { model.setPrivateMessageNotificationsEnabled($0) }
+        )
+    }
+
+    private var pokeNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.pokeNotificationsEnabled },
+            set: { model.setPokeNotificationsEnabled($0) }
+        )
+    }
+
+    private var activityNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.activityNotificationsEnabled },
+            set: { model.setActivityNotificationsEnabled($0) }
+        )
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -5209,7 +5230,13 @@ struct ServerToolsSheet: View {
                 }
 
                 Section(header: Text("Notifications")) {
-                    Toggle("Private Messages and Pokes", isOn: notificationsBinding)
+                    Toggle("Enable Notifications", isOn: notificationsBinding)
+                    Toggle("Private Messages", isOn: privateMessageNotificationsBinding)
+                        .disabled(!model.notificationsEnabled)
+                    Toggle("Pokes", isOn: pokeNotificationsBinding)
+                        .disabled(!model.notificationsEnabled)
+                    Toggle("Server Activity", isOn: activityNotificationsBinding)
+                        .disabled(!model.notificationsEnabled)
                     Button("Export Notification Settings") {
                         exportNotificationSettings()
                     }

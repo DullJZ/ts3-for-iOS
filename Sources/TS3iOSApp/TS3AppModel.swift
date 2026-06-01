@@ -852,8 +852,43 @@ struct TS3AudioProfile: Identifiable, Codable {
 
 private struct TS3NotificationSettings: Codable {
     var isEnabled: Bool
+    var privateMessagesEnabled: Bool
+    var pokesEnabled: Bool
+    var activityEnabled: Bool
 
-    static let defaults = TS3NotificationSettings(isEnabled: false)
+    static let defaults = TS3NotificationSettings(
+        isEnabled: false,
+        privateMessagesEnabled: true,
+        pokesEnabled: true,
+        activityEnabled: false
+    )
+
+    init(
+        isEnabled: Bool,
+        privateMessagesEnabled: Bool = true,
+        pokesEnabled: Bool = true,
+        activityEnabled: Bool = false
+    ) {
+        self.isEnabled = isEnabled
+        self.privateMessagesEnabled = privateMessagesEnabled
+        self.pokesEnabled = pokesEnabled
+        self.activityEnabled = activityEnabled
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case isEnabled
+        case privateMessagesEnabled
+        case pokesEnabled
+        case activityEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        privateMessagesEnabled = try container.decodeIfPresent(Bool.self, forKey: .privateMessagesEnabled) ?? true
+        pokesEnabled = try container.decodeIfPresent(Bool.self, forKey: .pokesEnabled) ?? true
+        activityEnabled = try container.decodeIfPresent(Bool.self, forKey: .activityEnabled) ?? false
+    }
 }
 
 private struct TS3ConnectionRecoverySettings: Codable {
@@ -1225,6 +1260,9 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var audioProfiles: [TS3AudioProfile] = []
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
     @Published private(set) var notificationsEnabled = false
+    @Published var privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
+    @Published var pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
+    @Published var activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
     @Published private(set) var autoReconnectEnabled = false
     @Published private(set) var autoReconnectStatus: String?
 
@@ -2217,6 +2255,21 @@ final class TS3AppModel: ObservableObject {
         notificationsEnabled = false
         lastError = "Notifications are not available on this platform."
         #endif
+    }
+
+    func setPrivateMessageNotificationsEnabled(_ isEnabled: Bool) {
+        privateMessageNotificationsEnabled = isEnabled
+        saveNotificationSettings()
+    }
+
+    func setPokeNotificationsEnabled(_ isEnabled: Bool) {
+        pokeNotificationsEnabled = isEnabled
+        saveNotificationSettings()
+    }
+
+    func setActivityNotificationsEnabled(_ isEnabled: Bool) {
+        activityNotificationsEnabled = isEnabled
+        saveNotificationSettings()
     }
 
     func setAutoReconnectEnabled(_ isEnabled: Bool) {
@@ -5286,16 +5339,22 @@ final class TS3AppModel: ObservableObject {
         guard let data = try? Data(contentsOf: notificationSettingsURL),
               let decoded = try? JSONDecoder().decode(TS3NotificationSettings.self, from: data) else {
             notificationsEnabled = TS3NotificationSettings.defaults.isEnabled
+            privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
+            pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
+            activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
             return
         }
         notificationsEnabled = decoded.isEnabled
+        privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
+        pokeNotificationsEnabled = decoded.pokesEnabled
+        activityNotificationsEnabled = decoded.activityEnabled
     }
 
     private func saveNotificationSettings() {
         do {
             let directory = notificationSettingsURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(TS3NotificationSettings(isEnabled: notificationsEnabled))
+            let data = try JSONEncoder().encode(notificationSettingsSnapshot)
             try data.write(to: notificationSettingsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
@@ -5305,14 +5364,58 @@ final class TS3AppModel: ObservableObject {
     func notificationSettingsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(TS3NotificationSettings(isEnabled: notificationsEnabled))
+        return try encoder.encode(notificationSettingsSnapshot)
     }
 
     func importNotificationSettings(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3NotificationSettings.self, from: data)
         notificationsEnabled = decoded.isEnabled
+        privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
+        pokeNotificationsEnabled = decoded.pokesEnabled
+        activityNotificationsEnabled = decoded.activityEnabled
         saveNotificationSettings()
         lastError = nil
+    }
+
+    private var notificationSettingsSnapshot: TS3NotificationSettings {
+        TS3NotificationSettings(
+            isEnabled: notificationsEnabled,
+            privateMessagesEnabled: privateMessageNotificationsEnabled,
+            pokesEnabled: pokeNotificationsEnabled,
+            activityEnabled: activityNotificationsEnabled
+        )
+    }
+
+    private func activityNotificationTitle(for event: TS3ActivitySummary) -> String {
+        switch event.kind {
+        case .clientEntered, .clientLeft, .clientMoved:
+            return event.clientName
+        case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
+            return event.invokerName?.isEmpty == false ? event.invokerName! : "Server activity"
+        }
+    }
+
+    private func activityNotificationBody(for event: TS3ActivitySummary) -> String {
+        switch event.kind {
+        case .clientEntered:
+            return "Joined \(channelName(for: event.toChannelId) ?? "the server")"
+        case .clientLeft:
+            return "Left \(channelName(for: event.fromChannelId) ?? "the server")"
+        case .clientMoved:
+            return "Moved from \(channelName(for: event.fromChannelId) ?? "the server") to \(channelName(for: event.toChannelId) ?? "the server")"
+        case .channelCreated:
+            return "Created \(event.channelName ?? channelName(for: event.channelId) ?? "a channel")"
+        case .channelEdited:
+            return "Edited \(event.channelName ?? channelName(for: event.channelId) ?? "a channel")"
+        case .channelDeleted:
+            return "Deleted \(event.channelName ?? channelName(for: event.channelId) ?? "a channel")"
+        case .channelMoved:
+            return "Moved \(event.channelName ?? channelName(for: event.channelId) ?? "a channel") to \(channelName(for: event.toChannelId) ?? "the server")"
+        case .channelPasswordChanged:
+            return "Changed the password for \(event.channelName ?? channelName(for: event.channelId) ?? "a channel")"
+        case .channelDescriptionChanged:
+            return "Changed the description for \(event.channelName ?? channelName(for: event.channelId) ?? "a channel")"
+        }
     }
 
     private func loadConnectionRecoverySettings() {
@@ -6336,7 +6439,7 @@ extension TS3AppModel: TS3ClientDelegate {
             if !message.isOwnMessage && !self.isViewingChat {
                 self.unreadChatMessageCount += 1
             }
-            if !message.isOwnMessage && message.targetMode == .client {
+            if self.privateMessageNotificationsEnabled && !message.isOwnMessage && message.targetMode == .client {
                 self.notifyIfInactive(
                     title: "Private message from \(message.senderName)",
                     body: message.message,
@@ -6355,22 +6458,32 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
             }
             self.unreadPokeCount += 1
-            self.notifyIfInactive(
-                title: "Poke from \(poke.senderName)",
-                body: poke.message,
-                identifier: "ts3-poke-\(poke.id.uuidString)"
-            )
+            if self.pokeNotificationsEnabled {
+                self.notifyIfInactive(
+                    title: "Poke from \(poke.senderName)",
+                    body: poke.message,
+                    identifier: "ts3-poke-\(poke.id.uuidString)"
+                )
+            }
         }
     }
 
     nonisolated func ts3Client(_ client: TS3Client, didReceiveServerActivity event: TS3ServerActivityEvent) {
         Task { @MainActor in
             guard !event.isOwnClient else { return }
-            self.activityEvents.insert(TS3ActivitySummary(event: event), at: 0)
+            let summary = TS3ActivitySummary(event: event)
+            self.activityEvents.insert(summary, at: 0)
             if self.activityEvents.count > 100 {
                 self.activityEvents.removeLast(self.activityEvents.count - 100)
             }
             self.unreadActivityCount += 1
+            if self.activityNotificationsEnabled {
+                self.notifyIfInactive(
+                    title: self.activityNotificationTitle(for: summary),
+                    body: self.activityNotificationBody(for: summary),
+                    identifier: "ts3-activity-\(summary.id.uuidString)"
+                )
+            }
         }
     }
 
