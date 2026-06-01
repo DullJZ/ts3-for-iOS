@@ -5329,8 +5329,12 @@ struct OfflineMessagesSheet: View {
     @State private var contentFilter: OfflineContentFilter = .all
     @State private var sortMode: OfflineSortMode = .timestamp
     @State private var sortAscending = false
+    @State private var presetName = ""
     @State private var isExportingInbox = false
+    @State private var isExportingPresets = false
+    @State private var isImportingPresets = false
     @State private var inboxDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     private var filteredMessages: [TS3OfflineMessageSummary] {
         let messages = model.offlineMessages.filter { message in
@@ -5399,6 +5403,53 @@ struct OfflineMessagesSheet: View {
                     Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search inbox", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveOfflineMessageFilterPreset(
+                                name: presetName,
+                                readFilter: readFilter.rawValue,
+                                contentFilter: contentFilter.rawValue,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.offlineMessageFilterPresets.isEmpty {
+                            Text("No saved inbox filter presets")
+                        } else {
+                            ForEach(model.offlineMessageFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteOfflineMessageFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.offlineMessageFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             readFilter = .all
@@ -5453,6 +5504,10 @@ struct OfflineMessagesSheet: View {
                             model.deleteOfflineMessages(filteredMessages)
                         }
                         .disabled(filteredMessages.isEmpty)
+                        Button("Export Filter Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.offlineMessageFilterPresets.isEmpty)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -5470,6 +5525,27 @@ struct OfflineMessagesSheet: View {
                 defaultFilename: "ts3-offline-inbox"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-offline-message-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -5540,6 +5616,51 @@ struct OfflineMessagesSheet: View {
 
     private func senderText(_ message: TS3OfflineMessageSummary) -> String {
         message.senderName ?? message.senderUniqueIdentifier ?? ""
+    }
+
+    private func applyPreset(_ preset: TS3OfflineMessageFilterPreset) {
+        readFilter = ReadFilter(rawValue: preset.readFilter) ?? .all
+        contentFilter = OfflineContentFilter(rawValue: preset.contentFilter) ?? .all
+        sortMode = OfflineSortMode(rawValue: preset.sortMode) ?? .timestamp
+        sortAscending = preset.sortAscending
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3OfflineMessageFilterPreset) -> String {
+        var parts = [
+            (ReadFilter(rawValue: preset.readFilter) ?? .all).title,
+            (OfflineContentFilter(rawValue: preset.contentFilter) ?? .all).title,
+            (OfflineSortMode(rawValue: preset.sortMode) ?? .timestamp).title,
+            preset.sortAscending ? "Ascending" : "Descending"
+        ]
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.offlineMessageFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importOfflineMessageFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 
