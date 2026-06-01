@@ -10325,11 +10325,15 @@ struct PermissionsSheet: View {
     @State private var assignedFilter: AssignedPermissionFilter = .all
     @State private var assignedSortMode: AssignedPermissionSortMode = .name
     @State private var assignedSortAscending = true
+    @State private var presetName = ""
     @State private var isExportingPermissionSnapshot = false
     @State private var isExportingPermissionBackup = false
+    @State private var isExportingPresets = false
     @State private var isImportingPermissions = false
+    @State private var isImportingPresets = false
     @State private var permissionExportDocument = TS3TextFileDocument()
     @State private var permissionBackupDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var isConfirmingDeleteVisible = false
 
     var filteredPermissionInfos: [TS3PermissionInfoSummary] {
@@ -10522,6 +10526,54 @@ struct PermissionsSheet: View {
                     Toggle("Ascending", isOn: $assignedSortAscending)
                     TextField("Search assigned permissions", text: $assignedSearchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.savePermissionFilterPreset(
+                                name: presetName,
+                                scope: model.permissionEditScope.rawValue,
+                                assignedFilter: assignedFilter.rawValue,
+                                assignedSortMode: assignedSortMode.rawValue,
+                                assignedSortAscending: assignedSortAscending,
+                                assignedSearchText: assignedSearchText,
+                                permissionSearchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.permissionFilterPresets.isEmpty {
+                            Text("No saved permission filter presets")
+                        } else {
+                            ForEach(model.permissionFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deletePermissionFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.permissionFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                     if hasAssignedPermissionOptions {
                         Button("Clear Permission Filters") {
                             assignedFilter = .all
@@ -10633,6 +10685,16 @@ struct PermissionsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-permission-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .fileImporter(
                 isPresented: $isImportingPermissions,
                 allowedContentTypes: [.json, .data],
@@ -10640,6 +10702,17 @@ struct PermissionsSheet: View {
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
                     importPermissionBackup(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -10712,6 +10785,59 @@ struct PermissionsSheet: View {
             flags.append("Skipped")
         }
         return flags.isEmpty ? "Inherited" : flags.joined(separator: " ")
+    }
+
+    private func applyPreset(_ preset: TS3PermissionFilterPreset) {
+        if let scope = TS3PermissionEditScope(rawValue: preset.scope) {
+            model.selectPermissionScope(scope)
+        }
+        assignedFilter = AssignedPermissionFilter(rawValue: preset.assignedFilter) ?? .all
+        assignedSortMode = AssignedPermissionSortMode(rawValue: preset.assignedSortMode) ?? .name
+        assignedSortAscending = preset.assignedSortAscending
+        assignedSearchText = preset.assignedSearchText
+        searchText = preset.permissionSearchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3PermissionFilterPreset) -> String {
+        var parts = [
+            (TS3PermissionEditScope(rawValue: preset.scope) ?? .ownClient).title,
+            (AssignedPermissionFilter(rawValue: preset.assignedFilter) ?? .all).title,
+            "Sort \((AssignedPermissionSortMode(rawValue: preset.assignedSortMode) ?? .name).title)"
+        ]
+        if !preset.assignedSortAscending {
+            parts.append("Descending")
+        }
+        if !preset.assignedSearchText.isEmpty {
+            parts.append("Assigned \(preset.assignedSearchText)")
+        }
+        if !preset.permissionSearchText.isEmpty {
+            parts.append("Directory \(preset.permissionSearchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.permissionFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importPermissionFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private func importPermissionBackup(from url: URL) {
