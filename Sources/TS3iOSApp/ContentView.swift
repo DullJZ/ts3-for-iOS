@@ -15345,6 +15345,7 @@ struct SelfStatusSheet: View {
     @State private var isExportingStatus = false
     @State private var isExportingStatusBackup = false
     @State private var isImportingStatus = false
+    @State private var isImportingAppliedStatus = false
     @State private var isImportingStatusProfiles = false
     @State private var statusDocument = TS3TextFileDocument()
     @State private var statusBackupDocument = TS3TextFileDocument()
@@ -15365,6 +15366,9 @@ struct SelfStatusSheet: View {
                     }
                     Button("Import Status Backup") {
                         isImportingStatus = true
+                    }
+                    Button("Import and Apply Status") {
+                        isImportingAppliedStatus = true
                     }
                     Button("Export Profile Backup") {
                         exportStatusProfiles()
@@ -15633,7 +15637,18 @@ struct SelfStatusSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importStatusBackup(from: url)
+                    importStatusBackup(from: url, applyToServer: false)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingAppliedStatus,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importStatusBackup(from: url, applyToServer: true)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -15731,7 +15746,7 @@ struct SelfStatusSheet: View {
         }
     }
 
-    private func importStatusBackup(from url: URL) {
+    private func importStatusBackup(from url: URL, applyToServer: Bool) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -15739,7 +15754,12 @@ struct SelfStatusSheet: View {
             }
         }
         do {
-            try model.importSelfStatusBackup(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            if applyToServer {
+                try model.importAndApplySelfStatusBackup(from: data)
+            } else {
+                try model.importSelfStatusBackup(from: data)
+            }
             refreshDraft()
         } catch {
             model.lastError = error.localizedDescription

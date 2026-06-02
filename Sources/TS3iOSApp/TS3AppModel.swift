@@ -8935,6 +8935,12 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func importAndApplySelfStatusBackup(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3SelfStatusBackup.self, from: data)
+        applySelfStatusBackup(decoded, sendCommands: true)
+        lastError = nil
+    }
+
     private func applySelfStatusBackup(_ backup: TS3SelfStatusBackup, sendCommands: Bool) {
         let decoded = sanitizedSelfStatusBackup(backup)
         nickname = decoded.nickname
