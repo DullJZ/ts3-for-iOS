@@ -2622,6 +2622,33 @@ final class TS3AppModel: ObservableObject {
         syncBlockedContactPlayback()
     }
 
+    func updateContacts(_ entries: [TS3ContactEntry], status: TS3ContactStatus) {
+        let uniqueEntries = Dictionary(grouping: entries, by: \.uniqueIdentifier).compactMap { $0.value.first }
+        guard !uniqueEntries.isEmpty else { return }
+        let now = Date()
+        for entry in uniqueEntries {
+            let note = entry.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            if status == .neutral && note.isEmpty {
+                contacts.removeAll { $0.uniqueIdentifier == entry.uniqueIdentifier }
+            } else if let index = contacts.firstIndex(where: { $0.uniqueIdentifier == entry.uniqueIdentifier }) {
+                contacts[index].status = status
+                contacts[index].note = note
+                contacts[index].updatedAt = now
+            } else {
+                contacts.append(TS3ContactEntry(
+                    uniqueIdentifier: entry.uniqueIdentifier,
+                    nickname: entry.nickname,
+                    status: status,
+                    note: note,
+                    updatedAt: now
+                ))
+            }
+        }
+        saveContacts()
+        syncBlockedContactPlayback()
+        lastError = nil
+    }
+
     private func updateContact(for user: TS3UserSummary, status: TS3ContactStatus, note: String) {
         guard let uniqueIdentifier = user.uniqueIdentifier else {
             lastError = "The server did not provide a unique id for \(user.nickname)."

@@ -4047,6 +4047,25 @@ struct ContactsSheet: View {
         filterContacts(notedContacts)
     }
 
+    private var visibleContacts: [TS3ContactEntry] {
+        var seen = Set<String>()
+        return (filteredFriends + filteredBlocked + filteredNotes).filter { contact in
+            seen.insert(contact.uniqueIdentifier).inserted
+        }
+    }
+
+    private var canMarkVisibleFriends: Bool {
+        visibleContacts.contains { $0.status != .friend }
+    }
+
+    private var canBlockVisibleContacts: Bool {
+        visibleContacts.contains { $0.status != .blocked }
+    }
+
+    private var canSetVisibleNeutral: Bool {
+        visibleContacts.contains { $0.status != .neutral }
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -4144,6 +4163,19 @@ struct ContactsSheet: View {
                         Button("Import Contacts Backup") {
                             isImportingContacts = true
                         }
+                        Divider()
+                        Button("Mark Visible Friends") {
+                            model.updateContacts(visibleContacts, status: .friend)
+                        }
+                        .disabled(!canMarkVisibleFriends)
+                        Button("Block Visible Contacts") {
+                            model.updateContacts(visibleContacts, status: .blocked)
+                        }
+                        .disabled(!canBlockVisibleContacts)
+                        Button("Set Visible Neutral") {
+                            model.updateContacts(visibleContacts, status: .neutral)
+                        }
+                        .disabled(!canSetVisibleNeutral)
                     } label: {
                         Label("Contacts", systemImage: "ellipsis.circle")
                     }
