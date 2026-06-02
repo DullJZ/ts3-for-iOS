@@ -5212,6 +5212,10 @@ final class TS3AppModel: ObservableObject {
         sendMessage(text, targetMode: .channel, targetId: currentChannel.id)
     }
 
+    func sendChannelMessage(_ text: String, to channel: TS3ChannelSummary) {
+        sendMessage(text, targetMode: .channel, targetId: channel.id)
+    }
+
     func sendServerMessage(_ text: String) {
         sendMessage(text, targetMode: .server, targetId: 0)
     }

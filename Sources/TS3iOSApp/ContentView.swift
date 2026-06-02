@@ -2574,6 +2574,7 @@ struct ChannelRow: View {
     @State private var isShowingJoinPassword = false
     @State private var isShowingDefaultChannelPassword = false
     @State private var isShowingInfo = false
+    @State private var isShowingChannelMessage = false
     @State private var isShowingEdit = false
     @State private var isShowingMove = false
     @State private var isShowingPermissions = false
@@ -2696,6 +2697,9 @@ struct ChannelRow: View {
                     Button("Copy Channel ID") {
                         TS3PlatformSupport.copyToPasteboard("\(channel.id)")
                     }
+                    Button("Send Channel Message") {
+                        isShowingChannelMessage = true
+                    }
                     if let isSubscribed = channel.isSubscribed {
                         Button(isSubscribed ? "Unsubscribe Channel" : "Subscribe Channel") {
                             model.setChannelSubscribed(channel, isSubscribed: !isSubscribed)
@@ -2769,6 +2773,10 @@ struct ChannelRow: View {
         }
         .sheet(isPresented: $isShowingInfo) {
             ChannelInformationSheet(channel: channel, memberCount: members.count)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingChannelMessage) {
+            ChannelMessageSheet(channel: channel)
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingEdit) {
@@ -15200,6 +15208,40 @@ struct JoinChannelPasswordSheet: View {
                 }
             }
             .navigationTitle("Channel Password")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct ChannelMessageSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let channel: TS3ChannelSummary
+    @State private var message = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    TextField("Message", text: $message)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button("Send Message") {
+                        model.sendChannelMessage(message, to: channel)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle("Channel Message")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
