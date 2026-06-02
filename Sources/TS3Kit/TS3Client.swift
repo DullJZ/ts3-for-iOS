@@ -227,6 +227,12 @@ public final class TS3Client {
         }
     }
 
+    /// Requests quality and traffic counters for the current server connection.
+    public func requestConnectionInfo() async throws -> TS3ConnectionInfo? {
+        let responses = try await execute(TS3SingleCommand(name: "serverrequestconnectioninfo"))
+        return responses.compactMap { connectionInfo(from: $0) }.first
+    }
+
     public func editServer(_ edit: TS3ServerEdit) async throws {
         var params: [TS3CommandParameter] = []
         appendParameter(&params, name: "virtualserver_name", value: edit.name)
@@ -3042,6 +3048,24 @@ private extension TS3Client {
             hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
             hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,
             iconId: intValue(command, "virtualserver_icon_id")
+        )
+    }
+
+    func connectionInfo(from command: TS3SingleCommand) -> TS3ConnectionInfo? {
+        TS3ConnectionInfo(
+            ping: doubleValue(command, "connection_ping"),
+            packetLossTotal: doubleValue(command, "connection_packetloss_total"),
+            packetLossSpeech: doubleValue(command, "connection_packetloss_speech"),
+            packetLossKeepalive: doubleValue(command, "connection_packetloss_keepalive"),
+            packetLossControl: doubleValue(command, "connection_packetloss_control"),
+            bytesReceived: int64Value(command, "connection_bytes_received"),
+            bytesSent: int64Value(command, "connection_bytes_sent"),
+            monthlyBytesReceived: int64Value(command, "connection_bytes_received_month"),
+            monthlyBytesSent: int64Value(command, "connection_bytes_sent_month"),
+            totalBytesReceived: int64Value(command, "connection_bytes_received_total"),
+            totalBytesSent: int64Value(command, "connection_bytes_sent_total"),
+            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 },
+            idleSeconds: (intValue(command, "client_idle_time") ?? intValue(command, "connection_idle_time")).map { $0 / 1000 }
         )
     }
 

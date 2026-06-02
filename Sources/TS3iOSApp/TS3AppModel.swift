@@ -1771,6 +1771,72 @@ struct TS3ServerInfoSummary {
     )
 }
 
+struct TS3ConnectionInfoSummary {
+    var ping: Double?
+    var packetLossTotal: Double?
+    var packetLossSpeech: Double?
+    var packetLossKeepalive: Double?
+    var packetLossControl: Double?
+    var bytesReceived: Int64?
+    var bytesSent: Int64?
+    var monthlyBytesReceived: Int64?
+    var monthlyBytesSent: Int64?
+    var totalBytesReceived: Int64?
+    var totalBytesSent: Int64?
+    var connectedSeconds: Int?
+    var idleSeconds: Int?
+
+    static let empty = TS3ConnectionInfoSummary()
+
+    init(
+        ping: Double? = nil,
+        packetLossTotal: Double? = nil,
+        packetLossSpeech: Double? = nil,
+        packetLossKeepalive: Double? = nil,
+        packetLossControl: Double? = nil,
+        bytesReceived: Int64? = nil,
+        bytesSent: Int64? = nil,
+        monthlyBytesReceived: Int64? = nil,
+        monthlyBytesSent: Int64? = nil,
+        totalBytesReceived: Int64? = nil,
+        totalBytesSent: Int64? = nil,
+        connectedSeconds: Int? = nil,
+        idleSeconds: Int? = nil
+    ) {
+        self.ping = ping
+        self.packetLossTotal = packetLossTotal
+        self.packetLossSpeech = packetLossSpeech
+        self.packetLossKeepalive = packetLossKeepalive
+        self.packetLossControl = packetLossControl
+        self.bytesReceived = bytesReceived
+        self.bytesSent = bytesSent
+        self.monthlyBytesReceived = monthlyBytesReceived
+        self.monthlyBytesSent = monthlyBytesSent
+        self.totalBytesReceived = totalBytesReceived
+        self.totalBytesSent = totalBytesSent
+        self.connectedSeconds = connectedSeconds
+        self.idleSeconds = idleSeconds
+    }
+
+    init(info: TS3ConnectionInfo) {
+        self.init(
+            ping: info.ping,
+            packetLossTotal: info.packetLossTotal,
+            packetLossSpeech: info.packetLossSpeech,
+            packetLossKeepalive: info.packetLossKeepalive,
+            packetLossControl: info.packetLossControl,
+            bytesReceived: info.bytesReceived,
+            bytesSent: info.bytesSent,
+            monthlyBytesReceived: info.monthlyBytesReceived,
+            monthlyBytesSent: info.monthlyBytesSent,
+            totalBytesReceived: info.totalBytesReceived,
+            totalBytesSent: info.totalBytesSent,
+            connectedSeconds: info.connectedSeconds,
+            idleSeconds: info.idleSeconds
+        )
+    }
+}
+
 struct TS3ServerLogSummary: Identifiable {
     let id: Int
     let timestamp: Date?
@@ -2122,6 +2188,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var contactFilterPresets: [TS3ContactFilterPreset] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
     @Published var serverInfo: TS3ServerInfoSummary = .empty
+    @Published var connectionInfo: TS3ConnectionInfoSummary = .empty
     @Published var isTalking = false
     @Published var isAway = false
     @Published var isInputMuted = false
@@ -3111,6 +3178,7 @@ final class TS3AppModel: ObservableObject {
         clientLocations = []
         selectedDatabaseClient = nil
         serverLogEntries = []
+        connectionInfo = .empty
         serverGroups = []
         channelGroups = []
         permissionInfos = []
@@ -3359,6 +3427,15 @@ final class TS3AppModel: ObservableObject {
     func refreshServerView() {
         runClientCommand { client in
             try await client.refreshServerView()
+        }
+    }
+
+    func refreshConnectionInfo() {
+        runClientCommand { client in
+            let info = try await client.requestConnectionInfo()
+            await MainActor.run {
+                self.connectionInfo = info.map(TS3ConnectionInfoSummary.init(info:)) ?? .empty
+            }
         }
     }
 
@@ -3958,6 +4035,7 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             try await client.refreshServerInfo()
         }
+        refreshConnectionInfo()
     }
 
     func refreshServerLogs(limit: Int = 100, reverse: Bool = true, instance: Bool = false) {

@@ -232,6 +232,67 @@ public struct TS3ServerInfo {
     }
 }
 
+/// Per-client connection quality and traffic counters reported by the server.
+public struct TS3ConnectionInfo {
+    /// The measured ping for this client connection in milliseconds.
+    public let ping: Double?
+    /// The total packet loss fraction for this client connection.
+    public let packetLossTotal: Double?
+    /// The speech packet loss fraction for this client connection.
+    public let packetLossSpeech: Double?
+    /// The keepalive packet loss fraction for this client connection.
+    public let packetLossKeepalive: Double?
+    /// The control packet loss fraction for this client connection.
+    public let packetLossControl: Double?
+    /// Bytes received during this connection.
+    public let bytesReceived: Int64?
+    /// Bytes sent during this connection.
+    public let bytesSent: Int64?
+    /// Bytes received during the current month.
+    public let monthlyBytesReceived: Int64?
+    /// Bytes sent during the current month.
+    public let monthlyBytesSent: Int64?
+    /// Total bytes received by this client identity on the server.
+    public let totalBytesReceived: Int64?
+    /// Total bytes sent by this client identity on the server.
+    public let totalBytesSent: Int64?
+    /// Duration of the current connection in seconds.
+    public let connectedSeconds: Int?
+    /// Idle time of the current connection in seconds.
+    public let idleSeconds: Int?
+
+    /// Creates a connection statistics snapshot.
+    public init(
+        ping: Double? = nil,
+        packetLossTotal: Double? = nil,
+        packetLossSpeech: Double? = nil,
+        packetLossKeepalive: Double? = nil,
+        packetLossControl: Double? = nil,
+        bytesReceived: Int64? = nil,
+        bytesSent: Int64? = nil,
+        monthlyBytesReceived: Int64? = nil,
+        monthlyBytesSent: Int64? = nil,
+        totalBytesReceived: Int64? = nil,
+        totalBytesSent: Int64? = nil,
+        connectedSeconds: Int? = nil,
+        idleSeconds: Int? = nil
+    ) {
+        self.ping = ping
+        self.packetLossTotal = packetLossTotal
+        self.packetLossSpeech = packetLossSpeech
+        self.packetLossKeepalive = packetLossKeepalive
+        self.packetLossControl = packetLossControl
+        self.bytesReceived = bytesReceived
+        self.bytesSent = bytesSent
+        self.monthlyBytesReceived = monthlyBytesReceived
+        self.monthlyBytesSent = monthlyBytesSent
+        self.totalBytesReceived = totalBytesReceived
+        self.totalBytesSent = totalBytesSent
+        self.connectedSeconds = connectedSeconds
+        self.idleSeconds = idleSeconds
+    }
+}
+
 public struct TS3ServerLogEntry: Identifiable {
     public let id: Int
     public let timestamp: Date?

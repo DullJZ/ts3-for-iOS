@@ -7271,6 +7271,22 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Control Loss", value: model.serverInfo.totalPacketLossControl.map(Self.percentText))
                 }
 
+                Section(header: Text("Current Connection")) {
+                    ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" })
+                    ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Keepalive Loss", value: model.connectionInfo.packetLossKeepalive.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Control Loss", value: model.connectionInfo.packetLossControl.map(Self.percentText))
+                    ServerInfoDetailRow(label: "Connected", value: model.connectionInfo.connectedSeconds.map(Self.durationText))
+                    ServerInfoDetailRow(label: "Idle", value: model.connectionInfo.idleSeconds.map(Self.durationText))
+                    ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Month Downloaded", value: model.connectionInfo.monthlyBytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Month Uploaded", value: model.connectionInfo.monthlyBytesSent.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Total Downloaded", value: model.connectionInfo.totalBytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Total Uploaded", value: model.connectionInfo.totalBytesSent.map(Self.byteText))
+                }
+
                 Section(header: Text("Host Presentation")) {
                     ServerInfoDetailRow(label: "Host Message", value: model.serverInfo.hostMessage)
                     ServerInfoDetailRow(label: "Message Mode", value: model.serverInfo.hostMessageMode.map(String.init))
@@ -7354,6 +7370,19 @@ struct ServerInformationSheet: View {
         rows.append(("Speech Loss", model.serverInfo.totalPacketLossSpeech.map(Self.percentText)))
         rows.append(("Keepalive Loss", model.serverInfo.totalPacketLossKeepalive.map(Self.percentText)))
         rows.append(("Control Loss", model.serverInfo.totalPacketLossControl.map(Self.percentText)))
+        rows.append(("Current Ping", model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" }))
+        rows.append(("Current Packet Loss", model.connectionInfo.packetLossTotal.map(Self.percentText)))
+        rows.append(("Current Speech Loss", model.connectionInfo.packetLossSpeech.map(Self.percentText)))
+        rows.append(("Current Keepalive Loss", model.connectionInfo.packetLossKeepalive.map(Self.percentText)))
+        rows.append(("Current Control Loss", model.connectionInfo.packetLossControl.map(Self.percentText)))
+        rows.append(("Current Connected", model.connectionInfo.connectedSeconds.map(Self.durationText)))
+        rows.append(("Current Idle", model.connectionInfo.idleSeconds.map(Self.durationText)))
+        rows.append(("Current Session Downloaded", model.connectionInfo.bytesReceived.map(Self.byteText)))
+        rows.append(("Current Session Uploaded", model.connectionInfo.bytesSent.map(Self.byteText)))
+        rows.append(("Current Month Downloaded", model.connectionInfo.monthlyBytesReceived.map(Self.byteText)))
+        rows.append(("Current Month Uploaded", model.connectionInfo.monthlyBytesSent.map(Self.byteText)))
+        rows.append(("Current Total Downloaded", model.connectionInfo.totalBytesReceived.map(Self.byteText)))
+        rows.append(("Current Total Uploaded", model.connectionInfo.totalBytesSent.map(Self.byteText)))
         rows.append(("Host Message", model.serverInfo.hostMessage))
         rows.append(("Message Mode", model.serverInfo.hostMessageMode.map(String.init)))
         rows.append(("Banner URL", model.serverInfo.hostBannerURL))
