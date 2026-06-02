@@ -2793,6 +2793,21 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func copyCurrentConnectionSummary() {
+        let snapshot = currentConnectionSnapshot()
+        let rows = [
+            "Server: \(snapshot.host.isEmpty ? "Not set" : snapshot.host)",
+            "Port: \(snapshot.port.isEmpty ? "9987" : snapshot.port)",
+            "Nickname: \(snapshot.nickname.isEmpty ? "Not set" : snapshot.nickname)",
+            "Default Channel: \(snapshot.defaultChannel.isEmpty ? "None" : snapshot.defaultChannel)",
+            "Server Password: \(snapshot.serverPassword.isEmpty ? "No" : "Configured")",
+            "Channel Password: \(snapshot.defaultChannelPassword.isEmpty ? "No" : "Configured")",
+            "Privilege Key: \(snapshot.privilegeKey.isEmpty ? "No" : "Configured")"
+        ]
+        TS3PlatformSupport.copyToPasteboard(rows.joined(separator: "\n"))
+        lastError = nil
+    }
+
     func copyInviteLink(for channel: TS3ChannelSummary) {
         let channelPath = channelPath(for: channel)
         let name = "\(serverHost) - \(channel.name)"

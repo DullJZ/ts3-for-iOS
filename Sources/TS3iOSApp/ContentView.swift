@@ -649,6 +649,10 @@ struct ConnectView: View {
                     model.copyCurrentInviteLink()
                 }
                 .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Copy Connection Summary") {
+                    model.copyCurrentConnectionSummary()
+                }
+                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button("Import Bookmarks") {
                     isShowingBookmarkImporter = true
                 }
