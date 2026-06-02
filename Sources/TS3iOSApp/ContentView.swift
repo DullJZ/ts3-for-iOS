@@ -16011,6 +16011,20 @@ struct AudioSettingsSheet: View {
         )
     }
 
+    private var prefersSpeakerBinding: Binding<Bool> {
+        Binding(
+            get: { model.prefersSpeakerOutput },
+            set: { model.updatePrefersSpeakerOutput($0) }
+        )
+    }
+
+    private var selectedInputDeviceBinding: Binding<String> {
+        Binding(
+            get: { model.audioInputDevices.first(where: { $0.isSelected })?.id ?? "" },
+            set: { model.selectAudioInputDevice(id: $0.isEmpty ? nil : $0) }
+        )
+    }
+
     private var transmitModeBinding: Binding<TS3AudioTransmitMode> {
         Binding(
             get: { model.audioTransmitMode },
@@ -16082,6 +16096,22 @@ struct AudioSettingsSheet: View {
                                 }
                             }
                         }
+                    }
+                }
+
+                Section(header: Text("Audio Device")) {
+                    audioRouteRow(title: "Input Route", value: model.audioInputRoute)
+                    audioRouteRow(title: "Output Route", value: model.audioOutputRoute)
+                    Toggle("Default to Speaker", isOn: prefersSpeakerBinding)
+                    Picker("Input Device", selection: selectedInputDeviceBinding) {
+                        Text("System Default").tag("")
+                        ForEach(model.audioInputDevices) { device in
+                            Text(device.displayName).tag(device.id)
+                        }
+                    }
+                    .disabled(model.audioInputDevices.isEmpty)
+                    Button("Refresh Audio Routes") {
+                        model.refreshAudioRoutes()
                     }
                 }
 
@@ -16230,6 +16260,9 @@ struct AudioSettingsSheet: View {
             }
             .navigationTitle("Audio Settings")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                model.refreshAudioRoutes()
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -16367,6 +16400,9 @@ struct AudioSettingsSheet: View {
             "Transmit Mode: \(model.audioTransmitMode.rawValue)",
             "Input Gain: \(model.inputGainPercentText)",
             "Playback Volume: \(model.playbackVolumePercentText)",
+            "Input Route: \(model.audioInputRoute)",
+            "Output Route: \(model.audioOutputRoute)",
+            "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
             "Saved Profiles: \(model.audioProfiles.count)",
             "User Playback Overrides: \(model.userPlaybackPreferenceSummaries.count)"
         ]
@@ -16382,6 +16418,16 @@ struct AudioSettingsSheet: View {
             return "\(name): \(userPlaybackSummary(preference))"
         }
         .joined(separator: "\n")
+    }
+
+    private func audioRouteRow(title: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.trailing)
+        }
     }
 
     private func profileSummary(_ profile: TS3AudioProfile) -> String {

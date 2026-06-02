@@ -56,6 +56,7 @@ final class TS3AudioEngine {
     private var inputGain: Float = 1.0
     private var transmitMode: TS3AudioTransmitMode = .pushToTalk
     private var voiceActivationThreshold: Float = 0.03
+    private var prefersSpeakerOutput = true
     private var wasVoiceActive = false
 
     var onEncodedPacket: ((Data) -> Void)?
@@ -191,6 +192,10 @@ final class TS3AudioEngine {
         voiceActivationThreshold = min(max(threshold, 0.001), 0.5)
     }
 
+    func setPrefersSpeakerOutput(_ prefersSpeaker: Bool) {
+        prefersSpeakerOutput = prefersSpeaker
+    }
+
     func handleIncoming(packet: Data, from clientId: UInt16, isWhisper: Bool, sessionMarker: UInt8?) {
         let source = PlaybackSource(clientId: clientId, kind: isWhisper ? .whisper : .channel)
         if packet.isEmpty {
@@ -219,9 +224,11 @@ final class TS3AudioEngine {
         // Older Xcode SDKs do not expose `allowBluetoothHFP`.
         options = [.allowBluetooth, .defaultToSpeaker]
         #endif
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: options)
+        let categoryOptions = prefersSpeakerOutput ? options : options.subtracting(.defaultToSpeaker)
+        try session.setCategory(.playAndRecord, mode: .voiceChat, options: categoryOptions)
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
+        try session.overrideOutputAudioPort(prefersSpeakerOutput ? .speaker : .none)
         #else
         _ = needsInput
         #endif

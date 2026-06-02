@@ -1427,6 +1427,13 @@ public final class TS3Client {
         log(.info, "voice activation threshold set to \(String(format: "%.3f", clamped))")
     }
 
+    public func setPrefersSpeakerOutput(_ prefersSpeaker: Bool) {
+        withAudioQueueSync {
+            audioEngine?.setPrefersSpeakerOutput(prefersSpeaker)
+        }
+        log(.info, "audio output route preference set to \(prefersSpeaker ? "speaker" : "system")")
+    }
+
     public func startWhisper(target: TS3WhisperTarget) {
         whisperTarget = target
         isWhispering = true

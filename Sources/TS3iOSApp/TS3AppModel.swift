@@ -1126,13 +1126,57 @@ private struct TS3AudioSettings: Codable {
     var inputGain: Double
     var transmitMode: String
     var voiceActivationThreshold: Double
+    var prefersSpeakerOutput: Bool
 
     static let defaults = TS3AudioSettings(
         playbackVolume: 1.0,
         inputGain: 1.0,
         transmitMode: TS3AudioTransmitMode.pushToTalk.rawValue,
-        voiceActivationThreshold: 0.03
+        voiceActivationThreshold: 0.03,
+        prefersSpeakerOutput: true
     )
+
+    enum CodingKeys: String, CodingKey {
+        case playbackVolume
+        case inputGain
+        case transmitMode
+        case voiceActivationThreshold
+        case prefersSpeakerOutput
+    }
+
+    init(
+        playbackVolume: Double,
+        inputGain: Double,
+        transmitMode: String,
+        voiceActivationThreshold: Double,
+        prefersSpeakerOutput: Bool
+    ) {
+        self.playbackVolume = playbackVolume
+        self.inputGain = inputGain
+        self.transmitMode = transmitMode
+        self.voiceActivationThreshold = voiceActivationThreshold
+        self.prefersSpeakerOutput = prefersSpeakerOutput
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        playbackVolume = try container.decodeIfPresent(Double.self, forKey: .playbackVolume) ?? Self.defaults.playbackVolume
+        inputGain = try container.decodeIfPresent(Double.self, forKey: .inputGain) ?? Self.defaults.inputGain
+        transmitMode = try container.decodeIfPresent(String.self, forKey: .transmitMode) ?? Self.defaults.transmitMode
+        voiceActivationThreshold = try container.decodeIfPresent(Double.self, forKey: .voiceActivationThreshold) ?? Self.defaults.voiceActivationThreshold
+        prefersSpeakerOutput = try container.decodeIfPresent(Bool.self, forKey: .prefersSpeakerOutput) ?? Self.defaults.prefersSpeakerOutput
+    }
+}
+
+struct TS3AudioRouteDeviceSummary: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let type: String
+    let isSelected: Bool
+
+    var displayName: String {
+        type.isEmpty ? name : "\(name) (\(type))"
+    }
 }
 
 struct TS3AudioProfile: Identifiable, Codable {
@@ -2213,6 +2257,10 @@ final class TS3AppModel: ObservableObject {
     @Published var inputGain: Double = 1.0
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
+    @Published var prefersSpeakerOutput = true
+    @Published private(set) var audioInputDevices: [TS3AudioRouteDeviceSummary] = []
+    @Published private(set) var audioInputRoute = "System Default"
+    @Published private(set) var audioOutputRoute = "System Default"
     @Published private(set) var audioProfiles: [TS3AudioProfile] = []
     @Published private(set) var keyboardShortcuts: [TS3KeyboardShortcutBinding] = TS3AppModel.defaultKeyboardShortcuts
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
@@ -3368,6 +3416,52 @@ final class TS3AppModel: ObservableObject {
         saveAudioSettings()
     }
 
+    func updatePrefersSpeakerOutput(_ prefersSpeaker: Bool) {
+        prefersSpeakerOutput = prefersSpeaker
+        client?.setPrefersSpeakerOutput(prefersSpeaker)
+        applyAudioRoutePreference()
+        saveAudioSettings()
+    }
+
+    func refreshAudioRoutes() {
+        #if targetEnvironment(macCatalyst) || os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        let inputs = session.availableInputs ?? []
+        let selectedInputId = session.preferredInput?.uid ?? session.currentRoute.inputs.first?.uid
+        audioInputDevices = inputs.map { input in
+            TS3AudioRouteDeviceSummary(
+                id: input.uid,
+                name: input.portName,
+                type: input.portType.rawValue,
+                isSelected: input.uid == selectedInputId
+            )
+        }
+        audioInputRoute = routeText(for: session.currentRoute.inputs)
+        audioOutputRoute = routeText(for: session.currentRoute.outputs)
+        #else
+        audioInputDevices = []
+        audioInputRoute = "System Default"
+        audioOutputRoute = "System Default"
+        #endif
+    }
+
+    func selectAudioInputDevice(id: String?) {
+        #if targetEnvironment(macCatalyst) || os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        let input = session.availableInputs?.first { $0.uid == id }
+        do {
+            try session.setPreferredInput(input)
+            refreshAudioRoutes()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+            refreshAudioRoutes()
+        }
+        #else
+        _ = id
+        #endif
+    }
+
     func updateAudioTransmitMode(_ mode: TS3AudioTransmitMode) {
         audioTransmitMode = mode
         client?.setAudioTransmitMode(mode)
@@ -3391,6 +3485,7 @@ final class TS3AppModel: ObservableObject {
         if let client {
             applyAudioSettings(to: client)
         }
+        applyAudioRoutePreference()
         saveAudioSettings()
     }
 
@@ -3400,6 +3495,7 @@ final class TS3AppModel: ObservableObject {
         inputGain = defaults.inputGain
         audioTransmitMode = TS3AudioTransmitMode(rawValue: defaults.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = defaults.voiceActivationThreshold
+        prefersSpeakerOutput = defaults.prefersSpeakerOutput
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
@@ -3407,6 +3503,7 @@ final class TS3AppModel: ObservableObject {
         if let client {
             applyAudioSettings(to: client)
         }
+        applyAudioRoutePreference()
         saveAudioSettings()
     }
 
@@ -7347,7 +7444,8 @@ final class TS3AppModel: ObservableObject {
             playbackVolume: playbackVolume,
             inputGain: inputGain,
             transmitMode: audioTransmitMode.rawValue,
-            voiceActivationThreshold: voiceActivationThreshold
+            voiceActivationThreshold: voiceActivationThreshold,
+            prefersSpeakerOutput: prefersSpeakerOutput
         )
     }
 
@@ -7394,7 +7492,8 @@ final class TS3AppModel: ObservableObject {
             playbackVolume: profile.playbackVolume,
             inputGain: profile.inputGain,
             transmitMode: profile.transmitMode,
-            voiceActivationThreshold: profile.voiceActivationThreshold
+            voiceActivationThreshold: profile.voiceActivationThreshold,
+            prefersSpeakerOutput: prefersSpeakerOutput
         ))
         if isTalking {
             client?.stopMicrophone()
@@ -7506,6 +7605,7 @@ final class TS3AppModel: ObservableObject {
         if let client {
             applyAudioSettings(to: client)
         }
+        applyAudioRoutePreference()
         lastError = nil
     }
 
@@ -7514,6 +7614,7 @@ final class TS3AppModel: ObservableObject {
         inputGain = min(max(settings.inputGain, 0), 4)
         audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
+        prefersSpeakerOutput = settings.prefersSpeakerOutput
     }
 
     private func sanitizedAudioProfiles(_ profiles: [TS3AudioProfile]) -> [TS3AudioProfile] {
@@ -9478,7 +9579,35 @@ final class TS3AppModel: ObservableObject {
         client.setInputGain(Float(inputGain))
         client.setAudioTransmitMode(audioTransmitMode)
         client.setVoiceActivationThreshold(Float(voiceActivationThreshold))
+        client.setPrefersSpeakerOutput(prefersSpeakerOutput)
+        applyAudioRoutePreference()
     }
+
+    private func applyAudioRoutePreference() {
+        #if targetEnvironment(macCatalyst) || os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.overrideOutputAudioPort(prefersSpeakerOutput ? .speaker : .none)
+        } catch {
+            appendLog(TS3LogEntry(
+                timestamp: Date(),
+                level: .warning,
+                message: "[AUDIO] failed to apply output route preference: \(error.localizedDescription)"
+            ))
+        }
+        refreshAudioRoutes()
+        #endif
+    }
+
+    #if targetEnvironment(macCatalyst) || os(iOS)
+    private func routeText(for ports: [AVAudioSessionPortDescription]) -> String {
+        guard !ports.isEmpty else { return "System Default" }
+        return ports.map { port in
+            "\(port.portName) (\(port.portType.rawValue))"
+        }
+        .joined(separator: ", ")
+    }
+    #endif
 
     private func currentMicrophonePermissionState() -> MicrophonePermissionState {
         #if targetEnvironment(macCatalyst) || os(iOS)
