@@ -4843,7 +4843,25 @@ final class TS3AppModel: ObservableObject {
     }
 
     func clearCompletedFileTransfers() {
-        fileTransfers.removeAll { !$0.canCancel }
+        clearInactiveFileTransfers()
+    }
+
+    func clearSuccessfulFileTransfers() {
+        removeInactiveFileTransfers { $0.state == .completed }
+    }
+
+    func clearFailedFileTransfers() {
+        removeInactiveFileTransfers { $0.state == .failed || $0.state == .cancelled }
+    }
+
+    func clearInactiveFileTransfers() {
+        removeInactiveFileTransfers { !$0.canCancel }
+    }
+
+    private func removeInactiveFileTransfers(where shouldRemove: (TS3FileTransferSummary) -> Bool) {
+        fileTransfers.removeAll { transfer in
+            !transfer.canCancel && shouldRemove(transfer)
+        }
         let activeIds = Set(fileTransfers.map(\.id))
         fileTransferTasks = fileTransferTasks.filter { activeIds.contains($0.key) }
     }

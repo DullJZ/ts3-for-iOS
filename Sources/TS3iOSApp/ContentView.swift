@@ -10442,10 +10442,20 @@ struct FileBrowserSheet: View {
                             .disabled(!model.fileTransfers.contains { $0.canCancel })
                         }
                         .font(.caption)
-                        Button("Clear Completed Transfers") {
-                            model.clearCompletedFileTransfers()
+                        Menu("Clear Transfers") {
+                            Button("Clear Completed") {
+                                model.clearSuccessfulFileTransfers()
+                            }
+                            .disabled(!model.fileTransfers.contains { $0.state == .completed })
+                            Button("Clear Failed or Cancelled") {
+                                model.clearFailedFileTransfers()
+                            }
+                            .disabled(!model.fileTransfers.contains { $0.state == .failed || $0.state == .cancelled })
+                            Button("Clear All Inactive") {
+                                model.clearInactiveFileTransfers()
+                            }
+                            .disabled(!model.fileTransfers.contains { !$0.canCancel })
                         }
-                        .disabled(!model.fileTransfers.contains { !$0.canCancel })
                         ForEach(model.fileTransfers) { transfer in
                             FileTransferRow(transfer: transfer)
                                 .environmentObject(model)
