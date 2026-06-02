@@ -1187,12 +1187,14 @@ struct TS3KeyboardShortcutBinding: Identifiable, Codable {
 
 private struct TS3NotificationSettings: Codable {
     var isEnabled: Bool
+    var soundEnabled: Bool
     var privateMessagesEnabled: Bool
     var pokesEnabled: Bool
     var activityEnabled: Bool
 
     static let defaults = TS3NotificationSettings(
         isEnabled: false,
+        soundEnabled: true,
         privateMessagesEnabled: true,
         pokesEnabled: true,
         activityEnabled: false
@@ -1200,11 +1202,13 @@ private struct TS3NotificationSettings: Codable {
 
     init(
         isEnabled: Bool,
+        soundEnabled: Bool = true,
         privateMessagesEnabled: Bool = true,
         pokesEnabled: Bool = true,
         activityEnabled: Bool = false
     ) {
         self.isEnabled = isEnabled
+        self.soundEnabled = soundEnabled
         self.privateMessagesEnabled = privateMessagesEnabled
         self.pokesEnabled = pokesEnabled
         self.activityEnabled = activityEnabled
@@ -1212,6 +1216,7 @@ private struct TS3NotificationSettings: Codable {
 
     enum CodingKeys: String, CodingKey {
         case isEnabled
+        case soundEnabled
         case privateMessagesEnabled
         case pokesEnabled
         case activityEnabled
@@ -1220,6 +1225,7 @@ private struct TS3NotificationSettings: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        soundEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? true
         privateMessagesEnabled = try container.decodeIfPresent(Bool.self, forKey: .privateMessagesEnabled) ?? true
         pokesEnabled = try container.decodeIfPresent(Bool.self, forKey: .pokesEnabled) ?? true
         activityEnabled = try container.decodeIfPresent(Bool.self, forKey: .activityEnabled) ?? false
@@ -2139,6 +2145,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var keyboardShortcuts: [TS3KeyboardShortcutBinding] = TS3AppModel.defaultKeyboardShortcuts
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
     @Published private(set) var notificationsEnabled = false
+    @Published var notificationSoundEnabled = TS3NotificationSettings.defaults.soundEnabled
     @Published var privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
     @Published var pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
     @Published var activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
@@ -3278,6 +3285,11 @@ final class TS3AppModel: ObservableObject {
 
     func setPrivateMessageNotificationsEnabled(_ isEnabled: Bool) {
         privateMessageNotificationsEnabled = isEnabled
+        saveNotificationSettings()
+    }
+
+    func setNotificationSoundEnabled(_ isEnabled: Bool) {
+        notificationSoundEnabled = isEnabled
         saveNotificationSettings()
     }
 
@@ -7293,12 +7305,14 @@ final class TS3AppModel: ObservableObject {
         guard let data = try? Data(contentsOf: notificationSettingsURL),
               let decoded = try? JSONDecoder().decode(TS3NotificationSettings.self, from: data) else {
             notificationsEnabled = TS3NotificationSettings.defaults.isEnabled
+            notificationSoundEnabled = TS3NotificationSettings.defaults.soundEnabled
             privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
             pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
             activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
             return
         }
         notificationsEnabled = decoded.isEnabled
+        notificationSoundEnabled = decoded.soundEnabled
         privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
         pokeNotificationsEnabled = decoded.pokesEnabled
         activityNotificationsEnabled = decoded.activityEnabled
@@ -7324,6 +7338,7 @@ final class TS3AppModel: ObservableObject {
     func importNotificationSettings(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3NotificationSettings.self, from: data)
         notificationsEnabled = decoded.isEnabled
+        notificationSoundEnabled = decoded.soundEnabled
         privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
         pokeNotificationsEnabled = decoded.pokesEnabled
         activityNotificationsEnabled = decoded.activityEnabled
@@ -7334,6 +7349,7 @@ final class TS3AppModel: ObservableObject {
     private var notificationSettingsSnapshot: TS3NotificationSettings {
         TS3NotificationSettings(
             isEnabled: notificationsEnabled,
+            soundEnabled: notificationSoundEnabled,
             privateMessagesEnabled: privateMessageNotificationsEnabled,
             pokesEnabled: pokeNotificationsEnabled,
             activityEnabled: activityNotificationsEnabled
@@ -8315,7 +8331,9 @@ final class TS3AppModel: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = .default
+        if notificationSoundEnabled {
+            content.sound = .default
+        }
         UNUserNotificationCenter.current().add(UNNotificationRequest(
             identifier: identifier,
             content: content,

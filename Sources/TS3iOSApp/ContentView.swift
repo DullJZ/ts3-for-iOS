@@ -6474,6 +6474,13 @@ struct ServerToolsSheet: View {
         )
     }
 
+    private var notificationSoundBinding: Binding<Bool> {
+        Binding(
+            get: { model.notificationSoundEnabled },
+            set: { model.setNotificationSoundEnabled($0) }
+        )
+    }
+
     private var pokeNotificationsBinding: Binding<Bool> {
         Binding(
             get: { model.pokeNotificationsEnabled },
@@ -6582,6 +6589,8 @@ struct ServerToolsSheet: View {
 
                 Section(header: Text("Notifications")) {
                     Toggle("Enable Notifications", isOn: notificationsBinding)
+                    Toggle("Sound", isOn: notificationSoundBinding)
+                        .disabled(!model.notificationsEnabled)
                     Toggle("Private Messages", isOn: privateMessageNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
                     Toggle("Pokes", isOn: pokeNotificationsBinding)
