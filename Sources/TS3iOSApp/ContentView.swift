@@ -613,6 +613,18 @@ struct ConnectView: View {
                         isConfirmingClearRecentConnections = true
                     }
                     .foregroundColor(.red)
+                    Menu {
+                        Button("Save Visible as Bookmarks") {
+                            model.saveBookmarks(from: displayedRecentConnections, folder: bookmarkFolder)
+                        }
+                        .disabled(displayedRecentConnections.isEmpty)
+                        Button("Delete Visible Recent Servers") {
+                            model.deleteRecentConnections(displayedRecentConnections)
+                        }
+                        .disabled(displayedRecentConnections.isEmpty)
+                    } label: {
+                        Label("Visible Recent Servers", systemImage: "clock.arrow.circlepath")
+                    }
                     Button("Export Recent Servers") {
                         exportRecentConnections()
                     }

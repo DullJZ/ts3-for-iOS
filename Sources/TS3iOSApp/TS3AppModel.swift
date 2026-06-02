@@ -2875,6 +2875,13 @@ final class TS3AppModel: ObservableObject {
         saveRecentConnections()
     }
 
+    func deleteRecentConnections(_ snapshots: [TS3ConnectionSnapshot]) {
+        let ids = Set(snapshots.map(\.id))
+        guard !ids.isEmpty else { return }
+        recentConnections.removeAll { ids.contains($0.id) }
+        saveRecentConnections()
+    }
+
     func clearRecentConnections() {
         recentConnections = []
         saveRecentConnections()
@@ -3102,6 +3109,33 @@ final class TS3AppModel: ObservableObject {
         )
         bookmarks.removeAll { $0.host == bookmark.host && $0.port == bookmark.port }
         bookmarks.insert(bookmark, at: 0)
+        saveBookmarks()
+    }
+
+    func saveBookmarks(from snapshots: [TS3ConnectionSnapshot], folder: String = "") {
+        let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        var merged = bookmarks
+        for snapshot in snapshots.reversed() {
+            let host = snapshot.host.trimmingCharacters(in: .whitespacesAndNewlines)
+            let port = snapshot.port.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !host.isEmpty, !port.isEmpty else { continue }
+            let bookmark = TS3BookmarkSummary(
+                name: host,
+                folder: folder,
+                host: host,
+                port: port,
+                nickname: snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+                serverPassword: snapshot.serverPassword,
+                defaultChannel: snapshot.defaultChannel,
+                defaultChannelPassword: snapshot.defaultChannelPassword,
+                privilegeKey: snapshot.privilegeKey
+            )
+            merged.removeAll {
+                $0.host.caseInsensitiveCompare(bookmark.host) == .orderedSame && $0.port == bookmark.port
+            }
+            merged.insert(bookmark, at: 0)
+        }
+        bookmarks = merged
         saveBookmarks()
     }
 
