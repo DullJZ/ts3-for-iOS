@@ -6881,6 +6881,10 @@ struct ServerLogsSheet: View {
                         isExportingSnapshot = true
                     }
                     .disabled(model.serverLogEntries.isEmpty)
+                    Button("Clear Results") {
+                        model.clearServerLogResults()
+                    }
+                    .disabled(model.serverLogEntries.isEmpty)
                 }
 
                 Section(header: Text("Query Presets")) {

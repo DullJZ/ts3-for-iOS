@@ -4137,6 +4137,10 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func clearServerLogResults() {
+        serverLogEntries = []
+    }
+
     func saveServerLogQueryPreset(
         name: String,
         limit: Int,
