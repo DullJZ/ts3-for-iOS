@@ -10382,6 +10382,11 @@ struct FileBrowserSheet: View {
                                 isExportingTransferSnapshot = true
                             }
                             .buttonStyle(.borderless)
+                            Button("Retry Failed") {
+                                model.retryFailedFileTransfers()
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(!model.fileTransfers.contains { $0.canRetry })
                             Button("Cancel Active") {
                                 model.cancelActiveFileTransfers()
                             }
@@ -10934,6 +10939,12 @@ struct FileTransferRow: View {
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
+            } else {
+                Button("Remove") {
+                    model.removeFileTransfer(transfer)
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
             }
         }
         .padding(.vertical, 3)
@@ -10946,6 +10957,11 @@ struct FileTransferRow: View {
             if transfer.canRetry {
                 Button("Retry Transfer") {
                     model.retryFileTransfer(transfer)
+                }
+            }
+            if !transfer.canCancel {
+                Button("Remove Transfer") {
+                    model.removeFileTransfer(transfer)
                 }
             }
             Button("Copy Remote Path") {

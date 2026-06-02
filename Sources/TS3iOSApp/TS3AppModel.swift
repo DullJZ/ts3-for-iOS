@@ -4672,6 +4672,20 @@ final class TS3AppModel: ObservableObject {
         fileTransferTasks = fileTransferTasks.filter { activeIds.contains($0.key) }
     }
 
+    func removeFileTransfer(_ transfer: TS3FileTransferSummary) {
+        guard !transfer.canCancel else { return }
+        fileTransfers.removeAll { $0.id == transfer.id }
+        fileTransferTasks[transfer.id] = nil
+    }
+
+    func retryFailedFileTransfers() {
+        let retryableTransfers = fileTransfers.filter(\.canRetry)
+        guard !retryableTransfers.isEmpty else { return }
+        for transfer in retryableTransfers {
+            retryFileTransfer(transfer)
+        }
+    }
+
     func retryFileTransfer(_ transfer: TS3FileTransferSummary) {
         guard transfer.canRetry else { return }
         switch transfer.direction {
