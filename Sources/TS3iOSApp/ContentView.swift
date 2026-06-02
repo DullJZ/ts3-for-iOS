@@ -15714,6 +15714,10 @@ struct SelfStatusSheet: View {
                         statusProfileName = ""
                     }
                     .disabled(statusProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Delete All Profiles") {
+                        model.deleteSelfStatusProfiles(model.selfStatusProfiles)
+                    }
+                    .disabled(model.selfStatusProfiles.isEmpty)
 
                     if model.selfStatusProfiles.isEmpty {
                         Text("No saved status profiles")
@@ -16228,6 +16232,10 @@ struct AudioSettingsSheet: View {
                     Button("Import Profile Backup") {
                         isImportingAudioProfiles = true
                     }
+                    Button("Delete All Profiles") {
+                        model.deleteAudioProfiles(model.audioProfiles)
+                    }
+                    .disabled(model.audioProfiles.isEmpty)
 
                     if model.audioProfiles.isEmpty {
                         Text("No saved audio profiles")

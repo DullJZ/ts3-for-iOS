@@ -7621,6 +7621,13 @@ final class TS3AppModel: ObservableObject {
         saveAudioProfiles()
     }
 
+    func deleteAudioProfiles(_ profiles: [TS3AudioProfile]) {
+        let ids = Set(profiles.map(\.id))
+        guard !ids.isEmpty else { return }
+        audioProfiles.removeAll { ids.contains($0.id) }
+        saveAudioProfiles()
+    }
+
     func audioProfilesExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -9316,6 +9323,13 @@ final class TS3AppModel: ObservableObject {
 
     func deleteSelfStatusProfile(_ profile: TS3SelfStatusProfile) {
         selfStatusProfiles.removeAll { $0.id == profile.id }
+        saveSelfStatusProfiles()
+    }
+
+    func deleteSelfStatusProfiles(_ profiles: [TS3SelfStatusProfile]) {
+        let ids = Set(profiles.map(\.id))
+        guard !ids.isEmpty else { return }
+        selfStatusProfiles.removeAll { ids.contains($0.id) }
         saveSelfStatusProfiles()
     }
 
