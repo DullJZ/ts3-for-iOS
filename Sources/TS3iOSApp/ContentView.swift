@@ -499,21 +499,25 @@ struct ConnectView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 Spacer()
-                                Button {
-                                    model.copyInviteLink(
-                                        for: TS3BookmarkSummary(
-                                            id: snapshot.id,
-                                            name: snapshot.host,
-                                            folder: "",
-                                            host: snapshot.host,
-                                            port: snapshot.port,
-                                            nickname: snapshot.nickname,
-                                            serverPassword: snapshot.serverPassword,
-                                            defaultChannel: snapshot.defaultChannel,
-                                            defaultChannelPassword: snapshot.defaultChannelPassword,
-                                            privilegeKey: snapshot.privilegeKey
-                                        )
-                                    )
+                                let recentBookmark = TS3BookmarkSummary(
+                                    id: snapshot.id,
+                                    name: snapshot.host,
+                                    folder: "",
+                                    host: snapshot.host,
+                                    port: snapshot.port,
+                                    nickname: snapshot.nickname,
+                                    serverPassword: snapshot.serverPassword,
+                                    defaultChannel: snapshot.defaultChannel,
+                                    defaultChannelPassword: snapshot.defaultChannelPassword,
+                                    privilegeKey: snapshot.privilegeKey
+                                )
+                                Menu {
+                                    Button("Copy Safe Invite Link") {
+                                        model.copyInviteLink(for: recentBookmark)
+                                    }
+                                    Button("Copy Full Invite Link") {
+                                        model.copyFullInviteLink(for: recentBookmark)
+                                    }
                                 } label: {
                                     Image(systemName: "link")
                                 }
@@ -581,8 +585,13 @@ struct ConnectView: View {
                                     Image(systemName: "arrow.clockwise")
                                 }
                                 .buttonStyle(.borderless)
-                                Button {
-                                    model.copyInviteLink(for: bookmark)
+                                Menu {
+                                    Button("Copy Safe Invite Link") {
+                                        model.copyInviteLink(for: bookmark)
+                                    }
+                                    Button("Copy Full Invite Link") {
+                                        model.copyFullInviteLink(for: bookmark)
+                                    }
                                 } label: {
                                     Image(systemName: "link")
                                 }
@@ -647,6 +656,10 @@ struct ConnectView: View {
                 .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button("Copy Invite Link") {
                     model.copyCurrentInviteLink()
+                }
+                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Copy Full Invite Link") {
+                    model.copyCurrentFullInviteLink()
                 }
                 .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button("Copy Connection Summary") {
@@ -2693,6 +2706,9 @@ struct ChannelRow: View {
                     }
                     Button("Copy Channel Invite Link") {
                         model.copyInviteLink(for: channel)
+                    }
+                    Button("Copy Full Channel Invite Link") {
+                        model.copyFullInviteLink(for: channel)
                     }
                     Button("Copy Channel ID") {
                         TS3PlatformSupport.copyToPasteboard("\(channel.id)")

@@ -2856,7 +2856,30 @@ final class TS3AppModel: ObservableObject {
             host: serverHost,
             port: serverPort,
             nickname: nickname,
-            defaultChannel: defaultChannel
+            serverPassword: nil,
+            defaultChannel: defaultChannel,
+            defaultChannelPassword: nil,
+            privilegeKey: nil,
+            includingSecrets: false
+        ) else {
+            lastError = "Current server is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
+    func copyCurrentFullInviteLink() {
+        guard let link = inviteLink(
+            name: serverHost,
+            host: serverHost,
+            port: serverPort,
+            nickname: nickname,
+            serverPassword: serverPassword,
+            defaultChannel: defaultChannel,
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey,
+            includingSecrets: true
         ) else {
             lastError = "Current server is not a valid TeamSpeak invite link."
             return
@@ -2888,7 +2911,32 @@ final class TS3AppModel: ObservableObject {
             host: serverHost,
             port: serverPort,
             nickname: nickname,
-            defaultChannel: channelPath
+            serverPassword: nil,
+            defaultChannel: channelPath,
+            defaultChannelPassword: nil,
+            privilegeKey: nil,
+            includingSecrets: false
+        ) else {
+            lastError = "Current channel is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
+    func copyFullInviteLink(for channel: TS3ChannelSummary, channelPassword: String = "") {
+        let channelPath = channelPath(for: channel)
+        let name = "\(serverHost) - \(channel.name)"
+        guard let link = inviteLink(
+            name: name,
+            host: serverHost,
+            port: serverPort,
+            nickname: nickname,
+            serverPassword: serverPassword,
+            defaultChannel: channelPath,
+            defaultChannelPassword: channelPassword,
+            privilegeKey: privilegeKey,
+            includingSecrets: true
         ) else {
             lastError = "Current channel is not a valid TeamSpeak invite link."
             return
@@ -2903,7 +2951,30 @@ final class TS3AppModel: ObservableObject {
             host: bookmark.host,
             port: bookmark.port,
             nickname: bookmark.nickname,
-            defaultChannel: bookmark.defaultChannel
+            serverPassword: nil,
+            defaultChannel: bookmark.defaultChannel,
+            defaultChannelPassword: nil,
+            privilegeKey: nil,
+            includingSecrets: false
+        ) else {
+            lastError = "Bookmark is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
+    func copyFullInviteLink(for bookmark: TS3BookmarkSummary) {
+        guard let link = inviteLink(
+            name: bookmark.name,
+            host: bookmark.host,
+            port: bookmark.port,
+            nickname: bookmark.nickname,
+            serverPassword: bookmark.serverPassword,
+            defaultChannel: bookmark.defaultChannel,
+            defaultChannelPassword: bookmark.defaultChannelPassword,
+            privilegeKey: bookmark.privilegeKey,
+            includingSecrets: true
         ) else {
             lastError = "Bookmark is not a valid TeamSpeak invite link."
             return
@@ -2964,7 +3035,11 @@ final class TS3AppModel: ObservableObject {
         host: String,
         port: String,
         nickname: String,
-        defaultChannel: String
+        serverPassword: String?,
+        defaultChannel: String,
+        defaultChannelPassword: String?,
+        privilegeKey: String?,
+        includingSecrets: Bool
     ) -> String? {
         let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedHost.isEmpty else { return nil }
@@ -2973,13 +3048,13 @@ final class TS3AppModel: ObservableObject {
             host: trimmedHost,
             port: Int(trimmedPort),
             nickname: nickname,
-            serverPassword: nil,
+            serverPassword: serverPassword,
             defaultChannel: defaultChannel,
-            defaultChannelPassword: nil,
-            privilegeKey: nil,
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey,
             bookmarkName: name
         )
-        return serverURL.url(includingSecrets: false)?.absoluteString
+        return serverURL.url(includingSecrets: includingSecrets)?.absoluteString
     }
 
     func updateBookmark(_ bookmark: TS3BookmarkSummary) {
