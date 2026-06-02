@@ -1083,6 +1083,7 @@ enum TS3FileTransferState: String {
 struct TS3FileTransferSummary: Identifiable {
     let id: UUID
     let direction: TS3FileTransferDirection
+    let channelId: Int
     let name: String
     let remotePath: String
     var localPath: String?
@@ -1094,6 +1095,10 @@ struct TS3FileTransferSummary: Identifiable {
 
     var canCancel: Bool {
         state == .preparing || state == .transferring
+    }
+
+    var canRetry: Bool {
+        state == .cancelled || state == .failed
     }
 }
 
@@ -4524,6 +4529,7 @@ final class TS3AppModel: ObservableObject {
         }
         let transferId = addFileTransfer(
             direction: .download,
+            channelId: entry.channelId,
             name: entry.name,
             remotePath: entry.path,
             detail: "Waiting for server"
@@ -4666,6 +4672,31 @@ final class TS3AppModel: ObservableObject {
         fileTransferTasks = fileTransferTasks.filter { activeIds.contains($0.key) }
     }
 
+    func retryFileTransfer(_ transfer: TS3FileTransferSummary) {
+        guard transfer.canRetry else { return }
+        switch transfer.direction {
+        case .download:
+            guard let entry = fileEntries.first(where: {
+                $0.channelId == transfer.channelId && $0.path == transfer.remotePath && !$0.isDirectory
+            }) else {
+                lastError = "Refresh the file list before retrying this download."
+                return
+            }
+            downloadFileEntry(entry)
+        case .upload:
+            guard let localPath = transfer.localPath, !localPath.isEmpty else {
+                lastError = "This upload has no local file path to retry."
+                return
+            }
+            uploadFile(
+                from: URL(fileURLWithPath: localPath),
+                resume: true,
+                channelId: transfer.channelId,
+                remotePath: transfer.remotePath
+            )
+        }
+    }
+
     func uploadFiles(_ sources: [URL], overwrite: Bool = false, resume: Bool = false) {
         guard !sources.isEmpty else { return }
         for source in sources {
@@ -4673,8 +4704,14 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func uploadFile(from source: URL, overwrite: Bool = false, resume: Bool = false) {
-        guard let channelId = fileBrowserChannelId else {
+    func uploadFile(
+        from source: URL,
+        overwrite: Bool = false,
+        resume: Bool = false,
+        channelId targetChannelId: Int? = nil,
+        remotePath targetRemotePath: String? = nil
+    ) {
+        guard let channelId = targetChannelId ?? fileBrowserChannelId else {
             lastError = "No channel is selected for file browsing."
             return
         }
@@ -4683,9 +4720,10 @@ final class TS3AppModel: ObservableObject {
             return
         }
         let remoteName = source.lastPathComponent
-        let remotePath = joinedFilePath(parentPath: fileBrowserPath, name: remoteName)
+        let remotePath = targetRemotePath ?? joinedFilePath(parentPath: fileBrowserPath, name: remoteName)
         let transferId = addFileTransfer(
             direction: .upload,
+            channelId: channelId,
             name: remoteName,
             remotePath: remotePath,
             localPath: source.path,
@@ -4871,6 +4909,7 @@ final class TS3AppModel: ObservableObject {
 
     private func addFileTransfer(
         direction: TS3FileTransferDirection,
+        channelId: Int,
         name: String,
         remotePath: String,
         localPath: String? = nil,
@@ -4881,6 +4920,7 @@ final class TS3AppModel: ObservableObject {
             TS3FileTransferSummary(
                 id: id,
                 direction: direction,
+                channelId: channelId,
                 name: name,
                 remotePath: remotePath,
                 localPath: localPath,

@@ -10928,6 +10928,12 @@ struct FileTransferRow: View {
                 .buttonStyle(.borderless)
                 .font(.caption)
                 .foregroundColor(.red)
+            } else if transfer.canRetry {
+                Button("Retry") {
+                    model.retryFileTransfer(transfer)
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
             }
         }
         .padding(.vertical, 3)
@@ -10935,6 +10941,11 @@ struct FileTransferRow: View {
             if transfer.canCancel {
                 Button("Cancel Transfer") {
                     model.cancelFileTransfer(transfer)
+                }
+            }
+            if transfer.canRetry {
+                Button("Retry Transfer") {
+                    model.retryFileTransfer(transfer)
                 }
             }
             Button("Copy Remote Path") {
