@@ -2584,8 +2584,10 @@ struct ChannelRow: View {
     let members: [TS3UserSummary]
     @State private var joinPassword = ""
     @State private var defaultChannelPassword = ""
+    @State private var fullInviteChannelPassword = ""
     @State private var isShowingJoinPassword = false
     @State private var isShowingDefaultChannelPassword = false
+    @State private var isShowingFullInvitePassword = false
     @State private var isShowingInfo = false
     @State private var isShowingChannelMessage = false
     @State private var isShowingEdit = false
@@ -2708,7 +2710,12 @@ struct ChannelRow: View {
                         model.copyInviteLink(for: channel)
                     }
                     Button("Copy Full Channel Invite Link") {
-                        model.copyFullInviteLink(for: channel)
+                        if channel.isPasswordProtected {
+                            fullInviteChannelPassword = ""
+                            isShowingFullInvitePassword = true
+                        } else {
+                            model.copyFullInviteLink(for: channel)
+                        }
                     }
                     Button("Copy Channel ID") {
                         TS3PlatformSupport.copyToPasteboard("\(channel.id)")
@@ -2785,6 +2792,10 @@ struct ChannelRow: View {
         }
         .sheet(isPresented: $isShowingDefaultChannelPassword) {
             DefaultChannelPasswordSheet(channel: channel, password: $defaultChannelPassword)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingFullInvitePassword) {
+            FullChannelInvitePasswordSheet(channel: channel, password: $fullInviteChannelPassword)
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingInfo) {
@@ -15258,6 +15269,39 @@ struct ChannelMessageSheet: View {
                 }
             }
             .navigationTitle("Channel Message")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct FullChannelInvitePasswordSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let channel: TS3ChannelSummary
+    @Binding var password: String
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(channel.name)) {
+                    SecureField("Channel Password", text: $password)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button("Copy Full Invite Link") {
+                        model.copyFullInviteLink(for: channel, channelPassword: password)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Full Invite Link")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
