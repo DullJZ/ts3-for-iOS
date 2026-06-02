@@ -5505,12 +5505,12 @@ struct EventsSheet: View {
             .navigationTitle("Events")
             .ts3InlineNavigationTitle()
             .onAppear {
-                model.markPokesRead()
+                model.markEventsRead()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Refresh") {
-                        model.markPokesRead()
+                        model.markEventsRead()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -5528,6 +5528,14 @@ struct EventsSheet: View {
                             model.clearEventHistory()
                         }
                         .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        Button("Clear Activity") {
+                            model.clearActivityEvents()
+                        }
+                        .disabled(model.activityEvents.isEmpty)
+                        Button("Clear Pokes") {
+                            model.clearPokeEvents()
+                        }
+                        .disabled(model.pokeEvents.isEmpty)
                         Button("Export Filter Presets") {
                             exportPresets()
                         }

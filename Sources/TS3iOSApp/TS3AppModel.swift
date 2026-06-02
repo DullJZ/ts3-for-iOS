@@ -8980,9 +8980,19 @@ final class TS3AppModel: ObservableObject {
         isViewingChat = false
     }
 
-    func markPokesRead() {
+    func markEventsRead() {
         unreadPokeCount = 0
         unreadActivityCount = 0
+    }
+
+    func clearActivityEvents() {
+        activityEvents = []
+        unreadActivityCount = 0
+    }
+
+    func clearPokeEvents() {
+        pokeEvents = []
+        unreadPokeCount = 0
     }
 
     func clearEventHistory() {
