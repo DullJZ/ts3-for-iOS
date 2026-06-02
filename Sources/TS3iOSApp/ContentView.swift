@@ -14046,6 +14046,10 @@ struct WhisperSheet: View {
                         )
                     }
                     .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
+                    Button("Select Current Route") {
+                        selectCurrentWhisperRoute()
+                    }
+                    .disabled(!canSelectCurrentWhisperRoute)
                     Button("Clear Selected Targets") {
                         selectedWhisperChannelIds = []
                         selectedWhisperClientIds = []
@@ -14361,6 +14365,31 @@ struct WhisperSheet: View {
             return selectedChannelGroupId != 0
         case .channelCommander, .allClients:
             return true
+        }
+    }
+
+    private var canSelectCurrentWhisperRoute: Bool {
+        switch model.whisperRoute {
+        case .channel, .client, .list:
+            return true
+        case .none, .server, .group:
+            return false
+        }
+    }
+
+    private func selectCurrentWhisperRoute() {
+        switch model.whisperRoute {
+        case let .channel(channelId):
+            selectedWhisperChannelIds = [channelId]
+            selectedWhisperClientIds = []
+        case let .client(clientId):
+            selectedWhisperChannelIds = []
+            selectedWhisperClientIds = [clientId]
+        case let .list(channelIds, clientIds):
+            selectedWhisperChannelIds = Set(channelIds)
+            selectedWhisperClientIds = Set(clientIds)
+        case .none, .server, .group:
+            break
         }
     }
 
