@@ -33,10 +33,10 @@ struct ContentView: View {
                         Label("快捷键", systemImage: "keyboard")
                     }
                     .buttonStyle(TS3BorderedButtonStyle())
-                    .keyboardShortcut("/", modifiers: [.command])
+                    .ts3KeyboardShortcut("show-shortcuts", in: model)
                     debugButton
                         .buttonStyle(TS3BorderedButtonStyle())
-                        .keyboardShortcut("l", modifiers: [.command, .shift])
+                        .ts3KeyboardShortcut("show-debug-log", in: model)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -70,6 +70,70 @@ struct TS3KeyboardShortcutSummary: Identifiable {
     let group: String
     let action: String
     let keys: String
+}
+
+private struct TS3KeyboardShortcutDescriptor {
+    let key: KeyEquivalent
+    let modifiers: EventModifiers
+
+    init?(_ rawValue: String) {
+        let parts = rawValue
+            .split(separator: "-")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard let keyName = parts.last else { return nil }
+
+        var modifiers: EventModifiers = []
+        for modifier in parts.dropLast() {
+            switch modifier.lowercased() {
+            case "command", "cmd", "⌘":
+                modifiers.insert(.command)
+            case "shift", "⇧":
+                modifiers.insert(.shift)
+            case "option", "alt", "⌥":
+                modifiers.insert(.option)
+            case "control", "ctrl", "⌃":
+                modifiers.insert(.control)
+            default:
+                return nil
+            }
+        }
+
+        guard let key = Self.keyEquivalent(for: keyName) else { return nil }
+        self.key = key
+        self.modifiers = modifiers
+    }
+
+    private static func keyEquivalent(for keyName: String) -> KeyEquivalent? {
+        switch keyName.lowercased() {
+        case "return", "enter":
+            return .return
+        case "escape", "esc":
+            return .escape
+        case "space":
+            return .space
+        case "tab":
+            return .tab
+        case "delete", "backspace":
+            return .delete
+        default:
+            guard keyName.count == 1, let character = keyName.first else { return nil }
+            return KeyEquivalent(character)
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func ts3KeyboardShortcut(_ actionId: String, in model: TS3AppModel) -> some View {
+        if let shortcut = model.keyboardShortcuts.first(where: { $0.actionId == actionId }),
+           shortcut.isEnabled,
+           let descriptor = TS3KeyboardShortcutDescriptor(shortcut.keys) {
+            self.keyboardShortcut(descriptor.key, modifiers: descriptor.modifiers)
+        } else {
+            self
+        }
+    }
 }
 
 struct KeyboardShortcutsSheet: View {
@@ -6563,7 +6627,7 @@ struct ServerToolsSheet: View {
                     Button("Refresh Channels and Clients") {
                         model.refreshServerView()
                     }
-                    .keyboardShortcut("r", modifiers: [.command, .shift])
+                    .ts3KeyboardShortcut("refresh-server", in: model)
                     Button("Subscribe All Channels") {
                         model.setAllChannelsSubscribed(true)
                     }
@@ -6581,7 +6645,7 @@ struct ServerToolsSheet: View {
                         model.refreshServerLogs()
                         isShowingServerLogs = true
                     }
-                    .keyboardShortcut("g", modifiers: [.command, .shift])
+                    .ts3KeyboardShortcut("view-server-logs", in: model)
                     Button("Edit Server Settings") {
                         isShowingServerEditor = true
                     }
@@ -6608,7 +6672,7 @@ struct ServerToolsSheet: View {
                     Button("Manage Contacts") {
                         isShowingContacts = true
                     }
-                    .keyboardShortcut("c", modifiers: [.command, .shift])
+                    .ts3KeyboardShortcut("manage-contacts", in: model)
                     Button("Browse Channel Files") {
                         model.openFileBrowser()
                         isShowingFiles = true
@@ -6631,20 +6695,20 @@ struct ServerToolsSheet: View {
                     Button("Apply Nickname") {
                         model.updateNickname(to: nickname.isEmpty ? model.nickname : nickname)
                     }
-                    .keyboardShortcut(.return, modifiers: [.command])
+                    .ts3KeyboardShortcut("apply-nickname", in: model)
                     TextField("Away Message", text: $model.awayMessage)
                     Button(model.isAway ? "Clear Away" : "Set Away") {
                         model.toggleAway()
                     }
-                    .keyboardShortcut("a", modifiers: [.command, .shift])
+                    .ts3KeyboardShortcut("toggle-away", in: model)
                     Button(model.isInputMuted ? "Unmute Microphone" : "Mute Microphone") {
                         model.toggleInputMuted()
                     }
-                    .keyboardShortcut("m", modifiers: [.command, .shift])
+                    .ts3KeyboardShortcut("toggle-input-muted", in: model)
                     Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
                         model.toggleOutputMuted()
                     }
-                    .keyboardShortcut("s", modifiers: [.command, .shift])
+                    .ts3KeyboardShortcut("toggle-output-muted", in: model)
                 }
 
                 Section(header: Text("Notifications")) {
@@ -15418,14 +15482,14 @@ struct TalkControlBar: View {
                     Label(model.isInputMuted ? "Mic Muted" : "Mic", systemImage: model.isInputMuted ? "mic.slash" : "mic")
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
-                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("toggle-input-muted", in: model)
                 Button {
                     model.toggleOutputMuted()
                 } label: {
                     Label(model.isOutputMuted ? "Sound Muted" : "Sound", systemImage: model.isOutputMuted ? "speaker.slash" : "speaker.wave.2")
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
-                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("toggle-output-muted", in: model)
                 Button {
                     isShowingSelfStatus = true
                 } label: {
@@ -15452,7 +15516,7 @@ struct TalkControlBar: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
-            .keyboardShortcut("t", modifiers: [.command])
+            .ts3KeyboardShortcut("toggle-talk", in: model)
         }
         .padding()
         .sheet(isPresented: $isShowingAudioSettings) {
