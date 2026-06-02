@@ -3432,6 +3432,11 @@ struct ChannelMemberRow: View {
                     Button(member.isRequestingTalkPower ? "Grant Talk Power" : "Mark As Talker") {
                         model.setTalker(true, for: member)
                     }
+                    if member.isRequestingTalkPower {
+                        Button("Deny Talk Request") {
+                            model.denyTalkRequest(for: member)
+                        }
+                    }
                 }
                 Menu("Move To") {
                     ForEach(model.channels) { channel in

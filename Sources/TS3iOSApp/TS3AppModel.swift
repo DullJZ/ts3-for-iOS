@@ -6794,6 +6794,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func denyTalkRequest(for user: TS3UserSummary) {
+        runClientCommand { client in
+            try await client.setClientTalker(false, clientId: user.id)
+            await MainActor.run {
+                self.updateUser(clientId: user.id) { existing in
+                    self.copyUser(
+                        existing,
+                        isTalker: false,
+                        isRequestingTalkPower: false,
+                        talkRequestMessage: ""
+                    )
+                }
+            }
+        }
+    }
+
     private func upsertServerGroup(_ groupId: Int, forClientId clientId: Int) {
         updateUser(clientId: clientId) { user in
             if user.serverGroups.contains(groupId) {
