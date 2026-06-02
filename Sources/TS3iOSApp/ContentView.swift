@@ -6229,6 +6229,14 @@ struct OfflineMessagesSheet: View {
                             model.markAllOfflineMessagesRead()
                         }
                         .disabled(filteredMessages.allSatisfy(\.isRead))
+                        Button("Mark Visible Read") {
+                            model.markOfflineMessages(filteredMessages, read: true)
+                        }
+                        .disabled(!filteredMessages.contains { !$0.isRead })
+                        Button("Mark Visible Unread") {
+                            model.markOfflineMessages(filteredMessages, read: false)
+                        }
+                        .disabled(!filteredMessages.contains { $0.isRead })
                         Button("Delete All Messages") {
                             model.deleteOfflineMessages(filteredMessages)
                         }
