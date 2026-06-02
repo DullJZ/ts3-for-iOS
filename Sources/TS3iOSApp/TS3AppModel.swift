@@ -2146,6 +2146,7 @@ final class TS3AppModel: ObservableObject {
     @Published var autoReconnectInitialDelaySeconds = TS3ConnectionRecoverySettings.defaults.initialDelaySeconds
     @Published var autoReconnectMaxDelaySeconds = TS3ConnectionRecoverySettings.defaults.maxDelaySeconds
     @Published var autoReconnectMaxAttempts = TS3ConnectionRecoverySettings.defaults.maxAttempts
+    @Published private(set) var autoReconnectIsScheduled = false
     @Published private(set) var autoReconnectStatus: String?
 
     @Published var serverHost = ""
@@ -3032,6 +3033,7 @@ final class TS3AppModel: ObservableObject {
             ? "\(reconnectAttempt)/\(autoReconnectMaxAttempts)"
             : "\(reconnectAttempt)"
         autoReconnectStatus = "Reconnect attempt \(attemptText) in \(delaySeconds)s"
+        autoReconnectIsScheduled = true
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delaySeconds) * 1_000_000_000)
             guard !Task.isCancelled else { return }
@@ -3052,6 +3054,7 @@ final class TS3AppModel: ObservableObject {
     private func cancelReconnectSchedule(resetAttempts: Bool) {
         reconnectTask?.cancel()
         reconnectTask = nil
+        autoReconnectIsScheduled = false
         if resetAttempts {
             reconnectAttempt = 0
         }
@@ -3294,6 +3297,11 @@ final class TS3AppModel: ObservableObject {
         if !isEnabled {
             cancelReconnectSchedule(resetAttempts: true)
         }
+    }
+
+    func cancelScheduledReconnect() {
+        cancelReconnectSchedule(resetAttempts: true)
+        autoReconnectStatus = "Scheduled reconnect canceled"
     }
 
     func updateConnectionRecoveryPolicy(

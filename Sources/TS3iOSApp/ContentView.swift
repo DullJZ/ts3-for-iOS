@@ -722,6 +722,12 @@ struct ConnectView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                if model.autoReconnectIsScheduled {
+                    Button("Cancel Scheduled Reconnect") {
+                        model.cancelScheduledReconnect()
+                    }
+                    .foregroundColor(.red)
+                }
                 Button("Copy Recovery Snapshot") {
                     TS3PlatformSupport.copyToPasteboard(connectionRecoverySnapshot)
                 }
