@@ -5185,6 +5185,31 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func loadOfflineMessageBodies(_ messages: [TS3OfflineMessageSummary]) {
+        let messageIds = Array(Set(messages
+            .filter { $0.message?.isEmpty != false }
+            .map(\.id)
+        )).sorted()
+        guard !messageIds.isEmpty else { return }
+        runClientCommand { client in
+            var detailedMessages: [TS3OfflineMessage] = []
+            for messageId in messageIds {
+                if let detailed = try await client.offlineMessage(messageId: messageId) {
+                    detailedMessages.append(detailed)
+                }
+            }
+            await MainActor.run {
+                for detailed in detailedMessages {
+                    let existing = self.offlineMessages.first { $0.id == detailed.id }
+                    self.upsertOfflineMessage(TS3OfflineMessageSummary(
+                        message: detailed,
+                        isReadOverride: existing?.isRead
+                    ))
+                }
+            }
+        }
+    }
+
     func deleteOfflineMessage(_ message: TS3OfflineMessageSummary) {
         runClientCommand { client in
             try await client.deleteOfflineMessage(messageId: message.id)

@@ -6109,6 +6109,10 @@ struct OfflineMessagesSheet: View {
                             isExportingInbox = true
                         }
                         .disabled(filteredMessages.isEmpty)
+                        Button("Load Visible Message Bodies") {
+                            model.loadOfflineMessageBodies(filteredMessages)
+                        }
+                        .disabled(!hasBodyPlaceholders)
                         Button("Mark All Read") {
                             model.markAllOfflineMessagesRead()
                         }
@@ -6175,6 +6179,10 @@ struct OfflineMessagesSheet: View {
 
     private var hasLocalFilters: Bool {
         isSearching || readFilter != .all || contentFilter != .all || sortMode != .timestamp || sortAscending
+    }
+
+    private var hasBodyPlaceholders: Bool {
+        filteredMessages.contains { $0.message?.isEmpty != false }
     }
 
     private func containsSearch(_ value: String?) -> Bool {
