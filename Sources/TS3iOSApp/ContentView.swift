@@ -675,6 +675,22 @@ struct ConnectView: View {
                             }
                         }
                     }
+                    Menu {
+                        Button("Move Visible to Folder") {
+                            model.moveBookmarks(displayedBookmarks, toFolder: bookmarkFolder)
+                        }
+                        .disabled(displayedBookmarks.isEmpty)
+                        Button("Move Visible to Unfiled") {
+                            model.moveBookmarks(displayedBookmarks, toFolder: "")
+                        }
+                        .disabled(displayedBookmarks.isEmpty)
+                        Button("Delete Visible Bookmarks") {
+                            model.deleteBookmarks(displayedBookmarks)
+                        }
+                        .disabled(displayedBookmarks.isEmpty)
+                    } label: {
+                        Label("Visible Bookmarks", systemImage: "folder")
+                    }
                 }
             }
 

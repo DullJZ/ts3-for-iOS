@@ -3155,6 +3155,23 @@ final class TS3AppModel: ObservableObject {
         saveBookmarks()
     }
 
+    func deleteBookmarks(_ entries: [TS3BookmarkSummary]) {
+        let ids = Set(entries.map(\.id))
+        guard !ids.isEmpty else { return }
+        bookmarks.removeAll { ids.contains($0.id) }
+        saveBookmarks()
+    }
+
+    func moveBookmarks(_ entries: [TS3BookmarkSummary], toFolder folder: String) {
+        let ids = Set(entries.map(\.id))
+        guard !ids.isEmpty else { return }
+        let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        for index in bookmarks.indices where ids.contains(bookmarks[index].id) {
+            bookmarks[index].folder = folder
+        }
+        saveBookmarks()
+    }
+
     func bookmarksExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
