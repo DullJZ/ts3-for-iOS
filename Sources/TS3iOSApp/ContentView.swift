@@ -14233,6 +14233,18 @@ struct WhisperSheet: View {
                     Button("Import Preset Backup") {
                         isImportingPresetBackup = true
                     }
+                    Menu {
+                        Button("Select Visible Presets") {
+                            selectVisibleWhisperPresets()
+                        }
+                        .disabled(filteredWhisperPresets.isEmpty)
+                        Button("Delete Visible Presets") {
+                            model.deleteWhisperPresets(filteredWhisperPresets)
+                        }
+                        .disabled(filteredWhisperPresets.isEmpty)
+                    } label: {
+                        Label("Visible Presets", systemImage: "checklist")
+                    }
                 }
 
                 Section(header: Text("Presets")) {
@@ -14551,6 +14563,14 @@ struct WhisperSheet: View {
             selectedWhisperClientIds = Set(clientIds)
         case .none, .server, .group:
             break
+        }
+    }
+
+    private func selectVisibleWhisperPresets() {
+        selectedWhisperChannelIds = Set(filteredWhisperPresets.flatMap(\.channelIds))
+        selectedWhisperClientIds = Set(filteredWhisperPresets.flatMap(\.clientIds))
+        if filteredWhisperPresets.count == 1, let preset = filteredWhisperPresets.first {
+            whisperPresetName = preset.name
         }
     }
 

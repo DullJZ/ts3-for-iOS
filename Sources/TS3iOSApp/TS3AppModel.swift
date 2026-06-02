@@ -9430,6 +9430,13 @@ final class TS3AppModel: ObservableObject {
         saveWhisperPresets()
     }
 
+    func deleteWhisperPresets(_ presets: [TS3WhisperPreset]) {
+        let presetIds = Set(presets.map(\.id))
+        guard !presetIds.isEmpty else { return }
+        whisperPresets.removeAll { presetIds.contains($0.id) }
+        saveWhisperPresets()
+    }
+
     func saveWhisperFilterPreset(
         name: String,
         presetFilter: String,
