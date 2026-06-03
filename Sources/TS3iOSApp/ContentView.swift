@@ -139,12 +139,16 @@ private extension View {
 struct KeyboardShortcutsSheet: View {
     private enum ShortcutConfirmation: Identifiable {
         case importBackup(URL)
+        case enableAll
+        case disableAll
         case resetDisabled
         case resetAll
 
         var id: String {
             switch self {
             case .importBackup: return "importBackup"
+            case .enableAll: return "enableAll"
+            case .disableAll: return "disableAll"
             case .resetDisabled: return "resetDisabled"
             case .resetAll: return "resetAll"
             }
@@ -212,10 +216,10 @@ struct KeyboardShortcutsSheet: View {
 
                 Section(header: Text("Manage")) {
                     Button("Enable All Shortcuts") {
-                        model.setAllKeyboardShortcutsEnabled(true)
+                        confirmation = .enableAll
                     }
                     Button("Disable All Shortcuts") {
-                        model.setAllKeyboardShortcutsEnabled(false)
+                        confirmation = .disableAll
                     }
                     Button("Reset Disabled Shortcuts") {
                         confirmation = .resetDisabled
@@ -273,6 +277,24 @@ struct KeyboardShortcutsSheet: View {
                         message: Text("This replaces current keyboard shortcut settings with the selected backup."),
                         primaryButton: .destructive(Text("Import")) {
                             importShortcutBackup(from: url)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .enableAll:
+                    return Alert(
+                        title: Text("Enable All Shortcuts?"),
+                        message: Text("This enables every configured keyboard shortcut."),
+                        primaryButton: .default(Text("Enable")) {
+                            model.setAllKeyboardShortcutsEnabled(true)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .disableAll:
+                    return Alert(
+                        title: Text("Disable All Shortcuts?"),
+                        message: Text("This disables every configured keyboard shortcut until they are re-enabled."),
+                        primaryButton: .destructive(Text("Disable")) {
+                            model.setAllKeyboardShortcutsEnabled(false)
                         },
                         secondaryButton: .cancel()
                     )
