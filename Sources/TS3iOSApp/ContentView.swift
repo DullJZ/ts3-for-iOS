@@ -138,11 +138,13 @@ private extension View {
 
 struct KeyboardShortcutsSheet: View {
     private enum ShortcutConfirmation: Identifiable {
+        case importBackup(URL)
         case resetDisabled
         case resetAll
 
         var id: String {
             switch self {
+            case .importBackup: return "importBackup"
             case .resetDisabled: return "resetDisabled"
             case .resetAll: return "resetAll"
             }
@@ -258,13 +260,22 @@ struct KeyboardShortcutsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importShortcutBackup(from: url)
+                    confirmation = .importBackup(url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
             .alert(item: $confirmation) { confirmation in
                 switch confirmation {
+                case .importBackup(let url):
+                    return Alert(
+                        title: Text("Import Shortcut Backup?"),
+                        message: Text("This replaces current keyboard shortcut settings with the selected backup."),
+                        primaryButton: .destructive(Text("Import")) {
+                            importShortcutBackup(from: url)
+                        },
+                        secondaryButton: .cancel()
+                    )
                 case .resetDisabled:
                     return Alert(
                         title: Text("Reset Disabled Shortcuts?"),
@@ -7001,6 +7012,11 @@ struct OfflineMessageReplySheet: View {
 }
 
 struct ServerToolsSheet: View {
+    private struct NotificationSettingsImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var nickname = ""
@@ -7020,6 +7036,7 @@ struct ServerToolsSheet: View {
     @State private var isImportingNotificationSettings = false
     @State private var isExportingNotificationSettings = false
     @State private var isConfirmingResetNotificationSettings = false
+    @State private var pendingNotificationSettingsImport: NotificationSettingsImportConfirmation?
     @State private var notificationSettingsDocument = TS3TextFileDocument()
 
     private var notificationsBinding: Binding<Bool> {
@@ -7270,7 +7287,7 @@ struct ServerToolsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importNotificationSettings(from: url)
+                    pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(url: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -7291,6 +7308,16 @@ struct ServerToolsSheet: View {
                     message: Text("This restores local notification preferences to their default values."),
                     primaryButton: .destructive(Text("Reset")) {
                         model.resetNotificationSettings()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingNotificationSettingsImport) { confirmation in
+                Alert(
+                    title: Text("Import Notification Settings?"),
+                    message: Text("This replaces current local notification preferences with the selected settings file."),
+                    primaryButton: .destructive(Text("Import")) {
+                        importNotificationSettings(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
