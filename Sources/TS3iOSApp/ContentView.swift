@@ -7094,6 +7094,16 @@ struct ServerLogsSheet: View {
         }
     }
 
+    private enum LogConfirmation: Identifiable {
+        case deleteAllPresets
+
+        var id: String {
+            switch self {
+            case .deleteAllPresets: return "deleteAllPresets"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var lineLimit = "100"
@@ -7110,6 +7120,7 @@ struct ServerLogsSheet: View {
     @State private var presetName = ""
     @State private var isImportingPresets = false
     @State private var isExportingPresets = false
+    @State private var confirmation: LogConfirmation?
     @State private var presetDocument = TS3BookmarkFileDocument()
 
     var body: some View {
@@ -7163,6 +7174,10 @@ struct ServerLogsSheet: View {
                         model.clearServerLogResults()
                     }
                     .disabled(model.serverLogEntries.isEmpty)
+                    Button("Clear Visible Results") {
+                        model.clearServerLogResults(filteredEntries)
+                    }
+                    .disabled(filteredEntries.isEmpty)
                 }
 
                 Section(header: Text("Query Presets")) {
@@ -7187,6 +7202,10 @@ struct ServerLogsSheet: View {
                     Button("Import Query Presets") {
                         isImportingPresets = true
                     }
+                    Button("Delete All Query Presets") {
+                        confirmation = .deleteAllPresets
+                    }
+                    .disabled(model.serverLogQueryPresets.isEmpty)
                     if model.serverLogQueryPresets.isEmpty {
                         Text("No saved log query presets")
                             .foregroundColor(.secondary)
@@ -7317,6 +7336,19 @@ struct ServerLogsSheet: View {
                     importPresets(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
+                }
+            }
+            .alert(item: $confirmation) { confirmation in
+                switch confirmation {
+                case .deleteAllPresets:
+                    return Alert(
+                        title: Text("Delete All Log Query Presets?"),
+                        message: Text("This removes \(model.serverLogQueryPresets.count) saved local query presets."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteAllServerLogQueryPresets()
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
             }
         }

@@ -4344,6 +4344,12 @@ final class TS3AppModel: ObservableObject {
         serverLogEntries = []
     }
 
+    func clearServerLogResults(_ entries: [TS3ServerLogSummary]) {
+        let ids = Set(entries.map(\.id))
+        guard !ids.isEmpty else { return }
+        serverLogEntries.removeAll { ids.contains($0.id) }
+    }
+
     func saveServerLogQueryPreset(
         name: String,
         limit: Int,
@@ -4373,6 +4379,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteServerLogQueryPreset(_ preset: TS3ServerLogQueryPreset) {
         serverLogQueryPresets.removeAll { $0.id == preset.id }
+        saveServerLogQueryPresets()
+    }
+
+    func deleteAllServerLogQueryPresets() {
+        guard !serverLogQueryPresets.isEmpty else { return }
+        serverLogQueryPresets = []
         saveServerLogQueryPresets()
     }
 
