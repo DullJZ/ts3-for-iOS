@@ -10584,6 +10584,8 @@ struct FileBrowserSheet: View {
         case clearCompleted
         case clearFailed
         case clearInactive
+        case deleteAllBookmarks
+        case deleteAllFilterPresets
 
         var id: String {
             switch self {
@@ -10591,6 +10593,8 @@ struct FileBrowserSheet: View {
             case .clearCompleted: return "clear-completed"
             case .clearFailed: return "clear-failed"
             case .clearInactive: return "clear-inactive"
+            case .deleteAllBookmarks: return "delete-all-bookmarks"
+            case .deleteAllFilterPresets: return "delete-all-filter-presets"
             }
         }
     }
@@ -10724,6 +10728,11 @@ struct FileBrowserSheet: View {
                     Button("Import Bookmarks") {
                         isImportingBookmarks = true
                     }
+                    Button("Delete All Bookmarks") {
+                        transferConfirmation = .deleteAllBookmarks
+                    }
+                    .foregroundColor(.red)
+                    .disabled(model.fileBrowserBookmarks.isEmpty)
                 }
 
                 Section(header: Text("Search")) {
@@ -10777,6 +10786,10 @@ struct FileBrowserSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            transferConfirmation = .deleteAllFilterPresets
+                        }
+                        .disabled(model.fileBrowserFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -11146,6 +11159,24 @@ struct FileBrowserSheet: View {
                         message: Text("All completed, failed, and cancelled transfer records will be removed from the queue."),
                         primaryButton: .destructive(Text("Clear")) {
                             model.clearInactiveFileTransfers()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteAllBookmarks:
+                    return Alert(
+                        title: Text("Delete All File Bookmarks?"),
+                        message: Text("This removes \(model.fileBrowserBookmarks.count) saved local file bookmarks."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteAllFileBrowserBookmarks()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteAllFilterPresets:
+                    return Alert(
+                        title: Text("Delete All File Filter Presets?"),
+                        message: Text("This removes \(model.fileBrowserFilterPresets.count) saved local filter presets."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteAllFileBrowserFilterPresets()
                         },
                         secondaryButton: .cancel()
                     )

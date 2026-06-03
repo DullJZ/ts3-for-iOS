@@ -6281,6 +6281,12 @@ final class TS3AppModel: ObservableObject {
         saveFileBrowserBookmarks()
     }
 
+    func deleteAllFileBrowserBookmarks() {
+        guard !fileBrowserBookmarks.isEmpty else { return }
+        fileBrowserBookmarks = []
+        saveFileBrowserBookmarks()
+    }
+
     func fileBrowserBookmarksExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6326,6 +6332,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteFileBrowserFilterPreset(_ preset: TS3FileBrowserFilterPreset) {
         fileBrowserFilterPresets.removeAll { $0.id == preset.id }
+        saveFileBrowserFilterPresets()
+    }
+
+    func deleteAllFileBrowserFilterPresets() {
+        guard !fileBrowserFilterPresets.isEmpty else { return }
+        fileBrowserFilterPresets = []
         saveFileBrowserFilterPresets()
     }
 
