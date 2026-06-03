@@ -10641,6 +10641,7 @@ struct FileBrowserSheet: View {
     @State private var uploadOverwriteNames: [String] = []
     @State private var isShowingUploadConflictActions = false
     @State private var transferConfirmation: TransferConfirmation?
+    @State private var isConfirmingSelectedDelete = false
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -10832,8 +10833,7 @@ struct FileBrowserSheet: View {
                             .buttonStyle(.borderless)
                             .disabled(selectedEntries.allSatisfy(\.isDirectory))
                             Button("Delete Selected") {
-                                model.deleteFileEntries(selectedEntries)
-                                selectedEntryIDs.removeAll()
+                                isConfirmingSelectedDelete = true
                             }
                             .buttonStyle(.borderless)
                             .foregroundColor(.red)
@@ -11098,6 +11098,17 @@ struct FileBrowserSheet: View {
                     cancel: {
                         clearPendingUploads()
                     }
+                )
+            }
+            .alert(isPresented: $isConfirmingSelectedDelete) {
+                Alert(
+                    title: Text("Delete Selected Entries?"),
+                    message: Text("\(selectedEntries.count) selected entries will be deleted from the server."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteFileEntries(selectedEntries)
+                        selectedEntryIDs.removeAll()
+                    },
+                    secondaryButton: .cancel()
                 )
             }
             .alert(item: $transferConfirmation) { confirmation in
