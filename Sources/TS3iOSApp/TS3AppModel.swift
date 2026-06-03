@@ -3641,6 +3641,34 @@ final class TS3AppModel: ObservableObject {
         saveNotificationSettings()
     }
 
+    func applyDirectNotificationPreset(soundEnabled: Bool = true) {
+        notificationSoundEnabled = soundEnabled
+        privateMessageNotificationsEnabled = true
+        pokeNotificationsEnabled = true
+        activityNotificationsEnabled = false
+        saveNotificationSettings()
+        lastError = nil
+    }
+
+    func applyAllEventsNotificationPreset() {
+        notificationSoundEnabled = true
+        privateMessageNotificationsEnabled = true
+        pokeNotificationsEnabled = true
+        activityNotificationsEnabled = true
+        saveNotificationSettings()
+        lastError = nil
+    }
+
+    func resetNotificationSettings() {
+        notificationsEnabled = TS3NotificationSettings.defaults.isEnabled
+        notificationSoundEnabled = TS3NotificationSettings.defaults.soundEnabled
+        privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
+        pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
+        activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
+        saveNotificationSettings()
+        lastError = nil
+    }
+
     func setAutoReconnectEnabled(_ isEnabled: Bool) {
         autoReconnectEnabled = isEnabled
         saveConnectionRecoverySettings()

@@ -6837,11 +6837,23 @@ struct ServerToolsSheet: View {
                         .disabled(!model.notificationsEnabled)
                     Toggle("Server Activity", isOn: activityNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
+                    Button("Direct Messages Preset") {
+                        model.applyDirectNotificationPreset()
+                    }
+                    Button("Silent Direct Messages Preset") {
+                        model.applyDirectNotificationPreset(soundEnabled: false)
+                    }
+                    Button("All Events Preset") {
+                        model.applyAllEventsNotificationPreset()
+                    }
                     Button("Export Notification Settings") {
                         exportNotificationSettings()
                     }
                     Button("Import Notification Settings") {
                         isImportingNotificationSettings = true
+                    }
+                    Button("Reset Notification Settings") {
+                        model.resetNotificationSettings()
                     }
                     Text("Notifications are shown when the app is not active.")
                         .font(.caption)
