@@ -356,12 +356,14 @@ struct ConnectView: View {
         case clearRecent
         case visibleRecent
         case visibleBookmarks
+        case deleteAllFilterPresets
 
         var id: String {
             switch self {
             case .clearRecent: return "clearRecent"
             case .visibleRecent: return "visibleRecent"
             case .visibleBookmarks: return "visibleBookmarks"
+            case .deleteAllFilterPresets: return "deleteAllFilterPresets"
             }
         }
     }
@@ -554,6 +556,10 @@ struct ConnectView: View {
                         Button("Import Presets") {
                             isImportingConnectionPresets = true
                         }
+                        Button("Delete All Presets") {
+                            deleteConfirmation = .deleteAllFilterPresets
+                        }
+                        .disabled(model.connectionFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -1041,6 +1047,15 @@ struct ConnectView: View {
                     message: Text("This removes \(displayedBookmarks.count) saved bookmarks from this device."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteBookmarks(displayedBookmarks)
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .deleteAllFilterPresets:
+                return Alert(
+                    title: Text("Delete All Connection Filter Presets?"),
+                    message: Text("This removes \(model.connectionFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllConnectionFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -4192,6 +4207,7 @@ struct ContactsSheet: View {
     @State private var isImportingContacts = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var contactsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -4299,6 +4315,10 @@ struct ContactsSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.contactFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -4400,6 +4420,16 @@ struct ContactsSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Contact Filter Presets?"),
+                    message: Text("This removes \(model.contactFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllContactFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .sheet(isPresented: $isShowingNewContact) {
                 ContactEditorSheet(
@@ -4914,6 +4944,7 @@ struct ChatSheet: View {
     @State private var isExportingChatHistory = false
     @State private var isImportingPresets = false
     @State private var isExportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var transcriptDocument = TS3TextFileDocument()
     @State private var chatHistoryDocument = TS3BookmarkFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -5005,6 +5036,10 @@ struct ChatSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.chatFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -5179,6 +5214,16 @@ struct ChatSheet: View {
                     message: Text("This removes \(filteredMessages.count) locally saved messages matching the current filters."),
                     primaryButton: .destructive(Text("Clear Visible")) {
                         model.clearChatMessages(filteredMessages)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Chat Filter Presets?"),
+                    message: Text("This removes \(model.chatFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllChatFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -5602,6 +5647,7 @@ struct EventsSheet: View {
     @State private var isExportingEvents = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var eventsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -5756,6 +5802,10 @@ struct EventsSheet: View {
                     Button("Import Presets") {
                         isImportingPresets = true
                     }
+                    Button("Delete All Presets") {
+                        isConfirmingDeletePresets = true
+                    }
+                    .disabled(model.eventFilterPresets.isEmpty)
                 }
 
                 Section(header: Text("Activity")) {
@@ -5865,6 +5915,16 @@ struct EventsSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Event Filter Presets?"),
+                    message: Text("This removes \(model.eventFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllEventFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
@@ -6271,11 +6331,13 @@ struct OfflineMessagesSheet: View {
     private enum DeleteConfirmation: Identifiable {
         case visible
         case read
+        case deleteAllFilterPresets
 
         var id: String {
             switch self {
             case .visible: return "visible"
             case .read: return "read"
+            case .deleteAllFilterPresets: return "deleteAllFilterPresets"
             }
         }
     }
@@ -6406,6 +6468,10 @@ struct OfflineMessagesSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            deleteConfirmation = .deleteAllFilterPresets
+                        }
+                        .disabled(model.offlineMessageFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -6483,6 +6549,10 @@ struct OfflineMessagesSheet: View {
                             exportPresets()
                         }
                         .disabled(model.offlineMessageFilterPresets.isEmpty)
+                        Button("Delete All Filter Presets") {
+                            deleteConfirmation = .deleteAllFilterPresets
+                        }
+                        .disabled(model.offlineMessageFilterPresets.isEmpty)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -6541,6 +6611,15 @@ struct OfflineMessagesSheet: View {
                         message: Text("This removes \(readMessages.count) read offline messages from the server."),
                         primaryButton: .destructive(Text("Delete")) {
                             model.deleteOfflineMessages(readMessages)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteAllFilterPresets:
+                    return Alert(
+                        title: Text("Delete All Inbox Filter Presets?"),
+                        message: Text("This removes \(model.offlineMessageFilterPresets.count) saved local filter presets."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteAllOfflineMessageFilterPresets()
                         },
                         secondaryButton: .cancel()
                     )

@@ -3244,6 +3244,12 @@ final class TS3AppModel: ObservableObject {
         saveConnectionFilterPresets()
     }
 
+    func deleteAllConnectionFilterPresets() {
+        guard !connectionFilterPresets.isEmpty else { return }
+        connectionFilterPresets = []
+        saveConnectionFilterPresets()
+    }
+
     func connectionFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6182,6 +6188,12 @@ final class TS3AppModel: ObservableObject {
         saveEventFilterPresets()
     }
 
+    func deleteAllEventFilterPresets() {
+        guard !eventFilterPresets.isEmpty else { return }
+        eventFilterPresets = []
+        saveEventFilterPresets()
+    }
+
     func eventFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6223,6 +6235,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteChatFilterPreset(_ preset: TS3ChatFilterPreset) {
         chatFilterPresets.removeAll { $0.id == preset.id }
+        saveChatFilterPresets()
+    }
+
+    func deleteAllChatFilterPresets() {
+        guard !chatFilterPresets.isEmpty else { return }
+        chatFilterPresets = []
         saveChatFilterPresets()
     }
 
@@ -6390,6 +6408,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteOfflineMessageFilterPreset(_ preset: TS3OfflineMessageFilterPreset) {
         offlineMessageFilterPresets.removeAll { $0.id == preset.id }
+        saveOfflineMessageFilterPresets()
+    }
+
+    func deleteAllOfflineMessageFilterPresets() {
+        guard !offlineMessageFilterPresets.isEmpty else { return }
+        offlineMessageFilterPresets = []
         saveOfflineMessageFilterPresets()
     }
 
@@ -9239,6 +9263,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteContactFilterPreset(_ preset: TS3ContactFilterPreset) {
         contactFilterPresets.removeAll { $0.id == preset.id }
+        saveContactFilterPresets()
+    }
+
+    func deleteAllContactFilterPresets() {
+        guard !contactFilterPresets.isEmpty else { return }
+        contactFilterPresets = []
         saveContactFilterPresets()
     }
 
