@@ -137,11 +137,24 @@ private extension View {
 }
 
 struct KeyboardShortcutsSheet: View {
+    private enum ShortcutConfirmation: Identifiable {
+        case resetDisabled
+        case resetAll
+
+        var id: String {
+            switch self {
+            case .resetDisabled: return "resetDisabled"
+            case .resetAll: return "resetAll"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isExportingShortcuts = false
     @State private var isExportingShortcutBackup = false
     @State private var isImportingShortcutBackup = false
+    @State private var confirmation: ShortcutConfirmation?
     @State private var shortcutsDocument = TS3TextFileDocument()
     @State private var shortcutBackupDocument = TS3BookmarkFileDocument()
 
@@ -203,10 +216,10 @@ struct KeyboardShortcutsSheet: View {
                         model.setAllKeyboardShortcutsEnabled(false)
                     }
                     Button("Reset Disabled Shortcuts") {
-                        model.resetDisabledKeyboardShortcuts()
+                        confirmation = .resetDisabled
                     }
                     Button("Reset Shortcuts") {
-                        model.resetKeyboardShortcuts()
+                        confirmation = .resetAll
                     }
                 }
             }
@@ -248,6 +261,28 @@ struct KeyboardShortcutsSheet: View {
                     importShortcutBackup(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
+                }
+            }
+            .alert(item: $confirmation) { confirmation in
+                switch confirmation {
+                case .resetDisabled:
+                    return Alert(
+                        title: Text("Reset Disabled Shortcuts?"),
+                        message: Text("This re-enables disabled keyboard shortcuts and restores their default keys."),
+                        primaryButton: .destructive(Text("Reset")) {
+                            model.resetDisabledKeyboardShortcuts()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .resetAll:
+                    return Alert(
+                        title: Text("Reset Keyboard Shortcuts?"),
+                        message: Text("This restores all keyboard shortcuts to their default keys and enabled state."),
+                        primaryButton: .destructive(Text("Reset")) {
+                            model.resetKeyboardShortcuts()
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
             }
         }
@@ -7314,10 +7349,14 @@ struct ServerLogsSheet: View {
     }
 
     private enum LogConfirmation: Identifiable {
+        case clearAllResults
+        case clearVisibleResults
         case deleteAllPresets
 
         var id: String {
             switch self {
+            case .clearAllResults: return "clearAllResults"
+            case .clearVisibleResults: return "clearVisibleResults"
             case .deleteAllPresets: return "deleteAllPresets"
             }
         }
@@ -7390,11 +7429,11 @@ struct ServerLogsSheet: View {
                     }
                     .disabled(model.serverLogEntries.isEmpty)
                     Button("Clear Results") {
-                        model.clearServerLogResults()
+                        confirmation = .clearAllResults
                     }
                     .disabled(model.serverLogEntries.isEmpty)
                     Button("Clear Visible Results") {
-                        model.clearServerLogResults(filteredEntries)
+                        confirmation = .clearVisibleResults
                     }
                     .disabled(filteredEntries.isEmpty)
                 }
@@ -7559,6 +7598,24 @@ struct ServerLogsSheet: View {
             }
             .alert(item: $confirmation) { confirmation in
                 switch confirmation {
+                case .clearAllResults:
+                    return Alert(
+                        title: Text("Clear Log Results?"),
+                        message: Text("This removes \(model.serverLogEntries.count) server log results from the local view."),
+                        primaryButton: .destructive(Text("Clear")) {
+                            model.clearServerLogResults()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .clearVisibleResults:
+                    return Alert(
+                        title: Text("Clear Visible Log Results?"),
+                        message: Text("This removes \(filteredEntries.count) currently visible server log results from the local view."),
+                        primaryButton: .destructive(Text("Clear")) {
+                            model.clearServerLogResults(filteredEntries)
+                        },
+                        secondaryButton: .cancel()
+                    )
                 case .deleteAllPresets:
                     return Alert(
                         title: Text("Delete All Log Query Presets?"),
