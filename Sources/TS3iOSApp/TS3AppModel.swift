@@ -9161,6 +9161,18 @@ final class TS3AppModel: ObservableObject {
         saveChatHistory()
     }
 
+    func clearChatMessages(_ messages: [TS3ChatMessageSummary]) {
+        let ids = Set(messages.map(\.id))
+        guard !ids.isEmpty else { return }
+        chatMessages.removeAll { ids.contains($0.id) }
+        if isViewingChat {
+            unreadChatMessageCount = 0
+        } else {
+            unreadChatMessageCount = min(unreadChatMessageCount, chatMessages.count)
+        }
+        saveChatHistory()
+    }
+
     func chatHistoryBackupData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

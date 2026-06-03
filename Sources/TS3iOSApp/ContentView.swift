@@ -4783,6 +4783,7 @@ struct ChatSheet: View {
     @State private var presetName = ""
     @State private var isShowingOfflineMessages = false
     @State private var isConfirmingClearHistory = false
+    @State private var isConfirmingClearVisibleHistory = false
     @State private var isExportingTranscript = false
     @State private var isImportingChatHistory = false
     @State private var isExportingChatHistory = false
@@ -4953,6 +4954,11 @@ struct ChatSheet: View {
                         Button("Import History Backup") {
                             isImportingChatHistory = true
                         }
+                        Divider()
+                        Button("Clear Visible History") {
+                            isConfirmingClearVisibleHistory = true
+                        }
+                        .disabled(filteredMessages.isEmpty)
                     } label: {
                         Label("History", systemImage: "ellipsis.circle")
                     }
@@ -5038,6 +5044,16 @@ struct ChatSheet: View {
                     message: Text("This removes locally saved chat messages from this device."),
                     primaryButton: .destructive(Text("Clear History")) {
                         model.clearChatHistory()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingClearVisibleHistory) {
+                Alert(
+                    title: Text("Clear visible chat history?"),
+                    message: Text("This removes \(filteredMessages.count) locally saved messages matching the current filters."),
+                    primaryButton: .destructive(Text("Clear Visible")) {
+                        model.clearChatMessages(filteredMessages)
                     },
                     secondaryButton: .cancel()
                 )
