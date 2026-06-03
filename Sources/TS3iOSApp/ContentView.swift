@@ -12775,6 +12775,7 @@ struct PrivilegeKeysSheet: View {
     @State private var keysBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var isConfirmingDeleteAll = false
+    @State private var isConfirmingDeletePresets = false
 
     private var privilegeKeysSnapshot: String {
         filteredPrivilegeKeys.map(\.clipboardSummary).joined(separator: "\n")
@@ -12910,6 +12911,10 @@ struct PrivilegeKeysSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.privilegeKeyFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -13005,6 +13010,16 @@ struct PrivilegeKeysSheet: View {
                     message: Text("This removes \(filteredPrivilegeKeys.count) privilege keys from the server."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deletePrivilegeKeys(filteredPrivilegeKeys)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Privilege Key Filter Presets?"),
+                    message: Text("This removes \(model.privilegeKeyFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllPrivilegeKeyFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -13395,6 +13410,7 @@ struct BanListSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingBans = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var banExportDocument = TS3TextFileDocument()
     @State private var banBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -13496,6 +13512,10 @@ struct BanListSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.banFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -13637,6 +13657,16 @@ struct BanListSheet: View {
                     message: Text("This removes \(filteredBanEntries.count) ban entries from the server."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteBans(filteredBanEntries)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Ban Filter Presets?"),
+                    message: Text("This removes \(model.banFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllBanFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -13822,6 +13852,7 @@ struct ComplaintListSheet: View {
     @State private var isExportingComplaints = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var complaintExportDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var searchText = ""
@@ -13913,6 +13944,10 @@ struct ComplaintListSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.complaintFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -14033,6 +14068,16 @@ struct ComplaintListSheet: View {
                     message: Text(model.complaintTarget?.nickname ?? "Selected user"),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteComplaints(filteredComplaintEntries)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Complaint Filter Presets?"),
+                    message: Text("This removes \(model.complaintFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllComplaintFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )

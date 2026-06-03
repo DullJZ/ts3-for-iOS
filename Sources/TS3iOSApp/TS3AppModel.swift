@@ -6435,6 +6435,12 @@ final class TS3AppModel: ObservableObject {
         saveBanFilterPresets()
     }
 
+    func deleteAllBanFilterPresets() {
+        guard !banFilterPresets.isEmpty else { return }
+        banFilterPresets = []
+        saveBanFilterPresets()
+    }
+
     func banFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6482,6 +6488,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteComplaintFilterPreset(_ preset: TS3ComplaintFilterPreset) {
         complaintFilterPresets.removeAll { $0.id == preset.id }
+        saveComplaintFilterPresets()
+    }
+
+    func deleteAllComplaintFilterPresets() {
+        guard !complaintFilterPresets.isEmpty else { return }
+        complaintFilterPresets = []
         saveComplaintFilterPresets()
     }
 
@@ -6584,6 +6596,12 @@ final class TS3AppModel: ObservableObject {
 
     func deletePrivilegeKeyFilterPreset(_ preset: TS3PrivilegeKeyFilterPreset) {
         privilegeKeyFilterPresets.removeAll { $0.id == preset.id }
+        savePrivilegeKeyFilterPresets()
+    }
+
+    func deleteAllPrivilegeKeyFilterPresets() {
+        guard !privilegeKeyFilterPresets.isEmpty else { return }
+        privilegeKeyFilterPresets = []
         savePrivilegeKeyFilterPresets()
     }
 
