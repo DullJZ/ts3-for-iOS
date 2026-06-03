@@ -1462,6 +1462,18 @@ struct BookmarkEditorSheet: View {
 }
 
 struct ChannelListView: View {
+    private enum ChannelConfirmation: Identifiable {
+        case unsubscribeAll
+        case deleteAllFilterPresets
+
+        var id: String {
+            switch self {
+            case .unsubscribeAll: return "unsubscribeAll"
+            case .deleteAllFilterPresets: return "deleteAllFilterPresets"
+            }
+        }
+    }
+
     private enum ChannelTreeFilter: String, CaseIterable, Identifiable {
         case all
         case current
@@ -1569,6 +1581,7 @@ struct ChannelListView: View {
     @State private var channelMemberSortAscending = true
     @State private var channelCurrentUserFirst = true
     @State private var channelTreePresetName = ""
+    @State private var confirmation: ChannelConfirmation?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -1692,6 +1705,10 @@ struct ChannelListView: View {
                     Button("Import Presets") {
                         isImportingChannelTreePresets = true
                     }
+                    Button("Delete All Presets") {
+                        confirmation = .deleteAllFilterPresets
+                    }
+                    .disabled(model.channelTreeFilterPresets.isEmpty)
                 } label: {
                     Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                 }
@@ -1753,7 +1770,7 @@ struct ChannelListView: View {
                         model.setAllChannelsSubscribed(true)
                     }
                     Button("Unsubscribe All Channels") {
-                        model.setAllChannelsSubscribed(false)
+                        confirmation = .unsubscribeAll
                     }
                     Button("Subscription Presets") {
                         isShowingSubscriptionPresets = true
@@ -1827,6 +1844,28 @@ struct ChannelListView: View {
                 importChannelTreePresets(from: url)
             } else if case .failure(let error) = result {
                 model.lastError = error.localizedDescription
+            }
+        }
+        .alert(item: $confirmation) { confirmation in
+            switch confirmation {
+            case .unsubscribeAll:
+                return Alert(
+                    title: Text("Unsubscribe All Channels?"),
+                    message: Text("This unsubscribes from every visible server channel."),
+                    primaryButton: .destructive(Text("Unsubscribe")) {
+                        model.setAllChannelsSubscribed(false)
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .deleteAllFilterPresets:
+                return Alert(
+                    title: Text("Delete All Channel Tree Filter Presets?"),
+                    message: Text("This removes \(model.channelTreeFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllChannelTreeFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
@@ -2067,11 +2106,24 @@ struct ChannelListView: View {
 }
 
 struct ChannelSubscriptionPresetsSheet: View {
+    private enum SubscriptionConfirmation: Identifiable {
+        case unsubscribeAll
+        case deleteAllPresets
+
+        var id: String {
+            switch self {
+            case .unsubscribeAll: return "unsubscribeAll"
+            case .deleteAllPresets: return "deleteAllPresets"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var presetName = ""
     @State private var isImportingPresets = false
     @State private var isExportingPresets = false
+    @State private var confirmation: SubscriptionConfirmation?
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
     var body: some View {
@@ -2091,7 +2143,7 @@ struct ChannelSubscriptionPresetsSheet: View {
                         model.setAllChannelsSubscribed(true)
                     }
                     Button("Unsubscribe All Channels") {
-                        model.setAllChannelsSubscribed(false)
+                        confirmation = .unsubscribeAll
                     }
                 }
 
@@ -2136,6 +2188,10 @@ struct ChannelSubscriptionPresetsSheet: View {
                     Button("Import Presets") {
                         isImportingPresets = true
                     }
+                    Button("Delete All Presets") {
+                        confirmation = .deleteAllPresets
+                    }
+                    .disabled(model.channelSubscriptionPresets.isEmpty)
                 }
             }
             .navigationTitle("Subscription Presets")
@@ -2166,6 +2222,28 @@ struct ChannelSubscriptionPresetsSheet: View {
                     importPresets(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
+                }
+            }
+            .alert(item: $confirmation) { confirmation in
+                switch confirmation {
+                case .unsubscribeAll:
+                    return Alert(
+                        title: Text("Unsubscribe All Channels?"),
+                        message: Text("This unsubscribes from every visible server channel."),
+                        primaryButton: .destructive(Text("Unsubscribe")) {
+                            model.setAllChannelsSubscribed(false)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteAllPresets:
+                    return Alert(
+                        title: Text("Delete All Subscription Presets?"),
+                        message: Text("This removes \(model.channelSubscriptionPresets.count) saved local subscription presets."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteAllChannelSubscriptionPresets()
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
             }
         }

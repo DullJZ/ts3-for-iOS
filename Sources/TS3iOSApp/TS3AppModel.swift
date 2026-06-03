@@ -6070,6 +6070,12 @@ final class TS3AppModel: ObservableObject {
         saveChannelSubscriptionPresets()
     }
 
+    func deleteAllChannelSubscriptionPresets() {
+        guard !channelSubscriptionPresets.isEmpty else { return }
+        channelSubscriptionPresets = []
+        saveChannelSubscriptionPresets()
+    }
+
     func channelSubscriptionPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6123,6 +6129,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteChannelTreeFilterPreset(_ preset: TS3ChannelTreeFilterPreset) {
         channelTreeFilterPresets.removeAll { $0.id == preset.id }
+        saveChannelTreeFilterPresets()
+    }
+
+    func deleteAllChannelTreeFilterPresets() {
+        guard !channelTreeFilterPresets.isEmpty else { return }
+        channelTreeFilterPresets = []
         saveChannelTreeFilterPresets()
     }
 
