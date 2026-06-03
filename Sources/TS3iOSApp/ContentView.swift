@@ -3366,7 +3366,7 @@ struct ChannelInformationSheet: View {
                 }
 
                 Section(header: Text("Audio")) {
-                    ServerInfoDetailRow(label: "Codec", value: channel.codec.map(String.init))
+                    ServerInfoDetailRow(label: "Codec", value: TS3ChannelCodec.title(for: channel.codec))
                     ServerInfoDetailRow(label: "Codec Quality", value: channel.codecQuality.map(String.init))
                     ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
@@ -3456,7 +3456,7 @@ struct ChannelInformationSheet: View {
             ("Phonetic Name", channel.phoneticName),
             ("Topic", channel.topic),
             ("Description", channel.description),
-            ("Codec", channel.codec.map(String.init)),
+            ("Codec", TS3ChannelCodec.title(for: channel.codec)),
             ("Codec Quality", channel.codecQuality.map(String.init)),
             ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
             ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
@@ -15965,7 +15965,7 @@ struct ChannelEditorSheet: View {
     @State private var isDefault = false
     @State private var neededTalkPower = ""
     @State private var neededSubscribePower = ""
-    @State private var codec = ""
+    @State private var codec: Int?
     @State private var codecQuality = ""
     @State private var deleteDelaySeconds = ""
     @State private var maxClients = ""
@@ -16035,8 +16035,12 @@ struct ChannelEditorSheet: View {
                 }
 
                 Section(header: Text("Voice")) {
-                    TextField("Codec", text: $codec)
-                        .ts3NumericKeyboard()
+                    Picker("Codec", selection: $codec) {
+                        Text("Unchanged").tag(Int?.none)
+                        ForEach(TS3ChannelCodec.allCases) { codec in
+                            Text(codec.title).tag(Optional(codec.rawValue))
+                        }
+                    }
                     TextField("Codec Quality", text: $codecQuality)
                         .ts3NumericKeyboard()
                     TextField("Needed Talk Power", text: $neededTalkPower)
@@ -16076,7 +16080,7 @@ struct ChannelEditorSheet: View {
                                 description: description,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
-                                codec: parsedOptionalInt(codec),
+                                codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
@@ -16098,7 +16102,7 @@ struct ChannelEditorSheet: View {
                                 channelType: channelType,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
-                                codec: parsedOptionalInt(codec),
+                                codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
@@ -16127,7 +16131,7 @@ struct ChannelEditorSheet: View {
                     isDefault = channel.isDefault
                     neededTalkPower = channel.neededTalkPower.map(String.init) ?? ""
                     neededSubscribePower = channel.neededSubscribePower.map(String.init) ?? ""
-                    codec = channel.codec.map(String.init) ?? ""
+                    codec = channel.codec
                     codecQuality = channel.codecQuality.map(String.init) ?? ""
                     deleteDelaySeconds = channel.deleteDelaySeconds.map(String.init) ?? ""
                     maxClients = channel.maxClients.map(String.init) ?? ""
@@ -16209,7 +16213,7 @@ struct ChannelEditorSheet: View {
             isDefault: isDefault,
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
-            codec: codec,
+            codec: codec.map(String.init) ?? "",
             codecQuality: codecQuality,
             deleteDelaySeconds: deleteDelaySeconds,
             maxClients: maxClients,
@@ -16234,7 +16238,7 @@ struct ChannelEditorSheet: View {
             ("Default", draft.isDefault ? "Yes" : "No"),
             ("Needed Talk Power", draft.neededTalkPower),
             ("Needed Subscribe Power", draft.neededSubscribePower),
-            ("Codec", draft.codec),
+            ("Codec", codecTitle(for: draft.codec)),
             ("Codec Quality", draft.codecQuality),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
             ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
@@ -16253,7 +16257,6 @@ struct ChannelEditorSheet: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(neededTalkPower)
             && isOptionalInt(neededSubscribePower)
-            && isOptionalInt(codec)
             && isOptionalInt(codecQuality)
             && isOptionalInt(deleteDelaySeconds)
             && isOptionalInt(iconId)
@@ -16313,7 +16316,7 @@ struct ChannelEditorSheet: View {
         isDefault = draft.isDefault
         neededTalkPower = draft.neededTalkPower
         neededSubscribePower = draft.neededSubscribePower
-        codec = draft.codec
+        codec = parsedOptionalInt(draft.codec)
         codecQuality = draft.codecQuality
         deleteDelaySeconds = draft.deleteDelaySeconds
         maxClients = draft.maxClients
@@ -16326,6 +16329,10 @@ struct ChannelEditorSheet: View {
 
     private func channelTypeTitle(_ rawValue: String) -> String {
         (TS3ChannelType(rawValue: rawValue) ?? .permanent).title
+    }
+
+    private func codecTitle(for rawValue: String) -> String {
+        TS3ChannelCodec.title(for: Int(rawValue.trimmingCharacters(in: .whitespacesAndNewlines))) ?? ""
     }
 
     private func isOptionalInt(_ text: String) -> Bool {

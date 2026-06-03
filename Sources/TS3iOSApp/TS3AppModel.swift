@@ -36,6 +36,42 @@ enum TS3ChannelType: String, CaseIterable, Identifiable {
     }
 }
 
+enum TS3ChannelCodec: Int, CaseIterable, Identifiable {
+    case speexNarrowband = 0
+    case speexWideband = 1
+    case speexUltraWideband = 2
+    case celtMono = 3
+    case opusVoice = 4
+    case opusMusic = 5
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .speexNarrowband:
+            return "Speex Narrowband"
+        case .speexWideband:
+            return "Speex Wideband"
+        case .speexUltraWideband:
+            return "Speex Ultra-Wideband"
+        case .celtMono:
+            return "CELT Mono"
+        case .opusVoice:
+            return "Opus Voice"
+        case .opusMusic:
+            return "Opus Music"
+        }
+    }
+
+    static func title(for rawValue: Int?) -> String? {
+        guard let rawValue else { return nil }
+        if let codec = TS3ChannelCodec(rawValue: rawValue) {
+            return "\(codec.title) (\(rawValue))"
+        }
+        return "Unknown (\(rawValue))"
+    }
+}
+
 struct TS3ChannelSummary: Identifiable {
     let id: Int
     let parentId: Int?
