@@ -5987,6 +5987,16 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setChannelsSubscribed(_ channels: [TS3ChannelSummary], isSubscribed: Bool) {
+        let channelIds = Array(Set(channels.map(\.id))).sorted()
+        guard !channelIds.isEmpty else { return }
+        runClientCommand { client in
+            for channelId in channelIds {
+                try await client.setChannelSubscribed(channelId: channelId, isSubscribed: isSubscribed)
+            }
+        }
+    }
+
     func saveCurrentChannelSubscriptionPreset(name: String) {
         let preset = sanitizedChannelSubscriptionPreset(TS3ChannelSubscriptionPreset(
             name: name,

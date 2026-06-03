@@ -1694,6 +1694,14 @@ struct ChannelListView: View {
                         isExportingChannelTree = true
                     }
                     .disabled(channelTree.isEmpty)
+                    Button("Subscribe Visible Channels") {
+                        model.setChannelsSubscribed(visibleChannels, isSubscribed: true)
+                    }
+                    .disabled(!canSubscribeVisibleChannels)
+                    Button("Unsubscribe Visible Channels") {
+                        model.setChannelsSubscribed(visibleChannels, isSubscribed: false)
+                    }
+                    .disabled(!canUnsubscribeVisibleChannels)
                     Button("Subscribe All Channels") {
                         model.setAllChannelsSubscribed(true)
                     }
@@ -1782,6 +1790,18 @@ struct ChannelListView: View {
             sortMode: channelTreeSortMode,
             sortAscending: channelTreeSortAscending
         )
+    }
+
+    private var visibleChannels: [TS3ChannelSummary] {
+        channelTree.map(\.channel)
+    }
+
+    private var canSubscribeVisibleChannels: Bool {
+        visibleChannels.contains { $0.isSubscribed != true }
+    }
+
+    private var canUnsubscribeVisibleChannels: Bool {
+        visibleChannels.contains { $0.isSubscribed != false }
     }
 
     private var channelSectionTitle: String {
