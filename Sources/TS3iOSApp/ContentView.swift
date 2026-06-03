@@ -8350,6 +8350,7 @@ struct GroupClientListSheet: View {
     @State private var isExportingMembers = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingRemoveVisible = false
     @State private var membersExportDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -8464,6 +8465,13 @@ struct GroupClientListSheet: View {
                         isExportingMembers = true
                     }
                     .disabled(filteredClients.isEmpty)
+                    if target == .server {
+                        Button("Remove Visible Members") {
+                            isConfirmingRemoveVisible = true
+                        }
+                        .disabled(filteredClients.isEmpty)
+                        .foregroundColor(.red)
+                    }
                 }
 
                 if model.groupClients.isEmpty {
@@ -8518,6 +8526,16 @@ struct GroupClientListSheet: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
+            }
+            .alert(isPresented: $isConfirmingRemoveVisible) {
+                Alert(
+                    title: Text("Remove Visible Members?"),
+                    message: Text("This removes \(filteredClients.count) members from \(group.name)."),
+                    primaryButton: .destructive(Text("Remove")) {
+                        model.removeServerGroup(group, from: filteredClients)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }

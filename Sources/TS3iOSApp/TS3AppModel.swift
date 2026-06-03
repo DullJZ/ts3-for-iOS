@@ -7122,6 +7122,26 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func removeServerGroup(_ group: TS3GroupSummary, from members: [TS3GroupClientSummary]) {
+        let uniqueMembers = Dictionary(members.map { ($0.clientDatabaseId, $0) }, uniquingKeysWith: { first, _ in first })
+            .values
+            .sorted { $0.clientDatabaseId < $1.clientDatabaseId }
+        guard !uniqueMembers.isEmpty else { return }
+
+        runClientCommand { client in
+            for member in uniqueMembers {
+                try await client.removeServerGroup(groupId: group.id, fromClientDatabaseId: member.clientDatabaseId)
+            }
+            await MainActor.run {
+                let removedDatabaseIds = Set(uniqueMembers.map(\.clientDatabaseId))
+                self.groupClients.removeAll { removedDatabaseIds.contains($0.clientDatabaseId) }
+                for onlineClient in self.clients where onlineClient.databaseId.map({ removedDatabaseIds.contains($0) }) == true {
+                    self.removeServerGroup(group.id, fromClientId: onlineClient.id)
+                }
+            }
+        }
+    }
+
     func setChannelGroup(_ group: TS3GroupSummary, for user: TS3UserSummary, in channel: TS3ChannelSummary) {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
