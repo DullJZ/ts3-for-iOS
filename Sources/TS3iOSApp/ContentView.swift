@@ -8937,6 +8937,35 @@ struct ClientDatabaseSheet: View {
         return sortedRecords(filtered)
     }
 
+    private var visibleContactEntries: [TS3ContactEntry] {
+        displayedRecords.compactMap { record in
+            guard let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty else { return nil }
+            if var existing = model.contact(for: record) {
+                existing.nickname = record.nickname
+                return existing
+            }
+            return TS3ContactEntry(
+                uniqueIdentifier: uniqueIdentifier,
+                nickname: record.nickname,
+                status: .neutral,
+                note: "",
+                updatedAt: Date()
+            )
+        }
+    }
+
+    private var canMarkVisibleFriends: Bool {
+        visibleContactEntries.contains { $0.status != .friend }
+    }
+
+    private var canBlockVisibleContacts: Bool {
+        visibleContactEntries.contains { $0.status != .blocked }
+    }
+
+    private var canSetVisibleNeutral: Bool {
+        visibleContactEntries.contains { $0.status != .neutral }
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -9162,21 +9191,34 @@ struct ClientDatabaseSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
-                    Button("Copy Visible Database Snapshot") {
-                        TS3PlatformSupport.copyToPasteboard(databaseSnapshot)
+                        Button("Copy Visible Database Snapshot") {
+                            TS3PlatformSupport.copyToPasteboard(databaseSnapshot)
+                        }
+                        .disabled(displayedRecords.isEmpty)
+                        Button("Export Visible Database Snapshot") {
+                            databaseExportDocument = TS3TextFileDocument(data: Data(databaseSnapshot.utf8))
+                            isExportingDatabase = true
+                        }
+                        .disabled(displayedRecords.isEmpty)
+                        Button("Import Database Backup") {
+                            isImportingDatabase = true
+                        }
+                        Divider()
+                        Button("Mark Visible Friends") {
+                            model.updateContacts(visibleContactEntries, status: .friend)
+                        }
+                        .disabled(!canMarkVisibleFriends)
+                        Button("Block Visible Contacts") {
+                            model.updateContacts(visibleContactEntries, status: .blocked)
+                        }
+                        .disabled(!canBlockVisibleContacts)
+                        Button("Set Visible Neutral") {
+                            model.updateContacts(visibleContactEntries, status: .neutral)
+                        }
+                        .disabled(!canSetVisibleNeutral)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .disabled(displayedRecords.isEmpty)
-                    Button("Export Visible Database Snapshot") {
-                        databaseExportDocument = TS3TextFileDocument(data: Data(databaseSnapshot.utf8))
-                        isExportingDatabase = true
-                    }
-                    .disabled(displayedRecords.isEmpty)
-                    Button("Import Database Backup") {
-                        isImportingDatabase = true
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
