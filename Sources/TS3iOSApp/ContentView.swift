@@ -7932,7 +7932,7 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Upload Quota", value: model.serverInfo.uploadQuota.map(Self.byteText))
                     ServerInfoDetailRow(label: "File Transfer Port", value: model.serverInfo.fileTransferPort.map(String.init))
                     ServerInfoDetailRow(label: "File Base", value: model.serverInfo.fileBase)
-                    ServerInfoDetailRow(label: "Codec Encryption", value: model.serverInfo.codecEncryptionMode.map(String.init))
+                    ServerInfoDetailRow(label: "Codec Encryption", value: model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title))
                 }
 
                 Section(header: Text("Anti-Flood and Complaints")) {
@@ -8042,7 +8042,7 @@ struct ServerInformationSheet: View {
         rows.append(("Upload Quota", model.serverInfo.uploadQuota.map(Self.byteText)))
         rows.append(("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)))
         rows.append(("File Base", model.serverInfo.fileBase))
-        rows.append(("Codec Encryption", model.serverInfo.codecEncryptionMode.map(String.init)))
+        rows.append(("Codec Encryption", model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title)))
         rows.append(("Auto-Ban Count", model.serverInfo.complainAutoBanCount.map(String.init)))
         rows.append(("Auto-Ban Time", model.serverInfo.complainAutoBanTime.map(Self.durationText)))
         rows.append(("Complaint Remove Time", model.serverInfo.complainRemoveTime.map(Self.durationText)))
@@ -10504,7 +10504,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var complainRemoveTime = ""
     @State private var minClientsInChannelBeforeForcedSilence = ""
     @State private var prioritySpeakerDimmModificator = ""
-    @State private var codecEncryptionMode = ""
+    @State private var codecEncryptionMode: Int?
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
@@ -10589,9 +10589,16 @@ struct ServerSettingsEditorSheet: View {
                     TextField("Upload Quota Bytes", text: $uploadQuota)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
-                    TextField("Codec Encryption Mode", text: $codecEncryptionMode)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
+                    Picker("Codec Encryption", selection: $codecEncryptionMode) {
+                        Text("Unchanged").tag(Int?.none)
+                        ForEach(TS3CodecEncryptionMode.allCases) { mode in
+                            Text(mode.title).tag(Optional(mode.rawValue))
+                        }
+                        if let codecEncryptionMode,
+                           TS3CodecEncryptionMode(rawValue: codecEncryptionMode) == nil {
+                            Text(TS3CodecEncryptionMode.title(for: codecEncryptionMode)).tag(Optional(codecEncryptionMode))
+                        }
+                    }
                 }
 
                 Section(header: Text("Anti-Flood and Complaints")) {
@@ -10701,7 +10708,7 @@ struct ServerSettingsEditorSheet: View {
             complainRemoveTime: complainRemoveTime,
             minClientsInChannelBeforeForcedSilence: minClientsInChannelBeforeForcedSilence,
             prioritySpeakerDimmModificator: prioritySpeakerDimmModificator,
-            codecEncryptionMode: codecEncryptionMode
+            codecEncryptionMode: codecEncryptionMode.map(String.init) ?? ""
         )
     }
 
@@ -10723,7 +10730,7 @@ struct ServerSettingsEditorSheet: View {
             ("Host Button Image URL", draft.hostButtonGraphicsURL),
             ("Download Quota Bytes", draft.downloadQuota),
             ("Upload Quota Bytes", draft.uploadQuota),
-            ("Codec Encryption Mode", draft.codecEncryptionMode),
+            ("Codec Encryption Mode", codecEncryptionModeTitle(draft.codecEncryptionMode)),
             ("Auto-Ban Complaint Count", draft.complainAutoBanCount),
             ("Auto-Ban Seconds", draft.complainAutoBanTime),
             ("Complaint Remove Seconds", draft.complainRemoveTime),
@@ -10760,7 +10767,7 @@ struct ServerSettingsEditorSheet: View {
         complainRemoveTime = model.serverInfo.complainRemoveTime.map(String.init) ?? ""
         minClientsInChannelBeforeForcedSilence = model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init) ?? ""
         prioritySpeakerDimmModificator = model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText) ?? ""
-        codecEncryptionMode = model.serverInfo.codecEncryptionMode.map(String.init) ?? ""
+        codecEncryptionMode = model.serverInfo.codecEncryptionMode
     }
 
     private var isDraftValid: Bool {
@@ -10776,7 +10783,6 @@ struct ServerSettingsEditorSheet: View {
             && isOptionalInt(complainRemoveTime)
             && isOptionalInt(minClientsInChannelBeforeForcedSilence)
             && isOptionalDouble(prioritySpeakerDimmModificator)
-            && isOptionalInt(codecEncryptionMode)
     }
 
     private func save() {
@@ -10801,7 +10807,7 @@ struct ServerSettingsEditorSheet: View {
             complainRemoveTime: Int(complainRemoveTime.trimmingCharacters(in: .whitespacesAndNewlines)),
             minClientsInChannelBeforeForcedSilence: Int(minClientsInChannelBeforeForcedSilence.trimmingCharacters(in: .whitespacesAndNewlines)),
             prioritySpeakerDimmModificator: Double(prioritySpeakerDimmModificator.trimmingCharacters(in: .whitespacesAndNewlines)),
-            codecEncryptionMode: Int(codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
+            codecEncryptionMode: codecEncryptionMode
         )
     }
 
@@ -10853,7 +10859,7 @@ struct ServerSettingsEditorSheet: View {
         complainRemoveTime = draft.complainRemoveTime
         minClientsInChannelBeforeForcedSilence = draft.minClientsInChannelBeforeForcedSilence
         prioritySpeakerDimmModificator = draft.prioritySpeakerDimmModificator
-        codecEncryptionMode = draft.codecEncryptionMode
+        codecEncryptionMode = Int(draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private func hostMessageModeTitle(_ value: String) -> String {
@@ -10864,6 +10870,12 @@ struct ServerSettingsEditorSheet: View {
         case "3": return "Modal Quit"
         default: return value
         }
+    }
+
+    private func codecEncryptionModeTitle(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let numericValue = Int(trimmed) else { return trimmed }
+        return TS3CodecEncryptionMode.title(for: numericValue)
     }
 
     private func isOptionalInt(_ value: String) -> Bool {

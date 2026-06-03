@@ -1856,6 +1856,32 @@ struct TS3ServerInfoSummary {
     )
 }
 
+enum TS3CodecEncryptionMode: Int, CaseIterable, Identifiable {
+    case individual = 0
+    case disabled = 1
+    case enabled = 2
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .individual:
+            return "Per Channel"
+        case .disabled:
+            return "Disabled"
+        case .enabled:
+            return "Enabled"
+        }
+    }
+
+    static func title(for value: Int) -> String {
+        if let mode = TS3CodecEncryptionMode(rawValue: value) {
+            return "\(mode.title) (\(value))"
+        }
+        return "Unknown (\(value))"
+    }
+}
+
 struct TS3ConnectionInfoSummary {
     var ping: Double?
     var packetLossTotal: Double?
