@@ -12998,6 +12998,11 @@ private extension TS3PermissionSummary {
 }
 
 struct PrivilegeKeysSheet: View {
+    private struct KeyBackupImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
     private enum KeyFilter: String, CaseIterable, Identifiable {
         case all
         case serverGroup
@@ -13076,11 +13081,13 @@ struct PrivilegeKeysSheet: View {
     @State private var presetName = ""
     @State private var isExportingKeys = false
     @State private var isExportingKeyBackup = false
+    @State private var isImportingKeyBackup = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var keysExportDocument = TS3TextFileDocument()
     @State private var keysBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingKeyBackupImport: KeyBackupImportConfirmation?
     @State private var isConfirmingDeleteAll = false
     @State private var isConfirmingDeletePresets = false
 
@@ -13250,6 +13257,10 @@ struct PrivilegeKeysSheet: View {
                     }
                     .disabled(model.privilegeKeys.isEmpty)
 
+                    Button("Import Privilege Key Backup") {
+                        isImportingKeyBackup = true
+                    }
+
                     Button("Delete Visible Keys") {
                         isConfirmingDeleteAll = true
                     }
@@ -13290,6 +13301,17 @@ struct PrivilegeKeysSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingKeyBackup,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    pendingKeyBackupImport = KeyBackupImportConfirmation(url: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .fileExporter(
                 isPresented: $isExportingPresets,
                 document: presetsDocument,
@@ -13317,6 +13339,16 @@ struct PrivilegeKeysSheet: View {
                     message: Text("This removes \(filteredPrivilegeKeys.count) privilege keys from the server."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deletePrivilegeKeys(filteredPrivilegeKeys)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingKeyBackupImport) { confirmation in
+                Alert(
+                    title: Text("Import Privilege Key Backup?"),
+                    message: Text("This loads the first key from the selected backup into the generated key area for copying or use."),
+                    primaryButton: .default(Text("Import")) {
+                        importPrivilegeKeyBackup(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
@@ -13511,6 +13543,20 @@ struct PrivilegeKeysSheet: View {
         do {
             keysBackupDocument = TS3TextFileDocument(data: try model.privilegeKeyBackupData())
             isExportingKeyBackup = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPrivilegeKeyBackup(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importPrivilegeKeyBackup(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }
