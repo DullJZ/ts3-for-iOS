@@ -14280,6 +14280,18 @@ struct WhisperSheet: View {
         }
     }
 
+    private enum WhisperConfirmation: Identifiable {
+        case deleteVisiblePresets
+        case deleteAllFilterPresets
+
+        var id: String {
+            switch self {
+            case .deleteVisiblePresets: return "deleteVisiblePresets"
+            case .deleteAllFilterPresets: return "deleteAllFilterPresets"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var groupWhisperType: TS3GroupWhisperType = .allClients
@@ -14298,6 +14310,7 @@ struct WhisperSheet: View {
     @State private var isImportingPresetBackup = false
     @State private var isExportingFilterPresets = false
     @State private var isImportingFilterPresets = false
+    @State private var confirmation: WhisperConfirmation?
     @State private var routeDocument = TS3TextFileDocument()
     @State private var presetBackupDocument = TS3TextFileDocument()
     @State private var filterPresetsDocument = TS3BookmarkFileDocument()
@@ -14440,6 +14453,10 @@ struct WhisperSheet: View {
                         Button("Import Presets") {
                             isImportingFilterPresets = true
                         }
+                        Button("Delete All Presets") {
+                            confirmation = .deleteAllFilterPresets
+                        }
+                        .disabled(model.whisperFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -14519,7 +14536,7 @@ struct WhisperSheet: View {
                         }
                         .disabled(filteredWhisperPresets.isEmpty)
                         Button("Delete Visible Presets") {
-                            model.deleteWhisperPresets(filteredWhisperPresets)
+                            confirmation = .deleteVisiblePresets
                         }
                         .disabled(filteredWhisperPresets.isEmpty)
                     } label: {
@@ -14713,6 +14730,28 @@ struct WhisperSheet: View {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
+                }
+            }
+            .alert(item: $confirmation) { confirmation in
+                switch confirmation {
+                case .deleteVisiblePresets:
+                    return Alert(
+                        title: Text("Delete Visible Whisper Presets?"),
+                        message: Text("This removes \(filteredWhisperPresets.count) saved whisper presets."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteWhisperPresets(filteredWhisperPresets)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteAllFilterPresets:
+                    return Alert(
+                        title: Text("Delete All Whisper Filter Presets?"),
+                        message: Text("This removes \(model.whisperFilterPresets.count) saved local filter presets."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteAllWhisperFilterPresets()
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
             }
         }

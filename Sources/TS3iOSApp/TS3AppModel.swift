@@ -9641,6 +9641,12 @@ final class TS3AppModel: ObservableObject {
         saveWhisperFilterPresets()
     }
 
+    func deleteAllWhisperFilterPresets() {
+        guard !whisperFilterPresets.isEmpty else { return }
+        whisperFilterPresets = []
+        saveWhisperFilterPresets()
+    }
+
     func whisperFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
