@@ -9379,6 +9379,11 @@ extension TS3PermissionGroupDatabaseType {
 }
 
 struct ClientDatabaseSheet: View {
+    private struct DatabaseBackupImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
     private enum DatabaseRecordFilter: String, CaseIterable, Identifiable {
         case all
         case withUniqueId
@@ -9464,6 +9469,7 @@ struct ClientDatabaseSheet: View {
     @State private var databaseExportDocument = TS3TextFileDocument()
     @State private var databaseBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingDatabaseBackupImport: DatabaseBackupImportConfirmation?
 
     var displayedRecords: [TS3DatabaseClientSummary] {
         let source = model.databaseSearchResults.isEmpty ? model.databaseClients : model.databaseSearchResults
@@ -9853,7 +9859,7 @@ struct ClientDatabaseSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importDatabaseBackup(from: url)
+                    pendingDatabaseBackupImport = DatabaseBackupImportConfirmation(url: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -9868,6 +9874,16 @@ struct ClientDatabaseSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(item: $pendingDatabaseBackupImport) { confirmation in
+                Alert(
+                    title: Text("Import Database Backup?"),
+                    message: Text("This replaces the currently loaded local database client list with the selected backup."),
+                    primaryButton: .destructive(Text("Import")) {
+                        importDatabaseBackup(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .onAppear {
                 databaseBatchSize = String(model.databaseClientBatchSize)
@@ -12254,6 +12270,11 @@ struct RenameFileEntrySheet: View {
 }
 
 struct PermissionsSheet: View {
+    private struct PermissionBackupImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
     private enum AssignedPermissionFilter: String, CaseIterable, Identifiable {
         case all
         case negated
@@ -12334,6 +12355,7 @@ struct PermissionsSheet: View {
     @State private var permissionExportDocument = TS3TextFileDocument()
     @State private var permissionBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingPermissionBackupImport: PermissionBackupImportConfirmation?
     @State private var isConfirmingDeleteVisible = false
 
     var filteredPermissionInfos: [TS3PermissionInfoSummary] {
@@ -12705,7 +12727,7 @@ struct PermissionsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importPermissionBackup(from: url)
+                    pendingPermissionBackupImport = PermissionBackupImportConfirmation(url: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -12727,6 +12749,16 @@ struct PermissionsSheet: View {
                     message: Text("This removes \(filteredDisplayedPermissions.count) permission entries from the current target."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteSelectedPermissions(filteredDisplayedPermissions)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingPermissionBackupImport) { confirmation in
+                Alert(
+                    title: Text("Import Permission Backup?"),
+                    message: Text("This switches the permission target to the selected backup and refreshes its permissions."),
+                    primaryButton: .destructive(Text("Import")) {
+                        importPermissionBackup(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
@@ -13715,6 +13747,11 @@ private extension TS3PrivilegeKeySummary {
 }
 
 struct BanListSheet: View {
+    private struct BanBackupImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
     private enum BanFilter: String, CaseIterable, Identifiable {
         case all
         case ip
@@ -13767,6 +13804,7 @@ struct BanListSheet: View {
     @State private var banExportDocument = TS3TextFileDocument()
     @State private var banBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingBanBackupImport: BanBackupImportConfirmation?
     @State private var searchText = ""
     @State private var banFilter: BanFilter = .all
     @State private var presetName = ""
@@ -13961,7 +13999,7 @@ struct BanListSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importBanBackup(from: url)
+                    pendingBanBackupImport = BanBackupImportConfirmation(url: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -14010,6 +14048,16 @@ struct BanListSheet: View {
                     message: Text("This removes \(filteredBanEntries.count) ban entries from the server."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteBans(filteredBanEntries)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingBanBackupImport) { confirmation in
+                Alert(
+                    title: Text("Import Ban Backup?"),
+                    message: Text("This adds every ban rule from the selected backup to the server."),
+                    primaryButton: .destructive(Text("Import")) {
+                        importBanBackup(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
