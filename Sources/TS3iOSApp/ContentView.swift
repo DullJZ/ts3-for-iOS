@@ -7996,6 +7996,7 @@ struct GroupManagementSheet: View {
     @State private var isExportingGroups = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var groupsExportDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -8111,6 +8112,10 @@ struct GroupManagementSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.groupFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -8183,6 +8188,16 @@ struct GroupManagementSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Group Filter Presets?"),
+                    message: Text("This removes \(model.groupFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllGroupFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
@@ -8539,6 +8554,7 @@ struct GroupClientListSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingRemoveVisible = false
+    @State private var isConfirmingDeletePresets = false
     @State private var membersExportDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -8633,6 +8649,10 @@ struct GroupClientListSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.groupClientFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -8721,6 +8741,16 @@ struct GroupClientListSheet: View {
                     message: Text("This removes \(filteredClients.count) members from \(group.name)."),
                     primaryButton: .destructive(Text("Remove")) {
                         model.removeServerGroup(group, from: filteredClients)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Group Member Filter Presets?"),
+                    message: Text("This removes \(model.groupClientFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllGroupClientFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -9183,6 +9213,7 @@ struct ClientDatabaseSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingDatabase = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var databaseExportDocument = TS3TextFileDocument()
     @State private var databaseBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -9317,6 +9348,10 @@ struct ClientDatabaseSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.databaseClientFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -9521,6 +9556,16 @@ struct ClientDatabaseSheet: View {
                         if let selected = model.selectedDatabaseClient {
                             model.deleteDatabaseClient(selected)
                         }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Database Filter Presets?"),
+                    message: Text("This removes \(model.databaseClientFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllDatabaseClientFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -12038,6 +12083,7 @@ struct PermissionsSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingPermissions = false
     @State private var isImportingPresets = false
+    @State private var isConfirmingDeletePresets = false
     @State private var permissionExportDocument = TS3TextFileDocument()
     @State private var permissionBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -12278,6 +12324,10 @@ struct PermissionsSheet: View {
                         Button("Import Presets") {
                             isImportingPresets = true
                         }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.permissionFilterPresets.isEmpty)
                     } label: {
                         Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
                     }
@@ -12430,6 +12480,16 @@ struct PermissionsSheet: View {
                     message: Text("This removes \(filteredDisplayedPermissions.count) permission entries from the current target."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteSelectedPermissions(filteredDisplayedPermissions)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Permission Filter Presets?"),
+                    message: Text("This removes \(model.permissionFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllPermissionFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )

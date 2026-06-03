@@ -6549,6 +6549,12 @@ final class TS3AppModel: ObservableObject {
         saveDatabaseClientFilterPresets()
     }
 
+    func deleteAllDatabaseClientFilterPresets() {
+        guard !databaseClientFilterPresets.isEmpty else { return }
+        databaseClientFilterPresets = []
+        saveDatabaseClientFilterPresets()
+    }
+
     func databaseClientFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6659,6 +6665,12 @@ final class TS3AppModel: ObservableObject {
         savePermissionFilterPresets()
     }
 
+    func deleteAllPermissionFilterPresets() {
+        guard !permissionFilterPresets.isEmpty else { return }
+        permissionFilterPresets = []
+        savePermissionFilterPresets()
+    }
+
     func permissionFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6711,6 +6723,12 @@ final class TS3AppModel: ObservableObject {
         saveGroupFilterPresets()
     }
 
+    func deleteAllGroupFilterPresets() {
+        guard !groupFilterPresets.isEmpty else { return }
+        groupFilterPresets = []
+        saveGroupFilterPresets()
+    }
+
     func groupFilterPresetsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -6758,6 +6776,12 @@ final class TS3AppModel: ObservableObject {
 
     func deleteGroupClientFilterPreset(_ preset: TS3GroupClientFilterPreset) {
         groupClientFilterPresets.removeAll { $0.id == preset.id }
+        saveGroupClientFilterPresets()
+    }
+
+    func deleteAllGroupClientFilterPresets() {
+        guard !groupClientFilterPresets.isEmpty else { return }
+        groupClientFilterPresets = []
         saveGroupClientFilterPresets()
     }
 
