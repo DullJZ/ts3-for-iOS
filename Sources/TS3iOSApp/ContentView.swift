@@ -352,6 +352,20 @@ struct ConnectView: View {
         }
     }
 
+    private enum DeleteConfirmation: Identifiable {
+        case clearRecent
+        case visibleRecent
+        case visibleBookmarks
+
+        var id: String {
+            switch self {
+            case .clearRecent: return "clearRecent"
+            case .visibleRecent: return "visibleRecent"
+            case .visibleBookmarks: return "visibleBookmarks"
+            }
+        }
+    }
+
     @EnvironmentObject private var model: TS3AppModel
     @State private var bookmarkName = ""
     @State private var bookmarkFolder = ""
@@ -375,7 +389,7 @@ struct ConnectView: View {
     @State private var isExportingRecoverySnapshot = false
     @State private var isImportingClientPackage = false
     @State private var isExportingClientPackage = false
-    @State private var isConfirmingClearRecentConnections = false
+    @State private var deleteConfirmation: DeleteConfirmation?
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
     @State private var connectionPresetsDocument = TS3BookmarkFileDocument()
     @State private var recentConnectionsDocument = TS3BookmarkFileDocument()
@@ -622,7 +636,7 @@ struct ConnectView: View {
                         }
                     }
                     Button("Clear Recent Servers") {
-                        isConfirmingClearRecentConnections = true
+                        deleteConfirmation = .clearRecent
                     }
                     .foregroundColor(.red)
                     Menu {
@@ -631,7 +645,7 @@ struct ConnectView: View {
                         }
                         .disabled(displayedRecentConnections.isEmpty)
                         Button("Delete Visible Recent Servers") {
-                            model.deleteRecentConnections(displayedRecentConnections)
+                            deleteConfirmation = .visibleRecent
                         }
                         .disabled(displayedRecentConnections.isEmpty)
                     } label: {
@@ -709,7 +723,7 @@ struct ConnectView: View {
                         }
                         .disabled(displayedBookmarks.isEmpty)
                         Button("Delete Visible Bookmarks") {
-                            model.deleteBookmarks(displayedBookmarks)
+                            deleteConfirmation = .visibleBookmarks
                         }
                         .disabled(displayedBookmarks.isEmpty)
                     } label: {
@@ -1001,15 +1015,36 @@ struct ConnectView: View {
                 model.lastError = error.localizedDescription
             }
         }
-        .alert(isPresented: $isConfirmingClearRecentConnections) {
-            Alert(
-                title: Text("Clear Recent Servers?"),
-                message: Text("This removes the local connection history on this device."),
-                primaryButton: .destructive(Text("Clear")) {
-                    model.clearRecentConnections()
-                },
-                secondaryButton: .cancel()
-            )
+        .alert(item: $deleteConfirmation) { confirmation in
+            switch confirmation {
+            case .clearRecent:
+                return Alert(
+                    title: Text("Clear Recent Servers?"),
+                    message: Text("This removes the local connection history on this device."),
+                    primaryButton: .destructive(Text("Clear")) {
+                        model.clearRecentConnections()
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .visibleRecent:
+                return Alert(
+                    title: Text("Delete Visible Recent Servers?"),
+                    message: Text("This removes \(displayedRecentConnections.count) recent server entries from this device."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteRecentConnections(displayedRecentConnections)
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .visibleBookmarks:
+                return Alert(
+                    title: Text("Delete Visible Bookmarks?"),
+                    message: Text("This removes \(displayedBookmarks.count) saved bookmarks from this device."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteBookmarks(displayedBookmarks)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
