@@ -16464,6 +16464,20 @@ struct TalkControlBar: View {
 }
 
 struct SelfStatusSheet: View {
+    private enum SelfStatusConfirmation: Identifiable {
+        case importBackup(URL, applyToServer: Bool)
+        case deleteAllProfiles
+        case resetPresence
+
+        var id: String {
+            switch self {
+            case .importBackup(_, let applyToServer): return applyToServer ? "importAndApply" : "importBackup"
+            case .deleteAllProfiles: return "deleteAllProfiles"
+            case .resetPresence: return "resetPresence"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var nickname = ""
@@ -16485,6 +16499,7 @@ struct SelfStatusSheet: View {
     @State private var isImportingStatus = false
     @State private var isImportingAppliedStatus = false
     @State private var isImportingStatusProfiles = false
+    @State private var confirmation: SelfStatusConfirmation?
     @State private var statusDocument = TS3TextFileDocument()
     @State private var statusBackupDocument = TS3TextFileDocument()
 
@@ -16548,7 +16563,7 @@ struct SelfStatusSheet: View {
                     }
                     .disabled(statusProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     Button("Delete All Profiles") {
-                        model.deleteSelfStatusProfiles(model.selfStatusProfiles)
+                        confirmation = .deleteAllProfiles
                     }
                     .disabled(model.selfStatusProfiles.isEmpty)
 
@@ -16674,13 +16689,7 @@ struct SelfStatusSheet: View {
 
                 Section {
                     Button("Reset Presence State") {
-                        model.setAway(false, message: "")
-                        model.setTalkRequest(false, message: "")
-                        model.setChannelCommander(false)
-                        if let currentUser {
-                            model.setPrioritySpeaker(false, for: currentUser)
-                            model.setTalker(false, for: currentUser)
-                        }
+                        confirmation = .resetPresence
                     }
                 }
 
@@ -16779,7 +16788,7 @@ struct SelfStatusSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importStatusBackup(from: url, applyToServer: false)
+                    confirmation = .importBackup(url, applyToServer: false)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -16790,7 +16799,7 @@ struct SelfStatusSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importStatusBackup(from: url, applyToServer: true)
+                    confirmation = .importBackup(url, applyToServer: true)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -16804,6 +16813,37 @@ struct SelfStatusSheet: View {
                     importStatusProfiles(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
+                }
+            }
+            .alert(item: $confirmation) { confirmation in
+                switch confirmation {
+                case .importBackup(let url, let applyToServer):
+                    return Alert(
+                        title: Text(applyToServer ? "Import and Apply Status?" : "Import Status Backup?"),
+                        message: Text(applyToServer ? "This replaces local self status settings and applies them to the current server." : "This replaces local self status settings with the selected backup."),
+                        primaryButton: .destructive(Text("Import")) {
+                            importStatusBackup(from: url, applyToServer: applyToServer)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .deleteAllProfiles:
+                    return Alert(
+                        title: Text("Delete All Status Profiles?"),
+                        message: Text("This removes \(model.selfStatusProfiles.count) saved local status profiles."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteSelfStatusProfiles(model.selfStatusProfiles)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .resetPresence:
+                    return Alert(
+                        title: Text("Reset Presence State?"),
+                        message: Text("This clears away, talk request, channel commander, priority speaker, and talker state where available."),
+                        primaryButton: .destructive(Text("Reset")) {
+                            resetPresenceState()
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
             }
         }
@@ -16922,6 +16962,17 @@ struct SelfStatusSheet: View {
         }
     }
 
+    private func resetPresenceState() {
+        model.setAway(false, message: "")
+        model.setTalkRequest(false, message: "")
+        model.setChannelCommander(false)
+        if let currentUser {
+            model.setPrioritySpeaker(false, for: currentUser)
+            model.setTalker(false, for: currentUser)
+        }
+        refreshDraft()
+    }
+
     private func statusProfileSummary(_ profile: TS3SelfStatusProfile) -> String {
         var parts: [String] = []
         if !profile.status.nickname.isEmpty {
@@ -16979,6 +17030,18 @@ struct SelfStatusSheet: View {
 }
 
 struct AudioSettingsSheet: View {
+    private enum AudioConfirmation: Identifiable {
+        case importSettings(URL)
+        case importUserPlayback(URL)
+
+        var id: String {
+            switch self {
+            case .importSettings: return "importSettings"
+            case .importUserPlayback: return "importUserPlayback"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var audioProfileName = ""
@@ -16989,6 +17052,7 @@ struct AudioSettingsSheet: View {
     @State private var isConfirmingDeleteProfiles = false
     @State private var isConfirmingResetAudioSettings = false
     @State private var isConfirmingResetUserPlayback = false
+    @State private var audioConfirmation: AudioConfirmation?
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
@@ -17291,7 +17355,7 @@ struct AudioSettingsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importAudioSettings(from: url)
+                    audioConfirmation = .importSettings(url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -17313,7 +17377,7 @@ struct AudioSettingsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importUserPlayback(from: url)
+                    audioConfirmation = .importUserPlayback(url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -17347,6 +17411,28 @@ struct AudioSettingsSheet: View {
                     },
                     secondaryButton: .cancel()
                 )
+            }
+            .alert(item: $audioConfirmation) { confirmation in
+                switch confirmation {
+                case .importSettings(let url):
+                    return Alert(
+                        title: Text("Import Audio Settings?"),
+                        message: Text("This replaces current local audio settings with the selected settings file."),
+                        primaryButton: .destructive(Text("Import")) {
+                            importAudioSettings(from: url)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .importUserPlayback(let url):
+                    return Alert(
+                        title: Text("Import User Playback Backup?"),
+                        message: Text("This replaces all local per-user volume and mute overrides with the selected backup."),
+                        primaryButton: .destructive(Text("Import")) {
+                            importUserPlayback(from: url)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                }
             }
         }
     }
