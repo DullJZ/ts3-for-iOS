@@ -10579,6 +10579,22 @@ struct ServerSettingsEditorSheet: View {
 }
 
 struct FileBrowserSheet: View {
+    private enum TransferConfirmation: Identifiable {
+        case cancelActive
+        case clearCompleted
+        case clearFailed
+        case clearInactive
+
+        var id: String {
+            switch self {
+            case .cancelActive: return "cancel-active"
+            case .clearCompleted: return "clear-completed"
+            case .clearFailed: return "clear-failed"
+            case .clearInactive: return "clear-inactive"
+            }
+        }
+    }
+
     private enum FileSortMode: String, CaseIterable, Identifiable {
         case name
         case type
@@ -10624,6 +10640,7 @@ struct FileBrowserSheet: View {
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadOverwriteNames: [String] = []
     @State private var isShowingUploadConflictActions = false
+    @State private var transferConfirmation: TransferConfirmation?
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -10893,7 +10910,7 @@ struct FileBrowserSheet: View {
                             .buttonStyle(.borderless)
                             .disabled(!model.fileTransfers.contains { $0.canRetry })
                             Button("Cancel Active") {
-                                model.cancelActiveFileTransfers()
+                                transferConfirmation = .cancelActive
                             }
                             .buttonStyle(.borderless)
                             .foregroundColor(.red)
@@ -10902,15 +10919,15 @@ struct FileBrowserSheet: View {
                         .font(.caption)
                         Menu("Clear Transfers") {
                             Button("Clear Completed") {
-                                model.clearSuccessfulFileTransfers()
+                                transferConfirmation = .clearCompleted
                             }
                             .disabled(!model.fileTransfers.contains { $0.state == .completed })
                             Button("Clear Failed or Cancelled") {
-                                model.clearFailedFileTransfers()
+                                transferConfirmation = .clearFailed
                             }
                             .disabled(!model.fileTransfers.contains { $0.state == .failed || $0.state == .cancelled })
                             Button("Clear All Inactive") {
-                                model.clearInactiveFileTransfers()
+                                transferConfirmation = .clearInactive
                             }
                             .disabled(!model.fileTransfers.contains { !$0.canCancel })
                         }
@@ -11082,6 +11099,46 @@ struct FileBrowserSheet: View {
                         clearPendingUploads()
                     }
                 )
+            }
+            .alert(item: $transferConfirmation) { confirmation in
+                switch confirmation {
+                case .cancelActive:
+                    return Alert(
+                        title: Text("Cancel Active Transfers?"),
+                        message: Text("Active uploads and downloads will be stopped."),
+                        primaryButton: .destructive(Text("Cancel Transfers")) {
+                            model.cancelActiveFileTransfers()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .clearCompleted:
+                    return Alert(
+                        title: Text("Clear Completed Transfers?"),
+                        message: Text("Completed transfer records will be removed from the queue."),
+                        primaryButton: .destructive(Text("Clear")) {
+                            model.clearSuccessfulFileTransfers()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .clearFailed:
+                    return Alert(
+                        title: Text("Clear Failed Transfers?"),
+                        message: Text("Failed and cancelled transfer records will be removed from the queue."),
+                        primaryButton: .destructive(Text("Clear")) {
+                            model.clearFailedFileTransfers()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .clearInactive:
+                    return Alert(
+                        title: Text("Clear Inactive Transfers?"),
+                        message: Text("All completed, failed, and cancelled transfer records will be removed from the queue."),
+                        primaryButton: .destructive(Text("Clear")) {
+                            model.clearInactiveFileTransfers()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                }
             }
         }
     }
@@ -11418,8 +11475,21 @@ struct FileBrowserSheet: View {
 }
 
 struct FileTransferRow: View {
+    private enum RowConfirmation: Identifiable {
+        case cancel
+        case remove
+
+        var id: String {
+            switch self {
+            case .cancel: return "cancel"
+            case .remove: return "remove"
+            }
+        }
+    }
+
     @EnvironmentObject private var model: TS3AppModel
     let transfer: TS3FileTransferSummary
+    @State private var confirmation: RowConfirmation?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -11447,7 +11517,7 @@ struct FileTransferRow: View {
                 .truncationMode(.middle)
             if transfer.canCancel {
                 Button("Cancel") {
-                    model.cancelFileTransfer(transfer)
+                    confirmation = .cancel
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
@@ -11460,7 +11530,7 @@ struct FileTransferRow: View {
                 .font(.caption)
             } else {
                 Button("Remove") {
-                    model.removeFileTransfer(transfer)
+                    confirmation = .remove
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
@@ -11470,7 +11540,7 @@ struct FileTransferRow: View {
         .contextMenu {
             if transfer.canCancel {
                 Button("Cancel Transfer") {
-                    model.cancelFileTransfer(transfer)
+                    confirmation = .cancel
                 }
             }
             if transfer.canRetry {
@@ -11480,7 +11550,7 @@ struct FileTransferRow: View {
             }
             if !transfer.canCancel {
                 Button("Remove Transfer") {
-                    model.removeFileTransfer(transfer)
+                    confirmation = .remove
                 }
             }
             Button("Copy Remote Path") {
@@ -11493,6 +11563,28 @@ struct FileTransferRow: View {
             }
             Button("Copy Status") {
                 TS3PlatformSupport.copyToPasteboard(transfer.clipboardSummary)
+            }
+        }
+        .alert(item: $confirmation) { confirmation in
+            switch confirmation {
+            case .cancel:
+                return Alert(
+                    title: Text("Cancel Transfer?"),
+                    message: Text("\(transfer.name) will be stopped."),
+                    primaryButton: .destructive(Text("Cancel Transfer")) {
+                        model.cancelFileTransfer(transfer)
+                    },
+                    secondaryButton: .cancel()
+                )
+            case .remove:
+                return Alert(
+                    title: Text("Remove Transfer?"),
+                    message: Text("\(transfer.name) will be removed from the queue."),
+                    primaryButton: .destructive(Text("Remove")) {
+                        model.removeFileTransfer(transfer)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
