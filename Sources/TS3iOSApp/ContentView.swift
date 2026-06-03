@@ -6155,6 +6155,18 @@ struct OfflineMessagesSheet: View {
         }
     }
 
+    private enum DeleteConfirmation: Identifiable {
+        case visible
+        case read
+
+        var id: String {
+            switch self {
+            case .visible: return "visible"
+            case .read: return "read"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var searchText = ""
@@ -6166,6 +6178,7 @@ struct OfflineMessagesSheet: View {
     @State private var isExportingInbox = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
+    @State private var deleteConfirmation: DeleteConfirmation?
     @State private var inboxDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -6345,10 +6358,14 @@ struct OfflineMessagesSheet: View {
                             model.markOfflineMessages(filteredMessages, read: false)
                         }
                         .disabled(!filteredMessages.contains { $0.isRead })
-                        Button("Delete All Messages") {
-                            model.deleteOfflineMessages(filteredMessages)
+                        Button("Delete Visible Messages") {
+                            deleteConfirmation = .visible
                         }
                         .disabled(filteredMessages.isEmpty)
+                        Button("Delete Read Messages") {
+                            deleteConfirmation = .read
+                        }
+                        .disabled(readMessages.isEmpty)
                         Button("Export Filter Presets") {
                             exportPresets()
                         }
@@ -6394,6 +6411,28 @@ struct OfflineMessagesSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .alert(item: $deleteConfirmation) { confirmation in
+                switch confirmation {
+                case .visible:
+                    return Alert(
+                        title: Text("Delete Visible Messages?"),
+                        message: Text("This removes \(filteredMessages.count) offline messages from the server."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteOfflineMessages(filteredMessages)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .read:
+                    return Alert(
+                        title: Text("Delete Read Messages?"),
+                        message: Text("This removes \(readMessages.count) read offline messages from the server."),
+                        primaryButton: .destructive(Text("Delete")) {
+                            model.deleteOfflineMessages(readMessages)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                }
+            }
         }
     }
 
@@ -6411,6 +6450,10 @@ struct OfflineMessagesSheet: View {
 
     private var hasBodyPlaceholders: Bool {
         filteredMessages.contains { $0.message?.isEmpty != false }
+    }
+
+    private var readMessages: [TS3OfflineMessageSummary] {
+        model.offlineMessages.filter(\.isRead)
     }
 
     private func containsSearch(_ value: String?) -> Bool {
