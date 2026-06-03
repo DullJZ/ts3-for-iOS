@@ -7694,6 +7694,35 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func setAllKeyboardShortcutsEnabled(_ isEnabled: Bool) {
+        keyboardShortcuts = keyboardShortcuts.map { shortcut in
+            TS3KeyboardShortcutBinding(
+                actionId: shortcut.actionId,
+                group: shortcut.group,
+                action: shortcut.action,
+                defaultKeys: shortcut.defaultKeys,
+                keys: shortcut.keys,
+                isEnabled: isEnabled
+            )
+        }
+        saveKeyboardShortcuts()
+        lastError = nil
+    }
+
+    func resetDisabledKeyboardShortcuts() {
+        let disabledIds = Set(keyboardShortcuts.filter { !$0.isEnabled }.map(\.actionId))
+        guard !disabledIds.isEmpty else { return }
+        keyboardShortcuts = keyboardShortcuts.map { shortcut in
+            guard disabledIds.contains(shortcut.actionId),
+                  let defaultShortcut = Self.defaultKeyboardShortcuts.first(where: { $0.actionId == shortcut.actionId }) else {
+                return shortcut
+            }
+            return defaultShortcut
+        }
+        saveKeyboardShortcuts()
+        lastError = nil
+    }
+
     func keyboardShortcutsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

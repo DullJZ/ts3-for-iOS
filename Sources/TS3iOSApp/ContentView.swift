@@ -193,6 +193,18 @@ struct KeyboardShortcutsSheet: View {
                     Button("Import Shortcut Backup") {
                         isImportingShortcutBackup = true
                     }
+                }
+
+                Section(header: Text("Manage")) {
+                    Button("Enable All Shortcuts") {
+                        model.setAllKeyboardShortcutsEnabled(true)
+                    }
+                    Button("Disable All Shortcuts") {
+                        model.setAllKeyboardShortcutsEnabled(false)
+                    }
+                    Button("Reset Disabled Shortcuts") {
+                        model.resetDisabledKeyboardShortcuts()
+                    }
                     Button("Reset Shortcuts") {
                         model.resetKeyboardShortcuts()
                     }
