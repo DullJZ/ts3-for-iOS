@@ -16840,6 +16840,8 @@ struct AudioSettingsSheet: View {
     @State private var isImportingAudioSettings = false
     @State private var isImportingAudioProfiles = false
     @State private var isImportingUserPlayback = false
+    @State private var isConfirmingDeleteProfiles = false
+    @State private var isConfirmingResetAudioSettings = false
     @State private var isConfirmingResetUserPlayback = false
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
@@ -16920,7 +16922,7 @@ struct AudioSettingsSheet: View {
                         isImportingAudioProfiles = true
                     }
                     Button("Delete All Profiles") {
-                        model.deleteAudioProfiles(model.audioProfiles)
+                        isConfirmingDeleteProfiles = true
                     }
                     .disabled(model.audioProfiles.isEmpty)
 
@@ -17111,7 +17113,7 @@ struct AudioSettingsSheet: View {
 
                 Section {
                     Button("Reset Audio Settings") {
-                        model.resetAudioSettings()
+                        isConfirmingResetAudioSettings = true
                     }
                 }
             }
@@ -17176,6 +17178,26 @@ struct AudioSettingsSheet: View {
                     message: Text("This clears all local per-user volume and mute overrides."),
                     primaryButton: .destructive(Text("Reset")) {
                         model.resetUserPlaybackPreferences()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeleteProfiles) {
+                Alert(
+                    title: Text("Delete All Audio Profiles?"),
+                    message: Text("This removes \(model.audioProfiles.count) saved local audio profiles."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAudioProfiles(model.audioProfiles)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingResetAudioSettings) {
+                Alert(
+                    title: Text("Reset Audio Settings?"),
+                    message: Text("This restores the local audio settings to their defaults."),
+                    primaryButton: .destructive(Text("Reset")) {
+                        model.resetAudioSettings()
                     },
                     secondaryButton: .cancel()
                 )
