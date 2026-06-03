@@ -3367,7 +3367,7 @@ struct ChannelInformationSheet: View {
 
                 Section(header: Text("Audio")) {
                     ServerInfoDetailRow(label: "Codec", value: TS3ChannelCodec.title(for: channel.codec))
-                    ServerInfoDetailRow(label: "Codec Quality", value: channel.codecQuality.map(String.init))
+                    ServerInfoDetailRow(label: "Codec Quality", value: TS3ChannelCodecQuality.title(for: channel.codecQuality))
                     ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
                 }
@@ -3457,7 +3457,7 @@ struct ChannelInformationSheet: View {
             ("Topic", channel.topic),
             ("Description", channel.description),
             ("Codec", TS3ChannelCodec.title(for: channel.codec)),
-            ("Codec Quality", channel.codecQuality.map(String.init)),
+            ("Codec Quality", TS3ChannelCodecQuality.title(for: channel.codecQuality)),
             ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
             ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
             ("Max Clients", maxClientsText),
@@ -16052,8 +16052,16 @@ struct ChannelEditorSheet: View {
                             Text(codec.title).tag(Optional(codec.rawValue))
                         }
                     }
-                    TextField("Codec Quality", text: $codecQuality)
-                        .ts3NumericKeyboard()
+                    Picker("Codec Quality", selection: $codecQuality) {
+                        Text("Unchanged").tag("")
+                        ForEach(TS3ChannelCodecQuality.allCases) { quality in
+                            Text(quality.title).tag(String(quality.value))
+                        }
+                        if let numericQuality = Int(codecQuality.trimmingCharacters(in: .whitespacesAndNewlines)),
+                           TS3ChannelCodecQuality.title(for: numericQuality) == "Unknown (\(numericQuality))" {
+                            Text(TS3ChannelCodecQuality.title(for: numericQuality) ?? String(numericQuality)).tag(codecQuality)
+                        }
+                    }
                     TextField("Needed Talk Power", text: $neededTalkPower)
                         .ts3NumericKeyboard()
                     TextField("Needed Subscribe Power", text: $neededSubscribePower)
@@ -16250,7 +16258,7 @@ struct ChannelEditorSheet: View {
             ("Needed Talk Power", draft.neededTalkPower),
             ("Needed Subscribe Power", draft.neededSubscribePower),
             ("Codec", codecTitle(for: draft.codec)),
-            ("Codec Quality", draft.codecQuality),
+            ("Codec Quality", codecQualityTitle(for: draft.codecQuality)),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
             ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
             ("Max Family Clients", draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)),
@@ -16344,6 +16352,12 @@ struct ChannelEditorSheet: View {
 
     private func codecTitle(for rawValue: String) -> String {
         TS3ChannelCodec.title(for: Int(rawValue.trimmingCharacters(in: .whitespacesAndNewlines))) ?? ""
+    }
+
+    private func codecQualityTitle(for rawValue: String) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let numericValue = Int(trimmed) else { return trimmed }
+        return TS3ChannelCodecQuality.title(for: numericValue) ?? trimmed
     }
 
     private func isOptionalInt(_ text: String) -> Bool {

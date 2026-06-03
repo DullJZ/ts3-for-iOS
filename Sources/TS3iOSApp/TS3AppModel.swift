@@ -72,6 +72,26 @@ enum TS3ChannelCodec: Int, CaseIterable, Identifiable {
     }
 }
 
+struct TS3ChannelCodecQuality: Identifiable {
+    let value: Int
+
+    var id: Int { value }
+
+    var title: String {
+        "Quality \(value)"
+    }
+
+    static let allCases = (0...10).map(TS3ChannelCodecQuality.init)
+
+    static func title(for value: Int?) -> String? {
+        guard let value else { return nil }
+        if (0...10).contains(value) {
+            return "Quality \(value)"
+        }
+        return "Unknown (\(value))"
+    }
+}
+
 struct TS3ChannelSummary: Identifiable {
     let id: Int
     let parentId: Int?
