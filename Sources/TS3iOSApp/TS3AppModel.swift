@@ -1882,6 +1882,35 @@ enum TS3CodecEncryptionMode: Int, CaseIterable, Identifiable {
     }
 }
 
+enum TS3HostMessageMode: Int, CaseIterable, Identifiable {
+    case none = 0
+    case log = 1
+    case modal = 2
+    case modalQuit = 3
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .none:
+            return "None"
+        case .log:
+            return "Log"
+        case .modal:
+            return "Modal"
+        case .modalQuit:
+            return "Modal Quit"
+        }
+    }
+
+    static func title(for value: Int) -> String {
+        if let mode = TS3HostMessageMode(rawValue: value) {
+            return "\(mode.title) (\(value))"
+        }
+        return "Unknown (\(value))"
+    }
+}
+
 struct TS3ConnectionInfoSummary {
     var ping: Double?
     var packetLossTotal: Double?

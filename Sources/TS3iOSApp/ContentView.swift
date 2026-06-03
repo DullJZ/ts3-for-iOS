@@ -7976,7 +7976,7 @@ struct ServerInformationSheet: View {
 
                 Section(header: Text("Host Presentation")) {
                     ServerInfoDetailRow(label: "Host Message", value: model.serverInfo.hostMessage)
-                    ServerInfoDetailRow(label: "Message Mode", value: model.serverInfo.hostMessageMode.map(String.init))
+                    ServerInfoDetailRow(label: "Message Mode", value: model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title))
                     ServerInfoDetailRow(label: "Banner URL", value: model.serverInfo.hostBannerURL)
                     ServerInfoDetailRow(label: "Banner Graphic", value: model.serverInfo.hostBannerGraphicsURL)
                     ServerInfoDetailRow(label: "Button Tooltip", value: model.serverInfo.hostButtonTooltip)
@@ -8071,7 +8071,7 @@ struct ServerInformationSheet: View {
         rows.append(("Current Total Downloaded", model.connectionInfo.totalBytesReceived.map(Self.byteText)))
         rows.append(("Current Total Uploaded", model.connectionInfo.totalBytesSent.map(Self.byteText)))
         rows.append(("Host Message", model.serverInfo.hostMessage))
-        rows.append(("Message Mode", model.serverInfo.hostMessageMode.map(String.init)))
+        rows.append(("Message Mode", model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title)))
         rows.append(("Banner URL", model.serverInfo.hostBannerURL))
         rows.append(("Banner Graphic", model.serverInfo.hostBannerGraphicsURL))
         rows.append(("Button Tooltip", model.serverInfo.hostButtonTooltip))
@@ -10557,10 +10557,13 @@ struct ServerSettingsEditorSheet: View {
 
                 Section(header: Text("Host Message")) {
                     Picker("Mode", selection: $hostMessageMode) {
-                        Text("None").tag("0")
-                        Text("Log").tag("1")
-                        Text("Modal").tag("2")
-                        Text("Modal Quit").tag("3")
+                        ForEach(TS3HostMessageMode.allCases) { mode in
+                            Text(mode.title).tag(String(mode.rawValue))
+                        }
+                        if let numericMode = Int(hostMessageMode.trimmingCharacters(in: .whitespacesAndNewlines)),
+                           TS3HostMessageMode(rawValue: numericMode) == nil {
+                            Text(TS3HostMessageMode.title(for: numericMode)).tag(hostMessageMode)
+                        }
                     }
                     TextField("Message", text: $hostMessage)
                         .ts3PlainTextField()
@@ -10863,13 +10866,9 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private func hostMessageModeTitle(_ value: String) -> String {
-        switch value.trimmingCharacters(in: .whitespacesAndNewlines) {
-        case "0": return "None"
-        case "1": return "Log"
-        case "2": return "Modal"
-        case "3": return "Modal Quit"
-        default: return value
-        }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let numericValue = Int(trimmed) else { return trimmed }
+        return TS3HostMessageMode.title(for: numericValue)
     }
 
     private func codecEncryptionModeTitle(_ value: String) -> String {
