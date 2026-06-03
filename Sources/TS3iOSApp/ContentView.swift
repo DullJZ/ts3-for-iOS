@@ -10532,6 +10532,24 @@ struct FileBrowserSheet: View {
                         }
                     }
 
+                    if !visibleFileEntries.isEmpty {
+                        Menu {
+                            Button("Select Visible Files") {
+                                selectedEntryIDs.formUnion(visibleFiles.map(\.id))
+                            }
+                            .disabled(visibleFiles.isEmpty)
+                            Button("Select Visible Entries") {
+                                selectedEntryIDs.formUnion(visibleFileEntries.map(\.id))
+                            }
+                            Button("Deselect Visible Entries") {
+                                selectedEntryIDs.subtract(visibleFileEntries.map(\.id))
+                            }
+                            .disabled(selectedEntries.isEmpty)
+                        } label: {
+                            Label("Visible Selection", systemImage: "checklist")
+                        }
+                    }
+
                     if hasSelection {
                         HStack {
                             Text("\(selectedEntries.count) selected")
@@ -10953,6 +10971,10 @@ struct FileBrowserSheet: View {
 
     private var selectedEntries: [TS3FileEntrySummary] {
         visibleFileEntries.filter { selectedEntryIDs.contains($0.id) }
+    }
+
+    private var visibleFiles: [TS3FileEntrySummary] {
+        visibleFileEntries.filter { !$0.isDirectory }
     }
 
     private var hasSelection: Bool {
