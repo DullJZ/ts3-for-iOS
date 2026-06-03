@@ -5552,6 +5552,39 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 }
 
 struct EventsSheet: View {
+    private enum EventCleanupConfirmation: Identifiable {
+        case all
+        case activity
+        case pokes
+
+        var id: String {
+            switch self {
+            case .all: return "all"
+            case .activity: return "activity"
+            case .pokes: return "pokes"
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .all: return "Clear Events?"
+            case .activity: return "Clear Activity?"
+            case .pokes: return "Clear Pokes?"
+            }
+        }
+
+        func message(activityCount: Int, pokeCount: Int) -> String {
+            switch self {
+            case .all:
+                return "This removes \(activityCount) activity events and \(pokeCount) pokes from local history."
+            case .activity:
+                return "This removes \(activityCount) activity events from local history."
+            case .pokes:
+                return "This removes \(pokeCount) pokes from local history."
+            }
+        }
+    }
+
     private enum EventSourceFilter: String, CaseIterable, Identifiable {
         case all
         case own
@@ -5648,6 +5681,7 @@ struct EventsSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
+    @State private var cleanupConfirmation: EventCleanupConfirmation?
     @State private var eventsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -5860,15 +5894,15 @@ struct EventsSheet: View {
                         }
                         .disabled(!hasVisibleEvents)
                         Button("Clear Events") {
-                            model.clearEventHistory()
+                            cleanupConfirmation = .all
                         }
                         .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
                         Button("Clear Activity") {
-                            model.clearActivityEvents()
+                            cleanupConfirmation = .activity
                         }
                         .disabled(model.activityEvents.isEmpty)
                         Button("Clear Pokes") {
-                            model.clearPokeEvents()
+                            cleanupConfirmation = .pokes
                         }
                         .disabled(model.pokeEvents.isEmpty)
                         Button("Export Filter Presets") {
@@ -5922,6 +5956,23 @@ struct EventsSheet: View {
                     message: Text("This removes \(model.eventFilterPresets.count) saved local filter presets."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteAllEventFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $cleanupConfirmation) { confirmation in
+                Alert(
+                    title: Text(confirmation.title),
+                    message: Text(confirmation.message(activityCount: model.activityEvents.count, pokeCount: model.pokeEvents.count)),
+                    primaryButton: .destructive(Text("Clear")) {
+                        switch confirmation {
+                        case .all:
+                            model.clearEventHistory()
+                        case .activity:
+                            model.clearActivityEvents()
+                        case .pokes:
+                            model.clearPokeEvents()
+                        }
                     },
                     secondaryButton: .cancel()
                 )
@@ -6933,6 +6984,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingContacts = false
     @State private var isImportingNotificationSettings = false
     @State private var isExportingNotificationSettings = false
+    @State private var isConfirmingResetNotificationSettings = false
     @State private var notificationSettingsDocument = TS3TextFileDocument()
 
     private var notificationsBinding: Binding<Bool> {
@@ -7088,7 +7140,7 @@ struct ServerToolsSheet: View {
                         isImportingNotificationSettings = true
                     }
                     Button("Reset Notification Settings") {
-                        model.resetNotificationSettings()
+                        isConfirmingResetNotificationSettings = true
                     }
                     Text("Notifications are shown when the app is not active.")
                         .font(.caption)
@@ -7197,6 +7249,16 @@ struct ServerToolsSheet: View {
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(isPresented: $isConfirmingResetNotificationSettings) {
+                Alert(
+                    title: Text("Reset Notification Settings?"),
+                    message: Text("This restores local notification preferences to their default values."),
+                    primaryButton: .destructive(Text("Reset")) {
+                        model.resetNotificationSettings()
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
