@@ -17334,9 +17334,9 @@ struct AudioSettingsSheet: View {
 
                 Section(header: Text("Transmit Mode")) {
                     Picker("Mode", selection: transmitModeBinding) {
-                        Text("Push To Talk").tag(TS3AudioTransmitMode.pushToTalk)
-                        Text("Continuous").tag(TS3AudioTransmitMode.continuous)
-                        Text("Voice Activation").tag(TS3AudioTransmitMode.voiceActivation)
+                        ForEach(TS3AudioTransmitMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
                     }
                     HStack(spacing: 10) {
                         Button("PTT Preset") {
@@ -17656,7 +17656,7 @@ struct AudioSettingsSheet: View {
 
     private var audioSettingsSnapshot: String {
         var rows = [
-            "Transmit Mode: \(model.audioTransmitMode.rawValue)",
+            "Transmit Mode: \(model.audioTransmitMode.title)",
             "Input Gain: \(model.inputGainPercentText)",
             "Playback Volume: \(model.playbackVolumePercentText)",
             "Input Route: \(model.audioInputRoute)",
@@ -17690,7 +17690,7 @@ struct AudioSettingsSheet: View {
     }
 
     private func profileSummary(_ profile: TS3AudioProfile) -> String {
-        let mode = TS3AudioTransmitMode(rawValue: profile.transmitMode)?.rawValue ?? TS3AudioTransmitMode.pushToTalk.rawValue
+        let mode = TS3AudioTransmitMode.title(for: profile.transmitMode)
         let input = Self.percentText(profile.inputGain)
         let playback = Self.percentText(profile.playbackVolume)
         let threshold = String(format: "%.3f", profile.voiceActivationThreshold)

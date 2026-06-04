@@ -17,6 +17,23 @@ enum UIConnectionState {
     case connected
 }
 
+extension TS3AudioTransmitMode {
+    var title: String {
+        switch self {
+        case .pushToTalk:
+            return "Push To Talk"
+        case .continuous:
+            return "Continuous"
+        case .voiceActivation:
+            return "Voice Activation"
+        }
+    }
+
+    static func title(for rawValue: String) -> String {
+        TS3AudioTransmitMode(rawValue: rawValue)?.title ?? rawValue
+    }
+}
+
 enum TS3ChannelType: String, CaseIterable, Identifiable {
     case temporary
     case semiPermanent
