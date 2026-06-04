@@ -8911,6 +8911,7 @@ struct GroupClientListSheet: View {
     @State private var memberFilter: MemberFilter = .all
     @State private var sortMode: MemberSortMode = .nickname
     @State private var sortAscending = true
+    @State private var newMemberDatabaseId = ""
     @State private var presetName = ""
     @State private var isExportingMembers = false
     @State private var isExportingPresets = false
@@ -9036,6 +9037,12 @@ struct GroupClientListSheet: View {
                     }
                     .disabled(filteredClients.isEmpty)
                     if target == .server {
+                        TextField("Client Database ID", text: $newMemberDatabaseId)
+                            .ts3NumericKeyboard()
+                        Button("Add Member by Database ID") {
+                            addMemberByDatabaseId()
+                        }
+                        .disabled(parsedNewMemberDatabaseId == nil)
                         Button("Remove Visible Members") {
                             isConfirmingRemoveVisible = true
                         }
@@ -9132,9 +9139,21 @@ struct GroupClientListSheet: View {
         isSearching || memberFilter != .all || sortMode != .nickname || !sortAscending
     }
 
+    private var parsedNewMemberDatabaseId: Int? {
+        let trimmed = newMemberDatabaseId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let databaseId = Int(trimmed), databaseId > 0 else { return nil }
+        return databaseId
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func addMemberByDatabaseId() {
+        guard let databaseId = parsedNewMemberDatabaseId else { return }
+        model.addServerGroup(group, toClientDatabaseId: databaseId)
+        newMemberDatabaseId = ""
     }
 
     private func sortedClients(_ clients: [TS3GroupClientSummary]) -> [TS3GroupClientSummary] {

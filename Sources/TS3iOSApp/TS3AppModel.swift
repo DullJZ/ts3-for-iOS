@@ -7520,6 +7520,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func addServerGroup(_ group: TS3GroupSummary, toClientDatabaseId databaseId: Int) {
+        guard databaseId > 0 else { return }
+        runClientCommand { client in
+            try await client.addServerGroup(groupId: group.id, toClientDatabaseId: databaseId)
+            let clients = try await client.refreshServerGroupClients(groupId: group.id)
+            await MainActor.run {
+                self.groupClients = clients
+                    .map { TS3GroupClientSummary(client: $0) }
+                    .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+                if let onlineClient = self.clients.first(where: { $0.databaseId == databaseId }) {
+                    self.upsertServerGroup(group.id, forClientId: onlineClient.id)
+                }
+            }
+        }
+    }
+
     func removeServerGroup(_ group: TS3GroupSummary, from user: TS3UserSummary) {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
