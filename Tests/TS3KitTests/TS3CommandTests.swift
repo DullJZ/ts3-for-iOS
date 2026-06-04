@@ -32,4 +32,12 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(multi.commands[1].get("ctid")?.value, "2")
         XCTAssertEqual(multi.commands[1].get("reasonmsg")?.value, "hello world")
     }
+
+    func testBanDeleteCommandUsesServerQueryName() {
+        let command = TS3SingleCommand(name: "bandel", parameters: [
+            TS3CommandSingleParameter(name: "banid", value: "42")
+        ])
+
+        XCTAssertEqual(command.build(), "bandel banid=42")
+    }
 }

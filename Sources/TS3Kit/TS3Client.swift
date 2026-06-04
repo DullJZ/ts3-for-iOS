@@ -739,7 +739,7 @@ public final class TS3Client {
     }
 
     public func deleteBan(banId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "deleteban", parameters: [
+        _ = try await execute(TS3SingleCommand(name: "bandel", parameters: [
             TS3CommandSingleParameter(name: "banid", value: String(banId))
         ]))
     }
