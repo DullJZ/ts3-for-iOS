@@ -4965,6 +4965,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func moveFileEntry(_ entry: TS3FileEntrySummary, toDirectory directoryPath: String) {
+        let directoryPath = normalizedFileDirectoryPath(directoryPath)
+        let newPath = joinedFilePath(parentPath: directoryPath, name: entry.name)
+        guard newPath != entry.path else { return }
+        if entry.isDirectory && newPath.hasPrefix(entry.path) {
+            lastError = "Cannot move a directory into itself."
+            return
+        }
+        let password = trimmedFileBrowserPassword
+        runClientCommand { client in
+            try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath, password: password)
+        } onSuccess: {
+            self.refreshFileList()
+        }
+    }
+
     func downloadFileEntry(_ entry: TS3FileEntrySummary) {
         guard !entry.isDirectory else { return }
         guard let client else {

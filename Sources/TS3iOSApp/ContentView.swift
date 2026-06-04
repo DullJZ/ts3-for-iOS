@@ -11978,9 +11978,11 @@ struct FileEntryRow: View {
     let onSelect: () -> Void
     let onSelectionToggle: () -> Void
     @State private var isRenaming = false
+    @State private var isMoving = false
     @State private var isConfirmingDelete = false
     @State private var isShowingInfo = false
     @State private var newName = ""
+    @State private var destinationDirectory = "/"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -12021,6 +12023,11 @@ struct FileEntryRow: View {
                     isRenaming = true
                 }
                 .buttonStyle(.borderless)
+                Button("Move") {
+                    destinationDirectory = model.fileBrowserPath
+                    isMoving = true
+                }
+                .buttonStyle(.borderless)
                 Button("Info") {
                     isShowingInfo = true
                 }
@@ -12047,6 +12054,10 @@ struct FileEntryRow: View {
         }
         .sheet(isPresented: $isRenaming) {
             RenameFileEntrySheet(entry: entry, newName: $newName)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isMoving) {
+            MoveFileEntrySheet(entry: entry, destinationDirectory: $destinationDirectory)
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingInfo) {
@@ -12083,6 +12094,10 @@ struct FileEntryRow: View {
             Button("Rename") {
                 newName = entry.name
                 isRenaming = true
+            }
+            Button("Move") {
+                destinationDirectory = model.fileBrowserPath
+                isMoving = true
             }
             Button("Delete") {
                 isConfirmingDelete = true
@@ -12254,6 +12269,43 @@ struct RenameFileEntrySheet: View {
                 }
             }
             .navigationTitle("Rename")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct MoveFileEntrySheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let entry: TS3FileEntrySummary
+    @Binding var destinationDirectory: String
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(entry.name)) {
+                    TextField("Destination Directory", text: $destinationDirectory)
+                        .ts3PlainTextField()
+                    Text("Enter a remote directory path, for example / or /subfolder/.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Section {
+                    Button("Move") {
+                        model.moveFileEntry(entry, toDirectory: destinationDirectory)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle("Move")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
