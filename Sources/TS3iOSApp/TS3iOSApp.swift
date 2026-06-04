@@ -77,7 +77,6 @@ struct TS3iOSApp: App {
                     model.showChat()
                 }
                 .keyboardShortcut("T", modifiers: [.command, .shift])
-                .disabled(model.state != .connected)
 
                 Button("Open Offline Messages") {
                     model.showOfflineMessages()

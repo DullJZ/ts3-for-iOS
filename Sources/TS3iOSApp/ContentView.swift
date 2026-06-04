@@ -5281,6 +5281,7 @@ struct ChatSheet: View {
                         model.refreshOfflineMessages()
                         isShowingOfflineMessages = true
                     }
+                    .disabled(model.state != .connected)
                     Button("Clear") {
                         isConfirmingClearHistory = true
                     }
@@ -5425,6 +5426,7 @@ struct ChatSheet: View {
 
     private var canSendMessage: Bool {
         !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && model.state == .connected
             && (target != .client || selectedPrivateClient != nil)
     }
 
