@@ -4969,7 +4969,7 @@ final class TS3AppModel: ObservableObject {
         let directoryPath = normalizedFileDirectoryPath(directoryPath)
         let newPath = joinedFilePath(parentPath: directoryPath, name: entry.name)
         guard newPath != entry.path else { return }
-        if entry.isDirectory && newPath.hasPrefix(entry.path) {
+        if isMovingDirectoryIntoItself(entry, destinationDirectory: directoryPath) {
             lastError = "Cannot move a directory into itself."
             return
         }
@@ -4978,6 +4978,33 @@ final class TS3AppModel: ObservableObject {
             try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath, password: password)
         } onSuccess: {
             self.refreshFileList()
+        }
+    }
+
+    func moveFileEntries(_ entries: [TS3FileEntrySummary], toDirectory directoryPath: String) {
+        let directoryPath = normalizedFileDirectoryPath(directoryPath)
+        let moves = entries.compactMap { entry -> (entry: TS3FileEntrySummary, newPath: String)? in
+            let newPath = joinedFilePath(parentPath: directoryPath, name: entry.name)
+            return newPath == entry.path ? nil : (entry, newPath)
+        }
+        guard !moves.isEmpty else { return }
+        if moves.contains(where: { isMovingDirectoryIntoItself($0.entry, destinationDirectory: directoryPath) }) {
+            lastError = "Cannot move a directory into itself."
+            return
+        }
+        let password = trimmedFileBrowserPassword
+        runClientCommand { client in
+            for move in moves {
+                try await client.renameFile(
+                    channelId: move.entry.channelId,
+                    oldPath: move.entry.path,
+                    newPath: move.newPath,
+                    password: password
+                )
+            }
+            await MainActor.run {
+                self.refreshFileList()
+            }
         }
     }
 
@@ -5392,6 +5419,13 @@ final class TS3AppModel: ObservableObject {
             return name
         }
         return parentPath + name
+    }
+
+    private func isMovingDirectoryIntoItself(_ entry: TS3FileEntrySummary, destinationDirectory: String) -> Bool {
+        guard entry.isDirectory else { return false }
+        let sourceDirectory = normalizedFileDirectoryPath(entry.path)
+        let destinationDirectory = normalizedFileDirectoryPath(destinationDirectory)
+        return destinationDirectory == sourceDirectory || destinationDirectory.hasPrefix(sourceDirectory)
     }
 
     private var trimmedFileBrowserPassword: String? {

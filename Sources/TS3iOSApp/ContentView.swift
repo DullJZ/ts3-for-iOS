@@ -10951,6 +10951,8 @@ struct FileBrowserSheet: View {
     @State private var isShowingUploadConflictActions = false
     @State private var transferConfirmation: TransferConfirmation?
     @State private var isConfirmingSelectedDelete = false
+    @State private var isMovingSelectedEntries = false
+    @State private var selectedMoveDestinationDirectory = "/"
 
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
@@ -11150,6 +11152,12 @@ struct FileBrowserSheet: View {
                             }
                             .buttonStyle(.borderless)
                             .disabled(selectedEntries.allSatisfy(\.isDirectory))
+                            Button("Move Selected") {
+                                selectedMoveDestinationDirectory = model.fileBrowserPath
+                                isMovingSelectedEntries = true
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(selectedEntries.isEmpty)
                             Button("Delete Selected") {
                                 isConfirmingSelectedDelete = true
                             }
@@ -11427,6 +11435,16 @@ struct FileBrowserSheet: View {
                         selectedEntryIDs.removeAll()
                     },
                     secondaryButton: .cancel()
+                )
+            }
+            .sheet(isPresented: $isMovingSelectedEntries) {
+                MoveFileEntriesSheet(
+                    entries: selectedEntries,
+                    destinationDirectory: $selectedMoveDestinationDirectory,
+                    onMove: {
+                        model.moveFileEntries(selectedEntries, toDirectory: selectedMoveDestinationDirectory)
+                        selectedEntryIDs.removeAll()
+                    }
                 )
             }
             .alert(item: $transferConfirmation) { confirmation in
@@ -12306,6 +12324,54 @@ struct MoveFileEntrySheet: View {
                 }
             }
             .navigationTitle("Move")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct MoveFileEntriesSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let entries: [TS3FileEntrySummary]
+    @Binding var destinationDirectory: String
+    let onMove: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("\(entries.count) Selected Entries")) {
+                    TextField("Destination Directory", text: $destinationDirectory)
+                        .ts3PlainTextField()
+                    Text("Enter a remote directory path, for example / or /subfolder/.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Section(header: Text("Entries")) {
+                    ForEach(entries) { entry in
+                        HStack {
+                            Image(systemName: entry.isDirectory ? "folder" : "doc")
+                                .foregroundColor(entry.isDirectory ? .accentColor : .secondary)
+                            Text(entry.name)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+                Section {
+                    Button("Move Selected") {
+                        onMove()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(entries.isEmpty || destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle("Move Selected")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
