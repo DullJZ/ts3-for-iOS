@@ -675,15 +675,19 @@ extension TS3GroupSummary {
     }
 
     var typeTitle: String {
-        switch type {
+        type?.title ?? "Unknown"
+    }
+}
+
+extension TS3PermissionGroupDatabaseType {
+    var title: String {
+        switch self {
         case .template:
             return "Template"
         case .regular:
             return "Regular"
         case .query:
             return "Query"
-        case nil:
-            return "Unknown"
         }
     }
 }

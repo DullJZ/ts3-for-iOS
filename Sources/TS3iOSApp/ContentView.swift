@@ -9364,19 +9364,6 @@ struct GroupNameSheet: View {
     }
 }
 
-extension TS3PermissionGroupDatabaseType {
-    var title: String {
-        switch self {
-        case .template:
-            return "Template"
-        case .regular:
-            return "Regular"
-        case .query:
-            return "Query"
-        }
-    }
-}
-
 struct ClientDatabaseSheet: View {
     private struct DatabaseBackupImportConfirmation: Identifiable {
         let url: URL
