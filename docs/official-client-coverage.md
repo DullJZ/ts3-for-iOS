@@ -34,7 +34,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Channel/server/private text chat | Done | `ChatSheet`, send methods, local history | Add richer transcript formatting and per-conversation threading. |
-| Chat history management | Done | Local history, filters, presets, transcript/history import/export, offline access | Add retention controls beyond fixed history limit. |
+| Chat history management | Done | Local history, filters, presets, transcript/history import/export, offline access, configurable retention settings | Add richer per-conversation threading if needed. |
 | Offline messages | Partial | Inbox, compose, read/delete, filters and presets | Add global offline history access without live refresh and better draft handling. |
 | Pokes | Partial | Receive poke notifications/events, online client-row poke, poke-back, and online contact poke actions exist | Add broader real-server validation and any remaining context-menu entry points found in official-client audit. |
 | Whisper | Partial | Whisper sheet, presets, targets, tests for protocol serialization | Verify full voice whisper routing against real servers and add hotkey-style activation UI. |

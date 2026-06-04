@@ -1410,6 +1410,28 @@ private struct TS3ConnectionRecoverySettings: Codable {
     }
 }
 
+private struct TS3ChatHistorySettings: Codable {
+    var messageLimit: Int
+
+    static let minimumMessageLimit = 50
+    static let maximumMessageLimit = 5000
+    static let defaults = TS3ChatHistorySettings(messageLimit: 500)
+
+    init(messageLimit: Int = 500) {
+        self.messageLimit = messageLimit
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case messageLimit
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        messageLimit = try container.decodeIfPresent(Int.self, forKey: .messageLimit)
+            ?? Self.defaults.messageLimit
+    }
+}
+
 private struct TS3ClientMigrationPackage: Codable {
     var schemaVersion: Int
     var exportedAt: Date
@@ -1420,6 +1442,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var contactFilterPresets: [TS3ContactFilterPreset]
     var notificationSettings: TS3NotificationSettings
     var connectionRecoverySettings: TS3ConnectionRecoverySettings
+    var chatHistorySettings: TS3ChatHistorySettings
     var serverLogQueryPresets: [TS3ServerLogQueryPreset]
     var keyboardShortcuts: [TS3KeyboardShortcutBinding]
     var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
@@ -1454,6 +1477,7 @@ private struct TS3ClientMigrationPackage: Codable {
         contactFilterPresets: [TS3ContactFilterPreset],
         notificationSettings: TS3NotificationSettings,
         connectionRecoverySettings: TS3ConnectionRecoverySettings,
+        chatHistorySettings: TS3ChatHistorySettings,
         serverLogQueryPresets: [TS3ServerLogQueryPreset],
         keyboardShortcuts: [TS3KeyboardShortcutBinding],
         channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
@@ -1487,6 +1511,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.contactFilterPresets = contactFilterPresets
         self.notificationSettings = notificationSettings
         self.connectionRecoverySettings = connectionRecoverySettings
+        self.chatHistorySettings = chatHistorySettings
         self.serverLogQueryPresets = serverLogQueryPresets
         self.keyboardShortcuts = keyboardShortcuts
         self.channelSubscriptionPresets = channelSubscriptionPresets
@@ -1522,6 +1547,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case contactFilterPresets
         case notificationSettings
         case connectionRecoverySettings
+        case chatHistorySettings
         case serverLogQueryPresets
         case keyboardShortcuts
         case channelSubscriptionPresets
@@ -1566,6 +1592,10 @@ private struct TS3ClientMigrationPackage: Codable {
         connectionRecoverySettings = try container.decodeIfPresent(
             TS3ConnectionRecoverySettings.self,
             forKey: .connectionRecoverySettings
+        ) ?? .defaults
+        chatHistorySettings = try container.decodeIfPresent(
+            TS3ChatHistorySettings.self,
+            forKey: .chatHistorySettings
         ) ?? .defaults
         serverLogQueryPresets = try container.decodeIfPresent(
             [TS3ServerLogQueryPreset].self,
@@ -2450,6 +2480,7 @@ final class TS3AppModel: ObservableObject {
     @Published var autoReconnectMaxAttempts = TS3ConnectionRecoverySettings.defaults.maxAttempts
     @Published private(set) var autoReconnectIsScheduled = false
     @Published private(set) var autoReconnectStatus: String?
+    @Published var chatHistoryMessageLimit = TS3ChatHistorySettings.defaults.messageLimit
 
     @Published var serverHost = ""
     @Published var serverPort = "9987"
@@ -2472,7 +2503,6 @@ final class TS3AppModel: ObservableObject {
     private var fileTransferTasks: [UUID: Task<Void, Never>] = [:]
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempt = 0
-    private let chatHistoryLimit = 500
     private var isViewingChat = false
     private var isAppActive = true
 
@@ -2482,6 +2512,7 @@ final class TS3AppModel: ObservableObject {
         loadKeyboardShortcuts()
         loadNotificationSettings()
         loadConnectionRecoverySettings()
+        loadChatHistorySettings()
         loadUserPlaybackPreferences()
         loadBookmarks()
         loadRecentConnections()
@@ -7921,6 +7952,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-chat-history.json")
     }
 
+    private var chatHistorySettingsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-chat-history-settings.json")
+    }
+
     private var fileBrowserBookmarksURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-file-browser-bookmarks.json")
@@ -9295,6 +9331,7 @@ final class TS3AppModel: ObservableObject {
             contactFilterPresets: contactFilterPresets,
             notificationSettings: notificationSettingsSnapshot,
             connectionRecoverySettings: currentConnectionRecoverySettings,
+            chatHistorySettings: currentChatHistorySettings,
             serverLogQueryPresets: serverLogQueryPresets,
             keyboardShortcuts: keyboardShortcuts,
             channelSubscriptionPresets: channelSubscriptionPresets,
@@ -9331,6 +9368,7 @@ final class TS3AppModel: ObservableObject {
         try importContactFilterPresets(from: encodedPackageSection(package.contactFilterPresets))
         try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
         try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
+        try importChatHistorySettings(from: encodedPackageSection(package.chatHistorySettings))
         try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
         try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
         try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
@@ -9684,18 +9722,88 @@ final class TS3AppModel: ObservableObject {
             chatMessages = []
             return
         }
-        chatMessages = Array(decoded.suffix(chatHistoryLimit))
+        chatMessages = Array(decoded.suffix(chatHistoryMessageLimit))
     }
 
     private func saveChatHistory() {
         do {
             let directory = chatHistoryURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(Array(chatMessages.suffix(chatHistoryLimit)))
+            let data = try JSONEncoder().encode(Array(chatMessages.suffix(chatHistoryMessageLimit)))
             try data.write(to: chatHistoryURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func loadChatHistorySettings() {
+        guard let data = try? Data(contentsOf: chatHistorySettingsURL),
+              let decoded = try? JSONDecoder().decode(TS3ChatHistorySettings.self, from: data) else {
+            applyChatHistorySettings(.defaults)
+            return
+        }
+        applyChatHistorySettings(decoded)
+    }
+
+    private func saveChatHistorySettings() {
+        do {
+            let directory = chatHistorySettingsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(currentChatHistorySettings)
+            try data.write(to: chatHistorySettingsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func updateChatHistoryMessageLimit(_ limit: Int) {
+        applyChatHistorySettings(TS3ChatHistorySettings(messageLimit: limit))
+        trimChatHistoryToLimit()
+        saveChatHistorySettings()
+        saveChatHistory()
+    }
+
+    func resetChatHistorySettings() {
+        applyChatHistorySettings(.defaults)
+        trimChatHistoryToLimit()
+        saveChatHistorySettings()
+        saveChatHistory()
+    }
+
+    func chatHistorySettingsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(currentChatHistorySettings)
+    }
+
+    func importChatHistorySettings(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3ChatHistorySettings.self, from: data)
+        applyChatHistorySettings(decoded)
+        trimChatHistoryToLimit()
+        saveChatHistorySettings()
+        saveChatHistory()
+    }
+
+    private var currentChatHistorySettings: TS3ChatHistorySettings {
+        sanitizedChatHistorySettings(TS3ChatHistorySettings(messageLimit: chatHistoryMessageLimit))
+    }
+
+    private func applyChatHistorySettings(_ settings: TS3ChatHistorySettings) {
+        chatHistoryMessageLimit = sanitizedChatHistorySettings(settings).messageLimit
+    }
+
+    private func sanitizedChatHistorySettings(_ settings: TS3ChatHistorySettings) -> TS3ChatHistorySettings {
+        TS3ChatHistorySettings(messageLimit: min(
+            TS3ChatHistorySettings.maximumMessageLimit,
+            max(TS3ChatHistorySettings.minimumMessageLimit, settings.messageLimit)
+        ))
+    }
+
+    private func trimChatHistoryToLimit() {
+        if chatMessages.count > chatHistoryMessageLimit {
+            chatMessages.removeFirst(chatMessages.count - chatHistoryMessageLimit)
+        }
+        unreadChatMessageCount = min(unreadChatMessageCount, chatMessages.count)
     }
 
     func clearChatHistory() {
@@ -9719,7 +9827,7 @@ final class TS3AppModel: ObservableObject {
     func chatHistoryBackupData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(Array(chatMessages.suffix(chatHistoryLimit)))
+        return try encoder.encode(Array(chatMessages.suffix(chatHistoryMessageLimit)))
     }
 
     @discardableResult
@@ -9730,7 +9838,7 @@ final class TS3AppModel: ObservableObject {
             merged.removeAll { $0.id == message.id }
             merged.append(message)
         }
-        chatMessages = Array(merged.sorted { $0.timestamp < $1.timestamp }.suffix(chatHistoryLimit))
+        chatMessages = Array(merged.sorted { $0.timestamp < $1.timestamp }.suffix(chatHistoryMessageLimit))
         unreadChatMessageCount = isViewingChat ? 0 : chatMessages.count
         saveChatHistory()
         lastError = nil
@@ -10676,9 +10784,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 message: message.message,
                 isOwnMessage: message.isOwnMessage
             ))
-            if self.chatMessages.count > self.chatHistoryLimit {
-                self.chatMessages.removeFirst(self.chatMessages.count - self.chatHistoryLimit)
-            }
+            self.trimChatHistoryToLimit()
             if !message.isOwnMessage && !self.isViewingChat {
                 self.unreadChatMessageCount += 1
             }

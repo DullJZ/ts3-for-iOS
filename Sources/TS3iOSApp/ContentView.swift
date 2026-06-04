@@ -5168,6 +5168,7 @@ struct ChatSheet: View {
     @State private var isImportingPresets = false
     @State private var isExportingPresets = false
     @State private var isConfirmingDeletePresets = false
+    @State private var isShowingHistorySettings = false
     @State private var transcriptDocument = TS3TextFileDocument()
     @State private var chatHistoryDocument = TS3BookmarkFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -5338,6 +5339,9 @@ struct ChatSheet: View {
                         Button("Import History Backup") {
                             isImportingChatHistory = true
                         }
+                        Button("History Settings") {
+                            isShowingHistorySettings = true
+                        }
                         Divider()
                         Button("Clear Visible History") {
                             isConfirmingClearVisibleHistory = true
@@ -5355,6 +5359,10 @@ struct ChatSheet: View {
             }
             .sheet(isPresented: $isShowingOfflineMessages) {
                 OfflineMessagesSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingHistorySettings) {
+                ChatHistorySettingsSheet()
                     .environmentObject(model)
             }
             .fileExporter(
@@ -5645,6 +5653,161 @@ struct ChatMessageRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+struct ChatHistorySettingsSheet: View {
+    private struct ChatHistorySettingsImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var messageLimitText = ""
+    @State private var isExportingSettings = false
+    @State private var isImportingSettings = false
+    @State private var isConfirmingReset = false
+    @State private var pendingImport: ChatHistorySettingsImportConfirmation?
+    @State private var settingsDocument = TS3TextFileDocument()
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Retention")) {
+                    TextField("Message Limit", text: $messageLimitText)
+                        .ts3PlainTextField()
+                    Text("Keep between 50 and 5000 local chat messages. Lowering the limit trims saved history immediately.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Apply Limit") {
+                        applyLimit()
+                    }
+                    .disabled(parsedLimit == nil)
+                    Menu("Presets") {
+                        Button("Keep 100 Messages") {
+                            setLimit(100)
+                        }
+                        Button("Keep 500 Messages") {
+                            setLimit(500)
+                        }
+                        Button("Keep 1000 Messages") {
+                            setLimit(1000)
+                        }
+                        Button("Keep 5000 Messages") {
+                            setLimit(5000)
+                        }
+                    }
+                }
+
+                Section(header: Text("Backup")) {
+                    Button("Export History Settings") {
+                        exportSettings()
+                    }
+                    Button("Import History Settings") {
+                        isImportingSettings = true
+                    }
+                    Button("Reset History Settings") {
+                        isConfirmingReset = true
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+            .navigationTitle("History Settings")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                messageLimitText = "\(model.chatHistoryMessageLimit)"
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingSettings,
+                document: settingsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-chat-history-settings"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingSettings,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    pendingImport = ChatHistorySettingsImportConfirmation(url: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .alert(isPresented: $isConfirmingReset) {
+                Alert(
+                    title: Text("Reset History Settings?"),
+                    message: Text("This restores the local chat history limit to 500 messages."),
+                    primaryButton: .destructive(Text("Reset")) {
+                        model.resetChatHistorySettings()
+                        messageLimitText = "\(model.chatHistoryMessageLimit)"
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingImport) { confirmation in
+                Alert(
+                    title: Text("Import History Settings?"),
+                    message: Text("This replaces the local chat history retention settings."),
+                    primaryButton: .destructive(Text("Import")) {
+                        importSettings(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        }
+    }
+
+    private var parsedLimit: Int? {
+        let trimmed = messageLimitText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = Int(trimmed), value > 0 else { return nil }
+        return value
+    }
+
+    private func setLimit(_ limit: Int) {
+        model.updateChatHistoryMessageLimit(limit)
+        messageLimitText = "\(model.chatHistoryMessageLimit)"
+    }
+
+    private func applyLimit() {
+        guard let parsedLimit else { return }
+        setLimit(parsedLimit)
+    }
+
+    private func exportSettings() {
+        do {
+            settingsDocument = TS3TextFileDocument(data: try model.chatHistorySettingsExportData())
+            isExportingSettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importSettings(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importChatHistorySettings(from: Data(contentsOf: url))
+            messageLimitText = "\(model.chatHistoryMessageLimit)"
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 }
 
