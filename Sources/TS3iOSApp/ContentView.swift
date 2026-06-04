@@ -11426,6 +11426,21 @@ struct FileBrowserSheet: View {
                     }
                 }
 
+                Section(header: Text("Server File Status")) {
+                    fileStatusRow("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init))
+                    fileStatusRow("File Base", model.serverInfo.fileBase)
+                    fileStatusRow("Download Quota", model.serverInfo.downloadQuota.map(Self.sizeText))
+                    fileStatusRow("Upload Quota", model.serverInfo.uploadQuota.map(Self.sizeText))
+                    fileStatusRow("Downloaded This Month", model.serverInfo.monthlyBytesDownloaded.map(Self.sizeText))
+                    fileStatusRow("Uploaded This Month", model.serverInfo.monthlyBytesUploaded.map(Self.sizeText))
+                    fileStatusRow("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.sizeText))
+                    fileStatusRow("Total Uploaded", model.serverInfo.totalBytesUploaded.map(Self.sizeText))
+                    Button("Copy File Status") {
+                        TS3PlatformSupport.copyToPasteboard(fileStatusSnapshot)
+                    }
+                    .disabled(fileStatusSnapshot.isEmpty)
+                }
+
                 Section(header: Text("Path")) {
                     HStack {
                         TextField("/", text: $pathText)
@@ -12194,6 +12209,39 @@ struct FileBrowserSheet: View {
         return formatter.string(fromByteCount: bytes)
     }
 
+    @ViewBuilder
+    private func fileStatusRow(_ label: String, _ value: String?) -> some View {
+        if let value, !value.isEmpty {
+            HStack {
+                Text(label)
+                Spacer()
+                Text(value)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+    }
+
+    private var fileStatusSnapshot: String {
+        let rows: [(String, String?)] = [
+            ("Server", model.serverInfo.name.isEmpty ? nil : model.serverInfo.name),
+            ("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)),
+            ("File Base", model.serverInfo.fileBase),
+            ("Download Quota", model.serverInfo.downloadQuota.map(Self.sizeText)),
+            ("Upload Quota", model.serverInfo.uploadQuota.map(Self.sizeText)),
+            ("Downloaded This Month", model.serverInfo.monthlyBytesDownloaded.map(Self.sizeText)),
+            ("Uploaded This Month", model.serverInfo.monthlyBytesUploaded.map(Self.sizeText)),
+            ("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.sizeText)),
+            ("Total Uploaded", model.serverInfo.totalBytesUploaded.map(Self.sizeText))
+        ]
+        var lines: [String] = []
+        for row in rows {
+            guard let value = row.1, !value.isEmpty else { continue }
+            lines.append("\(row.0): \(value)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private var directorySnapshot: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -12208,6 +12256,10 @@ struct FileBrowserSheet: View {
             "Path: \(model.fileBrowserPath)",
             "Sort: \(sortMode.title) \(sortAscending ? "Ascending" : "Descending")"
         ]
+        if !fileStatusSnapshot.isEmpty {
+            lines.append("")
+            lines.append(fileStatusSnapshot)
+        }
         if isSearching {
             lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
         }

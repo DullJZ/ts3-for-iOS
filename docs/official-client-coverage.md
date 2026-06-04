@@ -66,7 +66,7 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Channel file browser | Done | Browse by channel/path/password, bookmarks, search/sort/filter presets | Add quota/status summary near browser header. |
+| Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets | Add conflict-resolution previews for batch workflows if needed. |
 | Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export | Add folder upload/download if server protocol and platform sandbox allow it. |
 | File operations | Done | Rename, move, delete, create directory, batch actions | Add conflict-resolution previews for batch move/rename. |
 | Local downloaded files | Done | Last download export/open, queue row open local file | Add downloads folder management/history beyond last file. |
