@@ -13471,7 +13471,7 @@ struct PrivilegeKeysSheet: View {
                     || containsSearch(key.key)
                     || containsSearch(key.description)
                     || containsSearch(key.customSet)
-                    || key.type.map { String($0.rawValue).contains(normalizedSearchText) } == true
+                    || key.type.map { containsSearch($0.title) || String($0.rawValue).contains(normalizedSearchText) } == true
                     || String(key.groupId).contains(normalizedSearchText)
                     || key.channelId.map { String($0).contains(normalizedSearchText) } == true
             )
@@ -13545,14 +13545,7 @@ struct PrivilegeKeysSheet: View {
     }
 
     private func typeText(_ key: TS3PrivilegeKeySummary) -> String {
-        switch key.type {
-        case .serverGroup:
-            return "Server Group"
-        case .channelGroup:
-            return "Channel Group"
-        case nil:
-            return "Unknown"
-        }
+        key.type?.title ?? "Unknown"
     }
 
     private func normalizeSelections() {
@@ -13716,13 +13709,13 @@ struct PrivilegeKeyRow: View {
     private var targetText: String {
         switch key.type {
         case .serverGroup:
-            return "Server Group: \(TS3GroupSummary.name(for: key.groupId, in: model.serverGroups))"
+            return "\(TS3PrivilegeKeyType.serverGroup.title): \(TS3GroupSummary.name(for: key.groupId, in: model.serverGroups))"
         case .channelGroup:
             let group = TS3GroupSummary.name(for: key.groupId, in: model.channelGroups)
             let channel = key.channelId.flatMap { id in model.channels.first { $0.id == id }?.name } ?? "Any Channel"
-            return "Channel Group: \(group) in \(channel)"
+            return "\(TS3PrivilegeKeyType.channelGroup.title): \(group) in \(channel)"
         case nil:
-            return "Group \(key.groupId)"
+            return "Unknown Type: Group \(key.groupId)"
         }
     }
 
@@ -13738,7 +13731,7 @@ private extension TS3PrivilegeKeySummary {
     var clipboardSummary: String {
         var parts = ["key=\(key)"]
         if let type {
-            parts.append("type=\(type.rawValue)")
+            parts.append("type=\(type.title) (\(type.rawValue))")
         }
         parts.append("groupId=\(groupId)")
         if let channelId {

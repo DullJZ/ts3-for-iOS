@@ -737,6 +737,17 @@ enum TS3PrivilegeKeyTargetType: String, CaseIterable, Identifiable {
     }
 }
 
+extension TS3PrivilegeKeyType {
+    var title: String {
+        switch self {
+        case .serverGroup:
+            return "Server Group"
+        case .channelGroup:
+            return "Channel Group"
+        }
+    }
+}
+
 struct TS3PrivilegeKeySummary: Identifiable {
     let id: String
     let key: String
