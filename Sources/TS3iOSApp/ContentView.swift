@@ -8912,6 +8912,7 @@ struct GroupClientListSheet: View {
     @State private var sortMode: MemberSortMode = .nickname
     @State private var sortAscending = true
     @State private var newMemberDatabaseId = ""
+    @State private var newMemberChannelId: Int?
     @State private var presetName = ""
     @State private var isExportingMembers = false
     @State private var isExportingPresets = false
@@ -9048,6 +9049,19 @@ struct GroupClientListSheet: View {
                         }
                         .disabled(filteredClients.isEmpty)
                         .foregroundColor(.red)
+                    } else {
+                        Picker("Channel", selection: newMemberChannelBinding) {
+                            Text("Select Channel").tag(0)
+                            ForEach(model.channels) { channel in
+                                Text(channel.name).tag(channel.id)
+                            }
+                        }
+                        TextField("Client Database ID", text: $newMemberDatabaseId)
+                            .ts3NumericKeyboard()
+                        Button("Set Channel Group by Database ID") {
+                            setChannelGroupByDatabaseId()
+                        }
+                        .disabled(parsedNewMemberDatabaseId == nil || selectedNewMemberChannelId == nil)
                     }
                 }
 
@@ -9145,6 +9159,20 @@ struct GroupClientListSheet: View {
         return databaseId
     }
 
+    private var selectedNewMemberChannelId: Int? {
+        if let channelId = newMemberChannelId, model.channels.contains(where: { $0.id == channelId }) {
+            return channelId
+        }
+        return nil
+    }
+
+    private var newMemberChannelBinding: Binding<Int> {
+        Binding(
+            get: { selectedNewMemberChannelId ?? 0 },
+            set: { newMemberChannelId = $0 == 0 ? nil : $0 }
+        )
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
@@ -9153,6 +9181,13 @@ struct GroupClientListSheet: View {
     private func addMemberByDatabaseId() {
         guard let databaseId = parsedNewMemberDatabaseId else { return }
         model.addServerGroup(group, toClientDatabaseId: databaseId)
+        newMemberDatabaseId = ""
+    }
+
+    private func setChannelGroupByDatabaseId() {
+        guard let databaseId = parsedNewMemberDatabaseId,
+              let channelId = selectedNewMemberChannelId else { return }
+        model.setChannelGroup(group, channelId: channelId, clientDatabaseId: databaseId)
         newMemberDatabaseId = ""
     }
 

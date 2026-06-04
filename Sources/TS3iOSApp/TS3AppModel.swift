@@ -7604,6 +7604,22 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func setChannelGroup(_ group: TS3GroupSummary, channelId: Int, clientDatabaseId: Int) {
+        guard channelId > 0, clientDatabaseId > 0 else { return }
+        runClientCommand { client in
+            try await client.setChannelGroup(groupId: group.id, channelId: channelId, clientDatabaseId: clientDatabaseId)
+            let clients = try await client.refreshChannelGroupClients(groupId: group.id)
+            await MainActor.run {
+                self.groupClients = clients
+                    .map { TS3GroupClientSummary(client: $0) }
+                    .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+                for onlineClient in self.clients where onlineClient.databaseId == clientDatabaseId && onlineClient.channelId == channelId {
+                    self.setChannelGroup(group.id, forClientId: onlineClient.id)
+                }
+            }
+        }
+    }
+
     func setPrioritySpeaker(_ isPrioritySpeaker: Bool, for user: TS3UserSummary) {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
