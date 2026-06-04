@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct DebugLogView: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var isExportingLogs = false
+    @State private var isConfirmingClearLogs = false
     @State private var logDocument = TS3TextFileDocument()
 
     private let timeFormatter: DateFormatter = {
@@ -48,9 +49,20 @@ struct DebugLogView: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("清空") {
-                        model.clearLogs()
+                        isConfirmingClearLogs = true
                     }
+                    .disabled(model.logs.isEmpty)
                 }
+            }
+            .alert(isPresented: $isConfirmingClearLogs) {
+                Alert(
+                    title: Text("清空调试日志？"),
+                    message: Text("这会删除当前会话中显示的所有调试日志。"),
+                    primaryButton: .destructive(Text("清空")) {
+                        model.clearLogs()
+                    },
+                    secondaryButton: .cancel(Text("取消"))
+                )
             }
             .fileExporter(
                 isPresented: $isExportingLogs,
