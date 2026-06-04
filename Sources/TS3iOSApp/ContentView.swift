@@ -7097,6 +7097,8 @@ struct ServerToolsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var nickname = ""
+    @State private var bookmarkName = ""
+    @State private var bookmarkFolder = ""
     @State private var privilegeKey = ""
     @State private var importedIdentity = ""
     @State private var isShowingBanList = false
@@ -7221,6 +7223,30 @@ struct ServerToolsSheet: View {
                     }
                 }
 
+                Section(header: Text("Current Server Bookmark")) {
+                    TextField("Bookmark Name", text: $bookmarkName)
+                        .ts3PlainTextField()
+                    TextField("Folder (optional)", text: $bookmarkFolder)
+                        .ts3PlainTextField()
+                    Button("Save Current Server") {
+                        model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
+                        bookmarkName = ""
+                        bookmarkFolder = ""
+                    }
+                    Button("Copy Invite Link") {
+                        model.copyCurrentInviteLink()
+                    }
+                    Button("Copy Full Invite Link") {
+                        model.copyCurrentFullInviteLink()
+                    }
+                    Button("Copy Connection Summary") {
+                        model.copyCurrentConnectionSummary()
+                    }
+                    Text("Full invite links include saved passwords and privilege keys.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 Section(header: Text("Profile")) {
                     TextField("Nickname", text: $nickname)
                         .ts3PlainTextField()
@@ -7303,6 +7329,7 @@ struct ServerToolsSheet: View {
             .ts3InlineNavigationTitle()
             .onAppear {
                 nickname = model.nickname
+                bookmarkName = model.serverHost
                 Task { @MainActor in
                     await model.refreshIdentitySummary()
                 }

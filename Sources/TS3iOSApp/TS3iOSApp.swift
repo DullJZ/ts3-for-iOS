@@ -40,6 +40,23 @@ struct TS3iOSApp: App {
 
                 Divider()
 
+                Button("Save Current Server as Bookmark") {
+                    model.saveCurrentBookmark(name: model.serverHost)
+                }
+                .disabled(model.state != .connected)
+
+                Button("Copy Invite Link") {
+                    model.copyCurrentInviteLink()
+                }
+                .disabled(model.state != .connected)
+
+                Button("Copy Full Invite Link") {
+                    model.copyCurrentFullInviteLink()
+                }
+                .disabled(model.state != .connected)
+
+                Divider()
+
                 Button("Open Chat") {
                     model.showChat()
                 }
