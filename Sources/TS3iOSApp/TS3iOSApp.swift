@@ -23,12 +23,12 @@ struct TS3iOSApp: App {
                 Button("Show Keyboard Shortcuts") {
                     model.isShowingKeyboardShortcuts = true
                 }
-                .keyboardShortcut("/", modifiers: .command)
+                .ts3KeyboardShortcut("show-shortcuts", in: model)
 
                 Button("Show Debug Log") {
                     model.isShowingDebug = true
                 }
-                .keyboardShortcut("L", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("show-debug-log", in: model)
 
                 Button("Manage Identity") {
                     model.isShowingIdentity = true
@@ -51,7 +51,7 @@ struct TS3iOSApp: App {
                 Button("Refresh Channels and Clients") {
                     model.refreshServerView()
                 }
-                .keyboardShortcut("R", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("refresh-server", in: model)
                 .disabled(model.state != .connected)
 
                 Divider()
@@ -76,23 +76,23 @@ struct TS3iOSApp: App {
                 Button("Open Chat") {
                     model.showChat()
                 }
-                .keyboardShortcut("T", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("open-chat", in: model)
 
                 Button("Open Offline Messages") {
                     model.showOfflineMessages()
                 }
-                .keyboardShortcut("I", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("open-offline-messages", in: model)
 
                 Button("Open Events") {
                     model.showEvents()
                 }
-                .keyboardShortcut("E", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("open-events", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Open Whisper") {
                     model.showWhisper()
                 }
-                .keyboardShortcut("W", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("open-whisper", in: model)
                 .disabled(model.state != .connected)
 
                 Divider()
@@ -100,7 +100,7 @@ struct TS3iOSApp: App {
                 Button("View Server Logs") {
                     model.showServerLogs()
                 }
-                .keyboardShortcut("G", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("view-server-logs", in: model)
                 .disabled(model.state != .connected)
 
                 Button("View Server Information") {
@@ -116,25 +116,25 @@ struct TS3iOSApp: App {
                 Button("Manage Contacts") {
                     model.showContacts()
                 }
-                .keyboardShortcut("C", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("manage-contacts", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Browse Client Database") {
                     model.showClientDatabase()
                 }
-                .keyboardShortcut("D", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("browse-client-database", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Manage Bans") {
                     model.showBanList()
                 }
-                .keyboardShortcut("B", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("manage-bans", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Browse Channel Files") {
                     model.showFileBrowser()
                 }
-                .keyboardShortcut("F", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("browse-files", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Channel Subscription Presets") {
@@ -145,7 +145,7 @@ struct TS3iOSApp: App {
                 Button("View Permissions") {
                     model.showPermissions()
                 }
-                .keyboardShortcut("P", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("manage-permissions", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Manage Permission Groups") {
@@ -156,7 +156,7 @@ struct TS3iOSApp: App {
                 Button("Manage Privilege Keys") {
                     model.showPrivilegeKeys()
                 }
-                .keyboardShortcut("K", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("manage-privilege-keys", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Manage Complaints") {
@@ -169,19 +169,19 @@ struct TS3iOSApp: App {
                 Button(model.transmitButtonTitle) {
                     model.toggleTalking()
                 }
-                .keyboardShortcut("T", modifiers: .command)
+                .ts3KeyboardShortcut("toggle-talk", in: model)
                 .disabled(model.state != .connected)
 
                 Button(model.isInputMuted ? "Unmute Microphone" : "Mute Microphone") {
                     model.toggleInputMuted()
                 }
-                .keyboardShortcut("M", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("toggle-input-muted", in: model)
                 .disabled(model.state != .connected)
 
                 Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
                     model.toggleOutputMuted()
                 }
-                .keyboardShortcut("S", modifiers: [.command, .shift])
+                .ts3KeyboardShortcut("toggle-output-muted", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Self Status") {

@@ -159,7 +159,7 @@ struct TS3KeyboardShortcutSummary: Identifiable {
     let keys: String
 }
 
-private struct TS3KeyboardShortcutDescriptor {
+struct TS3KeyboardShortcutDescriptor {
     let key: KeyEquivalent
     let modifiers: EventModifiers
 
@@ -210,7 +210,7 @@ private struct TS3KeyboardShortcutDescriptor {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder
     func ts3KeyboardShortcut(_ actionId: String, in model: TS3AppModel) -> some View {
         if let shortcut = model.keyboardShortcuts.first(where: { $0.actionId == actionId }),
@@ -272,6 +272,11 @@ struct KeyboardShortcutsSheet: View {
                             TextField("Keys", text: shortcutKeysBinding(shortcut))
                                 .font(.system(.body, design: .monospaced))
                                 .ts3PlainTextField()
+                            if shortcut.isEnabled && TS3KeyboardShortcutDescriptor(shortcut.keys) == nil {
+                                Text("Invalid shortcut. Use formats like Command-Shift-T, Command-/, or Command-Return.")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
                             if shortcut.keys != shortcut.defaultKeys {
                                 Button("Reset to \(shortcut.defaultKeys)") {
                                     model.updateKeyboardShortcut(

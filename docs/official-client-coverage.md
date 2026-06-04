@@ -85,7 +85,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Local notifications | Done | Global notification settings, presets, import/export, event types | Add per-server/per-contact notification rules. |
-| Keyboard shortcuts | Partial | Displayed Catalyst shortcut list and menu bindings | Add user-editable shortcuts/hotkeys and capture UI. |
+| Keyboard shortcuts | Partial | User-editable shortcut bindings, import/export/reset controls, validation hints, and Catalyst menu bindings | Add key-capture UI for recording shortcuts instead of text entry. |
 | Catalyst menus | Partial | Global TeamSpeak menu for major connected workflows | Split into more native menus if the app grows beyond one command menu. |
 | iOS accessibility and compact layout | Partial | SwiftUI shared sheets and forms | Audit dynamic type, VoiceOver labels, and compact split behavior. |
 
