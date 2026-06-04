@@ -12109,6 +12109,12 @@ struct FileTransferRow: View {
                 .buttonStyle(.borderless)
                 .font(.caption)
                 .foregroundColor(.red)
+            } else if transfer.canOpenLocalFile {
+                Button("Open Local File") {
+                    transfer.openLocalFile()
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
             } else if transfer.canRetry {
                 Button("Retry") {
                     model.retryFileTransfer(transfer)
@@ -12138,6 +12144,11 @@ struct FileTransferRow: View {
             if !transfer.canCancel {
                 Button("Remove Transfer") {
                     confirmation = .remove
+                }
+            }
+            if transfer.canOpenLocalFile {
+                Button("Open Local File") {
+                    transfer.openLocalFile()
                 }
             }
             Button("Copy Remote Path") {
@@ -12178,6 +12189,17 @@ struct FileTransferRow: View {
 }
 
 private extension TS3FileTransferSummary {
+    var canOpenLocalFile: Bool {
+        direction == .download
+            && state == .completed
+            && localPath?.isEmpty == false
+    }
+
+    func openLocalFile() {
+        guard let localPath, !localPath.isEmpty else { return }
+        TS3PlatformSupport.openURL(URL(fileURLWithPath: localPath))
+    }
+
     var clipboardSummary: String {
         var parts = [
             "\(direction.title) \(state.title)",
