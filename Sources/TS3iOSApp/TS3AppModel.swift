@@ -2731,6 +2731,10 @@ final class TS3AppModel: ObservableObject {
         return note
     }
 
+    func onlineUser(for contact: TS3ContactEntry) -> TS3UserSummary? {
+        clients.first { $0.uniqueIdentifier == contact.uniqueIdentifier }
+    }
+
     func setContactStatus(_ status: TS3ContactStatus, for record: TS3DatabaseClientSummary) {
         updateContact(for: record, status: status, note: contactNote(for: record) ?? "")
     }

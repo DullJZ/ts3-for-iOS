@@ -4179,8 +4179,10 @@ struct UserActionSheet: View {
         switch mode {
         case .info:
             return true
-        case .privateMessage, .poke, .complain:
+        case .privateMessage, .complain:
             return textIsEmpty
+        case .poke:
+            return false
         case .offlineMessage:
             return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .editDescription, .contactNote, .kickChannel, .kickServer:
@@ -4794,6 +4796,11 @@ struct ContactRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let contact: TS3ContactEntry
     @State private var isEditing = false
+    @State private var onlineActionMode: UserActionMode?
+
+    private var onlineUser: TS3UserSummary? {
+        model.onlineUser(for: contact)
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -4815,9 +4822,27 @@ struct ContactRow: View {
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
+                if let onlineUser {
+                    Text("Online as \(onlineUser.nickname)")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                        .lineLimit(1)
+                }
             }
             Spacer()
             Menu {
+                if onlineUser != nil {
+                    Button("Send Private Message") {
+                        onlineActionMode = .privateMessage
+                    }
+                    Button("Poke") {
+                        onlineActionMode = .poke
+                    }
+                    Button("Client Info") {
+                        onlineActionMode = .info
+                    }
+                    Divider()
+                }
                 Button("Edit Contact") {
                     isEditing = true
                 }
@@ -4857,7 +4882,21 @@ struct ContactRow: View {
                 }
             )
         }
+        .sheet(item: $onlineActionMode) { mode in
+            if let onlineUser {
+                UserActionSheet(mode: mode, user: onlineUser)
+                    .environmentObject(model)
+            }
+        }
         .contextMenu {
+            if onlineUser != nil {
+                Button("Send Private Message") {
+                    onlineActionMode = .privateMessage
+                }
+                Button("Poke") {
+                    onlineActionMode = .poke
+                }
+            }
             Button("Copy Nickname") {
                 TS3PlatformSupport.copyToPasteboard(contact.nickname)
             }
