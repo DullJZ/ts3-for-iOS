@@ -2331,6 +2331,9 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingEvents = false
     @Published var isShowingWhisper = false
     @Published var isShowingServerLogs = false
+    @Published var isShowingServerInfo = false
+    @Published var isShowingServerEditor = false
+    @Published var isShowingGroupManagement = false
     @Published var isShowingContacts = false
     @Published var isShowingClientDatabase = false
     @Published var isShowingBans = false
@@ -4506,6 +4509,22 @@ final class TS3AppModel: ObservableObject {
     func showServerLogs() {
         refreshServerLogs()
         isShowingServerLogs = true
+    }
+
+    func showServerInformation() {
+        refreshServerInfo()
+        refreshGroups()
+        isShowingServerInfo = true
+    }
+
+    func showServerSettings() {
+        refreshServerInfo()
+        isShowingServerEditor = true
+    }
+
+    func showGroupManagement() {
+        refreshGroups()
+        isShowingGroupManagement = true
     }
 
     func showChat() {

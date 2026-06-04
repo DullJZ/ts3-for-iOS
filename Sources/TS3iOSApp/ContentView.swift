@@ -79,6 +79,18 @@ struct ContentView: View {
                 ServerLogsSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingServerInfo) {
+                ServerInformationSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingServerEditor) {
+                ServerSettingsEditorSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingGroupManagement) {
+                GroupManagementSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingContacts) {
                 ContactsSheet()
                     .environmentObject(model)

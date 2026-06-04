@@ -89,6 +89,16 @@ struct TS3iOSApp: App {
                 .keyboardShortcut("G", modifiers: [.command, .shift])
                 .disabled(model.state != .connected)
 
+                Button("View Server Information") {
+                    model.showServerInformation()
+                }
+                .disabled(model.state != .connected)
+
+                Button("Edit Server Settings") {
+                    model.showServerSettings()
+                }
+                .disabled(model.state != .connected)
+
                 Button("Manage Contacts") {
                     model.showContacts()
                 }
@@ -117,6 +127,11 @@ struct TS3iOSApp: App {
                     model.showPermissions()
                 }
                 .keyboardShortcut("P", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Manage Permission Groups") {
+                    model.showGroupManagement()
+                }
                 .disabled(model.state != .connected)
 
                 Button("Manage Privilege Keys") {
