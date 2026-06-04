@@ -43,7 +43,7 @@ struct ContentView: View {
                 Group {
                     switch model.state {
                     case .disconnected:
-                        ConnectView()
+                        ConnectView(allowsConnectionActions: true)
                     case .connecting:
                         ConnectingView()
                     case .connected:
@@ -57,6 +57,10 @@ struct ContentView: View {
             }
             .sheet(isPresented: $model.isShowingKeyboardShortcuts) {
                 KeyboardShortcutsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingConnectionManager) {
+                ConnectionManagerSheet()
                     .environmentObject(model)
             }
             .sheet(isPresented: $model.isShowingIdentity) {
@@ -516,6 +520,7 @@ struct ConnectView: View {
     }
 
     @EnvironmentObject private var model: TS3AppModel
+    let allowsConnectionActions: Bool
     @State private var bookmarkName = ""
     @State private var bookmarkFolder = ""
     @State private var connectionPresetName = ""
@@ -1031,20 +1036,22 @@ struct ConnectView: View {
                 }
             }
 
-            Section {
-                Button(action: {
-                    model.connect()
-                }) {
-                    Text("Connect")
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(model.serverHost.isEmpty || model.nickname.isEmpty ? .gray : .accentColor)
+            if allowsConnectionActions {
+                Section {
+                    Button(action: {
+                        model.connect()
+                    }) {
+                        Text("Connect")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(model.serverHost.isEmpty || model.nickname.isEmpty ? .gray : .accentColor)
+                    }
+                    .buttonStyle(.borderless)
+                    .contentShape(Rectangle())
+                    .disabled(model.serverHost.isEmpty || model.nickname.isEmpty)
                 }
-                .buttonStyle(.borderless)
-                .contentShape(Rectangle())
-                .disabled(model.serverHost.isEmpty || model.nickname.isEmpty)
             }
         }
-        .navigationTitle("TS3 Connect")
+        .navigationTitle(allowsConnectionActions ? "TS3 Connect" : "Connection Manager")
         .sheet(isPresented: $isShowingIdentity) {
             IdentityManagementSheet()
                 .environmentObject(model)
@@ -1507,6 +1514,23 @@ struct ConnectView: View {
             return .orderedSame
         }
         return lhsPort < rhsPort ? .orderedAscending : .orderedDescending
+    }
+}
+
+struct ConnectionManagerSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    var body: some View {
+        NavigationView {
+            ConnectView(allowsConnectionActions: false)
+                .toolbar {
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                        Button("Done") {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+                }
+        }
     }
 }
 
@@ -7267,6 +7291,15 @@ struct ServerToolsSheet: View {
                         model.copyCurrentConnectionSummary()
                     }
                     Text("Full invite links include saved passwords and privilege keys.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Connection Manager")) {
+                    Button("Open Connection Manager") {
+                        model.isShowingConnectionManager = true
+                    }
+                    Text("Manage bookmarks, recent servers, recovery settings, and connection backups.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

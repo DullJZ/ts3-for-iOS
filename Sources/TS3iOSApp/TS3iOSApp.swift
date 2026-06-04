@@ -34,6 +34,10 @@ struct TS3iOSApp: App {
                     model.isShowingIdentity = true
                 }
 
+                Button("Connection Manager") {
+                    model.isShowingConnectionManager = true
+                }
+
                 Button("Client Migration") {
                     model.isShowingClientMigration = true
                 }
