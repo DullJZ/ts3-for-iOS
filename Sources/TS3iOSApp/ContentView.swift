@@ -9681,6 +9681,10 @@ struct ClientDatabaseSheet: View {
                             model.resolveDatabaseIdForSelectedClient()
                         }
                         .disabled(selected.uniqueIdentifier == nil)
+                        Button("Find Online Client") {
+                            model.refreshOnlineLocations(for: selected)
+                        }
+                        .disabled(selected.uniqueIdentifier == nil)
                         Button("Edit Description") {
                             isShowingDescriptionEditor = true
                         }

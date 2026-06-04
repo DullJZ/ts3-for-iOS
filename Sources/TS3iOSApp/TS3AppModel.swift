@@ -4665,6 +4665,25 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    func refreshOnlineLocations(for record: TS3DatabaseClientSummary) {
+        guard let uniqueIdentifier = record.uniqueIdentifier else {
+            lastError = "Selected database client has no unique id."
+            return
+        }
+        runClientCommand { client in
+            let locations = try await client.onlineClientIds(forUniqueIdentifier: uniqueIdentifier)
+            await MainActor.run {
+                self.selectedDatabaseClient = record
+                self.clientLocations = locations.map { TS3ClientLocationSummary(location: $0) }
+                if locations.isEmpty {
+                    self.lastError = "\(record.nickname) is not online."
+                } else {
+                    self.lastError = nil
+                }
+            }
+        }
+    }
+
     func editDatabaseClientDescription(_ record: TS3DatabaseClientSummary, description: String) {
         runClientCommand { client in
             try await client.editDatabaseClientDescription(clientDatabaseId: record.id, description: description)
