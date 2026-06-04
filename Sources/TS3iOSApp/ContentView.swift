@@ -59,6 +59,46 @@ struct ContentView: View {
                 KeyboardShortcutsSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingServerLogs) {
+                ServerLogsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingContacts) {
+                ContactsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingClientDatabase) {
+                ClientDatabaseSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingBans) {
+                BanListSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingFiles) {
+                FileBrowserSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingPermissions) {
+                PermissionsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingPrivilegeKeys) {
+                PrivilegeKeysSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingComplaints) {
+                ComplaintListSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingAudioSettings) {
+                AudioSettingsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingSelfStatus) {
+                SelfStatusSheet()
+                    .environmentObject(model)
+            }
         }
         .ts3InlineNavigationTitle()
     }
@@ -16636,8 +16676,6 @@ struct MoveUserPasswordSheet: View {
 
 struct TalkControlBar: View {
     @EnvironmentObject private var model: TS3AppModel
-    @State private var isShowingAudioSettings = false
-    @State private var isShowingSelfStatus = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -16661,13 +16699,13 @@ struct TalkControlBar: View {
                 .buttonStyle(TS3BorderedButtonStyle())
                 .ts3KeyboardShortcut("toggle-output-muted", in: model)
                 Button {
-                    isShowingSelfStatus = true
+                    model.isShowingSelfStatus = true
                 } label: {
                     Label(model.isAway ? "Away" : "Self", systemImage: model.isAway ? "moon.zzz" : "person.crop.circle")
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button {
-                    isShowingAudioSettings = true
+                    model.isShowingAudioSettings = true
                 } label: {
                     Label(model.playbackVolumePercentText, systemImage: "slider.horizontal.3")
                 }
@@ -16689,14 +16727,6 @@ struct TalkControlBar: View {
             .ts3KeyboardShortcut("toggle-talk", in: model)
         }
         .padding()
-        .sheet(isPresented: $isShowingAudioSettings) {
-            AudioSettingsSheet()
-                .environmentObject(model)
-        }
-        .sheet(isPresented: $isShowingSelfStatus) {
-            SelfStatusSheet()
-                .environmentObject(model)
-        }
         .alert(item: $model.microphonePermissionPrompt) { prompt in
             Alert(
                 title: Text(prompt.title),

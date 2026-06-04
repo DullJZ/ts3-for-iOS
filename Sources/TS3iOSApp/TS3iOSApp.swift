@@ -40,6 +40,55 @@ struct TS3iOSApp: App {
 
                 Divider()
 
+                Button("View Server Logs") {
+                    model.showServerLogs()
+                }
+                .keyboardShortcut("G", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Manage Contacts") {
+                    model.showContacts()
+                }
+                .keyboardShortcut("C", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Browse Client Database") {
+                    model.showClientDatabase()
+                }
+                .keyboardShortcut("D", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Manage Bans") {
+                    model.showBanList()
+                }
+                .keyboardShortcut("B", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Browse Channel Files") {
+                    model.showFileBrowser()
+                }
+                .keyboardShortcut("F", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("View Permissions") {
+                    model.showPermissions()
+                }
+                .keyboardShortcut("P", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Manage Privilege Keys") {
+                    model.showPrivilegeKeys()
+                }
+                .keyboardShortcut("K", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Manage Complaints") {
+                    model.showComplaints()
+                }
+                .disabled(model.state != .connected)
+
+                Divider()
+
                 Button(model.transmitButtonTitle) {
                     model.toggleTalking()
                 }
@@ -57,6 +106,15 @@ struct TS3iOSApp: App {
                 }
                 .keyboardShortcut("S", modifiers: [.command, .shift])
                 .disabled(model.state != .connected)
+
+                Button("Self Status") {
+                    model.isShowingSelfStatus = true
+                }
+                .disabled(model.state != .connected)
+
+                Button("Audio Settings") {
+                    model.isShowingAudioSettings = true
+                }
             }
         }
         #endif

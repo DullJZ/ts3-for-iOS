@@ -2312,11 +2312,26 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "apply-nickname", group: "Profile", action: "Apply Nickname", defaultKeys: "Command-Return"),
         TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
-        TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C")
+        TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),
+        TS3KeyboardShortcutBinding(actionId: "browse-client-database", group: "Server", action: "Browse Client Database", defaultKeys: "Command-Shift-D"),
+        TS3KeyboardShortcutBinding(actionId: "manage-bans", group: "Server", action: "Manage Bans", defaultKeys: "Command-Shift-B"),
+        TS3KeyboardShortcutBinding(actionId: "browse-files", group: "Server", action: "Browse Channel Files", defaultKeys: "Command-Shift-F"),
+        TS3KeyboardShortcutBinding(actionId: "manage-permissions", group: "Server", action: "View Permissions", defaultKeys: "Command-Shift-P"),
+        TS3KeyboardShortcutBinding(actionId: "manage-privilege-keys", group: "Server", action: "Manage Privilege Keys", defaultKeys: "Command-Shift-K")
     ]
 
     @Published var state: UIConnectionState = .disconnected
     @Published var isShowingKeyboardShortcuts = false
+    @Published var isShowingServerLogs = false
+    @Published var isShowingContacts = false
+    @Published var isShowingClientDatabase = false
+    @Published var isShowingBans = false
+    @Published var isShowingFiles = false
+    @Published var isShowingPermissions = false
+    @Published var isShowingPrivilegeKeys = false
+    @Published var isShowingComplaints = false
+    @Published var isShowingAudioSettings = false
+    @Published var isShowingSelfStatus = false
     @Published var channels: [TS3ChannelSummary] = []
     @Published var clients: [TS3UserSummary] = []
     @Published var chatMessages: [TS3ChatMessageSummary] = []
@@ -4478,6 +4493,48 @@ final class TS3AppModel: ObservableObject {
                 self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
             }
         }
+    }
+
+    func showServerLogs() {
+        refreshServerLogs()
+        isShowingServerLogs = true
+    }
+
+    func showContacts() {
+        isShowingContacts = true
+    }
+
+    func showClientDatabase() {
+        refreshClientDatabase()
+        isShowingClientDatabase = true
+    }
+
+    func showBanList() {
+        refreshBanList()
+        isShowingBans = true
+    }
+
+    func showFileBrowser() {
+        openFileBrowser()
+        isShowingFiles = true
+    }
+
+    func showPermissions() {
+        refreshPermissionList()
+        refreshOwnClientPermissions()
+        isShowingPermissions = true
+    }
+
+    func showPrivilegeKeys() {
+        refreshPrivilegeKeys()
+        isShowingPrivilegeKeys = true
+    }
+
+    func showComplaints() {
+        if let user = clients.first(where: { !$0.isCurrentUser }) {
+            refreshComplaints(for: user)
+        }
+        isShowingComplaints = true
     }
 
     func addServerLogEntry(level: TS3LogLevel, message: String, limit: Int = 100, reverse: Bool = true, instance: Bool = false) {
