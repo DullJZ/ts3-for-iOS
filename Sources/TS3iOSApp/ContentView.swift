@@ -63,6 +63,10 @@ struct ContentView: View {
                 IdentityManagementSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingClientMigration) {
+                ClientMigrationSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingChat) {
                 ChatSheet()
                     .environmentObject(model)
@@ -7263,6 +7267,15 @@ struct ServerToolsSheet: View {
                         model.copyCurrentConnectionSummary()
                     }
                     Text("Full invite links include saved passwords and privilege keys.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Client Migration")) {
+                    Button("Open Client Migration") {
+                        model.isShowingClientMigration = true
+                    }
+                    Text("Export or import a client package with bookmarks, contacts, profiles, notifications, and presets.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -16133,6 +16146,85 @@ struct IdentityManagementSheet: View {
             }
             model.importIdentity(exportString)
             importedIdentity = ""
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+}
+
+struct ClientMigrationSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var isImportingClientPackage = false
+    @State private var isExportingClientPackage = false
+    @State private var clientPackageDocument = TS3BookmarkFileDocument()
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Client Package")) {
+                    Button("Export Client Package") {
+                        exportClientPackage()
+                    }
+                    Button("Import Client Package") {
+                        isImportingClientPackage = true
+                    }
+                    Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, audio, status, playback, and whisper presets.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Client Migration")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingClientPackage,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importClientPackage(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingClientPackage,
+                document: clientPackageDocument,
+                contentType: .json,
+                defaultFilename: "ts3-client-package"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func exportClientPackage() {
+        do {
+            clientPackageDocument = TS3BookmarkFileDocument(data: try model.clientMigrationPackageExportData())
+            isExportingClientPackage = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importClientPackage(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importClientMigrationPackage(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }

@@ -34,6 +34,10 @@ struct TS3iOSApp: App {
                     model.isShowingIdentity = true
                 }
 
+                Button("Client Migration") {
+                    model.isShowingClientMigration = true
+                }
+
                 Divider()
 
                 Button("Refresh Channels and Clients") {
