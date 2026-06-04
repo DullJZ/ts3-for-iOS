@@ -2310,6 +2310,10 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "toggle-output-muted", group: "Voice", action: "Mute / Unmute Sound", defaultKeys: "Command-Shift-S"),
         TS3KeyboardShortcutBinding(actionId: "toggle-away", group: "Profile", action: "Set / Clear Away", defaultKeys: "Command-Shift-A"),
         TS3KeyboardShortcutBinding(actionId: "apply-nickname", group: "Profile", action: "Apply Nickname", defaultKeys: "Command-Return"),
+        TS3KeyboardShortcutBinding(actionId: "open-chat", group: "Messaging", action: "Open Chat", defaultKeys: "Command-Shift-T"),
+        TS3KeyboardShortcutBinding(actionId: "open-offline-messages", group: "Messaging", action: "Open Offline Messages", defaultKeys: "Command-Shift-I"),
+        TS3KeyboardShortcutBinding(actionId: "open-events", group: "Messaging", action: "Open Events", defaultKeys: "Command-Shift-E"),
+        TS3KeyboardShortcutBinding(actionId: "open-whisper", group: "Messaging", action: "Open Whisper", defaultKeys: "Command-Shift-W"),
         TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
         TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),
@@ -2322,6 +2326,10 @@ final class TS3AppModel: ObservableObject {
 
     @Published var state: UIConnectionState = .disconnected
     @Published var isShowingKeyboardShortcuts = false
+    @Published var isShowingChat = false
+    @Published var isShowingOfflineMessages = false
+    @Published var isShowingEvents = false
+    @Published var isShowingWhisper = false
     @Published var isShowingServerLogs = false
     @Published var isShowingContacts = false
     @Published var isShowingClientDatabase = false
@@ -4498,6 +4506,24 @@ final class TS3AppModel: ObservableObject {
     func showServerLogs() {
         refreshServerLogs()
         isShowingServerLogs = true
+    }
+
+    func showChat() {
+        isShowingChat = true
+    }
+
+    func showOfflineMessages() {
+        refreshOfflineMessages()
+        isShowingOfflineMessages = true
+    }
+
+    func showEvents() {
+        markEventsRead()
+        isShowingEvents = true
+    }
+
+    func showWhisper() {
+        isShowingWhisper = true
     }
 
     func showContacts() {

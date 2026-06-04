@@ -59,6 +59,22 @@ struct ContentView: View {
                 KeyboardShortcutsSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingChat) {
+                ChatSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingOfflineMessages) {
+                OfflineMessagesSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingEvents) {
+                EventsSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $model.isShowingWhisper) {
+                WhisperSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingServerLogs) {
                 ServerLogsSheet()
                     .environmentObject(model)

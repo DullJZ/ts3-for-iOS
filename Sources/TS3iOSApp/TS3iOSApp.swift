@@ -40,6 +40,32 @@ struct TS3iOSApp: App {
 
                 Divider()
 
+                Button("Open Chat") {
+                    model.showChat()
+                }
+                .keyboardShortcut("T", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Open Offline Messages") {
+                    model.showOfflineMessages()
+                }
+                .keyboardShortcut("I", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Open Events") {
+                    model.showEvents()
+                }
+                .keyboardShortcut("E", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Button("Open Whisper") {
+                    model.showWhisper()
+                }
+                .keyboardShortcut("W", modifiers: [.command, .shift])
+                .disabled(model.state != .connected)
+
+                Divider()
+
                 Button("View Server Logs") {
                     model.showServerLogs()
                 }
