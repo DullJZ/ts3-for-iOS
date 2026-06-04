@@ -2312,6 +2312,7 @@ final class TS3AppModel: ObservableObject {
     ]
 
     @Published var state: UIConnectionState = .disconnected
+    @Published var isShowingKeyboardShortcuts = false
     @Published var channels: [TS3ChannelSummary] = []
     @Published var clients: [TS3UserSummary] = []
     @Published var chatMessages: [TS3ChatMessageSummary] = []

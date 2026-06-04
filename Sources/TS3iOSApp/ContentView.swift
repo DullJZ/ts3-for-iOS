@@ -12,7 +12,6 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
-    @State private var isShowingKeyboardShortcuts = false
 
     private var debugButton: some View {
         Button {
@@ -28,7 +27,7 @@ struct ContentView: View {
                 HStack {
                     Spacer()
                     Button {
-                        isShowingKeyboardShortcuts = true
+                        model.isShowingKeyboardShortcuts = true
                     } label: {
                         Label("快捷键", systemImage: "keyboard")
                     }
@@ -56,7 +55,7 @@ struct ContentView: View {
                 DebugLogView()
                     .environmentObject(model)
             }
-            .sheet(isPresented: $isShowingKeyboardShortcuts) {
+            .sheet(isPresented: $model.isShowingKeyboardShortcuts) {
                 KeyboardShortcutsSheet()
                     .environmentObject(model)
             }
