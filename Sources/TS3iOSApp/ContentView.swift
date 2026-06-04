@@ -91,6 +91,10 @@ struct ContentView: View {
                 GroupManagementSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingSubscriptionPresets) {
+                ChannelSubscriptionPresetsSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingContacts) {
                 ContactsSheet()
                     .environmentObject(model)

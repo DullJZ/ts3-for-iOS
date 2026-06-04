@@ -123,6 +123,11 @@ struct TS3iOSApp: App {
                 .keyboardShortcut("F", modifiers: [.command, .shift])
                 .disabled(model.state != .connected)
 
+                Button("Channel Subscription Presets") {
+                    model.isShowingSubscriptionPresets = true
+                }
+                .disabled(model.state != .connected)
+
                 Button("View Permissions") {
                     model.showPermissions()
                 }

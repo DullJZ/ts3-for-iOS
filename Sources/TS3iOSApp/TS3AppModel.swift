@@ -2334,6 +2334,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingServerInfo = false
     @Published var isShowingServerEditor = false
     @Published var isShowingGroupManagement = false
+    @Published var isShowingSubscriptionPresets = false
     @Published var isShowingContacts = false
     @Published var isShowingClientDatabase = false
     @Published var isShowingBans = false
