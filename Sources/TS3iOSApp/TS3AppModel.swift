@@ -2326,6 +2326,7 @@ final class TS3AppModel: ObservableObject {
 
     @Published var state: UIConnectionState = .disconnected
     @Published var isShowingKeyboardShortcuts = false
+    @Published var isShowingIdentity = false
     @Published var isShowingChat = false
     @Published var isShowingOfflineMessages = false
     @Published var isShowingEvents = false

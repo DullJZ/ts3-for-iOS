@@ -59,6 +59,10 @@ struct ContentView: View {
                 KeyboardShortcutsSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingIdentity) {
+                IdentityManagementSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingChat) {
                 ChatSheet()
                     .environmentObject(model)

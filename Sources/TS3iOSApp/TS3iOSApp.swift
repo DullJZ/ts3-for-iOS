@@ -30,6 +30,10 @@ struct TS3iOSApp: App {
                 }
                 .keyboardShortcut("L", modifiers: [.command, .shift])
 
+                Button("Manage Identity") {
+                    model.isShowingIdentity = true
+                }
+
                 Divider()
 
                 Button("Refresh Channels and Clients") {
