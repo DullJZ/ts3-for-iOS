@@ -6594,6 +6594,10 @@ struct OfflineMessagesSheet: View {
     @State private var inboxDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
+    private var canUseServerInboxActions: Bool {
+        model.state == .connected
+    }
+
     private var filteredMessages: [TS3OfflineMessageSummary] {
         let messages = model.offlineMessages.filter { message in
             readFilter.matches(message) && contentFilter.matches(message) && (
@@ -6723,6 +6727,14 @@ struct OfflineMessagesSheet: View {
                     }
                 }
 
+                if !canUseServerInboxActions {
+                    Section {
+                        Text("Showing locally cached offline messages. Connect to refresh, load message bodies, reply, mark read, or delete from the server.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
                 if model.offlineMessages.isEmpty {
                     Text("No offline messages")
                         .foregroundColor(.secondary)
@@ -6739,13 +6751,16 @@ struct OfflineMessagesSheet: View {
             .navigationTitle("Inbox")
             .ts3InlineNavigationTitle()
             .onAppear {
-                model.refreshOfflineMessages()
+                if canUseServerInboxActions {
+                    model.refreshOfflineMessages()
+                }
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Refresh") {
                         model.refreshOfflineMessages()
                     }
+                    .disabled(!canUseServerInboxActions)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
@@ -6761,27 +6776,27 @@ struct OfflineMessagesSheet: View {
                         Button("Load Visible Message Bodies") {
                             model.loadOfflineMessageBodies(filteredMessages)
                         }
-                        .disabled(!hasBodyPlaceholders)
+                        .disabled(!canUseServerInboxActions || !hasBodyPlaceholders)
                         Button("Mark All Read") {
                             model.markAllOfflineMessagesRead()
                         }
-                        .disabled(filteredMessages.allSatisfy(\.isRead))
+                        .disabled(!canUseServerInboxActions || filteredMessages.allSatisfy(\.isRead))
                         Button("Mark Visible Read") {
                             model.markOfflineMessages(filteredMessages, read: true)
                         }
-                        .disabled(!filteredMessages.contains { !$0.isRead })
+                        .disabled(!canUseServerInboxActions || !filteredMessages.contains { !$0.isRead })
                         Button("Mark Visible Unread") {
                             model.markOfflineMessages(filteredMessages, read: false)
                         }
-                        .disabled(!filteredMessages.contains { $0.isRead })
+                        .disabled(!canUseServerInboxActions || !filteredMessages.contains { $0.isRead })
                         Button("Delete Visible Messages") {
                             deleteConfirmation = .visible
                         }
-                        .disabled(filteredMessages.isEmpty)
+                        .disabled(!canUseServerInboxActions || filteredMessages.isEmpty)
                         Button("Delete Read Messages") {
                             deleteConfirmation = .read
                         }
-                        .disabled(readMessages.isEmpty)
+                        .disabled(!canUseServerInboxActions || readMessages.isEmpty)
                         Button("Export Filter Presets") {
                             exportPresets()
                         }
@@ -7023,6 +7038,7 @@ struct OfflineMessageRow: View {
                     model.openOfflineMessage(message)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
+                .disabled(!canUseServerActions)
             }
 
             HStack {
@@ -7031,11 +7047,13 @@ struct OfflineMessageRow: View {
                         isShowingReply = true
                     }
                     .buttonStyle(.borderless)
+                    .disabled(!canUseServerActions)
                 }
                 Button(message.isRead ? "Mark Unread" : "Mark Read") {
                     model.markOfflineMessage(message, read: !message.isRead)
                 }
                 .buttonStyle(.borderless)
+                .disabled(!canUseServerActions)
                 if canCopyBody {
                     Button("Copy") {
                         TS3PlatformSupport.copyToPasteboard(message.message ?? "")
@@ -7048,6 +7066,7 @@ struct OfflineMessageRow: View {
                 }
                 .buttonStyle(.borderless)
                 .foregroundColor(.red)
+                .disabled(!canUseServerActions)
             }
             .font(.caption)
         }
@@ -7075,6 +7094,10 @@ struct OfflineMessageRow: View {
 
     private var canReply: Bool {
         message.senderUniqueIdentifier?.isEmpty == false
+    }
+
+    private var canUseServerActions: Bool {
+        model.state == .connected
     }
 
     private var canCopyBody: Bool {

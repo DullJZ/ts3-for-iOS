@@ -82,7 +82,6 @@ struct TS3iOSApp: App {
                     model.showOfflineMessages()
                 }
                 .keyboardShortcut("I", modifiers: [.command, .shift])
-                .disabled(model.state != .connected)
 
                 Button("Open Events") {
                     model.showEvents()

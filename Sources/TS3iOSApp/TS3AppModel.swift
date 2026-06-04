@@ -4537,7 +4537,9 @@ final class TS3AppModel: ObservableObject {
     }
 
     func showOfflineMessages() {
-        refreshOfflineMessages()
+        if state == .connected {
+            refreshOfflineMessages()
+        }
         isShowingOfflineMessages = true
     }
 
