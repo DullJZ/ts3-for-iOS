@@ -71,6 +71,10 @@ struct ContentView: View {
                 ClientMigrationSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingNotificationSettings) {
+                NotificationSettingsSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingChat) {
                 ChatSheet()
                     .environmentObject(model)
@@ -962,6 +966,15 @@ struct ConnectView: View {
                     isImportingClientPackage = true
                 }
                 Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, audio, status, playback, and whisper presets.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section(header: Text("Notifications")) {
+                Button("Notification Settings") {
+                    model.isShowingNotificationSettings = true
+                }
+                Text("Configure alerts for private messages, pokes, and server activity.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -16312,6 +16325,174 @@ struct ClientMigrationSheet: View {
         }
         do {
             try model.importClientMigrationPackage(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+}
+
+struct NotificationSettingsSheet: View {
+    private struct NotificationSettingsImportConfirmation: Identifiable {
+        let url: URL
+        let id = UUID()
+    }
+
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var isImportingNotificationSettings = false
+    @State private var isExportingNotificationSettings = false
+    @State private var isConfirmingResetNotificationSettings = false
+    @State private var pendingNotificationSettingsImport: NotificationSettingsImportConfirmation?
+    @State private var notificationSettingsDocument = TS3TextFileDocument()
+
+    private var notificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.notificationsEnabled },
+            set: { model.setNotificationsEnabled($0) }
+        )
+    }
+
+    private var privateMessageNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.privateMessageNotificationsEnabled },
+            set: { model.setPrivateMessageNotificationsEnabled($0) }
+        )
+    }
+
+    private var notificationSoundBinding: Binding<Bool> {
+        Binding(
+            get: { model.notificationSoundEnabled },
+            set: { model.setNotificationSoundEnabled($0) }
+        )
+    }
+
+    private var pokeNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.pokeNotificationsEnabled },
+            set: { model.setPokeNotificationsEnabled($0) }
+        )
+    }
+
+    private var activityNotificationsBinding: Binding<Bool> {
+        Binding(
+            get: { model.activityNotificationsEnabled },
+            set: { model.setActivityNotificationsEnabled($0) }
+        )
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Notifications")) {
+                    Toggle("Enable Notifications", isOn: notificationsBinding)
+                    Toggle("Sound", isOn: notificationSoundBinding)
+                        .disabled(!model.notificationsEnabled)
+                    Toggle("Private Messages", isOn: privateMessageNotificationsBinding)
+                        .disabled(!model.notificationsEnabled)
+                    Toggle("Pokes", isOn: pokeNotificationsBinding)
+                        .disabled(!model.notificationsEnabled)
+                    Toggle("Server Activity", isOn: activityNotificationsBinding)
+                        .disabled(!model.notificationsEnabled)
+                    Text("Notifications are shown when the app is not active.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Presets")) {
+                    Button("Direct Messages Preset") {
+                        model.applyDirectNotificationPreset()
+                    }
+                    Button("Silent Direct Messages Preset") {
+                        model.applyDirectNotificationPreset(soundEnabled: false)
+                    }
+                    Button("All Events Preset") {
+                        model.applyAllEventsNotificationPreset()
+                    }
+                    Button("Reset Notification Settings") {
+                        isConfirmingResetNotificationSettings = true
+                    }
+                }
+
+                Section(header: Text("Backup")) {
+                    Button("Export Notification Settings") {
+                        exportNotificationSettings()
+                    }
+                    Button("Import Notification Settings") {
+                        isImportingNotificationSettings = true
+                    }
+                }
+            }
+            .navigationTitle("Notification Settings")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingNotificationSettings,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(url: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingNotificationSettings,
+                document: notificationSettingsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-notification-settings"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .alert(isPresented: $isConfirmingResetNotificationSettings) {
+                Alert(
+                    title: Text("Reset Notification Settings?"),
+                    message: Text("This restores local notification preferences to their default values."),
+                    primaryButton: .destructive(Text("Reset")) {
+                        model.resetNotificationSettings()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingNotificationSettingsImport) { confirmation in
+                Alert(
+                    title: Text("Import Notification Settings?"),
+                    message: Text("This replaces current local notification preferences with the selected settings file."),
+                    primaryButton: .destructive(Text("Import")) {
+                        importNotificationSettings(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+        }
+    }
+
+    private func exportNotificationSettings() {
+        do {
+            notificationSettingsDocument = TS3TextFileDocument(data: try model.notificationSettingsExportData())
+            isExportingNotificationSettings = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importNotificationSettings(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importNotificationSettings(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }

@@ -2329,6 +2329,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingConnectionManager = false
     @Published var isShowingIdentity = false
     @Published var isShowingClientMigration = false
+    @Published var isShowingNotificationSettings = false
     @Published var isShowingChat = false
     @Published var isShowingOfflineMessages = false
     @Published var isShowingEvents = false

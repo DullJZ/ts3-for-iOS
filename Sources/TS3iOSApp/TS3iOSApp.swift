@@ -42,6 +42,10 @@ struct TS3iOSApp: App {
                     model.isShowingClientMigration = true
                 }
 
+                Button("Notification Settings") {
+                    model.isShowingNotificationSettings = true
+                }
+
                 Divider()
 
                 Button("Refresh Channels and Clients") {
