@@ -18323,6 +18323,27 @@ struct AudioSettingsSheet: View {
                     }
                 }
 
+                Section(header: Text("Diagnostics")) {
+                    ServerInfoDetailRow(label: "Transmit Mode", value: model.audioTransmitMode.title)
+                    ServerInfoDetailRow(label: "Voice Activation", value: voiceActivationDiagnosticText)
+                    ServerInfoDetailRow(label: "Input Gain", value: model.inputGainPercentText)
+                    ServerInfoDetailRow(label: "Playback Volume", value: model.playbackVolumePercentText)
+                    ServerInfoDetailRow(label: "Input Devices", value: String(model.audioInputDevices.count))
+                    ServerInfoDetailRow(label: "Selected Input", value: selectedInputDeviceName)
+                    ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" })
+                    ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.lossText))
+                    ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.lossText))
+                    ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.byteText))
+                    Button("Copy Audio Diagnostics") {
+                        TS3PlatformSupport.copyToPasteboard(audioDiagnosticsSnapshot)
+                    }
+                    Button("Refresh Diagnostics") {
+                        model.refreshAudioRoutes()
+                        model.refreshConnectionInfo()
+                    }
+                }
+
                 Section(header: Text("Transmit Mode")) {
                     Picker("Mode", selection: transmitModeBinding) {
                         ForEach(TS3AudioTransmitMode.allCases) { mode in
@@ -18470,6 +18491,7 @@ struct AudioSettingsSheet: View {
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshAudioRoutes()
+                model.refreshConnectionInfo()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -18652,6 +18674,8 @@ struct AudioSettingsSheet: View {
             "Playback Volume: \(model.playbackVolumePercentText)",
             "Input Route: \(model.audioInputRoute)",
             "Output Route: \(model.audioOutputRoute)",
+            "Input Devices: \(model.audioInputDevices.count)",
+            "Selected Input: \(selectedInputDeviceName)",
             "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
             "Saved Profiles: \(model.audioProfiles.count)",
             "User Playback Overrides: \(model.userPlaybackPreferenceSummaries.count)"
@@ -18659,7 +18683,42 @@ struct AudioSettingsSheet: View {
         if model.audioTransmitMode == .voiceActivation {
             rows.append("Voice Activation Threshold: \(model.voiceActivationThresholdText)")
         }
+        rows.append("Ping: \(model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" } ?? "Unknown")")
+        rows.append("Packet Loss: \(model.connectionInfo.packetLossTotal.map(Self.lossText) ?? "Unknown")")
+        rows.append("Speech Loss: \(model.connectionInfo.packetLossSpeech.map(Self.lossText) ?? "Unknown")")
         return rows.joined(separator: "\n")
+    }
+
+    private var audioDiagnosticsSnapshot: String {
+        [
+            "Transmit Mode: \(model.audioTransmitMode.title)",
+            "Voice Activation: \(voiceActivationDiagnosticText)",
+            "Input Gain: \(model.inputGainPercentText)",
+            "Playback Volume: \(model.playbackVolumePercentText)",
+            "Input Route: \(model.audioInputRoute)",
+            "Output Route: \(model.audioOutputRoute)",
+            "Input Devices: \(model.audioInputDevices.count)",
+            "Selected Input: \(selectedInputDeviceName)",
+            "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
+            "Ping: \(model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" } ?? "Unknown")",
+            "Packet Loss: \(model.connectionInfo.packetLossTotal.map(Self.lossText) ?? "Unknown")",
+            "Speech Loss: \(model.connectionInfo.packetLossSpeech.map(Self.lossText) ?? "Unknown")",
+            "Keepalive Loss: \(model.connectionInfo.packetLossKeepalive.map(Self.lossText) ?? "Unknown")",
+            "Control Loss: \(model.connectionInfo.packetLossControl.map(Self.lossText) ?? "Unknown")",
+            "Session Downloaded: \(model.connectionInfo.bytesReceived.map(Self.byteText) ?? "Unknown")",
+            "Session Uploaded: \(model.connectionInfo.bytesSent.map(Self.byteText) ?? "Unknown")"
+        ].joined(separator: "\n")
+    }
+
+    private var voiceActivationDiagnosticText: String {
+        if model.audioTransmitMode == .voiceActivation {
+            return "Enabled, threshold \(model.voiceActivationThresholdText)"
+        }
+        return "Configured threshold \(model.voiceActivationThresholdText)"
+    }
+
+    private var selectedInputDeviceName: String {
+        model.audioInputDevices.first(where: { $0.isSelected })?.displayName ?? "System Default"
     }
 
     private var userPlaybackSnapshot: String {
@@ -18690,6 +18749,28 @@ struct AudioSettingsSheet: View {
 
     private static func percentText(_ value: Double) -> String {
         "\(Int((value * 100).rounded()))%"
+    }
+
+    private static func decimalText(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+
+    private static func lossText(_ value: Double) -> String {
+        "\(String(format: "%.2f", value * 100))%"
+    }
+
+    private static func byteText(_ value: Int64) -> String {
+        let units = ["B", "KB", "MB", "GB", "TB"]
+        var amount = Double(value)
+        var unitIndex = 0
+        while amount >= 1024, unitIndex < units.count - 1 {
+            amount /= 1024
+            unitIndex += 1
+        }
+        if unitIndex == 0 {
+            return "\(Int(amount)) \(units[unitIndex])"
+        }
+        return "\(String(format: "%.1f", amount)) \(units[unitIndex])"
     }
 
     private func userPlaybackSummary(_ preference: TS3UserPlaybackPreferenceSummary) -> String {
