@@ -15,6 +15,17 @@ enum UIConnectionState {
     case disconnected
     case connecting
     case connected
+
+    var title: String {
+        switch self {
+        case .disconnected:
+            return "Disconnected"
+        case .connecting:
+            return "Connecting"
+        case .connected:
+            return "Connected"
+        }
+    }
 }
 
 extension TS3AudioTransmitMode {
@@ -2656,14 +2667,7 @@ final class TS3AppModel: ObservableObject {
     }
 
     var connectedStatus: String {
-        switch state {
-        case .disconnected:
-            return "Disconnected"
-        case .connecting:
-            return "Connecting"
-        case .connected:
-            return "Connected"
-        }
+        state.title
     }
 
     var talkStatus: String {
@@ -11176,6 +11180,63 @@ final class TS3AppModel: ObservableObject {
         return Data(lines.joined(separator: "\n").utf8)
     }
 
+    func diagnosticReportData() -> Data {
+        var sections: [String] = []
+        sections.append([
+            "TS3 Diagnostic Report",
+            "Generated: \(Self.transcriptDateFormatter.string(from: Date()))",
+            "State: \(state.title)",
+            "Host: \(serverHost.isEmpty ? "Not set" : serverHost)",
+            "Port: \(serverPort.isEmpty ? "Not set" : serverPort)",
+            "Nickname: \(nickname.isEmpty ? "Not set" : nickname)",
+            "Last Error: \(lastError ?? "None")",
+            "Last Disconnect: \(lastDisconnectMessage ?? "None")"
+        ].joined(separator: "\n"))
+
+        sections.append([
+            "Audio",
+            "Transmit Mode: \(audioTransmitMode.title)",
+            "Talk Status: \(talkStatus)",
+            "Input Muted: \(isInputMuted ? "Yes" : "No")",
+            "Output Muted: \(isOutputMuted ? "Yes" : "No")",
+            "Input Gain: \(inputGainPercentText)",
+            "Input Level: \(inputLevelText)",
+            "Voice Activation Threshold: \(voiceActivationThresholdText)",
+            "Playback Volume: \(playbackVolumePercentText)",
+            "Input Route: \(audioInputRoute)",
+            "Output Route: \(audioOutputRoute)",
+            "Default To Speaker: \(prefersSpeakerOutput ? "Yes" : "No")"
+        ].joined(separator: "\n"))
+
+        sections.append([
+            "Connection Metrics",
+            "Ping: \(connectionInfo.ping.map { "\(Self.decimalText($0)) ms" } ?? "Unknown")",
+            "Packet Loss: \(connectionInfo.packetLossTotal.map(Self.percentText) ?? "Unknown")",
+            "Speech Loss: \(connectionInfo.packetLossSpeech.map(Self.percentText) ?? "Unknown")",
+            "Keepalive Loss: \(connectionInfo.packetLossKeepalive.map(Self.percentText) ?? "Unknown")",
+            "Control Loss: \(connectionInfo.packetLossControl.map(Self.percentText) ?? "Unknown")",
+            "Session Downloaded: \(connectionInfo.bytesReceived.map(Self.byteText) ?? "Unknown")",
+            "Session Uploaded: \(connectionInfo.bytesSent.map(Self.byteText) ?? "Unknown")",
+            "Connected Seconds: \(connectionInfo.connectedSeconds.map(String.init) ?? "Unknown")",
+            "Idle Seconds: \(connectionInfo.idleSeconds.map(String.init) ?? "Unknown")"
+        ].joined(separator: "\n"))
+
+        sections.append([
+            "Local State",
+            "Channels: \(channels.count)",
+            "Clients: \(clients.count)",
+            "Bookmarks: \(bookmarks.count)",
+            "Contacts: \(contacts.count)",
+            "Activity Events: \(activityEvents.count)",
+            "Pokes: \(pokeEvents.count)",
+            "File Transfers: \(fileTransfers.count)",
+            "Debug Log Entries: \(logs.count)"
+        ].joined(separator: "\n"))
+
+        sections.append(String(data: debugLogData(), encoding: .utf8).map { "Debug Log\n\($0)" } ?? "Debug Log\n")
+        return Data(sections.joined(separator: "\n\n").utf8)
+    }
+
     private func appendAudioPermissionLog(_ source: String, status: String) {
         appendLog(
             TS3LogEntry(
@@ -11191,6 +11252,18 @@ final class TS3AppModel: ObservableObject {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
+
+    private static func decimalText(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+
+    private static func percentText(_ value: Double) -> String {
+        String(format: "%.2f%%", value * 100)
+    }
+
+    private static func byteText(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
+    }
 }
 
 private struct MicrophoneAccessResult {
