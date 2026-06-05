@@ -2779,6 +2779,11 @@ final class TS3AppModel: ObservableObject {
         clients.first { $0.uniqueIdentifier == contact.uniqueIdentifier }
     }
 
+    func onlineUser(for record: TS3DatabaseClientSummary) -> TS3UserSummary? {
+        guard let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty else { return nil }
+        return clients.first { $0.uniqueIdentifier == uniqueIdentifier }
+    }
+
     func setContactStatus(_ status: TS3ContactStatus, for record: TS3DatabaseClientSummary) {
         updateContact(for: record, status: status, note: contactNote(for: record) ?? "")
     }

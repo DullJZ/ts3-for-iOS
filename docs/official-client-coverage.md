@@ -36,7 +36,7 @@ Status legend:
 | Channel/server/private text chat | Done | `ChatSheet`, send methods, local history | Add richer transcript formatting and per-conversation threading. |
 | Chat history management | Done | Local history, filters, presets, transcript/history import/export, offline access, configurable retention settings | Add richer per-conversation threading if needed. |
 | Offline messages | Partial | Inbox, compose, read/delete, local cached history, disconnected access, draft persistence, filters and presets | Validate server-side read/delete behavior against real servers. |
-| Pokes | Partial | Receive poke notifications/events, online client-row poke, poke-back, and online contact poke actions exist | Add broader real-server validation and any remaining context-menu entry points found in official-client audit. |
+| Pokes | Partial | Receive poke notifications/events, online client-row poke, database-record online poke, poke-back, and online contact poke actions exist | Add broader real-server validation and any remaining context-menu entry points found in official-client audit. |
 | Whisper | Partial | Whisper sheet, presets, targets, tests for protocol serialization | Verify full voice whisper routing against real servers and add hotkey-style activation UI. |
 | Event log | Done | Events sheet and unread handling | Add export/import or persistent event archive if wanted. |
 
@@ -47,7 +47,7 @@ Status legend:
 | Server information | Done | Server info sheet and Catalyst entry | Add more raw virtual server fields where available. |
 | Server edit/settings | Partial | Server settings editor, quotas, host fields, icon support | Audit all official server edit tabs and fill missing fields. |
 | Channel create/edit/delete/move | Partial | Channel editor, draft import/export, icon import, password prompts | Add full channel permission inheritance visibility and richer codec controls. |
-| Client actions | Partial | Client row menus, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing poke/complaint/bookmark-contact actions. |
+| Client actions | Partial | Client row menus, database-record online actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets and log viewing | Add broader log filters and persistent exports per server. |
 | Ban list | Partial | Ban list management entry | Audit ban edit/add fields and test against real servers. |
 | Complaints | Partial | Complaint management with target picker, direct create/delete, visible export, and filter presets | Validate complaint add/remove flows against real servers and fill any official-client context-menu edge cases. |

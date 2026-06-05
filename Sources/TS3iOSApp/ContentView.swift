@@ -10021,6 +10021,7 @@ struct ClientDatabaseSheet: View {
     @State private var presetName = ""
     @State private var isShowingDescriptionEditor = false
     @State private var actionMode: DatabaseClientActionMode?
+    @State private var onlineActionMode: UserActionMode?
     @State private var isShowingPermissions = false
     @State private var isShowingComplaints = false
     @State private var isConfirmingDelete = false
@@ -10263,6 +10264,14 @@ struct ClientDatabaseSheet: View {
                             model.refreshOnlineLocations(for: selected)
                         }
                         .disabled(selected.uniqueIdentifier == nil)
+                        if model.onlineUser(for: selected) != nil {
+                            Button("Poke Online Client") {
+                                onlineActionMode = .poke
+                            }
+                            Button("Send Private Message") {
+                                onlineActionMode = .privateMessage
+                            }
+                        }
                         Button("Edit Description") {
                             isShowingDescriptionEditor = true
                         }
@@ -10351,6 +10360,13 @@ struct ClientDatabaseSheet: View {
             .sheet(item: $actionMode) { mode in
                 if let selected = model.selectedDatabaseClient {
                     DatabaseClientActionSheet(mode: mode, record: selected)
+                        .environmentObject(model)
+                }
+            }
+            .sheet(item: $onlineActionMode) { mode in
+                if let selected = model.selectedDatabaseClient,
+                   let onlineUser = model.onlineUser(for: selected) {
+                    UserActionSheet(mode: mode, user: onlineUser)
                         .environmentObject(model)
                 }
             }
@@ -10939,6 +10955,11 @@ struct DatabaseClientActionSheet: View {
 struct DatabaseClientRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let record: TS3DatabaseClientSummary
+    @State private var onlineActionMode: UserActionMode?
+
+    private var onlineUser: TS3UserSummary? {
+        model.onlineUser(for: record)
+    }
 
     var body: some View {
         Button {
@@ -10976,6 +10997,17 @@ struct DatabaseClientRow: View {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                 }
             }
+            if onlineUser != nil {
+                Button("Poke Online Client") {
+                    onlineActionMode = .poke
+                }
+                Button("Send Private Message") {
+                    onlineActionMode = .privateMessage
+                }
+                Button("Client Info") {
+                    onlineActionMode = .info
+                }
+            }
             if !model.serverGroups.isEmpty {
                 Menu("Add Server Group") {
                     ForEach(model.serverGroups) { group in
@@ -10984,6 +11016,12 @@ struct DatabaseClientRow: View {
                         }
                     }
                 }
+            }
+        }
+        .sheet(item: $onlineActionMode) { mode in
+            if let onlineUser {
+                UserActionSheet(mode: mode, user: onlineUser)
+                    .environmentObject(model)
             }
         }
     }
