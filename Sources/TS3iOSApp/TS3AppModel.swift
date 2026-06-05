@@ -1871,6 +1871,7 @@ struct TS3ServerInfoSummary {
     var status: String?
     var machineId: String?
     var codecEncryptionMode: Int?
+    var isWeblistEnabled: Bool?
     var defaultServerGroupId: Int?
     var defaultChannelGroupId: Int?
     var defaultChannelAdminGroupId: Int?
@@ -1924,6 +1925,7 @@ struct TS3ServerInfoSummary {
         status: nil,
         machineId: nil,
         codecEncryptionMode: nil,
+        isWeblistEnabled: nil,
         defaultServerGroupId: nil,
         defaultChannelGroupId: nil,
         defaultChannelAdminGroupId: nil,
@@ -5040,6 +5042,7 @@ final class TS3AppModel: ObservableObject {
         antiFloodPointsTickReduce: Int?,
         antiFloodPointsNeededCommandBlock: Int?,
         antiFloodPointsNeededIPBlock: Int?,
+        isWeblistEnabled: Bool?,
         codecEncryptionMode: Int?
     ) {
         let edit = TS3ServerEdit(
@@ -5066,6 +5069,7 @@ final class TS3AppModel: ObservableObject {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            isWeblistEnabled: isWeblistEnabled,
             codecEncryptionMode: codecEncryptionMode
         )
         runClientCommand { client in
@@ -10990,6 +10994,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 status: info.status,
                 machineId: info.machineId,
                 codecEncryptionMode: info.codecEncryptionMode,
+                isWeblistEnabled: info.isWeblistEnabled,
                 defaultServerGroupId: info.defaultServerGroupId,
                 defaultChannelGroupId: info.defaultChannelGroupId,
                 defaultChannelAdminGroupId: info.defaultChannelAdminGroupId,

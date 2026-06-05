@@ -258,6 +258,7 @@ public final class TS3Client {
         appendParameter(&params, name: "virtualserver_antiflood_points_tick_reduce", value: edit.antiFloodPointsTickReduce.map(String.init))
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_command_block", value: edit.antiFloodPointsNeededCommandBlock.map(String.init))
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
+        appendParameter(&params, name: "virtualserver_weblist_enabled", value: edit.isWeblistEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
         guard !params.isEmpty else { return }
         _ = try await execute(TS3SingleCommand(name: "serveredit", parameters: params))
@@ -3045,6 +3046,7 @@ private extension TS3Client {
             status: command.get("virtualserver_status")?.value,
             machineId: command.get("virtualserver_machine_id")?.value,
             codecEncryptionMode: intValue(command, "virtualserver_codec_encryption_mode"),
+            isWeblistEnabled: optionalBoolValue(command, "virtualserver_weblist_enabled"),
             defaultServerGroupId: intValue(command, "virtualserver_default_server_group"),
             defaultChannelGroupId: intValue(command, "virtualserver_default_channel_group"),
             defaultChannelAdminGroupId: intValue(command, "virtualserver_default_channel_admin_group"),

@@ -8683,6 +8683,7 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Created", value: model.serverInfo.createdAt.map(Self.dateText))
                     ServerInfoDetailRow(label: "Uptime", value: model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText))
                     ServerInfoDetailRow(label: "Password", value: model.serverInfo.passwordProtected ? "Protected" : "Not Protected")
+                    ServerInfoDetailRow(label: "Server List", value: model.serverInfo.isWeblistEnabled.map { $0 ? "Listed" : "Hidden" })
                     if let message = model.serverInfo.welcomeMessage, !message.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Welcome Message")
@@ -8813,6 +8814,7 @@ struct ServerInformationSheet: View {
         rows.append(("Created", model.serverInfo.createdAt.map(Self.dateText)))
         rows.append(("Uptime", model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText)))
         rows.append(("Password", model.serverInfo.passwordProtected ? "Protected" : "Not Protected"))
+        rows.append(("Server List", model.serverInfo.isWeblistEnabled.map { $0 ? "Listed" : "Hidden" }))
         rows.append(("Welcome Message", model.serverInfo.welcomeMessage))
         rows.append(("Clients", clientsText))
         rows.append(("Query Clients", model.serverInfo.clientsInQuery.map(String.init)))
@@ -11386,6 +11388,7 @@ struct ServerSettingsEditorSheet: View {
         var antiFloodPointsTickReduce: String?
         var antiFloodPointsNeededCommandBlock: String?
         var antiFloodPointsNeededIPBlock: String?
+        var weblistEnabled: String?
         var codecEncryptionMode: String
     }
 
@@ -11415,6 +11418,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var antiFloodPointsTickReduce = ""
     @State private var antiFloodPointsNeededCommandBlock = ""
     @State private var antiFloodPointsNeededIPBlock = ""
+    @State private var weblistEnabled: Bool?
     @State private var codecEncryptionMode: Int?
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
@@ -11463,6 +11467,11 @@ struct ServerSettingsEditorSheet: View {
                         isShowingIconImporter = true
                     } label: {
                         Label("Upload Icon", systemImage: "photo")
+                    }
+                    Picker("Server List", selection: $weblistEnabled) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Listed").tag(Optional(true))
+                        Text("Hidden").tag(Optional(false))
                     }
                 }
 
@@ -11634,6 +11643,7 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            weblistEnabled: weblistEnabled.map { $0 ? "1" : "0" } ?? "",
             codecEncryptionMode: codecEncryptionMode.map(String.init) ?? ""
         )
     }
@@ -11647,6 +11657,7 @@ struct ServerSettingsEditorSheet: View {
             ("Reserved Slots", draft.reservedSlots),
             ("Password", draft.clearPassword ? "Clear Password" : (draft.password.isEmpty ? "Unchanged" : "New Password Set")),
             ("Icon ID", draft.iconId),
+            ("Server List", weblistTitle(draft.weblistEnabled ?? "")),
             ("Host Message Mode", hostMessageModeTitle(draft.hostMessageMode)),
             ("Host Message", draft.hostMessage),
             ("Banner Link URL", draft.hostBannerURL),
@@ -11699,6 +11710,7 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsTickReduce = model.serverInfo.antiFloodPointsTickReduce.map(String.init) ?? ""
         antiFloodPointsNeededCommandBlock = model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init) ?? ""
         antiFloodPointsNeededIPBlock = model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init) ?? ""
+        weblistEnabled = model.serverInfo.isWeblistEnabled
         codecEncryptionMode = model.serverInfo.codecEncryptionMode
     }
 
@@ -11745,6 +11757,7 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: Int(antiFloodPointsTickReduce.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededCommandBlock: Int(antiFloodPointsNeededCommandBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededIPBlock: Int(antiFloodPointsNeededIPBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
+            isWeblistEnabled: weblistEnabled,
             codecEncryptionMode: codecEncryptionMode
         )
     }
@@ -11800,6 +11813,7 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsTickReduce = draft.antiFloodPointsTickReduce ?? ""
         antiFloodPointsNeededCommandBlock = draft.antiFloodPointsNeededCommandBlock ?? ""
         antiFloodPointsNeededIPBlock = draft.antiFloodPointsNeededIPBlock ?? ""
+        weblistEnabled = Self.boolDraftValue(draft.weblistEnabled)
         codecEncryptionMode = Int(draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
@@ -11813,6 +11827,22 @@ struct ServerSettingsEditorSheet: View {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let numericValue = Int(trimmed) else { return trimmed }
         return TS3CodecEncryptionMode.title(for: numericValue)
+    }
+
+    private func weblistTitle(_ value: String) -> String {
+        guard let enabled = Self.boolDraftValue(value) else { return "Unchanged" }
+        return enabled ? "Listed" : "Hidden"
+    }
+
+    private static func boolDraftValue(_ value: String?) -> Bool? {
+        switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "1", "true", "yes", "listed":
+            return true
+        case "0", "false", "no", "hidden":
+            return false
+        default:
+            return nil
+        }
     }
 
     private func isOptionalInt(_ value: String) -> Bool {

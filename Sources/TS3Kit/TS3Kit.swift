@@ -76,6 +76,8 @@ public struct TS3ServerInfo {
     public let machineId: String?
     /// The codec encryption mode configured on the virtual server.
     public let codecEncryptionMode: Int?
+    /// Whether the virtual server is published to the TeamSpeak web server list.
+    public let isWeblistEnabled: Bool?
     /// The default server group id for new clients.
     public let defaultServerGroupId: Int?
     /// The default channel group id for new clients.
@@ -156,6 +158,7 @@ public struct TS3ServerInfo {
         status: String? = nil,
         machineId: String? = nil,
         codecEncryptionMode: Int? = nil,
+        isWeblistEnabled: Bool? = nil,
         defaultServerGroupId: Int? = nil,
         defaultChannelGroupId: Int? = nil,
         defaultChannelAdminGroupId: Int? = nil,
@@ -207,6 +210,7 @@ public struct TS3ServerInfo {
         self.status = status
         self.machineId = machineId
         self.codecEncryptionMode = codecEncryptionMode
+        self.isWeblistEnabled = isWeblistEnabled
         self.defaultServerGroupId = defaultServerGroupId
         self.defaultChannelGroupId = defaultChannelGroupId
         self.defaultChannelAdminGroupId = defaultChannelAdminGroupId
@@ -348,6 +352,7 @@ public struct TS3ServerEdit {
     public var antiFloodPointsTickReduce: Int?
     public var antiFloodPointsNeededCommandBlock: Int?
     public var antiFloodPointsNeededIPBlock: Int?
+    public var isWeblistEnabled: Bool?
     public var codecEncryptionMode: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
@@ -375,6 +380,7 @@ public struct TS3ServerEdit {
         antiFloodPointsTickReduce: Int? = nil,
         antiFloodPointsNeededCommandBlock: Int? = nil,
         antiFloodPointsNeededIPBlock: Int? = nil,
+        isWeblistEnabled: Bool? = nil,
         codecEncryptionMode: Int? = nil
     ) {
         self.name = name
@@ -400,6 +406,7 @@ public struct TS3ServerEdit {
         self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
         self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
         self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
+        self.isWeblistEnabled = isWeblistEnabled
         self.codecEncryptionMode = codecEncryptionMode
     }
 }
