@@ -23,7 +23,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Receive voice | Done | Opus audio receive/playback pipeline, per-user playback preferences, and audio diagnostics snapshot with connection loss metrics | Add deeper jitter buffer diagnostics if exposed by the audio engine. |
-| Push-to-talk | Done | PTT action, Catalyst menu shortcut, microphone permission flow | Add user-configurable shortcut capture beyond displayed defaults. |
+| Push-to-talk | Done | PTT action, Catalyst menu shortcut, microphone permission flow, configurable shortcut recorder | Add lower-level global hotkey capture if platform APIs allow it. |
 | Continuous transmission | Done | Audio settings transmit mode presets and persistence | Add live input meter calibration view. |
 | Voice activation | Partial | Mode and threshold settings, presets, persisted profiles, and diagnostics snapshot exist | Verify end-to-end behavior on iOS hardware and Catalyst, then add live input meter calibration. |
 | Input/output mute | Done | Main UI and Catalyst menu actions | Add clearer global status indicators on compact layouts. |
@@ -85,7 +85,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Local notifications | Done | Global notification settings, presets, import/export, event types | Add per-server/per-contact notification rules. |
-| Keyboard shortcuts | Partial | User-editable shortcut bindings, import/export/reset controls, validation hints, and Catalyst menu bindings | Add key-capture UI for recording shortcuts instead of text entry. |
+| Keyboard shortcuts | Partial | User-editable shortcut bindings, structured recorder, duplicate warnings, import/export/reset controls, validation hints, and Catalyst menu bindings | Add true key-event capture/global hotkey support if platform APIs allow it. |
 | Catalyst menus | Partial | Global TeamSpeak menu for major connected workflows | Split into more native menus if the app grows beyond one command menu. |
 | iOS accessibility and compact layout | Partial | SwiftUI shared sheets and forms | Audit dynamic type, VoiceOver labels, and compact split behavior. |
 
@@ -100,5 +100,5 @@ Status legend:
 ## Next Implementation Priorities
 
 1. Audit server/channel settings fields against official-client tabs and fill missing fields.
-2. Add user-configurable hotkey capture for PTT, mute, whisper, and common Catalyst actions.
-3. Validate file operation conflict behavior against real servers.
+2. Validate file operation conflict behavior against real servers.
+3. Verify full voice whisper routing against real servers and add hotkey-style activation UI.

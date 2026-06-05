@@ -248,6 +248,7 @@ struct KeyboardShortcutsSheet: View {
     @State private var isExportingShortcutBackup = false
     @State private var isImportingShortcutBackup = false
     @State private var confirmation: ShortcutConfirmation?
+    @State private var captureShortcut: TS3KeyboardShortcutBinding?
     @State private var shortcutsDocument = TS3TextFileDocument()
     @State private var shortcutBackupDocument = TS3BookmarkFileDocument()
 
@@ -269,13 +270,25 @@ struct KeyboardShortcutsSheet: View {
                                 Toggle("", isOn: shortcutEnabledBinding(shortcut))
                                     .labelsHidden()
                             }
-                            TextField("Keys", text: shortcutKeysBinding(shortcut))
-                                .font(.system(.body, design: .monospaced))
-                                .ts3PlainTextField()
-                            if shortcut.isEnabled && TS3KeyboardShortcutDescriptor(shortcut.keys) == nil {
+                            HStack {
+                                TextField("Keys", text: shortcutKeysBinding(shortcut))
+                                    .font(.system(.body, design: .monospaced))
+                                    .ts3PlainTextField()
+                                Button("Record") {
+                                    captureShortcut = currentShortcut(for: shortcut)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            let current = currentShortcut(for: shortcut)
+                            if current.isEnabled && TS3KeyboardShortcutDescriptor(current.keys) == nil {
                                 Text("Invalid shortcut. Use formats like Command-Shift-T, Command-/, or Command-Return.")
                                     .font(.caption)
                                     .foregroundColor(.red)
+                            }
+                            if let duplicateText = duplicateShortcutText(for: shortcut) {
+                                Text(duplicateText)
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
                             }
                             if shortcut.keys != shortcut.defaultKeys {
                                 Button("Reset to \(shortcut.defaultKeys)") {
@@ -361,6 +374,11 @@ struct KeyboardShortcutsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .sheet(item: $captureShortcut) { shortcut in
+                ShortcutCaptureSheet(shortcut: currentShortcut(for: shortcut)) { updatedKeys, isEnabled in
+                    model.updateKeyboardShortcut(shortcut, keys: updatedKeys, isEnabled: isEnabled)
+                }
+            }
             .alert(item: $confirmation) { confirmation in
                 switch confirmation {
                 case .importBackup(let url):
@@ -434,6 +452,23 @@ struct KeyboardShortcutsSheet: View {
         )
     }
 
+    private func currentShortcut(for shortcut: TS3KeyboardShortcutBinding) -> TS3KeyboardShortcutBinding {
+        model.keyboardShortcuts.first { $0.actionId == shortcut.actionId } ?? shortcut
+    }
+
+    private func duplicateShortcutText(for shortcut: TS3KeyboardShortcutBinding) -> String? {
+        let current = currentShortcut(for: shortcut)
+        guard current.isEnabled, TS3KeyboardShortcutDescriptor(current.keys) != nil else { return nil }
+        let normalizedKeys = current.keys.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let duplicates = model.keyboardShortcuts.filter {
+            $0.actionId != current.actionId
+                && $0.isEnabled
+                && $0.keys.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedKeys
+        }
+        guard !duplicates.isEmpty else { return nil }
+        return "Also assigned to \(duplicates.map(\.action).joined(separator: ", "))."
+    }
+
     private func exportShortcutBackup() {
         do {
             shortcutBackupDocument = TS3BookmarkFileDocument(data: try model.keyboardShortcutsExportData())
@@ -454,6 +489,173 @@ struct KeyboardShortcutsSheet: View {
             try model.importKeyboardShortcuts(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+struct ShortcutCaptureSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let shortcut: TS3KeyboardShortcutBinding
+    let save: (String, Bool) -> Void
+
+    @State private var isEnabled: Bool
+    @State private var usesCommand: Bool
+    @State private var usesShift: Bool
+    @State private var usesOption: Bool
+    @State private var usesControl: Bool
+    @State private var selectedKey: String
+    @State private var customKey: String
+
+    private static let customKeyToken = "Custom"
+    private static let keyOptions = [
+        "A", "B", "C", "D", "E", "F", "G", "I", "K", "L", "M", "P", "R", "S", "T", "W",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+        "/", ".", ",", ";", "'", "[", "]", "-", "=",
+        "Return", "Space", "Tab", "Escape", "Delete",
+        customKeyToken
+    ]
+
+    init(shortcut: TS3KeyboardShortcutBinding, save: @escaping (String, Bool) -> Void) {
+        self.shortcut = shortcut
+        self.save = save
+        let parsed = Self.parse(shortcut.keys)
+        _isEnabled = State(initialValue: shortcut.isEnabled)
+        _usesCommand = State(initialValue: parsed.modifiers.contains("Command"))
+        _usesShift = State(initialValue: parsed.modifiers.contains("Shift"))
+        _usesOption = State(initialValue: parsed.modifiers.contains("Option"))
+        _usesControl = State(initialValue: parsed.modifiers.contains("Control"))
+        let key = parsed.key.isEmpty ? "T" : parsed.key
+        if Self.keyOptions.contains(key) {
+            _selectedKey = State(initialValue: key)
+            _customKey = State(initialValue: "")
+        } else {
+            _selectedKey = State(initialValue: Self.customKeyToken)
+            _customKey = State(initialValue: key)
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(shortcut.action)) {
+                    Toggle("Enabled", isOn: $isEnabled)
+                    Toggle("Command", isOn: $usesCommand)
+                    Toggle("Shift", isOn: $usesShift)
+                    Toggle("Option", isOn: $usesOption)
+                    Toggle("Control", isOn: $usesControl)
+                }
+
+                Section(header: Text("Key")) {
+                    Picker("Key", selection: $selectedKey) {
+                        ForEach(Self.keyOptions, id: \.self) { key in
+                            Text(key).tag(key)
+                        }
+                    }
+                    if selectedKey == Self.customKeyToken {
+                        TextField("Single key or Return", text: $customKey)
+                            .font(.system(.body, design: .monospaced))
+                            .ts3PlainTextField()
+                    }
+                }
+
+                Section(header: Text("Preview")) {
+                    Text(capturedKeys)
+                        .font(.system(.body, design: .monospaced))
+                    if TS3KeyboardShortcutDescriptor(capturedKeys) == nil {
+                        Text("Choose a single character or a supported key such as Return, Space, Tab, Escape, or Delete.")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    if !hasModifier {
+                        Text("Shortcuts without modifiers may conflict with typing in text fields.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                Section {
+                    Button("Save Shortcut") {
+                        save(capturedKeys, isEnabled)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(TS3KeyboardShortcutDescriptor(capturedKeys) == nil)
+                    Button("Use Default") {
+                        save(shortcut.defaultKeys, isEnabled)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Record Shortcut")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var capturedKeys: String {
+        var parts: [String] = []
+        if usesCommand { parts.append("Command") }
+        if usesShift { parts.append("Shift") }
+        if usesOption { parts.append("Option") }
+        if usesControl { parts.append("Control") }
+        parts.append(capturedKey)
+        return parts.joined(separator: "-")
+    }
+
+    private var capturedKey: String {
+        if selectedKey == Self.customKeyToken {
+            return customKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return selectedKey
+    }
+
+    private var hasModifier: Bool {
+        usesCommand || usesShift || usesOption || usesControl
+    }
+
+    private static func parse(_ keys: String) -> (modifiers: Set<String>, key: String) {
+        let parts = keys
+            .split(separator: "-")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard let key = parts.last else { return ([], "") }
+        var modifiers: Set<String> = []
+        for modifier in parts.dropLast() {
+            switch modifier.lowercased() {
+            case "command", "cmd", "⌘":
+                modifiers.insert("Command")
+            case "shift", "⇧":
+                modifiers.insert("Shift")
+            case "option", "alt", "⌥":
+                modifiers.insert("Option")
+            case "control", "ctrl", "⌃":
+                modifiers.insert("Control")
+            default:
+                break
+            }
+        }
+        return (modifiers, normalizedKey(key))
+    }
+
+    private static func normalizedKey(_ key: String) -> String {
+        switch key.lowercased() {
+        case "return", "enter":
+            return "Return"
+        case "escape", "esc":
+            return "Escape"
+        case "space":
+            return "Space"
+        case "tab":
+            return "Tab"
+        case "delete", "backspace":
+            return "Delete"
+        default:
+            return key.count == 1 ? key.uppercased() : key
         }
     }
 }
