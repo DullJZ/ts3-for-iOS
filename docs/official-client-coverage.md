@@ -50,7 +50,7 @@ Status legend:
 | Client actions | Partial | Client row menus, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing poke/complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets and log viewing | Add broader log filters and persistent exports per server. |
 | Ban list | Partial | Ban list management entry | Audit ban edit/add fields and test against real servers. |
-| Complaints | Partial | Complaint management entry | Add more direct complaint creation/removal paths from client context menus. |
+| Complaints | Partial | Complaint management with target picker, direct create/delete, visible export, and filter presets | Validate complaint add/remove flows against real servers and fill any official-client context-menu edge cases. |
 | Privilege keys | Partial | Privilege key manager with create/use/delete, generated-key actions, readable exports/backups, and filter presets | Validate create/use/delete flows against real servers and audit any official-client edge fields. |
 
 ## Permissions And Groups

@@ -15013,6 +15013,7 @@ struct ComplaintListSheet: View {
     @State private var sortMode: ComplaintSortMode = .date
     @State private var sortAscending = false
     @State private var presetName = ""
+    @State private var newComplaintMessage = ""
 
     private var complaintSnapshot: String {
         filteredComplaintEntries.map(\.clipboardSummary).joined(separator: "\n")
@@ -15037,6 +15038,18 @@ struct ComplaintListSheet: View {
                     } else if model.complaintTarget == nil {
                         Text("No other users")
                             .foregroundColor(.secondary)
+                    }
+                }
+
+                if let target = model.complaintTarget {
+                    Section(header: Text("New Complaint")) {
+                        TextField("Complaint", text: $newComplaintMessage)
+                            .ts3PlainTextField()
+                        Button("Submit Complaint") {
+                            model.complainAboutUser(target, message: newComplaintMessage)
+                            newComplaintMessage = ""
+                        }
+                        .disabled(newComplaintMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 

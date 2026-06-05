@@ -4943,6 +4943,11 @@ final class TS3AppModel: ObservableObject {
         guard !message.isEmpty else { return }
         runClientCommand { client in
             try await client.addComplaint(clientDatabaseId: record.id, message: message)
+            let entries = try await client.refreshComplaints(clientDatabaseId: record.id)
+            await MainActor.run {
+                self.complaintTarget = record.userSummary
+                self.complaintEntries = self.complaintSummaries(from: entries)
+            }
         }
     }
 
@@ -7345,6 +7350,11 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
             try await client.addComplaint(clientDatabaseId: databaseId, message: message)
+            let entries = try await client.refreshComplaints(clientDatabaseId: databaseId)
+            await MainActor.run {
+                self.complaintTarget = user
+                self.complaintEntries = self.complaintSummaries(from: entries)
+            }
         }
     }
 
