@@ -4128,7 +4128,9 @@ struct UserActionSheet: View {
                                 case .privateMessage:
                                     model.sendPrivateMessage(text, to: user)
                                 case .offlineMessage:
-                                    model.sendOfflineMessage(to: user, subject: subject, message: text)
+                                    model.sendOfflineMessage(to: user, subject: subject, message: text) {
+                                        model.clearOfflineMessageDraft(id: offlineDraftId)
+                                    }
                                 case .poke:
                                     model.pokeUser(user, message: text)
                                 case .editDescription:
@@ -4174,9 +4176,18 @@ struct UserActionSheet: View {
                 if mode == .contactNote {
                     text = model.contactNote(for: user) ?? ""
                 }
+                if mode == .offlineMessage {
+                    loadOfflineDraft()
+                }
                 if mode == .info {
                     model.refreshUserDetails(user)
                 }
+            }
+            .onChange(of: subject) { _ in
+                saveOfflineDraftIfNeeded()
+            }
+            .onChange(of: text) { _ in
+                saveOfflineDraftIfNeeded()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -4204,6 +4215,32 @@ struct UserActionSheet: View {
         case .ban:
             return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
         }
+    }
+
+    private var offlineDraftId: String {
+        if let uniqueIdentifier = user.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            return "uid:\(uniqueIdentifier)"
+        }
+        if let databaseId = user.databaseId {
+            return "db:\(databaseId)"
+        }
+        return "client:\(user.id)"
+    }
+
+    private func loadOfflineDraft() {
+        guard let draft = model.offlineMessageDraft(for: offlineDraftId) else { return }
+        subject = draft.subject
+        text = draft.message
+    }
+
+    private func saveOfflineDraftIfNeeded() {
+        guard mode == .offlineMessage else { return }
+        model.saveOfflineMessageDraft(
+            id: offlineDraftId,
+            recipientName: user.nickname,
+            subject: subject,
+            message: text
+        )
     }
 
     private var infoSnapshot: String {
@@ -6686,14 +6723,50 @@ struct PokeOfflineReplySheet: View {
                                 toUniqueIdentifier: uniqueIdentifier,
                                 subject: subject,
                                 message: message
-                            )
+                            ) {
+                                model.clearOfflineMessageDraft(id: offlineDraftId)
+                            }
                         }
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(isSendDisabled)
                 }
             }
+            .onAppear {
+                loadOfflineDraft()
+            }
+            .onChange(of: subject) { _ in
+                saveOfflineDraft()
+            }
+            .onChange(of: message) { _ in
+                saveOfflineDraft()
+            }
         }
+    }
+
+    private var offlineDraftId: String {
+        if let uniqueIdentifier = poke.senderUniqueIdentifier, !uniqueIdentifier.isEmpty {
+            return "uid:\(uniqueIdentifier)"
+        }
+        if let senderId = poke.senderId {
+            return "client:\(senderId)"
+        }
+        return "poke:\(poke.id)"
+    }
+
+    private func loadOfflineDraft() {
+        guard let draft = model.offlineMessageDraft(for: offlineDraftId) else { return }
+        subject = draft.subject
+        message = draft.message
+    }
+
+    private func saveOfflineDraft() {
+        model.saveOfflineMessageDraft(
+            id: offlineDraftId,
+            recipientName: poke.senderName,
+            subject: subject,
+            message: message
+        )
     }
 
     private var isSendDisabled: Bool {
@@ -7380,14 +7453,47 @@ struct OfflineMessageReplySheet: View {
                                 toUniqueIdentifier: uniqueIdentifier,
                                 subject: subject,
                                 message: replyText
-                            )
+                            ) {
+                                model.clearOfflineMessageDraft(id: offlineDraftId)
+                            }
                         }
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(isSendDisabled)
                 }
             }
+            .onAppear {
+                loadOfflineDraft()
+            }
+            .onChange(of: subject) { _ in
+                saveOfflineDraft()
+            }
+            .onChange(of: replyText) { _ in
+                saveOfflineDraft()
+            }
         }
+    }
+
+    private var offlineDraftId: String {
+        if let uniqueIdentifier = message.senderUniqueIdentifier, !uniqueIdentifier.isEmpty {
+            return "uid:\(uniqueIdentifier)"
+        }
+        return "offline-message:\(message.id)"
+    }
+
+    private func loadOfflineDraft() {
+        guard let draft = model.offlineMessageDraft(for: offlineDraftId) else { return }
+        subject = draft.subject
+        replyText = draft.message
+    }
+
+    private func saveOfflineDraft() {
+        model.saveOfflineMessageDraft(
+            id: offlineDraftId,
+            recipientName: message.senderName ?? message.senderUniqueIdentifier ?? "Recipient",
+            subject: subject,
+            message: replyText
+        )
     }
 
     private var isSendDisabled: Bool {
@@ -10714,6 +10820,15 @@ struct DatabaseClientActionSheet: View {
                 if mode == .contactNote, text.isEmpty {
                     text = model.contactNote(for: record) ?? ""
                 }
+                if mode == .offlineMessage {
+                    loadOfflineDraft()
+                }
+            }
+            .onChange(of: subject) { _ in
+                saveOfflineDraftIfNeeded()
+            }
+            .onChange(of: text) { _ in
+                saveOfflineDraftIfNeeded()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
@@ -10781,7 +10896,9 @@ struct DatabaseClientActionSheet: View {
     private func submit() {
         switch mode {
         case .offlineMessage:
-            model.sendOfflineMessage(to: record, subject: subject, message: text)
+            model.sendOfflineMessage(to: record, subject: subject, message: text) {
+                model.clearOfflineMessageDraft(id: offlineDraftId)
+            }
         case .contactNote:
             model.setContactNote(text, for: record)
         case .complain:
@@ -10793,6 +10910,29 @@ struct DatabaseClientActionSheet: View {
                 reason: text.isEmpty ? nil : text
             )
         }
+    }
+
+    private var offlineDraftId: String {
+        if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            return "uid:\(uniqueIdentifier)"
+        }
+        return "db:\(record.id)"
+    }
+
+    private func loadOfflineDraft() {
+        guard let draft = model.offlineMessageDraft(for: offlineDraftId) else { return }
+        subject = draft.subject
+        text = draft.message
+    }
+
+    private func saveOfflineDraftIfNeeded() {
+        guard mode == .offlineMessage else { return }
+        model.saveOfflineMessageDraft(
+            id: offlineDraftId,
+            recipientName: record.nickname,
+            subject: subject,
+            message: text
+        )
     }
 }
 

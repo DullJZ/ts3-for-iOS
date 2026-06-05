@@ -410,6 +410,14 @@ extension TS3OfflineMessageSummary {
     }
 }
 
+struct TS3OfflineMessageDraft: Identifiable, Codable {
+    let id: String
+    var recipientName: String
+    var subject: String
+    var message: String
+    var updatedAt: Date
+}
+
 struct TS3BanEntrySummary: Identifiable {
     let id: Int
     let ip: String?
@@ -2388,6 +2396,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var activityEvents: [TS3ActivitySummary] = []
     @Published private(set) var unreadActivityCount = 0
     @Published var offlineMessages: [TS3OfflineMessageSummary] = []
+    @Published private(set) var offlineMessageDrafts: [TS3OfflineMessageDraft] = []
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var complaintEntries: [TS3ComplaintSummary] = []
     @Published var complaintTarget: TS3UserSummary?
@@ -2537,6 +2546,7 @@ final class TS3AppModel: ObservableObject {
         loadFileBrowserBookmarks()
         loadFileBrowserFilterPresets()
         loadOfflineMessageHistory()
+        loadOfflineMessageDrafts()
         loadOfflineMessageFilterPresets()
         loadWhisperPresets()
         loadWhisperFilterPresets()
@@ -4925,7 +4935,7 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
-    func sendOfflineMessage(to record: TS3DatabaseClientSummary, subject: String, message: String) {
+    func sendOfflineMessage(to record: TS3DatabaseClientSummary, subject: String, message: String, onSent: (() -> Void)? = nil) {
         let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !subject.isEmpty, !message.isEmpty else { return }
@@ -4935,6 +4945,9 @@ final class TS3AppModel: ObservableObject {
         }
         runClientCommand { client in
             try await client.sendOfflineMessage(toUniqueIdentifier: uniqueIdentifier, subject: subject, message: message)
+            await MainActor.run {
+                onSent?()
+            }
         }
     }
 
@@ -6097,7 +6110,7 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func sendOfflineMessage(to user: TS3UserSummary, subject: String, message: String) {
+    func sendOfflineMessage(to user: TS3UserSummary, subject: String, message: String, onSent: (() -> Void)? = nil) {
         let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !subject.isEmpty, !message.isEmpty else { return }
@@ -6107,17 +6120,57 @@ final class TS3AppModel: ObservableObject {
                 throw TS3Error.serverError(message: "The server did not provide a unique id for \(user.nickname).")
             }
             try await client.sendOfflineMessage(toUniqueIdentifier: uniqueIdentifier, subject: subject, message: message)
+            await MainActor.run {
+                onSent?()
+            }
         }
     }
 
-    func sendOfflineMessage(toUniqueIdentifier uniqueIdentifier: String, subject: String, message: String) {
+    func sendOfflineMessage(toUniqueIdentifier uniqueIdentifier: String, subject: String, message: String, onSent: (() -> Void)? = nil) {
         let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !uniqueIdentifier.isEmpty, !subject.isEmpty, !message.isEmpty else { return }
         runClientCommand { client in
             try await client.sendOfflineMessage(toUniqueIdentifier: uniqueIdentifier, subject: subject, message: message)
+            await MainActor.run {
+                onSent?()
+            }
         }
+    }
+
+    func offlineMessageDraft(for key: String) -> TS3OfflineMessageDraft? {
+        offlineMessageDrafts.first { $0.id == key }
+    }
+
+    func saveOfflineMessageDraft(id: String, recipientName: String, subject: String, message: String) {
+        let id = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        let recipientName = recipientName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        if subject.isEmpty && message.isEmpty {
+            clearOfflineMessageDraft(id: id)
+            return
+        }
+        let draft = TS3OfflineMessageDraft(
+            id: id,
+            recipientName: recipientName.isEmpty ? id : recipientName,
+            subject: subject,
+            message: message,
+            updatedAt: Date()
+        )
+        if let index = offlineMessageDrafts.firstIndex(where: { $0.id == id }) {
+            offlineMessageDrafts[index] = draft
+        } else {
+            offlineMessageDrafts.insert(draft, at: 0)
+        }
+        saveOfflineMessageDrafts()
+    }
+
+    func clearOfflineMessageDraft(id: String) {
+        offlineMessageDrafts.removeAll { $0.id == id }
+        saveOfflineMessageDrafts()
     }
 
     private func upsertOfflineMessage(_ message: TS3OfflineMessageSummary) {
@@ -8061,6 +8114,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-offline-message-history.json")
     }
 
+    private var offlineMessageDraftsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-offline-message-drafts.json")
+    }
+
     private var fileBrowserBookmarksURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-file-browser-bookmarks.json")
@@ -9962,6 +10020,26 @@ final class TS3AppModel: ObservableObject {
     func clearOfflineMessageHistory() {
         offlineMessages = []
         saveOfflineMessageHistory()
+    }
+
+    private func loadOfflineMessageDrafts() {
+        guard let data = try? Data(contentsOf: offlineMessageDraftsURL),
+              let decoded = try? JSONDecoder().decode([TS3OfflineMessageDraft].self, from: data) else {
+            offlineMessageDrafts = []
+            return
+        }
+        offlineMessageDrafts = decoded.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private func saveOfflineMessageDrafts() {
+        do {
+            let directory = offlineMessageDraftsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(offlineMessageDrafts)
+            try data.write(to: offlineMessageDraftsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     func chatHistoryBackupData() throws -> Data {
