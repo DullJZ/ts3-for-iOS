@@ -252,7 +252,7 @@ struct TS3ChatMessageSummary: Identifiable, Codable {
     }
 }
 
-struct TS3PokeSummary: Identifiable {
+struct TS3PokeSummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date
     let senderId: Int?
@@ -290,7 +290,7 @@ struct TS3PokeSummary: Identifiable {
     }
 }
 
-struct TS3ActivitySummary: Identifiable {
+struct TS3ActivitySummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date
     let kind: TS3ServerActivityEvent.Kind
@@ -304,6 +304,36 @@ struct TS3ActivitySummary: Identifiable {
     let reasonId: Int?
     let reasonMessage: String?
     let isOwnClient: Bool
+
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        kind: TS3ServerActivityEvent.Kind,
+        clientId: Int,
+        clientName: String,
+        channelId: Int?,
+        channelName: String?,
+        fromChannelId: Int?,
+        toChannelId: Int?,
+        invokerName: String?,
+        reasonId: Int?,
+        reasonMessage: String?,
+        isOwnClient: Bool
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.kind = kind
+        self.clientId = clientId
+        self.clientName = clientName
+        self.channelId = channelId
+        self.channelName = channelName
+        self.fromChannelId = fromChannelId
+        self.toChannelId = toChannelId
+        self.invokerName = invokerName
+        self.reasonId = reasonId
+        self.reasonMessage = reasonMessage
+        self.isOwnClient = isOwnClient
+    }
 
     init(event: TS3ServerActivityEvent) {
         id = event.id
@@ -320,6 +350,72 @@ struct TS3ActivitySummary: Identifiable {
         reasonMessage = event.reasonMessage
         isOwnClient = event.isOwnClient
     }
+}
+
+extension TS3ServerActivityEvent.Kind: Codable {
+    private var encodedValue: String {
+        switch self {
+        case .clientEntered:
+            return "clientEntered"
+        case .clientLeft:
+            return "clientLeft"
+        case .clientMoved:
+            return "clientMoved"
+        case .channelCreated:
+            return "channelCreated"
+        case .channelEdited:
+            return "channelEdited"
+        case .channelDeleted:
+            return "channelDeleted"
+        case .channelMoved:
+            return "channelMoved"
+        case .channelPasswordChanged:
+            return "channelPasswordChanged"
+        case .channelDescriptionChanged:
+            return "channelDescriptionChanged"
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        switch value {
+        case "clientEntered":
+            self = .clientEntered
+        case "clientLeft":
+            self = .clientLeft
+        case "clientMoved":
+            self = .clientMoved
+        case "channelCreated":
+            self = .channelCreated
+        case "channelEdited":
+            self = .channelEdited
+        case "channelDeleted":
+            self = .channelDeleted
+        case "channelMoved":
+            self = .channelMoved
+        case "channelPasswordChanged":
+            self = .channelPasswordChanged
+        case "channelDescriptionChanged":
+            self = .channelDescriptionChanged
+        default:
+            throw DecodingError.dataCorruptedError(
+                in: try decoder.singleValueContainer(),
+                debugDescription: "Unknown activity event kind: \(value)"
+            )
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(encodedValue)
+    }
+}
+
+private struct TS3EventHistoryArchive: Codable {
+    var activityEvents: [TS3ActivitySummary]
+    var pokeEvents: [TS3PokeSummary]
+
+    static let empty = TS3EventHistoryArchive(activityEvents: [], pokeEvents: [])
 }
 
 enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
@@ -2675,6 +2771,7 @@ final class TS3AppModel: ObservableObject {
         loadChannelSubscriptionPresets()
         loadChannelTreeFilterPresets()
         loadCollapsedChannelIds()
+        loadEventHistory()
         loadEventFilterPresets()
         loadChatFilterPresets()
         loadBanFilterPresets()
@@ -3860,9 +3957,7 @@ final class TS3AppModel: ObservableObject {
     private func clearConnectionState(keepLastConnection: Bool) {
         channels = []
         clients = []
-        pokeEvents = []
         unreadPokeCount = 0
-        activityEvents = []
         unreadActivityCount = 0
         banEntries = []
         complaintEntries = []
@@ -8742,6 +8837,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-event-filter-presets.json")
     }
 
+    private var eventHistoryURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-event-history.json")
+    }
+
     private var chatFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-chat-filter-presets.json")
@@ -9332,6 +9432,32 @@ final class TS3AppModel: ObservableObject {
             return
         }
         eventFilterPresets = sanitizedEventFilterPresets(decoded)
+    }
+
+    private func loadEventHistory() {
+        guard let data = try? Data(contentsOf: eventHistoryURL),
+              let decoded = try? JSONDecoder().decode(TS3EventHistoryArchive.self, from: data) else {
+            activityEvents = TS3EventHistoryArchive.empty.activityEvents
+            pokeEvents = TS3EventHistoryArchive.empty.pokeEvents
+            return
+        }
+        activityEvents = Array(decoded.activityEvents.prefix(100))
+        pokeEvents = Array(decoded.pokeEvents.prefix(50))
+    }
+
+    private func saveEventHistory() {
+        do {
+            let directory = eventHistoryURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let archive = TS3EventHistoryArchive(
+                activityEvents: Array(activityEvents.prefix(100)),
+                pokeEvents: Array(pokeEvents.prefix(50))
+            )
+            let data = try JSONEncoder().encode(archive)
+            try data.write(to: eventHistoryURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func saveEventFilterPresets() {
@@ -10713,11 +10839,13 @@ final class TS3AppModel: ObservableObject {
     func clearActivityEvents() {
         activityEvents = []
         unreadActivityCount = 0
+        saveEventHistory()
     }
 
     func clearPokeEvents() {
         pokeEvents = []
         unreadPokeCount = 0
+        saveEventHistory()
     }
 
     func clearEventHistory() {
@@ -10725,6 +10853,7 @@ final class TS3AppModel: ObservableObject {
         activityEvents = []
         unreadPokeCount = 0
         unreadActivityCount = 0
+        saveEventHistory()
     }
 
     func selfStatusBackupData() throws -> Data {
@@ -11727,6 +11856,7 @@ extension TS3AppModel: TS3ClientDelegate {
             if self.pokeEvents.count > 50 {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
             }
+            self.saveEventHistory()
             self.unreadPokeCount += 1
             if self.pokeNotificationsEnabled,
                !self.isNotificationMuted(senderId: poke.senderId, uniqueIdentifier: poke.senderUniqueIdentifier) {
@@ -11747,6 +11877,7 @@ extension TS3AppModel: TS3ClientDelegate {
             if self.activityEvents.count > 100 {
                 self.activityEvents.removeLast(self.activityEvents.count - 100)
             }
+            self.saveEventHistory()
             self.unreadActivityCount += 1
             if self.activityNotificationsEnabled,
                !self.isNotificationMuted(senderId: event.invokerId ?? event.clientId, uniqueIdentifier: nil) {
