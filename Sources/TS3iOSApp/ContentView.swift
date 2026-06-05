@@ -699,6 +699,7 @@ struct ConnectView: View {
         case name
         case host
         case nickname
+        case note
         case port
 
         var id: String { rawValue }
@@ -709,6 +710,7 @@ struct ConnectView: View {
             case .name: return "Name"
             case .host: return "Host"
             case .nickname: return "Nickname"
+            case .note: return "Note"
             case .port: return "Port"
             }
         }
@@ -820,6 +822,7 @@ struct ConnectView: View {
                 port: snapshot.port,
                 nickname: snapshot.nickname,
                 phoneticNickname: snapshot.phoneticNickname,
+                note: snapshot.note,
                 defaultChannel: snapshot.defaultChannel
             )
         }
@@ -839,6 +842,7 @@ struct ConnectView: View {
                     port: bookmark.port,
                     nickname: bookmark.nickname,
                     phoneticNickname: bookmark.phoneticNickname,
+                    note: bookmark.note,
                     defaultChannel: bookmark.defaultChannel
                 ) || isSearchingConnections && containsConnectionSearch(bookmark.folder)
             )
@@ -964,6 +968,7 @@ struct ConnectView: View {
                                     id: snapshot.id,
                                     name: snapshot.host,
                                     folder: "",
+                                    note: snapshot.note,
                                     host: snapshot.host,
                                     port: snapshot.port,
                                     nickname: snapshot.nickname,
@@ -1129,6 +1134,8 @@ struct ConnectView: View {
                 TextField("Nickname", text: $model.nickname)
                     .ts3PlainTextField()
                 TextField("Phonetic Nickname (optional)", text: $model.phoneticNickname)
+                    .ts3PlainTextField()
+                TextField("Connection Note (optional)", text: $model.connectionNote)
                     .ts3PlainTextField()
                 SecureField("Privilege Key (optional)", text: $model.privilegeKey)
                 Button("Manage Identity") {
@@ -1439,9 +1446,11 @@ struct ConnectView: View {
                     secondaryButton: .cancel()
                 )
             case .deleteAllFilterPresets:
+                let presetCount = model.connectionFilterPresets.count
+                let message = "This removes \(presetCount) saved local filter presets."
                 return Alert(
                     title: Text("Delete All Connection Filter Presets?"),
-                    message: Text("This removes \(model.connectionFilterPresets.count) saved local filter presets."),
+                    message: Text(message),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteAllConnectionFilterPresets()
                     },
@@ -1666,6 +1675,7 @@ struct ConnectView: View {
         port: String,
         nickname: String,
         phoneticNickname: String = "",
+        note: String = "",
         defaultChannel: String
     ) -> Bool {
         !isSearchingConnections
@@ -1674,6 +1684,7 @@ struct ConnectView: View {
             || containsConnectionSearch(port)
             || containsConnectionSearch(nickname)
             || containsConnectionSearch(phoneticNickname)
+            || containsConnectionSearch(note)
             || containsConnectionSearch(defaultChannel)
     }
 
@@ -1684,7 +1695,9 @@ struct ConnectView: View {
     private func bookmarkSubtitle(_ bookmark: TS3BookmarkSummary) -> String {
         let server = "\(bookmark.host):\(bookmark.port)"
         let folder = bookmark.folder.trimmingCharacters(in: .whitespacesAndNewlines)
-        return folder.isEmpty ? server : "\(folder) · \(server)"
+        let note = bookmark.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let location = folder.isEmpty ? server : "\(folder) · \(server)"
+        return note.isEmpty ? location : "\(location) · \(note)"
     }
 
     private func sortedBookmarks(_ bookmarks: [TS3BookmarkSummary]) -> [TS3BookmarkSummary] {
@@ -1694,10 +1707,12 @@ struct ConnectView: View {
                 lhsName: lhs.name,
                 lhsHost: lhs.host,
                 lhsNickname: lhs.nickname,
+                lhsNote: lhs.note,
                 lhsPort: lhs.port,
                 rhsName: rhs.name,
                 rhsHost: rhs.host,
                 rhsNickname: rhs.nickname,
+                rhsNote: rhs.note,
                 rhsPort: rhs.port
             )
         }
@@ -1710,10 +1725,12 @@ struct ConnectView: View {
                 lhsName: lhs.host,
                 lhsHost: lhs.host,
                 lhsNickname: lhs.nickname,
+                lhsNote: lhs.note,
                 lhsPort: lhs.port,
                 rhsName: rhs.host,
                 rhsHost: rhs.host,
                 rhsNickname: rhs.nickname,
+                rhsNote: rhs.note,
                 rhsPort: rhs.port
             )
         }
@@ -1723,10 +1740,12 @@ struct ConnectView: View {
         lhsName: String,
         lhsHost: String,
         lhsNickname: String,
+        lhsNote: String,
         lhsPort: String,
         rhsName: String,
         rhsHost: String,
         rhsNickname: String,
+        rhsNote: String,
         rhsPort: String
     ) -> Bool {
         let comparison: ComparisonResult
@@ -1739,6 +1758,8 @@ struct ConnectView: View {
             comparison = lhsHost.localizedCaseInsensitiveCompare(rhsHost)
         case .nickname:
             comparison = lhsNickname.localizedCaseInsensitiveCompare(rhsNickname)
+        case .note:
+            comparison = lhsNote.localizedCaseInsensitiveCompare(rhsNote)
         case .port:
             comparison = comparePorts(lhsPort, rhsPort)
         }
@@ -1830,6 +1851,8 @@ struct BookmarkEditorSheet: View {
                     TextField("Name", text: $bookmark.name)
                         .ts3PlainTextField()
                     TextField("Folder", text: $bookmark.folder)
+                        .ts3PlainTextField()
+                    TextField("Note", text: $bookmark.note)
                         .ts3PlainTextField()
                     TextField("Host", text: $bookmark.host)
                         .ts3URLTextField()

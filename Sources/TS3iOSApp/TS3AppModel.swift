@@ -1735,6 +1735,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
     var folder: String
+    var note: String
     var host: String
     var port: String
     var nickname: String
@@ -1748,6 +1749,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         id: UUID = UUID(),
         name: String,
         folder: String = "",
+        note: String = "",
         host: String,
         port: String,
         nickname: String,
@@ -1760,6 +1762,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         self.id = id
         self.name = name
         self.folder = folder
+        self.note = note
         self.host = host
         self.port = port
         self.nickname = nickname
@@ -1774,6 +1777,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         case id
         case name
         case folder
+        case note
         case host
         case port
         case nickname
@@ -1789,6 +1793,7 @@ struct TS3BookmarkSummary: Identifiable, Codable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         folder = try container.decodeIfPresent(String.self, forKey: .folder) ?? ""
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
         host = try container.decode(String.self, forKey: .host)
         port = try container.decode(String.self, forKey: .port)
         nickname = try container.decode(String.self, forKey: .nickname)
@@ -1837,6 +1842,7 @@ struct TS3ConnectionSnapshot: Identifiable, Codable {
     let port: String
     let nickname: String
     let phoneticNickname: String
+    let note: String
     let serverPassword: String
     let defaultChannel: String
     let defaultChannelPassword: String
@@ -1852,6 +1858,7 @@ struct TS3ConnectionSnapshot: Identifiable, Codable {
         port: String,
         nickname: String,
         phoneticNickname: String = "",
+        note: String = "",
         serverPassword: String,
         defaultChannel: String,
         defaultChannelPassword: String,
@@ -1862,6 +1869,7 @@ struct TS3ConnectionSnapshot: Identifiable, Codable {
         self.port = port
         self.nickname = nickname
         self.phoneticNickname = phoneticNickname
+        self.note = note
         self.serverPassword = serverPassword
         self.defaultChannel = defaultChannel
         self.defaultChannelPassword = defaultChannelPassword
@@ -1874,6 +1882,7 @@ struct TS3ConnectionSnapshot: Identifiable, Codable {
         case port
         case nickname
         case phoneticNickname
+        case note
         case serverPassword
         case defaultChannel
         case defaultChannelPassword
@@ -1887,6 +1896,7 @@ struct TS3ConnectionSnapshot: Identifiable, Codable {
         port = try container.decode(String.self, forKey: .port)
         nickname = try container.decode(String.self, forKey: .nickname)
         phoneticNickname = try container.decodeIfPresent(String.self, forKey: .phoneticNickname) ?? ""
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
         serverPassword = try container.decode(String.self, forKey: .serverPassword)
         defaultChannel = try container.decode(String.self, forKey: .defaultChannel)
         defaultChannelPassword = try container.decode(String.self, forKey: .defaultChannelPassword)
@@ -2578,6 +2588,7 @@ final class TS3AppModel: ObservableObject {
     @Published var privilegeKey = ""
     @Published var nickname = TS3PlatformSupport.defaultNickname
     @Published var phoneticNickname = ""
+    @Published var connectionNote = ""
     @Published var awayMessage = ""
     @Published private(set) var selfStatusProfiles: [TS3SelfStatusProfile] = []
     @Published private(set) var recentConnections: [TS3ConnectionSnapshot] = []
@@ -3164,6 +3175,7 @@ final class TS3AppModel: ObservableObject {
         serverPort = snapshot.port
         nickname = snapshot.nickname
         phoneticNickname = snapshot.phoneticNickname
+        connectionNote = snapshot.note
         serverPassword = snapshot.serverPassword
         defaultChannel = snapshot.defaultChannel
         defaultChannelPassword = snapshot.defaultChannelPassword
@@ -3176,6 +3188,7 @@ final class TS3AppModel: ObservableObject {
         serverPort = snapshot.port
         nickname = snapshot.nickname
         phoneticNickname = snapshot.phoneticNickname
+        connectionNote = snapshot.note
         serverPassword = snapshot.serverPassword
         defaultChannel = snapshot.defaultChannel
         defaultChannelPassword = snapshot.defaultChannelPassword
@@ -3219,6 +3232,7 @@ final class TS3AppModel: ObservableObject {
                 port: port,
                 nickname: snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
                 phoneticNickname: snapshot.phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+                note: snapshot.note.trimmingCharacters(in: .whitespacesAndNewlines),
                 serverPassword: snapshot.serverPassword,
                 defaultChannel: snapshot.defaultChannel,
                 defaultChannelPassword: snapshot.defaultChannelPassword,
@@ -3240,6 +3254,7 @@ final class TS3AppModel: ObservableObject {
         serverPort = bookmark.port
         nickname = bookmark.nickname
         phoneticNickname = bookmark.phoneticNickname
+        connectionNote = bookmark.note
         serverPassword = bookmark.serverPassword
         defaultChannel = bookmark.defaultChannel
         defaultChannelPassword = bookmark.defaultChannelPassword
@@ -3322,6 +3337,7 @@ final class TS3AppModel: ObservableObject {
             "Port: \(snapshot.port.isEmpty ? "9987" : snapshot.port)",
             "Nickname: \(snapshot.nickname.isEmpty ? "Not set" : snapshot.nickname)",
             "Phonetic Nickname: \(snapshot.phoneticNickname.isEmpty ? "None" : snapshot.phoneticNickname)",
+            "Note: \(snapshot.note.isEmpty ? "None" : snapshot.note)",
             "Default Channel: \(snapshot.defaultChannel.isEmpty ? "None" : snapshot.defaultChannel)",
             "Server Password: \(snapshot.serverPassword.isEmpty ? "No" : "Configured")",
             "Channel Password: \(snapshot.defaultChannelPassword.isEmpty ? "No" : "Configured")",
@@ -3450,6 +3466,7 @@ final class TS3AppModel: ObservableObject {
         let bookmark = TS3BookmarkSummary(
             name: title,
             folder: folder,
+            note: connectionNote.trimmingCharacters(in: .whitespacesAndNewlines),
             host: serverHost,
             port: serverPort,
             nickname: nickname,
@@ -3474,6 +3491,7 @@ final class TS3AppModel: ObservableObject {
             let bookmark = TS3BookmarkSummary(
                 name: host,
                 folder: folder,
+                note: snapshot.note.trimmingCharacters(in: .whitespacesAndNewlines),
                 host: host,
                 port: port,
                 nickname: snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -3528,6 +3546,7 @@ final class TS3AppModel: ObservableObject {
         var updated = bookmark
         updated.name = trimmedName
         updated.folder = bookmark.folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        updated.note = bookmark.note.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.host = trimmedHost
         updated.port = bookmark.port.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.nickname = bookmark.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -3639,6 +3658,7 @@ final class TS3AppModel: ObservableObject {
             normalized.port = port
             normalized.name = bookmark.name.trimmingCharacters(in: .whitespacesAndNewlines)
             normalized.folder = bookmark.folder.trimmingCharacters(in: .whitespacesAndNewlines)
+            normalized.note = bookmark.note.trimmingCharacters(in: .whitespacesAndNewlines)
             normalized.nickname = bookmark.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
             normalized.phoneticNickname = bookmark.phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines)
             if normalized.name.isEmpty {
@@ -3725,6 +3745,7 @@ final class TS3AppModel: ObservableObject {
             port: String(port ?? (Int(serverPort) ?? 9987)),
             nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines),
             phoneticNickname: phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: connectionNote.trimmingCharacters(in: .whitespacesAndNewlines),
             serverPassword: serverPassword,
             defaultChannel: defaultChannel,
             defaultChannelPassword: defaultChannelPassword,
@@ -3823,6 +3844,7 @@ final class TS3AppModel: ObservableObject {
             port: snapshot.port.trimmingCharacters(in: .whitespacesAndNewlines),
             nickname: snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
             phoneticNickname: snapshot.phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: snapshot.note.trimmingCharacters(in: .whitespacesAndNewlines),
             serverPassword: snapshot.serverPassword,
             defaultChannel: snapshot.defaultChannel,
             defaultChannelPassword: snapshot.defaultChannelPassword,
@@ -9906,7 +9928,7 @@ final class TS3AppModel: ObservableObject {
         let connectionFilter = ["all", "withPassword", "withDefaultChannel", "withPrivilegeKey"].contains(preset.connectionFilter)
             ? preset.connectionFilter
             : "all"
-        let sortMode = ["savedOrder", "name", "host", "nickname", "port"].contains(preset.sortMode)
+        let sortMode = ["savedOrder", "name", "host", "nickname", "note", "port"].contains(preset.sortMode)
             ? preset.sortMode
             : "savedOrder"
         let folder = preset.bookmarkFolderFilter.trimmingCharacters(in: .whitespacesAndNewlines)
