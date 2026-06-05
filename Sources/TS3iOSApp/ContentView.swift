@@ -3345,6 +3345,23 @@ struct MoveChannelSheet: View {
                         }
                     }
                 }
+                Section(header: Text("Preview")) {
+                    if let warning = moveWarning {
+                        Text(warning)
+                            .foregroundColor(.red)
+                    } else {
+                        Text(movePreview)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        if !targetSiblingsPreview.isEmpty {
+                            ForEach(targetSiblingsPreview, id: \.self) { line in
+                                Text(line)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
                 Section {
                     Button("Move Channel") {
                         model.moveChannel(channel, toParentId: selectedParentId, order: selectedOrderId)
@@ -3390,7 +3407,47 @@ struct MoveChannelSheet: View {
     }
 
     private var canSubmit: Bool {
-        selectedParentId == nil || parentOptions.contains { $0.id == selectedParentId }
+        moveWarning == nil && !isUnchangedMove
+    }
+
+    private var isUnchangedMove: Bool {
+        selectedParentId == normalizedParentId(channel.parentId)
+            && selectedOrderId == normalizedOrderId(channel.order)
+    }
+
+    private var moveWarning: String? {
+        if let selectedParentId, !parentOptions.contains(where: { $0.id == selectedParentId }) {
+            return "Choose a valid parent channel."
+        }
+        if isUnchangedMove {
+            return "Channel is already in this position."
+        }
+        return nil
+    }
+
+    private var movePreview: String {
+        let parentName = selectedParentId.flatMap { id in
+            model.channels.first { $0.id == id }?.name
+        } ?? "Root"
+        let position = selectedOrderId.flatMap { id in
+            model.channels.first { $0.id == id }?.name
+        }.map { "after \($0)" } ?? "first"
+        return "Move \(channel.name) to \(parentName), \(position)."
+    }
+
+    private var targetSiblingsPreview: [String] {
+        var lines: [String] = []
+        let siblings = siblingOptions
+        if siblings.isEmpty {
+            lines.append("Target parent has no other visible channels.")
+        } else {
+            let names = siblings.prefix(5).map(\.name).joined(separator: ", ")
+            lines.append("Visible siblings: \(names)")
+            if siblings.count > 5 {
+                lines.append("And \(siblings.count - 5) more.")
+            }
+        }
+        return lines
     }
 
     private func isDescendant(_ candidate: TS3ChannelSummary, of channel: TS3ChannelSummary) -> Bool {
