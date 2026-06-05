@@ -95,7 +95,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Debug logs | Done | Debug log page, copy/export/clear | Add structured log filtering and attach-to-bug-report package. |
 | Build coverage | Done | README documents SwiftPM, iOS, Catalyst, CI artifact builds | Keep README feature list updated with current capabilities. |
-| Protocol test coverage | Partial | Unit tests for command parsing, URLs, byte buffer, icons, whisper | Add more tests for admin command builders, file transfer states, notification settings, and import/export packages. |
+| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, URLs, byte buffer, icons, whisper | Add more tests for file transfer states, notification settings, and import/export packages. |
 
 ## Next Implementation Priorities
 
