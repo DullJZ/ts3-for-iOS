@@ -1023,6 +1023,10 @@ struct ConnectView: View {
                             model.saveBookmarks(from: displayedRecentConnections, folder: bookmarkFolder)
                         }
                         .disabled(displayedRecentConnections.isEmpty)
+                        Button("Remove Duplicate Recent Servers") {
+                            model.removeDuplicateRecentConnections()
+                        }
+                        .disabled(model.recentConnections.isEmpty)
                         Button("Delete Visible Recent Servers") {
                             deleteConfirmation = .visibleRecent
                         }
@@ -1101,6 +1105,10 @@ struct ConnectView: View {
                             model.moveBookmarks(displayedBookmarks, toFolder: "")
                         }
                         .disabled(displayedBookmarks.isEmpty)
+                        Button("Remove Duplicate Bookmarks") {
+                            model.removeDuplicateBookmarks()
+                        }
+                        .disabled(model.bookmarks.isEmpty)
                         Button("Delete Visible Bookmarks") {
                             deleteConfirmation = .visibleBookmarks
                         }

@@ -3232,6 +3232,22 @@ final class TS3AppModel: ObservableObject {
         saveRecentConnections()
     }
 
+    @discardableResult
+    func removeDuplicateRecentConnections() -> Int {
+        let originalCount = recentConnections.count
+        recentConnections = uniqueConnectionEntries(recentConnections) { snapshot in
+            (snapshot.host, snapshot.port)
+        }
+        let removed = originalCount - recentConnections.count
+        if removed > 0 {
+            saveRecentConnections()
+        }
+        lastError = removed == 0
+            ? "No duplicate recent servers found."
+            : "Removed \(removed) duplicate recent server\(removed == 1 ? "" : "s")."
+        return removed
+    }
+
     func recentConnectionsExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -3601,6 +3617,22 @@ final class TS3AppModel: ObservableObject {
         saveBookmarks()
     }
 
+    @discardableResult
+    func removeDuplicateBookmarks() -> Int {
+        let originalCount = bookmarks.count
+        bookmarks = uniqueConnectionEntries(bookmarks) { bookmark in
+            (bookmark.host, bookmark.port)
+        }
+        let removed = originalCount - bookmarks.count
+        if removed > 0 {
+            saveBookmarks()
+        }
+        lastError = removed == 0
+            ? "No duplicate bookmarks found."
+            : "Removed \(removed) duplicate bookmark\(removed == 1 ? "" : "s")."
+        return removed
+    }
+
     func bookmarksExportData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -3880,6 +3912,27 @@ final class TS3AppModel: ObservableObject {
             recentConnections = Array(recentConnections.prefix(12))
         }
         saveRecentConnections()
+    }
+
+    private func uniqueConnectionEntries<Entry>(
+        _ entries: [Entry],
+        key: (Entry) -> (host: String, port: String)
+    ) -> [Entry] {
+        var seen: Set<String> = []
+        var unique: [Entry] = []
+        for entry in entries {
+            let parts = key(entry)
+            let normalizedHost = parts.host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let normalizedPort = parts.port.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalizedHost.isEmpty, !normalizedPort.isEmpty else {
+                unique.append(entry)
+                continue
+            }
+            let normalizedKey = "\(normalizedHost):\(normalizedPort)"
+            guard seen.insert(normalizedKey).inserted else { continue }
+            unique.append(entry)
+        }
+        return unique
     }
 
     func updatePlaybackVolume(_ volume: Double) {
