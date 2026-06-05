@@ -5431,6 +5431,44 @@ enum TS3BanDuration: String, CaseIterable, Identifiable {
     }
 }
 
+enum TS3TemporaryPasswordDuration: String, CaseIterable, Identifiable {
+    case tenMinutes
+    case oneHour
+    case oneDay
+    case oneWeek
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .tenMinutes: return "10 Minutes"
+        case .oneHour: return "1 Hour"
+        case .oneDay: return "1 Day"
+        case .oneWeek: return "1 Week"
+        case .custom: return "Custom"
+        }
+    }
+
+    func seconds(customMinutes: String) -> Int? {
+        switch self {
+        case .tenMinutes: return 10 * 60
+        case .oneHour: return 60 * 60
+        case .oneDay: return 24 * 60 * 60
+        case .oneWeek: return 7 * 24 * 60 * 60
+        case .custom: return Self.customSeconds(from: customMinutes)
+        }
+    }
+
+    static func customSeconds(from minutesText: String) -> Int? {
+        let trimmed = minutesText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let minutes = Int(trimmed), minutes > 0 else {
+            return nil
+        }
+        return minutes * 60
+    }
+}
+
 struct ChatSheet: View {
     private enum ChatSenderFilter: String, CaseIterable, Identifiable {
         case all
@@ -7792,6 +7830,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingClientDatabase = false
     @State private var isShowingServerLogs = false
     @State private var isShowingPrivilegeKeys = false
+    @State private var isShowingTemporaryPasswords = false
     @State private var isShowingGroupManagement = false
     @State private var isShowingContacts = false
     @State private var isImportingNotificationSettings = false
@@ -7880,6 +7919,10 @@ struct ServerToolsSheet: View {
                     Button("Manage Privilege Keys") {
                         model.refreshPrivilegeKeys()
                         isShowingPrivilegeKeys = true
+                    }
+                    Button("Manage Temporary Passwords") {
+                        model.refreshTemporaryServerPasswords()
+                        isShowingTemporaryPasswords = true
                     }
                     Button("Browse Client Database") {
                         model.refreshClientDatabase()
@@ -8051,6 +8094,10 @@ struct ServerToolsSheet: View {
             }
             .sheet(isPresented: $isShowingPrivilegeKeys) {
                 PrivilegeKeysSheet()
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingTemporaryPasswords) {
+                TemporaryServerPasswordsSheet()
                     .environmentObject(model)
             }
             .sheet(isPresented: $isShowingGroupManagement) {
@@ -14422,6 +14469,319 @@ private extension TS3PermissionSummary {
             parts.append("skip=true")
         }
         return parts.joined(separator: " ")
+    }
+}
+
+struct TemporaryServerPasswordsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var password = ""
+    @State private var description = ""
+    @State private var duration: TS3TemporaryPasswordDuration = .oneHour
+    @State private var customMinutes = "60"
+    @State private var targetChannelId = 0
+    @State private var targetChannelPassword = ""
+    @State private var searchText = ""
+    @State private var isExportingPasswords = false
+    @State private var isConfirmingDeleteVisible = false
+    @State private var passwordsDocument = TS3TextFileDocument()
+
+    private var passwordsSnapshot: String {
+        filteredPasswords.map { $0.clipboardSummary(channels: model.channels) }.joined(separator: "\n")
+    }
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Create")) {
+                    TextField("Password", text: $password)
+                        .ts3PlainTextField()
+                    Picker("Duration", selection: $duration) {
+                        ForEach(TS3TemporaryPasswordDuration.allCases) { duration in
+                            Text(duration.title).tag(duration)
+                        }
+                    }
+                    if duration == .custom {
+                        TextField("Minutes", text: $customMinutes)
+                            .ts3PlainTextField()
+                            .ts3NumericKeyboard()
+                    }
+                    TextField("Description", text: $description)
+                        .ts3PlainTextField()
+                    Picker("Target Channel", selection: $targetChannelId) {
+                        Text("Server Default").tag(0)
+                        ForEach(model.channels) { channel in
+                            Text(channel.name).tag(channel.id)
+                        }
+                    }
+                    SecureField("Target Channel Password", text: $targetChannelPassword)
+                    Button("Create Temporary Password") {
+                        model.addTemporaryServerPassword(
+                            password: password,
+                            durationSeconds: duration.seconds(customMinutes: customMinutes),
+                            description: description,
+                            targetChannelId: targetChannelId == 0 ? nil : targetChannelId,
+                            targetChannelPassword: targetChannelPassword
+                        )
+                        clearCreateForm()
+                    }
+                    .disabled(isCreateDisabled)
+                }
+
+                Section(header: Text("Passwords")) {
+                    TextField("Search passwords", text: $searchText)
+                        .ts3PlainTextField()
+                    Button("Copy Visible Passwords") {
+                        TS3PlatformSupport.copyToPasteboard(passwordsSnapshot)
+                    }
+                    .disabled(filteredPasswords.isEmpty)
+                    Button("Export Visible Passwords") {
+                        passwordsDocument = TS3TextFileDocument(data: Data(passwordsSnapshot.utf8))
+                        isExportingPasswords = true
+                    }
+                    .disabled(filteredPasswords.isEmpty)
+                    Button("Delete Visible Passwords") {
+                        isConfirmingDeleteVisible = true
+                    }
+                    .foregroundColor(.red)
+                    .disabled(filteredPasswords.isEmpty)
+
+                    if model.temporaryServerPasswords.isEmpty {
+                        Text("No temporary passwords")
+                            .foregroundColor(.secondary)
+                    } else if filteredPasswords.isEmpty {
+                        Text("No matching temporary passwords")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(filteredPasswords) { entry in
+                            TemporaryServerPasswordRow(entry: entry)
+                                .environmentObject(model)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Temporary Passwords")
+            .ts3InlineNavigationTitle()
+            .onAppear {
+                normalizeChannelSelection()
+                model.refreshTemporaryServerPasswords()
+            }
+            .onChange(of: model.channels.map(\.id)) { _ in
+                normalizeChannelSelection()
+            }
+            .fileExporter(
+                isPresented: $isExportingPasswords,
+                document: passwordsDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-temporary-passwords"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .alert(isPresented: $isConfirmingDeleteVisible) {
+                Alert(
+                    title: Text("Delete Visible Temporary Passwords?"),
+                    message: Text("This removes \(filteredPasswords.count) temporary passwords from the server."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteTemporaryServerPasswords(filteredPasswords)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Refresh") {
+                        model.refreshTemporaryServerPasswords()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var isCreateDisabled: Bool {
+        password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || duration.seconds(customMinutes: customMinutes) == nil
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var filteredPasswords: [TS3TemporaryServerPasswordSummary] {
+        guard !normalizedSearchText.isEmpty else {
+            return model.temporaryServerPasswords
+        }
+        return model.temporaryServerPasswords.filter { entry in
+            containsSearch(entry.password)
+                || containsSearch(entry.description)
+                || containsSearch(entry.creatorName)
+                || containsSearch(entry.creatorUniqueIdentifier)
+                || entry.creatorDatabaseId.map { String($0).contains(normalizedSearchText) } == true
+                || entry.targetChannelId.map { String($0).contains(normalizedSearchText) } == true
+                || entry.targetChannelId.flatMap(channelName).map { $0.lowercased().contains(normalizedSearchText) } == true
+        }
+    }
+
+    private func containsSearch(_ value: String?) -> Bool {
+        guard let value, !normalizedSearchText.isEmpty else { return false }
+        return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func normalizeChannelSelection() {
+        if targetChannelId != 0 && !model.channels.contains(where: { $0.id == targetChannelId }) {
+            targetChannelId = 0
+        }
+    }
+
+    private func channelName(_ id: Int) -> String? {
+        model.channels.first { $0.id == id }?.name
+    }
+
+    private func clearCreateForm() {
+        password = ""
+        description = ""
+        duration = .oneHour
+        customMinutes = "60"
+        targetChannelPassword = ""
+    }
+}
+
+struct TemporaryServerPasswordRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let entry: TS3TemporaryServerPasswordSummary
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.password)
+                        .font(.system(.footnote, design: .monospaced))
+                        .lineLimit(3)
+                    Text(targetText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let description = entry.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if let creator = creatorText {
+                        Text(creator)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Text(lifetimeText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Menu {
+                    Button("Copy Password") {
+                        TS3PlatformSupport.copyToPasteboard(entry.password)
+                    }
+                    Button("Copy Summary") {
+                        TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary(channels: model.channels))
+                    }
+                    Button("Delete Password") {
+                        isConfirmingDelete = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+        .padding(.vertical, 3)
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Temporary Password?"),
+                message: Text(entry.password),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteTemporaryServerPassword(entry)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private var targetText: String {
+        guard let targetChannelId = entry.targetChannelId, targetChannelId > 0 else {
+            return "Target: Server Default"
+        }
+        let channel = model.channels.first { $0.id == targetChannelId }?.name ?? "Channel \(targetChannelId)"
+        return "Target: \(channel)"
+    }
+
+    private var creatorText: String? {
+        if let creatorName = entry.creatorName, !creatorName.isEmpty {
+            return "Creator: \(creatorName)"
+        }
+        if let creatorDatabaseId = entry.creatorDatabaseId {
+            return "Creator DB: \(creatorDatabaseId)"
+        }
+        return nil
+    }
+
+    private var lifetimeText: String {
+        var parts: [String] = []
+        if let durationSeconds = entry.durationSeconds {
+            parts.append("Duration: \(Self.durationText(durationSeconds))")
+        }
+        if let createdAt = entry.createdAt {
+            parts.append("Created: \(Self.dateText(createdAt))")
+        }
+        return parts.isEmpty ? "Lifetime: Unknown" : parts.joined(separator: " · ")
+    }
+
+    fileprivate static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    fileprivate static func durationText(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        if minutes < 60 {
+            return "\(minutes)m"
+        }
+        let hours = minutes / 60
+        if hours < 24 {
+            return "\(hours)h"
+        }
+        let days = hours / 24
+        return "\(days)d"
+    }
+}
+
+private extension TS3TemporaryServerPasswordSummary {
+    func clipboardSummary(channels: [TS3ChannelSummary]) -> String {
+        var parts = ["password=\(password)"]
+        if let durationSeconds {
+            parts.append("duration=\(TemporaryServerPasswordRow.durationText(durationSeconds))")
+        }
+        if let createdAt {
+            parts.append("createdAt=\(TemporaryServerPasswordRow.dateText(createdAt))")
+        }
+        if let description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let targetChannelId {
+            let channel = channels.first { $0.id == targetChannelId }?.name ?? "Channel \(targetChannelId)"
+            parts.append("target=\(channel) (\(targetChannelId))")
+        }
+        if let creatorName, !creatorName.isEmpty {
+            parts.append("creator=\(creatorName)")
+        } else if let creatorDatabaseId {
+            parts.append("creatorDb=\(creatorDatabaseId)")
+        }
+        return parts.joined(separator: " | ")
     }
 }
 

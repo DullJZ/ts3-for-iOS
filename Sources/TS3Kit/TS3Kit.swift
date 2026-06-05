@@ -920,6 +920,42 @@ public struct TS3ComplaintEntry: Identifiable {
     }
 }
 
+public struct TS3TemporaryServerPassword: Identifiable {
+    public var id: String { password }
+    public let password: String
+    public let creatorUniqueIdentifier: String?
+    public let creatorDatabaseId: Int?
+    public let creatorName: String?
+    public let targetChannelId: Int?
+    public let targetChannelPassword: String?
+    public let createdAt: Date?
+    public let durationSeconds: Int?
+    public let description: String?
+
+    /// Creates a temporary server password entry from server-provided metadata.
+    public init(
+        password: String,
+        creatorUniqueIdentifier: String?,
+        creatorDatabaseId: Int?,
+        creatorName: String?,
+        targetChannelId: Int?,
+        targetChannelPassword: String?,
+        createdAt: Date?,
+        durationSeconds: Int?,
+        description: String?
+    ) {
+        self.password = password
+        self.creatorUniqueIdentifier = creatorUniqueIdentifier
+        self.creatorDatabaseId = creatorDatabaseId
+        self.creatorName = creatorName
+        self.targetChannelId = targetChannelId
+        self.targetChannelPassword = targetChannelPassword
+        self.createdAt = createdAt
+        self.durationSeconds = durationSeconds
+        self.description = description
+    }
+}
+
 public enum TS3PrivilegeKeyType: Int, CaseIterable, Identifiable {
     case serverGroup = 0
     case channelGroup = 1

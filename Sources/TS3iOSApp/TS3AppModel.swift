@@ -784,6 +784,32 @@ struct TS3PrivilegeKeySummary: Identifiable {
     }
 }
 
+struct TS3TemporaryServerPasswordSummary: Identifiable {
+    let id: String
+    let password: String
+    let creatorUniqueIdentifier: String?
+    let creatorDatabaseId: Int?
+    let creatorName: String?
+    let targetChannelId: Int?
+    let targetChannelPassword: String?
+    let createdAt: Date?
+    let durationSeconds: Int?
+    let description: String?
+
+    init(entry: TS3TemporaryServerPassword) {
+        self.id = entry.id
+        self.password = entry.password
+        self.creatorUniqueIdentifier = entry.creatorUniqueIdentifier
+        self.creatorDatabaseId = entry.creatorDatabaseId
+        self.creatorName = entry.creatorName
+        self.targetChannelId = entry.targetChannelId
+        self.targetChannelPassword = entry.targetChannelPassword
+        self.createdAt = entry.createdAt
+        self.durationSeconds = entry.durationSeconds
+        self.description = entry.description
+    }
+}
+
 private struct TS3PrivilegeKeyBackupEntry: Codable {
     var key: String
     var type: Int?
@@ -2417,6 +2443,7 @@ final class TS3AppModel: ObservableObject {
     @Published var banEntries: [TS3BanEntrySummary] = []
     @Published var complaintEntries: [TS3ComplaintSummary] = []
     @Published var complaintTarget: TS3UserSummary?
+    @Published var temporaryServerPasswords: [TS3TemporaryServerPasswordSummary] = []
     @Published var databaseClients: [TS3DatabaseClientSummary] = []
     @Published var databaseSearchResults: [TS3DatabaseClientSummary] = []
     @Published var databaseClientBatchSize = 100
@@ -3660,6 +3687,7 @@ final class TS3AppModel: ObservableObject {
         banEntries = []
         complaintEntries = []
         complaintTarget = nil
+        temporaryServerPasswords = []
         databaseClients = []
         databaseSearchResults = []
         clientLocations = []
@@ -7618,6 +7646,84 @@ final class TS3AppModel: ObservableObject {
                 case (_?, nil): return true
                 case (nil, _?): return false
                 case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
+                }
+            }
+    }
+
+    func refreshTemporaryServerPasswords() {
+        runClientCommand { client in
+            let passwords = try await client.refreshTemporaryServerPasswords()
+            await MainActor.run {
+                self.temporaryServerPasswords = self.temporaryServerPasswordSummaries(from: passwords)
+            }
+        }
+    }
+
+    func addTemporaryServerPassword(
+        password: String,
+        durationSeconds: Int?,
+        description: String,
+        targetChannelId: Int?,
+        targetChannelPassword: String
+    ) {
+        let password = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let targetChannelPassword = targetChannelPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !password.isEmpty else {
+            lastError = "Enter a temporary server password."
+            return
+        }
+        guard let durationSeconds, durationSeconds > 0 else {
+            lastError = "Enter a positive duration for the temporary password."
+            return
+        }
+        runClientCommand { client in
+            try await client.addTemporaryServerPassword(
+                password: password,
+                durationSeconds: durationSeconds,
+                description: description.isEmpty ? nil : description,
+                targetChannelId: targetChannelId,
+                targetChannelPassword: targetChannelPassword.isEmpty ? nil : targetChannelPassword
+            )
+            let passwords = try await client.refreshTemporaryServerPasswords()
+            await MainActor.run {
+                self.temporaryServerPasswords = self.temporaryServerPasswordSummaries(from: passwords)
+            }
+        }
+    }
+
+    func deleteTemporaryServerPassword(_ entry: TS3TemporaryServerPasswordSummary) {
+        runClientCommand { client in
+            try await client.deleteTemporaryServerPassword(entry.password)
+            await MainActor.run {
+                self.temporaryServerPasswords.removeAll { $0.id == entry.id }
+            }
+        }
+    }
+
+    func deleteTemporaryServerPasswords(_ entries: [TS3TemporaryServerPasswordSummary]) {
+        let passwords = Array(Set(entries.map(\.password))).sorted()
+        guard !passwords.isEmpty else { return }
+        runClientCommand { client in
+            for password in passwords {
+                try await client.deleteTemporaryServerPassword(password)
+            }
+            let refreshedPasswords = try await client.refreshTemporaryServerPasswords()
+            await MainActor.run {
+                self.temporaryServerPasswords = self.temporaryServerPasswordSummaries(from: refreshedPasswords)
+            }
+        }
+    }
+
+    private func temporaryServerPasswordSummaries(from entries: [TS3TemporaryServerPassword]) -> [TS3TemporaryServerPasswordSummary] {
+        entries
+            .map { TS3TemporaryServerPasswordSummary(entry: $0) }
+            .sorted {
+                switch ($0.createdAt, $1.createdAt) {
+                case let (lhs?, rhs?): return lhs > rhs
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil): return $0.password < $1.password
                 }
             }
     }
