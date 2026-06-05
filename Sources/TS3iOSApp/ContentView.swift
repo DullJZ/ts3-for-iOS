@@ -8506,6 +8506,7 @@ struct ServerLogsSheet: View {
                             instance: instanceLogs
                         )
                     }
+                    .disabled(model.state != .connected)
                     Button("Copy Visible Logs") {
                         TS3PlatformSupport.copyToPasteboard(filteredTranscript)
                     }
@@ -8612,7 +8613,7 @@ struct ServerLogsSheet: View {
                         )
                         newLogMessage = ""
                     }
-                    .disabled(newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(model.state != .connected || newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Section(header: Text("Server Log")) {
@@ -8637,6 +8638,7 @@ struct ServerLogsSheet: View {
                             instance: instanceLogs
                         )
                     }
+                    .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -8645,11 +8647,13 @@ struct ServerLogsSheet: View {
                 }
             }
             .onAppear {
-                model.refreshServerLogs(
-                    limit: parsedLineLimit,
-                    reverse: reverseOrder,
-                    instance: instanceLogs
-                )
+                if model.state == .connected {
+                    model.refreshServerLogs(
+                        limit: parsedLineLimit,
+                        reverse: reverseOrder,
+                        instance: instanceLogs
+                    )
+                }
             }
             .fileExporter(
                 isPresented: $isExportingLogs,

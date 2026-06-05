@@ -2299,7 +2299,7 @@ struct TS3ConnectionInfoSummary {
     }
 }
 
-struct TS3ServerLogSummary: Identifiable {
+struct TS3ServerLogSummary: Identifiable, Codable {
     let id: Int
     let timestamp: Date?
     let level: String?
@@ -2770,6 +2770,7 @@ final class TS3AppModel: ObservableObject {
         loadBookmarks()
         loadRecentConnections()
         loadConnectionFilterPresets()
+        loadServerLogResults()
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
         loadChannelTreeFilterPresets()
@@ -3981,7 +3982,6 @@ final class TS3AppModel: ObservableObject {
         databaseSearchResults = []
         clientLocations = []
         selectedDatabaseClient = nil
-        serverLogEntries = []
         connectionInfo = .empty
         serverGroups = []
         channelGroups = []
@@ -5025,6 +5025,7 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.serverLogEntries(limit: limit, reverse: reverse, instance: instance)
             await MainActor.run {
                 self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
+                self.saveServerLogResults()
             }
         }
     }
@@ -5113,18 +5114,21 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.serverLogEntries(limit: limit, reverse: reverse, instance: instance)
             await MainActor.run {
                 self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
+                self.saveServerLogResults()
             }
         }
     }
 
     func clearServerLogResults() {
         serverLogEntries = []
+        saveServerLogResults()
     }
 
     func clearServerLogResults(_ entries: [TS3ServerLogSummary]) {
         let ids = Set(entries.map(\.id))
         guard !ids.isEmpty else { return }
         serverLogEntries.removeAll { ids.contains($0.id) }
+        saveServerLogResults()
     }
 
     func saveServerLogQueryPreset(
@@ -8831,6 +8835,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-server-log-query-presets.json")
     }
 
+    private var serverLogResultsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-server-log-results.json")
+    }
+
     private var channelSubscriptionPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-channel-subscription-presets.json")
@@ -9263,6 +9272,26 @@ final class TS3AppModel: ObservableObject {
             return
         }
         serverLogQueryPresets = sanitizedServerLogQueryPresets(decoded)
+    }
+
+    private func loadServerLogResults() {
+        guard let data = try? Data(contentsOf: serverLogResultsURL),
+              let decoded = try? JSONDecoder().decode([TS3ServerLogSummary].self, from: data) else {
+            serverLogEntries = []
+            return
+        }
+        serverLogEntries = Array(decoded.prefix(500))
+    }
+
+    private func saveServerLogResults() {
+        do {
+            let directory = serverLogResultsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(Array(serverLogEntries.prefix(500)))
+            try data.write(to: serverLogResultsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func saveServerLogQueryPresets() {
