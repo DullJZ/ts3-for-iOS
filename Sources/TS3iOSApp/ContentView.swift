@@ -1184,7 +1184,7 @@ struct ConnectView: View {
                 Button("Import Client Package") {
                     isImportingClientPackage = true
                 }
-                Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, audio, status, playback, and whisper presets.")
+                Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, channel layout, audio, status, playback, and whisper presets.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -2184,7 +2184,18 @@ struct ChannelListView: View {
             List {
                 Section(header: Text(channelSectionTitle)) {
                     ForEach(channelTree) { item in
-                        ChannelRow(channel: item.channel, members: members(in: item.channel.id))
+                        ChannelRow(
+                            channel: item.channel,
+                            members: members(in: item.channel.id),
+                            hasChildChannels: item.hasChildren,
+                            isCollapsed: model.isChannelCollapsed(item.channel.id),
+                            toggleCollapsed: {
+                                model.setChannelCollapsed(
+                                    item.channel.id,
+                                    isCollapsed: !model.isChannelCollapsed(item.channel.id)
+                                )
+                            }
+                        )
                             .padding(.leading, CGFloat(item.depth) * 18)
                             .listRowBackground(item.channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
                     }
@@ -2211,6 +2222,18 @@ struct ChannelListView: View {
                         isExportingChannelTree = true
                     }
                     .disabled(channelTree.isEmpty)
+                    Button("Expand Visible Channels") {
+                        model.expandChannels(visibleChannels)
+                    }
+                    .disabled(!canExpandVisibleChannels)
+                    Button("Collapse Visible Channels") {
+                        model.collapseChannels(visibleBranchChannels)
+                    }
+                    .disabled(visibleBranchChannels.isEmpty)
+                    Button("Reset Channel Expansion") {
+                        model.resetCollapsedChannels()
+                    }
+                    .disabled(model.collapsedChannelIds.isEmpty)
                     Button("Subscribe Visible Channels") {
                         model.setChannelsSubscribed(visibleChannels, isSubscribed: true)
                     }
@@ -2327,12 +2350,21 @@ struct ChannelListView: View {
         ChannelTreeItem.flatten(
             channels: filteredChannels,
             sortMode: channelTreeSortMode,
-            sortAscending: channelTreeSortAscending
+            sortAscending: channelTreeSortAscending,
+            collapsedChannelIds: model.collapsedChannelIds
         )
     }
 
     private var visibleChannels: [TS3ChannelSummary] {
         channelTree.map(\.channel)
+    }
+
+    private var visibleBranchChannels: [TS3ChannelSummary] {
+        channelTree.filter(\.hasChildren).map(\.channel)
+    }
+
+    private var canExpandVisibleChannels: Bool {
+        visibleChannels.contains { model.isChannelCollapsed($0.id) }
     }
 
     private var canSubscribeVisibleChannels: Bool {
@@ -3046,13 +3078,15 @@ struct ChannelTreeItem: Identifiable {
 
     let channel: TS3ChannelSummary
     let depth: Int
+    let hasChildren: Bool
 
     var id: Int { channel.id }
 
     static func flatten(
         channels: [TS3ChannelSummary],
         sortMode: SiblingSortMode = .serverOrder,
-        sortAscending: Bool = true
+        sortAscending: Bool = true,
+        collapsedChannelIds: Set<Int> = []
     ) -> [ChannelTreeItem] {
         let children = Dictionary(grouping: channels) { channel in
             normalizedParentId(channel.parentId)
@@ -3066,6 +3100,7 @@ struct ChannelTreeItem: Identifiable {
             children: children,
             sortMode: sortMode,
             sortAscending: sortAscending,
+            collapsedChannelIds: collapsedChannelIds,
             visited: &visited,
             result: &result
         )
@@ -3080,6 +3115,7 @@ struct ChannelTreeItem: Identifiable {
                 children: children,
                 sortMode: sortMode,
                 sortAscending: sortAscending,
+                collapsedChannelIds: collapsedChannelIds,
                 visited: &visited,
                 result: &result
             )
@@ -3093,6 +3129,7 @@ struct ChannelTreeItem: Identifiable {
         children: [Int?: [TS3ChannelSummary]],
         sortMode: SiblingSortMode,
         sortAscending: Bool,
+        collapsedChannelIds: Set<Int>,
         visited: inout Set<Int>,
         result: inout [ChannelTreeItem]
     ) {
@@ -3108,6 +3145,7 @@ struct ChannelTreeItem: Identifiable {
                 children: children,
                 sortMode: sortMode,
                 sortAscending: sortAscending,
+                collapsedChannelIds: collapsedChannelIds,
                 visited: &visited,
                 result: &result
             )
@@ -3120,18 +3158,26 @@ struct ChannelTreeItem: Identifiable {
         children: [Int?: [TS3ChannelSummary]],
         sortMode: SiblingSortMode,
         sortAscending: Bool,
+        collapsedChannelIds: Set<Int>,
         visited: inout Set<Int>,
         result: inout [ChannelTreeItem]
     ) {
         guard !visited.contains(channel.id) else { return }
         visited.insert(channel.id)
-        result.append(ChannelTreeItem(channel: channel, depth: depth))
+        let childChannels = children[channel.id] ?? []
+        result.append(ChannelTreeItem(
+            channel: channel,
+            depth: depth,
+            hasChildren: !childChannels.isEmpty
+        ))
+        guard !collapsedChannelIds.contains(channel.id) else { return }
         appendChildren(
             of: channel.id,
             depth: depth + 1,
             children: children,
             sortMode: sortMode,
             sortAscending: sortAscending,
+            collapsedChannelIds: collapsedChannelIds,
             visited: &visited,
             result: &result
         )
@@ -3272,6 +3318,9 @@ struct ChannelRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
     let members: [TS3UserSummary]
+    var hasChildChannels = false
+    var isCollapsed = false
+    var toggleCollapsed: (() -> Void)?
     @State private var joinPassword = ""
     @State private var defaultChannelPassword = ""
     @State private var fullInviteChannelPassword = ""
@@ -3314,6 +3363,16 @@ struct ChannelRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
+                if hasChildChannels {
+                    Button {
+                        toggleCollapsed?()
+                    } label: {
+                        Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                            .frame(width: 18, height: 18)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(isCollapsed ? "Expand Channel" : "Collapse Channel")
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(channel.name)
@@ -17878,7 +17937,7 @@ struct ClientMigrationSheet: View {
                     Button("Import Client Package") {
                         isImportingClientPackage = true
                     }
-                    Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, audio, status, playback, and whisper presets.")
+                    Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, channel layout, audio, status, playback, and whisper presets.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

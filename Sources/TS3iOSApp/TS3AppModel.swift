@@ -1491,6 +1491,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var keyboardShortcuts: [TS3KeyboardShortcutBinding]
     var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset]
     var channelTreeFilterPresets: [TS3ChannelTreeFilterPreset]
+    var collapsedChannelIds: [Int]
     var eventFilterPresets: [TS3EventFilterPreset]
     var chatFilterPresets: [TS3ChatFilterPreset]
     var fileBrowserBookmarks: [TS3FileBrowserBookmark]
@@ -1526,6 +1527,7 @@ private struct TS3ClientMigrationPackage: Codable {
         keyboardShortcuts: [TS3KeyboardShortcutBinding],
         channelSubscriptionPresets: [TS3ChannelSubscriptionPreset],
         channelTreeFilterPresets: [TS3ChannelTreeFilterPreset],
+        collapsedChannelIds: [Int] = [],
         eventFilterPresets: [TS3EventFilterPreset],
         chatFilterPresets: [TS3ChatFilterPreset],
         fileBrowserBookmarks: [TS3FileBrowserBookmark],
@@ -1560,6 +1562,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.keyboardShortcuts = keyboardShortcuts
         self.channelSubscriptionPresets = channelSubscriptionPresets
         self.channelTreeFilterPresets = channelTreeFilterPresets
+        self.collapsedChannelIds = collapsedChannelIds
         self.eventFilterPresets = eventFilterPresets
         self.chatFilterPresets = chatFilterPresets
         self.fileBrowserBookmarks = fileBrowserBookmarks
@@ -1596,6 +1599,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case keyboardShortcuts
         case channelSubscriptionPresets
         case channelTreeFilterPresets
+        case collapsedChannelIds
         case eventFilterPresets
         case chatFilterPresets
         case fileBrowserBookmarks
@@ -1657,6 +1661,7 @@ private struct TS3ClientMigrationPackage: Codable {
             [TS3ChannelTreeFilterPreset].self,
             forKey: .channelTreeFilterPresets
         ) ?? []
+        collapsedChannelIds = try container.decodeIfPresent([Int].self, forKey: .collapsedChannelIds) ?? []
         eventFilterPresets = try container.decodeIfPresent(
             [TS3EventFilterPreset].self,
             forKey: .eventFilterPresets
@@ -2497,6 +2502,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var serverLogQueryPresets: [TS3ServerLogQueryPreset] = []
     @Published private(set) var channelSubscriptionPresets: [TS3ChannelSubscriptionPreset] = []
     @Published private(set) var channelTreeFilterPresets: [TS3ChannelTreeFilterPreset] = []
+    @Published private(set) var collapsedChannelIds: Set<Int> = []
     @Published private(set) var eventFilterPresets: [TS3EventFilterPreset] = []
     @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
     @Published private(set) var banFilterPresets: [TS3BanFilterPreset] = []
@@ -2620,6 +2626,7 @@ final class TS3AppModel: ObservableObject {
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
         loadChannelTreeFilterPresets()
+        loadCollapsedChannelIds()
         loadEventFilterPresets()
         loadChatFilterPresets()
         loadBanFilterPresets()
@@ -6855,6 +6862,40 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func isChannelCollapsed(_ channelId: Int) -> Bool {
+        collapsedChannelIds.contains(channelId)
+    }
+
+    func setChannelCollapsed(_ channelId: Int, isCollapsed: Bool) {
+        guard channelId > 0 else { return }
+        if isCollapsed {
+            collapsedChannelIds.insert(channelId)
+        } else {
+            collapsedChannelIds.remove(channelId)
+        }
+        saveCollapsedChannelIds()
+    }
+
+    func collapseChannels(_ channels: [TS3ChannelSummary]) {
+        let ids = Set(channels.map(\.id).filter { $0 > 0 })
+        guard !ids.isEmpty else { return }
+        collapsedChannelIds.formUnion(ids)
+        saveCollapsedChannelIds()
+    }
+
+    func expandChannels(_ channels: [TS3ChannelSummary]) {
+        let ids = Set(channels.map(\.id).filter { $0 > 0 })
+        guard !ids.isEmpty else { return }
+        collapsedChannelIds.subtract(ids)
+        saveCollapsedChannelIds()
+    }
+
+    func resetCollapsedChannels() {
+        guard !collapsedChannelIds.isEmpty else { return }
+        collapsedChannelIds = []
+        saveCollapsedChannelIds()
+    }
+
     func saveEventFilterPreset(name: String, eventFilter: String, sourceFilter: String, newestFirst: Bool, searchText: String) {
         let preset = sanitizedEventFilterPreset(TS3EventFilterPreset(
             name: name,
@@ -8494,6 +8535,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-channel-tree-filter-presets.json")
     }
 
+    private var collapsedChannelIdsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-collapsed-channel-ids.json")
+    }
+
     private var eventFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-event-filter-presets.json")
@@ -8968,6 +9014,31 @@ final class TS3AppModel: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func loadCollapsedChannelIds() {
+        guard let data = try? Data(contentsOf: collapsedChannelIdsURL),
+              let decoded = try? JSONDecoder().decode([Int].self, from: data) else {
+            collapsedChannelIds = []
+            return
+        }
+        collapsedChannelIds = Set(decoded.filter { $0 > 0 })
+    }
+
+    private func saveCollapsedChannelIds() {
+        do {
+            let directory = collapsedChannelIdsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(collapsedChannelIds.sorted())
+            try data.write(to: collapsedChannelIdsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func importCollapsedChannelIds(_ channelIds: [Int]) {
+        collapsedChannelIds = Set(channelIds.filter { $0 > 0 })
+        saveCollapsedChannelIds()
     }
 
     private func sanitizedChannelTreeFilterPresets(
@@ -9768,6 +9839,7 @@ final class TS3AppModel: ObservableObject {
             keyboardShortcuts: keyboardShortcuts,
             channelSubscriptionPresets: channelSubscriptionPresets,
             channelTreeFilterPresets: channelTreeFilterPresets,
+            collapsedChannelIds: collapsedChannelIds.sorted(),
             eventFilterPresets: eventFilterPresets,
             chatFilterPresets: chatFilterPresets,
             fileBrowserBookmarks: fileBrowserBookmarks,
@@ -9805,6 +9877,7 @@ final class TS3AppModel: ObservableObject {
         try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
         try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
         try importChannelTreeFilterPresets(from: encodedPackageSection(package.channelTreeFilterPresets))
+        importCollapsedChannelIds(package.collapsedChannelIds)
         try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
         try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
         try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))

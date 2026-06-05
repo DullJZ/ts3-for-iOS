@@ -13,7 +13,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Server connection with password | Done | `ConnectView`, `TS3AppModel.connect()`, bookmark and recent connection state | Add more connection diagnostics and reconnect policy controls. |
-| Channel tree and online clients | Done | Main channel/client list, refresh actions, channel switching | Improve very large server navigation and persistent channel tree expansion state. |
+| Channel tree and online clients | Done | Main channel/client list, refresh actions, channel switching, persisted channel tree expansion state | Improve very large server navigation if real-server scale testing shows issues. |
 | Channel join passwords | Done | Password prompts for protected channel join/move operations | Add saved per-channel password helpers if needed. |
 | Invite links | Done | Copy current invite and full invite links, bookmark invite copy | Add incoming invite routing tests for more URL variants. |
 | Recent connections | Done | Connection manager import/export and global entry | Add duplicate cleanup UX and richer connection notes. |
@@ -78,7 +78,7 @@ Status legend:
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
 | Bookmarks | Partial | Bookmark list/folders/import/export, connection manager, saved phonetic nickname and local connection notes | Add richer bookmark editing UI for all connection options. |
 | Contacts | Partial | Contact manager entry, online and database-client friend/block/note shortcuts | Audit friend/block/ignore behavior against real server data. |
-| Client migration | Done | Client package import/export covering local settings groups | Add versioned migration preview before import. |
+| Client migration | Done | Client package import/export covering local settings groups, including channel layout state | Add versioned migration preview before import. |
 
 ## Notifications, Shortcuts, And Platform Integration
 
