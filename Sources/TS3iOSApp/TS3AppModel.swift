@@ -530,7 +530,7 @@ struct TS3OfflineMessageDraft: Identifiable, Codable {
     var updatedAt: Date
 }
 
-struct TS3BanEntrySummary: Identifiable {
+struct TS3BanEntrySummary: Identifiable, Codable {
     let id: Int
     let ip: String?
     let name: String?
@@ -2778,6 +2778,7 @@ final class TS3AppModel: ObservableObject {
         loadEventHistory()
         loadEventFilterPresets()
         loadChatFilterPresets()
+        loadBanResults()
         loadBanFilterPresets()
         loadComplaintFilterPresets()
         loadDatabaseClientFilterPresets()
@@ -3974,7 +3975,6 @@ final class TS3AppModel: ObservableObject {
         clients = []
         unreadPokeCount = 0
         unreadActivityCount = 0
-        banEntries = []
         complaintEntries = []
         complaintTarget = nil
         temporaryServerPasswords = []
@@ -5425,6 +5425,7 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.refreshBanList()
             await MainActor.run {
                 self.banEntries = self.banEntrySummaries(from: entries)
+                self.saveBanResults()
             }
         }
     }
@@ -5513,6 +5514,7 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.refreshBanList()
             await MainActor.run {
                 self.banEntries = self.banEntrySummaries(from: entries)
+                self.saveBanResults()
             }
         }
     }
@@ -7895,6 +7897,7 @@ final class TS3AppModel: ObservableObject {
             let entries = try await client.refreshBanList()
             await MainActor.run {
                 self.banEntries = self.banEntrySummaries(from: entries)
+                self.saveBanResults()
             }
         }
     }
@@ -7928,6 +7931,7 @@ final class TS3AppModel: ObservableObject {
             try await client.deleteBan(banId: entry.id)
             await MainActor.run {
                 self.banEntries.removeAll { $0.id == entry.id }
+                self.saveBanResults()
             }
         }
     }
@@ -7937,6 +7941,7 @@ final class TS3AppModel: ObservableObject {
             try await client.deleteAllBans()
             await MainActor.run {
                 self.banEntries = []
+                self.saveBanResults()
             }
         }
     }
@@ -7951,6 +7956,7 @@ final class TS3AppModel: ObservableObject {
             let refreshedEntries = try await client.refreshBanList()
             await MainActor.run {
                 self.banEntries = self.banEntrySummaries(from: refreshedEntries)
+                self.saveBanResults()
             }
         }
     }
@@ -8758,6 +8764,11 @@ final class TS3AppModel: ObservableObject {
     private var banFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-ban-filter-presets.json")
+    }
+
+    private var banResultsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-ban-results.json")
     }
 
     private var complaintFilterPresetsURL: URL {
@@ -9749,6 +9760,26 @@ final class TS3AppModel: ObservableObject {
             return
         }
         banFilterPresets = sanitizedBanFilterPresets(decoded)
+    }
+
+    private func loadBanResults() {
+        guard let data = try? Data(contentsOf: banResultsURL),
+              let decoded = try? JSONDecoder().decode([TS3BanEntrySummary].self, from: data) else {
+            banEntries = []
+            return
+        }
+        banEntries = Array(decoded.prefix(500))
+    }
+
+    private func saveBanResults() {
+        do {
+            let directory = banResultsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(Array(banEntries.prefix(500)))
+            try data.write(to: banResultsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func saveBanFilterPresets() {

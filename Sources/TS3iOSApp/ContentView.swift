@@ -15972,7 +15972,7 @@ struct BanListSheet: View {
                         )
                         clearForm()
                     }
-                    .disabled(isAddDisabled)
+                    .disabled(model.state != .connected || isAddDisabled)
                 }
 
                 Section(header: Text("Filters")) {
@@ -16060,11 +16060,12 @@ struct BanListSheet: View {
                         Button("Import Ban Backup") {
                             isImportingBans = true
                         }
+                        .disabled(model.state != .connected)
                         Button("Delete Visible Bans") {
                             isConfirmingDeleteVisible = true
                         }
                         .foregroundColor(.red)
-                        .disabled(filteredBanEntries.isEmpty)
+                        .disabled(model.state != .connected || filteredBanEntries.isEmpty)
                     }
 
                     if filteredBanEntries.isEmpty {
@@ -16081,6 +16082,7 @@ struct BanListSheet: View {
                             isConfirmingDeleteAll = true
                         }
                         .foregroundColor(.red)
+                        .disabled(model.state != .connected)
                     }
                 }
             }
@@ -16139,13 +16141,16 @@ struct BanListSheet: View {
             .navigationTitle("Ban List")
             .ts3InlineNavigationTitle()
             .onAppear {
-                model.refreshBanList()
+                if model.state == .connected {
+                    model.refreshBanList()
+                }
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Refresh") {
                         model.refreshBanList()
                     }
+                    .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -16906,6 +16911,7 @@ struct BanEntryRow: View {
             .buttonStyle(.borderless)
             .foregroundColor(.red)
             .font(.caption)
+            .disabled(model.state != .connected)
         }
         .padding(.vertical, 4)
         .alert(isPresented: $isConfirmingDelete) {
@@ -16941,6 +16947,7 @@ struct BanEntryRow: View {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
+            .disabled(model.state != .connected)
         }
     }
 

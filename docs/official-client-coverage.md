@@ -49,7 +49,7 @@ Status legend:
 | Channel create/edit/delete/move | Partial | Channel editor with codec quality/latency/encryption controls, move preview, draft import/export, icon import, password prompts | Add full channel permission inheritance visibility and validate advanced codec controls against real servers. |
 | Client actions | Partial | Client row menus, database-record online/contact actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets, log viewing, visible exports, and persistent recent log results for offline review | Add broader log filters and validate real-server log permissions. |
-| Ban list | Partial | Ban list management entry | Audit ban edit/add fields and test against real servers. |
+| Ban list | Partial | Ban list management, add/delete/delete-visible/delete-all, filters, presets, backup import/export, visible exports, and persistent recent ban results for offline review | Audit ban edit/add fields and test against real servers. |
 | Complaints | Partial | Complaint management with target picker, direct create/delete, visible export, and filter presets | Validate complaint add/remove flows against real servers and fill any official-client context-menu edge cases. |
 | Privilege keys | Partial | Privilege key manager with create/use/delete, generated-key actions, readable exports/backups, and filter presets | Validate create/use/delete flows against real servers and audit any official-client edge fields. |
 
