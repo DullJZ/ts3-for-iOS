@@ -424,6 +424,12 @@ public final class TS3Client {
         }
     }
 
+    public func updatePhoneticNickname(_ phoneticNickname: String?) async throws {
+        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
+            TS3CommandSingleParameter(name: "client_nickname_phonetic", value: phoneticNickname)
+        ]))
+    }
+
     public func setAway(_ isAway: Bool, message: String?) async throws {
         _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
             TS3CommandSingleParameter(name: "client_away", value: isAway ? "1" : "0"),
@@ -1935,7 +1941,7 @@ private extension TS3Client {
             TS3CommandSingleParameter(name: "client_default_channel", value: config.defaultChannel),
             TS3CommandSingleParameter(name: "client_default_channel_password", value: config.defaultChannelPassword.map(TS3Crypto.hashPassword)),
             TS3CommandSingleParameter(name: "client_server_password", value: config.serverPassword.map(TS3Crypto.hashPassword)),
-            TS3CommandSingleParameter(name: "client_nickname_phonetic", value: nil),
+            TS3CommandSingleParameter(name: "client_nickname_phonetic", value: config.phoneticNickname),
             TS3CommandSingleParameter(name: "client_meta_data", value: ""),
             TS3CommandSingleParameter(name: "client_default_token", value: config.privilegeKey),
             TS3CommandSingleParameter(name: "client_key_offset", value: String(identity.keyOffset)),

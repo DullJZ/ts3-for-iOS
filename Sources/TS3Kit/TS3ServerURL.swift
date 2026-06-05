@@ -9,6 +9,7 @@ public struct TS3ServerURL: Equatable {
     public let defaultChannel: String?
     public let defaultChannelPassword: String?
     public let privilegeKey: String?
+    public let phoneticNickname: String?
     public let bookmarkName: String?
 
     /// Creates a parsed TeamSpeak server URL value.
@@ -20,6 +21,7 @@ public struct TS3ServerURL: Equatable {
         defaultChannel: String?,
         defaultChannelPassword: String?,
         privilegeKey: String?,
+        phoneticNickname: String? = nil,
         bookmarkName: String?
     ) {
         self.host = host
@@ -29,6 +31,7 @@ public struct TS3ServerURL: Equatable {
         self.defaultChannel = defaultChannel
         self.defaultChannelPassword = defaultChannelPassword
         self.privilegeKey = privilegeKey
+        self.phoneticNickname = phoneticNickname
         self.bookmarkName = bookmarkName
     }
 
@@ -61,6 +64,7 @@ public struct TS3ServerURL: Equatable {
             defaultChannel: query["channel"],
             defaultChannelPassword: query["channelpassword"],
             privilegeKey: query["token"],
+            phoneticNickname: query["phoneticnickname"] ?? query["nickname_phonetic"],
             bookmarkName: query["addbookmark"]
         )
     }
@@ -82,6 +86,7 @@ public struct TS3ServerURL: Equatable {
             appendQueryItem(name: "channelpassword", value: defaultChannelPassword, to: &queryItems)
             appendQueryItem(name: "token", value: privilegeKey, to: &queryItems)
         }
+        appendQueryItem(name: "phoneticnickname", value: phoneticNickname, to: &queryItems)
         appendQueryItem(name: "addbookmark", value: bookmarkName, to: &queryItems)
         components.queryItems = queryItems.isEmpty ? nil : queryItems
         return components.url

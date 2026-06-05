@@ -3,13 +3,14 @@ import XCTest
 
 final class TS3ServerURLTests: XCTestCase {
     func testParsesTeamSpeakInvitationURL() throws {
-        let url = try XCTUnwrap(URL(string: "ts3server://voice.example.com:9988?nickname=Alice&password=s3cr3t&channel=Root%2FSub&channelpassword=room&token=abc123&addbookmark=Main"))
+        let url = try XCTUnwrap(URL(string: "ts3server://voice.example.com:9988?nickname=Alice&phoneticnickname=Aliss&password=s3cr3t&channel=Root%2FSub&channelpassword=room&token=abc123&addbookmark=Main"))
 
         let parsed = try TS3ServerURL(url: url)
 
         XCTAssertEqual(parsed.host, "voice.example.com")
         XCTAssertEqual(parsed.port, 9988)
         XCTAssertEqual(parsed.nickname, "Alice")
+        XCTAssertEqual(parsed.phoneticNickname, "Aliss")
         XCTAssertEqual(parsed.serverPassword, "s3cr3t")
         XCTAssertEqual(parsed.defaultChannel, "Root/Sub")
         XCTAssertEqual(parsed.defaultChannelPassword, "room")
@@ -42,6 +43,7 @@ final class TS3ServerURLTests: XCTestCase {
             defaultChannel: "Root/Sub",
             defaultChannelPassword: "room",
             privilegeKey: "abc123",
+            phoneticNickname: "Aliss",
             bookmarkName: "Main"
         )
 
@@ -60,6 +62,7 @@ final class TS3ServerURLTests: XCTestCase {
             defaultChannel: "Root/Sub",
             defaultChannelPassword: "room",
             privilegeKey: "abc123",
+            phoneticNickname: "Aliss",
             bookmarkName: "Main"
         )
 
@@ -69,6 +72,7 @@ final class TS3ServerURLTests: XCTestCase {
         XCTAssertEqual(parsed.host, "voice.example.com")
         XCTAssertEqual(parsed.port, 9988)
         XCTAssertEqual(parsed.nickname, "Alice")
+        XCTAssertEqual(parsed.phoneticNickname, "Aliss")
         XCTAssertEqual(parsed.defaultChannel, "Root/Sub")
         XCTAssertEqual(parsed.bookmarkName, "Main")
         XCTAssertNil(parsed.serverPassword)

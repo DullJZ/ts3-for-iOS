@@ -819,6 +819,7 @@ struct ConnectView: View {
                 host: snapshot.host,
                 port: snapshot.port,
                 nickname: snapshot.nickname,
+                phoneticNickname: snapshot.phoneticNickname,
                 defaultChannel: snapshot.defaultChannel
             )
         }
@@ -837,6 +838,7 @@ struct ConnectView: View {
                     host: bookmark.host,
                     port: bookmark.port,
                     nickname: bookmark.nickname,
+                    phoneticNickname: bookmark.phoneticNickname,
                     defaultChannel: bookmark.defaultChannel
                 ) || isSearchingConnections && containsConnectionSearch(bookmark.folder)
             )
@@ -965,6 +967,7 @@ struct ConnectView: View {
                                     host: snapshot.host,
                                     port: snapshot.port,
                                     nickname: snapshot.nickname,
+                                    phoneticNickname: snapshot.phoneticNickname,
                                     serverPassword: snapshot.serverPassword,
                                     defaultChannel: snapshot.defaultChannel,
                                     defaultChannelPassword: snapshot.defaultChannelPassword,
@@ -1124,6 +1127,8 @@ struct ConnectView: View {
 
             Section(header: Text("Profile")) {
                 TextField("Nickname", text: $model.nickname)
+                    .ts3PlainTextField()
+                TextField("Phonetic Nickname (optional)", text: $model.phoneticNickname)
                     .ts3PlainTextField()
                 SecureField("Privilege Key (optional)", text: $model.privilegeKey)
                 Button("Manage Identity") {
@@ -1655,12 +1660,20 @@ struct ConnectView: View {
         }
     }
 
-    private func matchesConnectionSearch(name: String, host: String, port: String, nickname: String, defaultChannel: String) -> Bool {
+    private func matchesConnectionSearch(
+        name: String,
+        host: String,
+        port: String,
+        nickname: String,
+        phoneticNickname: String = "",
+        defaultChannel: String
+    ) -> Bool {
         !isSearchingConnections
             || containsConnectionSearch(name)
             || containsConnectionSearch(host)
             || containsConnectionSearch(port)
             || containsConnectionSearch(nickname)
+            || containsConnectionSearch(phoneticNickname)
             || containsConnectionSearch(defaultChannel)
     }
 
@@ -1827,6 +1840,8 @@ struct BookmarkEditorSheet: View {
 
                 Section(header: Text("Profile")) {
                     TextField("Nickname", text: $bookmark.nickname)
+                        .ts3PlainTextField()
+                    TextField("Phonetic Nickname", text: $bookmark.phoneticNickname)
                         .ts3PlainTextField()
                     SecureField("Server Password", text: $bookmark.serverPassword)
                     TextField("Default Channel", text: $bookmark.defaultChannel)
@@ -7817,6 +7832,7 @@ struct ServerToolsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var nickname = ""
+    @State private var phoneticNickname = ""
     @State private var bookmarkName = ""
     @State private var bookmarkFolder = ""
     @State private var privilegeKey = ""
@@ -7997,6 +8013,11 @@ struct ServerToolsSheet: View {
                         model.updateNickname(to: nickname.isEmpty ? model.nickname : nickname)
                     }
                     .ts3KeyboardShortcut("apply-nickname", in: model)
+                    TextField("Phonetic Nickname", text: $phoneticNickname)
+                        .ts3PlainTextField()
+                    Button("Apply Phonetic Nickname") {
+                        model.updatePhoneticNickname(to: phoneticNickname)
+                    }
                     TextField("Away Message", text: $model.awayMessage)
                     Button(model.isAway ? "Clear Away" : "Set Away") {
                         model.toggleAway()
@@ -8072,6 +8093,7 @@ struct ServerToolsSheet: View {
             .ts3InlineNavigationTitle()
             .onAppear {
                 nickname = model.nickname
+                phoneticNickname = model.phoneticNickname
                 bookmarkName = model.serverHost
                 Task { @MainActor in
                     await model.refreshIdentitySummary()

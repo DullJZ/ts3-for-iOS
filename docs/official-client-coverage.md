@@ -76,7 +76,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
-| Bookmarks | Partial | Bookmark list/folders/import/export, connection manager | Add richer bookmark editing UI for all connection options. |
+| Bookmarks | Partial | Bookmark list/folders/import/export, connection manager, saved phonetic nickname support | Add richer bookmark editing UI for all connection options. |
 | Contacts | Partial | Contact manager entry | Audit friend/block/ignore behavior against real server data. |
 | Client migration | Done | Client package import/export covering local settings groups | Add versioned migration preview before import. |
 

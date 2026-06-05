@@ -8,6 +8,7 @@ public struct TS3ClientConfig {
     public let defaultChannel: String?
     public let defaultChannelPassword: String?
     public let privilegeKey: String?
+    public let phoneticNickname: String?
 
     /// Creates a TeamSpeak 3 connection configuration.
     public init(
@@ -17,7 +18,8 @@ public struct TS3ClientConfig {
         serverPassword: String?,
         defaultChannel: String? = nil,
         defaultChannelPassword: String? = nil,
-        privilegeKey: String? = nil
+        privilegeKey: String? = nil,
+        phoneticNickname: String? = nil
     ) {
         self.host = host
         self.port = port
@@ -26,6 +28,7 @@ public struct TS3ClientConfig {
         self.defaultChannel = defaultChannel
         self.defaultChannelPassword = defaultChannelPassword
         self.privilegeKey = privilegeKey
+        self.phoneticNickname = phoneticNickname
     }
 }
 
