@@ -378,7 +378,7 @@ struct TS3UserPlaybackPreferenceSummary: Identifiable {
     var id: String { key }
 }
 
-struct TS3OfflineMessageSummary: Identifiable {
+struct TS3OfflineMessageSummary: Identifiable, Codable {
     let id: Int
     let senderUniqueIdentifier: String?
     let senderName: String?
@@ -389,12 +389,12 @@ struct TS3OfflineMessageSummary: Identifiable {
 }
 
 extension TS3OfflineMessageSummary {
-    init(message: TS3OfflineMessage, isReadOverride: Bool? = nil) {
+    init(message: TS3OfflineMessage, messageOverride: String? = nil, isReadOverride: Bool? = nil) {
         self.id = message.id
         self.senderUniqueIdentifier = message.senderUniqueIdentifier
         self.senderName = message.senderName
         self.subject = message.subject
-        self.message = message.message
+        self.message = message.message ?? messageOverride
         self.timestamp = message.timestamp
         self.isRead = isReadOverride ?? message.isRead
     }
@@ -2536,6 +2536,7 @@ final class TS3AppModel: ObservableObject {
         loadChatHistory()
         loadFileBrowserBookmarks()
         loadFileBrowserFilterPresets()
+        loadOfflineMessageHistory()
         loadOfflineMessageFilterPresets()
         loadWhisperPresets()
         loadWhisperFilterPresets()
@@ -3621,7 +3622,6 @@ final class TS3AppModel: ObservableObject {
         unreadPokeCount = 0
         activityEvents = []
         unreadActivityCount = 0
-        offlineMessages = []
         banEntries = []
         complaintEntries = []
         complaintTarget = nil
@@ -5964,7 +5964,15 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let messages = try await client.refreshOfflineMessages()
             await MainActor.run {
-                self.offlineMessages = messages.map { TS3OfflineMessageSummary(message: $0) }
+                self.offlineMessages = messages.map { message in
+                    let existing = self.offlineMessages.first { $0.id == message.id }
+                    return TS3OfflineMessageSummary(
+                        message: message,
+                        messageOverride: existing?.message,
+                        isReadOverride: nil
+                    )
+                }
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -5975,6 +5983,7 @@ final class TS3AppModel: ObservableObject {
             try? await client.setOfflineMessageRead(messageId: message.id, isRead: true)
             await MainActor.run {
                 self.upsertOfflineMessage(TS3OfflineMessageSummary(message: detailed, isReadOverride: true))
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -6000,6 +6009,7 @@ final class TS3AppModel: ObservableObject {
                         isReadOverride: existing?.isRead
                     ))
                 }
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -6009,6 +6019,7 @@ final class TS3AppModel: ObservableObject {
             try await client.deleteOfflineMessage(messageId: message.id)
             await MainActor.run {
                 self.offlineMessages.removeAll { $0.id == message.id }
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -6022,7 +6033,14 @@ final class TS3AppModel: ObservableObject {
             }
             let refreshedMessages = try await client.refreshOfflineMessages()
             await MainActor.run {
-                self.offlineMessages = refreshedMessages.map { TS3OfflineMessageSummary(message: $0) }
+                self.offlineMessages = refreshedMessages.map { message in
+                    TS3OfflineMessageSummary(
+                        message: message,
+                        messageOverride: self.offlineMessages.first { $0.id == message.id }?.message,
+                        isReadOverride: nil
+                    )
+                }
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -6032,6 +6050,7 @@ final class TS3AppModel: ObservableObject {
             try await client.setOfflineMessageRead(messageId: message.id, isRead: read)
             await MainActor.run {
                 self.upsertOfflineMessage(TS3OfflineMessageSummary(copying: message, isRead: read))
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -6045,7 +6064,14 @@ final class TS3AppModel: ObservableObject {
             }
             let refreshedMessages = try await client.refreshOfflineMessages()
             await MainActor.run {
-                self.offlineMessages = refreshedMessages.map { TS3OfflineMessageSummary(message: $0) }
+                self.offlineMessages = refreshedMessages.map { message in
+                    TS3OfflineMessageSummary(
+                        message: message,
+                        messageOverride: self.offlineMessages.first { $0.id == message.id }?.message,
+                        isReadOverride: nil
+                    )
+                }
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -6059,7 +6085,14 @@ final class TS3AppModel: ObservableObject {
             }
             let refreshedMessages = try await client.refreshOfflineMessages()
             await MainActor.run {
-                self.offlineMessages = refreshedMessages.map { TS3OfflineMessageSummary(message: $0) }
+                self.offlineMessages = refreshedMessages.map { message in
+                    TS3OfflineMessageSummary(
+                        message: message,
+                        messageOverride: self.offlineMessages.first { $0.id == message.id }?.message,
+                        isReadOverride: nil
+                    )
+                }
+                self.saveOfflineMessageHistory()
             }
         }
     }
@@ -8023,6 +8056,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-chat-history-settings.json")
     }
 
+    private var offlineMessageHistoryURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-offline-message-history.json")
+    }
+
     private var fileBrowserBookmarksURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-file-browser-bookmarks.json")
@@ -9888,6 +9926,42 @@ final class TS3AppModel: ObservableObject {
             unreadChatMessageCount = min(unreadChatMessageCount, chatMessages.count)
         }
         saveChatHistory()
+    }
+
+    private func loadOfflineMessageHistory() {
+        guard let data = try? Data(contentsOf: offlineMessageHistoryURL),
+              let decoded = try? JSONDecoder().decode([TS3OfflineMessageSummary].self, from: data) else {
+            offlineMessages = []
+            return
+        }
+        offlineMessages = decoded.sorted { lhs, rhs in
+            switch (lhs.timestamp, rhs.timestamp) {
+            case let (lhs?, rhs?):
+                return lhs > rhs
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return lhs.id > rhs.id
+            }
+        }
+    }
+
+    private func saveOfflineMessageHistory() {
+        do {
+            let directory = offlineMessageHistoryURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(offlineMessages)
+            try data.write(to: offlineMessageHistoryURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func clearOfflineMessageHistory() {
+        offlineMessages = []
+        saveOfflineMessageHistory()
     }
 
     func chatHistoryBackupData() throws -> Data {

@@ -984,6 +984,15 @@ struct ConnectView: View {
                     .foregroundColor(.secondary)
             }
 
+            Section(header: Text("Messaging")) {
+                Button("Inbox") {
+                    model.showOfflineMessages()
+                }
+                Text(model.offlineMessages.isEmpty ? "No cached offline messages" : "\(model.offlineMessages.count) cached offline message\(model.offlineMessages.count == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
             if let error = model.lastError {
                 Section {
                     Text(error)
@@ -6775,12 +6784,14 @@ struct OfflineMessagesSheet: View {
     private enum DeleteConfirmation: Identifiable {
         case visible
         case read
+        case localHistory
         case deleteAllFilterPresets
 
         var id: String {
             switch self {
             case .visible: return "visible"
             case .read: return "read"
+            case .localHistory: return "localHistory"
             case .deleteAllFilterPresets: return "deleteAllFilterPresets"
             }
         }
@@ -7004,6 +7015,10 @@ struct OfflineMessagesSheet: View {
                             deleteConfirmation = .read
                         }
                         .disabled(!canUseServerInboxActions || readMessages.isEmpty)
+                        Button("Clear Local Inbox History") {
+                            deleteConfirmation = .localHistory
+                        }
+                        .disabled(model.offlineMessages.isEmpty)
                         Button("Export Filter Presets") {
                             exportPresets()
                         }
@@ -7070,6 +7085,15 @@ struct OfflineMessagesSheet: View {
                         message: Text("This removes \(readMessages.count) read offline messages from the server."),
                         primaryButton: .destructive(Text("Delete")) {
                             model.deleteOfflineMessages(readMessages)
+                        },
+                        secondaryButton: .cancel()
+                    )
+                case .localHistory:
+                    return Alert(
+                        title: Text("Clear Local Inbox History?"),
+                        message: Text("This clears cached offline messages on this device. Server messages are not deleted."),
+                        primaryButton: .destructive(Text("Clear")) {
+                            model.clearOfflineMessageHistory()
                         },
                         secondaryButton: .cancel()
                     )

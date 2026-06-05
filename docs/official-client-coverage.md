@@ -35,7 +35,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Channel/server/private text chat | Done | `ChatSheet`, send methods, local history | Add richer transcript formatting and per-conversation threading. |
 | Chat history management | Done | Local history, filters, presets, transcript/history import/export, offline access, configurable retention settings | Add richer per-conversation threading if needed. |
-| Offline messages | Partial | Inbox, compose, read/delete, filters and presets | Add global offline history access without live refresh and better draft handling. |
+| Offline messages | Partial | Inbox, compose, read/delete, local cached history, disconnected access, filters and presets | Add better draft handling and validate server-side read/delete behavior against real servers. |
 | Pokes | Partial | Receive poke notifications/events, online client-row poke, poke-back, and online contact poke actions exist | Add broader real-server validation and any remaining context-menu entry points found in official-client audit. |
 | Whisper | Partial | Whisper sheet, presets, targets, tests for protocol serialization | Verify full voice whisper routing against real servers and add hotkey-style activation UI. |
 | Event log | Done | Events sheet and unread handling | Add export/import or persistent event archive if wanted. |
@@ -99,7 +99,7 @@ Status legend:
 
 ## Next Implementation Priorities
 
-1. Add global offline message history access that does not require a live server refresh.
+1. Add better offline message draft handling.
 2. Add poke sending UI from client rows and contacts.
 3. Add downloads folder management and deeper batch conflict previews.
 4. Audit server/channel settings fields against official-client tabs and fill missing fields.
