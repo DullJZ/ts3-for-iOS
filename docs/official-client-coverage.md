@@ -66,9 +66,9 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets | Add conflict-resolution previews for batch workflows if needed. |
+| Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets, move/rename conflict previews | Add deeper cross-directory conflict previews if needed. |
 | Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export | Add folder upload/download if server protocol and platform sandbox allow it. |
-| File operations | Done | Rename, move, delete, create directory, batch actions | Add conflict-resolution previews for batch move/rename. |
+| File operations | Done | Rename, move, delete, create directory, batch actions, rename and batch-move conflict previews | Validate conflict behavior against real servers and add cross-directory previews if server listing is expanded. |
 | Local downloaded files | Done | Persistent recent download history, downloads folder open/copy/cleanup actions, export/open/copy/remove actions, queue row open local file | Add richer downloads folder organization if needed. |
 
 ## Identity, Contacts, Bookmarks, And Migration
@@ -99,6 +99,6 @@ Status legend:
 
 ## Next Implementation Priorities
 
-1. Add deeper batch conflict previews for file move/rename/upload workflows.
-2. Audit server/channel settings fields against official-client tabs and fill missing fields.
-3. Add user-configurable hotkey capture for PTT, mute, whisper, and common Catalyst actions.
+1. Audit server/channel settings fields against official-client tabs and fill missing fields.
+2. Add user-configurable hotkey capture for PTT, mute, whisper, and common Catalyst actions.
+3. Validate file operation conflict behavior against real servers.

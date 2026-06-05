@@ -12169,6 +12169,8 @@ struct FileBrowserSheet: View {
                 MoveFileEntriesSheet(
                     entries: selectedEntries,
                     destinationDirectory: $selectedMoveDestinationDirectory,
+                    knownDirectoryPath: model.fileBrowserPath,
+                    knownDirectoryEntries: model.fileEntries,
                     onMove: {
                         model.moveFileEntries(selectedEntries, toDirectory: selectedMoveDestinationDirectory)
                         selectedEntryIDs.removeAll()
@@ -13068,12 +13070,28 @@ struct RenameFileEntrySheet: View {
                     TextField("New Name", text: $newName)
                         .ts3PlainTextField()
                 }
+                Section(header: Text("Preview")) {
+                    if trimmedNewName.isEmpty {
+                        Text("Enter a new file name.")
+                            .foregroundColor(.secondary)
+                    } else if trimmedNewName == entry.name {
+                        Text("Name is unchanged.")
+                            .foregroundColor(.secondary)
+                    } else if renameConflict != nil {
+                        Text("\(trimmedNewName) already exists in this directory.")
+                            .foregroundColor(.red)
+                    } else {
+                        Text("\(entry.path) -> \(newPath)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
                 Section {
                     Button("Rename") {
                         model.renameFileEntry(entry, to: newName)
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(trimmedNewName.isEmpty || trimmedNewName == entry.name || renameConflict != nil)
                 }
             }
             .navigationTitle("Rename")
@@ -13086,6 +13104,43 @@ struct RenameFileEntrySheet: View {
                 }
             }
         }
+    }
+
+    private var trimmedNewName: String {
+        newName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var newPath: String {
+        Self.joinedPath(parentPath: entry.parentPath, name: trimmedNewName)
+    }
+
+    private var renameConflict: TS3FileEntrySummary? {
+        model.fileEntries.first {
+            $0.id != entry.id
+                && $0.parentPath == entry.parentPath
+                && $0.name.caseInsensitiveCompare(trimmedNewName) == .orderedSame
+        }
+    }
+
+    private static func joinedPath(parentPath: String, name: String) -> String {
+        let parentPath = normalizedDirectoryPath(parentPath)
+        if name.hasPrefix("/") {
+            return name
+        }
+        return parentPath + name
+    }
+
+    private static func normalizedDirectoryPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/" }
+        var result = trimmed
+        if !result.hasPrefix("/") {
+            result = "/" + result
+        }
+        if !result.hasSuffix("/") {
+            result += "/"
+        }
+        return result
     }
 }
 
@@ -13130,6 +13185,8 @@ struct MoveFileEntriesSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     let entries: [TS3FileEntrySummary]
     @Binding var destinationDirectory: String
+    let knownDirectoryPath: String
+    let knownDirectoryEntries: [TS3FileEntrySummary]
     let onMove: () -> Void
 
     var body: some View {
@@ -13141,6 +13198,36 @@ struct MoveFileEntriesSheet: View {
                     Text("Enter a remote directory path, for example / or /subfolder/.")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+                Section(header: Text("Move Preview")) {
+                    if destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Enter a destination directory.")
+                            .foregroundColor(.secondary)
+                    } else if previewItems.isEmpty {
+                        Text("No entries will be moved.")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(previewItems) { item in
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: item.entry.isDirectory ? "folder" : "doc")
+                                    .foregroundColor(item.entry.isDirectory ? .accentColor : .secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.entry.name)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Text(item.detail)
+                                        .font(.caption)
+                                        .foregroundColor(item.isBlocking ? .red : .secondary)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                    }
+                    if !isDestinationKnown {
+                        Text("Destination contents are not loaded; the server will still validate conflicts when moving.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 Section(header: Text("Entries")) {
                     ForEach(entries) { entry in
@@ -13158,7 +13245,7 @@ struct MoveFileEntriesSheet: View {
                         onMove()
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(entries.isEmpty || destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isMoveDisabled)
                 }
             }
             .navigationTitle("Move Selected")
@@ -13172,6 +13259,82 @@ struct MoveFileEntriesSheet: View {
             }
         }
     }
+
+    private var isMoveDisabled: Bool {
+        entries.isEmpty
+            || destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || previewItems.isEmpty
+            || previewItems.contains { $0.isBlocking }
+    }
+
+    private var normalizedDestinationDirectory: String {
+        Self.normalizedDirectoryPath(destinationDirectory)
+    }
+
+    private var isDestinationKnown: Bool {
+        normalizedDestinationDirectory == Self.normalizedDirectoryPath(knownDirectoryPath)
+    }
+
+    private var previewItems: [MovePreviewItem] {
+        let selectedIds = Set(entries.map(\.id))
+        return entries.compactMap { entry in
+            let newPath = Self.joinedPath(parentPath: normalizedDestinationDirectory, name: entry.name)
+            if newPath == entry.path {
+                return nil
+            }
+            if isMovingDirectoryIntoItself(entry) {
+                return MovePreviewItem(entry: entry, detail: "Cannot move a directory into itself.", isBlocking: true)
+            }
+            if let conflict = destinationConflict(for: entry, selectedIds: selectedIds) {
+                return MovePreviewItem(entry: entry, detail: "Conflicts with \(conflict.name) in the destination.", isBlocking: true)
+            }
+            return MovePreviewItem(entry: entry, detail: "\(entry.path) -> \(newPath)", isBlocking: false)
+        }
+    }
+
+    private func destinationConflict(for entry: TS3FileEntrySummary, selectedIds: Set<String>) -> TS3FileEntrySummary? {
+        guard isDestinationKnown else { return nil }
+        return knownDirectoryEntries.first {
+            !selectedIds.contains($0.id)
+                && $0.name.caseInsensitiveCompare(entry.name) == .orderedSame
+        }
+    }
+
+    private func isMovingDirectoryIntoItself(_ entry: TS3FileEntrySummary) -> Bool {
+        guard entry.isDirectory else { return false }
+        let sourceDirectory = Self.normalizedDirectoryPath(entry.path)
+        return normalizedDestinationDirectory == sourceDirectory
+            || normalizedDestinationDirectory.hasPrefix(sourceDirectory)
+    }
+
+    private static func joinedPath(parentPath: String, name: String) -> String {
+        let parentPath = normalizedDirectoryPath(parentPath)
+        if name.hasPrefix("/") {
+            return name
+        }
+        return parentPath + name
+    }
+
+    private static func normalizedDirectoryPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/" }
+        var result = trimmed
+        if !result.hasPrefix("/") {
+            result = "/" + result
+        }
+        if !result.hasSuffix("/") {
+            result += "/"
+        }
+        return result
+    }
+}
+
+private struct MovePreviewItem: Identifiable {
+    let entry: TS3FileEntrySummary
+    let detail: String
+    let isBlocking: Bool
+
+    var id: String { entry.id }
 }
 
 struct PermissionsSheet: View {
