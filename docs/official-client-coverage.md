@@ -46,7 +46,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Server information | Done | Server info sheet and Catalyst entry | Add more raw virtual server fields where available. |
 | Server edit/settings | Partial | Server settings editor, quotas, host fields, icon support | Audit all official server edit tabs and fill missing fields. |
-| Channel create/edit/delete/move | Partial | Channel editor, move preview, draft import/export, icon import, password prompts | Add full channel permission inheritance visibility and richer codec controls. |
+| Channel create/edit/delete/move | Partial | Channel editor with codec quality/latency/encryption controls, move preview, draft import/export, icon import, password prompts | Add full channel permission inheritance visibility and validate advanced codec controls against real servers. |
 | Client actions | Partial | Client row menus, database-record online actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets and log viewing | Add broader log filters and persistent exports per server. |
 | Ban list | Partial | Ban list management entry | Audit ban edit/add fields and test against real servers. |
@@ -99,6 +99,6 @@ Status legend:
 
 ## Next Implementation Priorities
 
-1. Audit server/channel settings fields against official-client tabs and fill missing fields.
-2. Validate file operation conflict behavior against real servers.
+1. Audit remaining server/channel settings fields against official-client tabs and fill missing fields.
+2. Validate file operation conflict behavior and advanced codec controls against real servers.
 3. Verify full voice whisper routing against real servers and add hotkey-style activation UI.

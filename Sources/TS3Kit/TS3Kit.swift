@@ -403,6 +403,10 @@ public struct TS3Channel: Identifiable {
     public let codec: Int?
     /// The configured codec quality, when reported by the server.
     public let codecQuality: Int?
+    /// The configured codec latency factor, when reported by the server.
+    public let codecLatencyFactor: Int?
+    /// Whether channel audio packets are sent without codec encryption.
+    public let isCodecUnencrypted: Bool?
     /// The channel delete delay in seconds.
     public let deleteDelaySeconds: Int?
     /// The maximum number of clients allowed in the channel.
@@ -437,6 +441,8 @@ public struct TS3Channel: Identifiable {
         neededSubscribePower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
+        codecLatencyFactor: Int? = nil,
+        isCodecUnencrypted: Bool? = nil,
         deleteDelaySeconds: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
@@ -461,6 +467,8 @@ public struct TS3Channel: Identifiable {
         self.neededSubscribePower = neededSubscribePower
         self.codec = codec
         self.codecQuality = codecQuality
+        self.codecLatencyFactor = codecLatencyFactor
+        self.isCodecUnencrypted = isCodecUnencrypted
         self.deleteDelaySeconds = deleteDelaySeconds
         self.maxClients = maxClients
         self.maxFamilyClients = maxFamilyClients

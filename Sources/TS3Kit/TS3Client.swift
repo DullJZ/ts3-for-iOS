@@ -508,6 +508,8 @@ public final class TS3Client {
         description: String? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
+        codecLatencyFactor: Int? = nil,
+        isCodecUnencrypted: Bool? = nil,
         neededTalkPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         deleteDelaySeconds: Int? = nil,
@@ -535,6 +537,12 @@ public final class TS3Client {
         }
         if let codecQuality {
             params.append(TS3CommandSingleParameter(name: "channel_codec_quality", value: String(codecQuality)))
+        }
+        if let codecLatencyFactor {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_latency_factor", value: String(codecLatencyFactor)))
+        }
+        if let isCodecUnencrypted {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_is_unencrypted", value: isCodecUnencrypted ? "1" : "0"))
         }
         if let neededTalkPower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))
@@ -590,6 +598,8 @@ public final class TS3Client {
         neededSubscribePower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
+        codecLatencyFactor: Int? = nil,
+        isCodecUnencrypted: Bool? = nil,
         deleteDelaySeconds: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
@@ -626,6 +636,12 @@ public final class TS3Client {
         }
         if let codecQuality {
             params.append(TS3CommandSingleParameter(name: "channel_codec_quality", value: String(codecQuality)))
+        }
+        if let codecLatencyFactor {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_latency_factor", value: String(codecLatencyFactor)))
+        }
+        if let isCodecUnencrypted {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_is_unencrypted", value: isCodecUnencrypted ? "1" : "0"))
         }
         if let deleteDelaySeconds {
             params.append(TS3CommandSingleParameter(name: "channel_delete_delay", value: String(deleteDelaySeconds)))
@@ -2430,6 +2446,8 @@ private extension TS3Client {
             neededSubscribePower: intValue(command, "channel_needed_subscribe_power"),
             codec: intValue(command, "channel_codec"),
             codecQuality: intValue(command, "channel_codec_quality"),
+            codecLatencyFactor: intValue(command, "channel_codec_latency_factor"),
+            isCodecUnencrypted: optionalBoolValue(command, "channel_codec_is_unencrypted"),
             deleteDelaySeconds: intValue(command, "channel_delete_delay"),
             maxClients: intValue(command, "channel_maxclients"),
             maxFamilyClients: intValue(command, "channel_maxfamilyclients"),

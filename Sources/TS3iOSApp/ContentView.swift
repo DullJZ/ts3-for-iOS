@@ -17614,6 +17614,8 @@ struct ChannelEditorSheet: View {
         var neededSubscribePower: String
         var codec: String
         var codecQuality: String
+        var codecLatencyFactor: String?
+        var isCodecUnencrypted: Bool?
         var deleteDelaySeconds: String
         var maxClients: String
         var maxFamilyClients: String
@@ -17638,6 +17640,8 @@ struct ChannelEditorSheet: View {
     @State private var neededSubscribePower = ""
     @State private var codec: Int?
     @State private var codecQuality = ""
+    @State private var codecLatencyFactor = ""
+    @State private var isCodecUnencrypted = false
     @State private var deleteDelaySeconds = ""
     @State private var maxClients = ""
     @State private var maxFamilyClients = ""
@@ -17722,6 +17726,9 @@ struct ChannelEditorSheet: View {
                             Text(TS3ChannelCodecQuality.title(for: numericQuality) ?? String(numericQuality)).tag(codecQuality)
                         }
                     }
+                    TextField("Codec Latency Factor", text: $codecLatencyFactor)
+                        .ts3NumericKeyboard()
+                    Toggle("Unencrypted Voice", isOn: $isCodecUnencrypted)
                     TextField("Needed Talk Power", text: $neededTalkPower)
                         .ts3NumericKeyboard()
                     TextField("Needed Subscribe Power", text: $neededSubscribePower)
@@ -17761,6 +17768,8 @@ struct ChannelEditorSheet: View {
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
+                                codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
+                                isCodecUnencrypted: isCodecUnencrypted,
                                 deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
@@ -17783,6 +17792,8 @@ struct ChannelEditorSheet: View {
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
+                                codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
+                                isCodecUnencrypted: isCodecUnencrypted,
                                 deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
@@ -17812,6 +17823,8 @@ struct ChannelEditorSheet: View {
                     neededSubscribePower = channel.neededSubscribePower.map(String.init) ?? ""
                     codec = channel.codec
                     codecQuality = channel.codecQuality.map(String.init) ?? ""
+                    codecLatencyFactor = channel.codecLatencyFactor.map(String.init) ?? ""
+                    isCodecUnencrypted = channel.isCodecUnencrypted ?? false
                     deleteDelaySeconds = channel.deleteDelaySeconds.map(String.init) ?? ""
                     maxClients = channel.maxClients.map(String.init) ?? ""
                     maxFamilyClients = channel.maxFamilyClients.map(String.init) ?? ""
@@ -17894,6 +17907,8 @@ struct ChannelEditorSheet: View {
             neededSubscribePower: neededSubscribePower,
             codec: codec.map(String.init) ?? "",
             codecQuality: codecQuality,
+            codecLatencyFactor: codecLatencyFactor,
+            isCodecUnencrypted: isCodecUnencrypted,
             deleteDelaySeconds: deleteDelaySeconds,
             maxClients: maxClients,
             maxFamilyClients: maxFamilyClients,
@@ -17919,6 +17934,8 @@ struct ChannelEditorSheet: View {
             ("Needed Subscribe Power", draft.neededSubscribePower),
             ("Codec", codecTitle(for: draft.codec)),
             ("Codec Quality", codecQualityTitle(for: draft.codecQuality)),
+            ("Codec Latency Factor", draft.codecLatencyFactor ?? ""),
+            ("Unencrypted Voice", draft.isCodecUnencrypted == true ? "Yes" : "No"),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
             ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
             ("Max Family Clients", draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)),
@@ -17937,6 +17954,7 @@ struct ChannelEditorSheet: View {
             && isOptionalInt(neededTalkPower)
             && isOptionalInt(neededSubscribePower)
             && isOptionalInt(codecQuality)
+            && isOptionalInt(codecLatencyFactor)
             && isOptionalInt(deleteDelaySeconds)
             && isOptionalInt(iconId)
             && (maxClientsUnlimited || isRequiredInt(maxClients))
@@ -17997,6 +18015,8 @@ struct ChannelEditorSheet: View {
         neededSubscribePower = draft.neededSubscribePower
         codec = parsedOptionalInt(draft.codec)
         codecQuality = draft.codecQuality
+        codecLatencyFactor = draft.codecLatencyFactor ?? ""
+        isCodecUnencrypted = draft.isCodecUnencrypted ?? false
         deleteDelaySeconds = draft.deleteDelaySeconds
         maxClients = draft.maxClients
         maxFamilyClients = draft.maxFamilyClients

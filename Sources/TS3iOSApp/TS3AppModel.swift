@@ -125,6 +125,8 @@ struct TS3ChannelSummary: Identifiable {
     var neededSubscribePower: Int?
     var codec: Int?
     var codecQuality: Int?
+    var codecLatencyFactor: Int?
+    var isCodecUnencrypted: Bool?
     var deleteDelaySeconds: Int?
     var maxClients: Int?
     var maxFamilyClients: Int?
@@ -3014,6 +3016,8 @@ final class TS3AppModel: ObservableObject {
                 neededSubscribePower: nil,
                 codec: nil,
                 codecQuality: nil,
+                codecLatencyFactor: nil,
+                isCodecUnencrypted: nil,
                 deleteDelaySeconds: nil,
                 maxClients: nil,
                 maxFamilyClients: nil,
@@ -6441,6 +6445,8 @@ final class TS3AppModel: ObservableObject {
         neededSubscribePower: Int?,
         codec: Int?,
         codecQuality: Int?,
+        codecLatencyFactor: Int?,
+        isCodecUnencrypted: Bool?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -6463,6 +6469,8 @@ final class TS3AppModel: ObservableObject {
                 description: description.isEmpty ? nil : description,
                 codec: codec,
                 codecQuality: codecQuality,
+                codecLatencyFactor: codecLatencyFactor,
+                isCodecUnencrypted: isCodecUnencrypted,
                 neededTalkPower: neededTalkPower,
                 neededSubscribePower: neededSubscribePower,
                 deleteDelaySeconds: deleteDelaySeconds,
@@ -6489,6 +6497,8 @@ final class TS3AppModel: ObservableObject {
         neededSubscribePower: Int?,
         codec: Int?,
         codecQuality: Int?,
+        codecLatencyFactor: Int?,
+        isCodecUnencrypted: Bool?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -6512,6 +6522,8 @@ final class TS3AppModel: ObservableObject {
                 neededSubscribePower: neededSubscribePower,
                 codec: codec,
                 codecQuality: codecQuality,
+                codecLatencyFactor: codecLatencyFactor,
+                isCodecUnencrypted: isCodecUnencrypted,
                 deleteDelaySeconds: deleteDelaySeconds,
                 maxClients: maxClientsUnlimited ? nil : maxClients,
                 maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
@@ -10929,6 +10941,8 @@ extension TS3AppModel: TS3ClientDelegate {
                     neededSubscribePower: channel.neededSubscribePower,
                     codec: channel.codec,
                     codecQuality: channel.codecQuality,
+                    codecLatencyFactor: channel.codecLatencyFactor,
+                    isCodecUnencrypted: channel.isCodecUnencrypted,
                     deleteDelaySeconds: channel.deleteDelaySeconds,
                     maxClients: channel.maxClients,
                     maxFamilyClients: channel.maxFamilyClients,
