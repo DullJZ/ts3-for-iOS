@@ -69,7 +69,7 @@ Status legend:
 | Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets | Add conflict-resolution previews for batch workflows if needed. |
 | Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export | Add folder upload/download if server protocol and platform sandbox allow it. |
 | File operations | Done | Rename, move, delete, create directory, batch actions | Add conflict-resolution previews for batch move/rename. |
-| Local downloaded files | Done | Last download export/open, queue row open local file | Add downloads folder management/history beyond last file. |
+| Local downloaded files | Done | Recent download history, export/open/copy/remove actions, queue row open local file | Add downloads folder management if needed. |
 
 ## Identity, Contacts, Bookmarks, And Migration
 
@@ -101,6 +101,6 @@ Status legend:
 
 1. Add global offline message history access that does not require a live server refresh.
 2. Add poke sending UI from client rows and contacts.
-3. Add retention controls for chat history and downloaded file history.
+3. Add downloads folder management and deeper batch conflict previews.
 4. Audit server/channel settings fields against official-client tabs and fill missing fields.
 5. Add user-configurable hotkey capture for PTT, mute, whisper, and common Catalyst actions.

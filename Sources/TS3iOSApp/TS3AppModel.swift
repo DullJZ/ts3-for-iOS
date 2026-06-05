@@ -1129,6 +1129,7 @@ struct TS3DownloadedFileSummary: Identifiable {
     let id = UUID()
     let name: String
     let url: URL
+    let downloadedAt: Date
 }
 
 enum TS3FileTransferDirection: String {
@@ -2437,6 +2438,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var fileBrowserFilterPresets: [TS3FileBrowserFilterPreset] = []
     @Published private(set) var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset] = []
     @Published var lastDownloadedFile: TS3DownloadedFileSummary?
+    @Published private(set) var downloadedFiles: [TS3DownloadedFileSummary] = []
     @Published var bookmarks: [TS3BookmarkSummary] = []
     @Published var contacts: [TS3ContactEntry] = []
     @Published private(set) var contactFilterPresets: [TS3ContactFilterPreset] = []
@@ -5230,7 +5232,7 @@ final class TS3AppModel: ObservableObject {
                 await MainActor.run {
                     self.fileTransferProgress = 1
                     self.fileTransferStatus = "Downloaded \(entry.name) to \(destination.lastPathComponent)"
-                    self.lastDownloadedFile = TS3DownloadedFileSummary(name: destination.lastPathComponent, url: destination)
+                    self.recordDownloadedFile(name: destination.lastPathComponent, url: destination)
                     self.updateFileTransfer(
                         transferId,
                         progress: 1,
@@ -5288,7 +5290,23 @@ final class TS3AppModel: ObservableObject {
 
     func openLastDownloadedFile() {
         guard let file = lastDownloadedFile else { return }
+        openDownloadedFile(file)
+    }
+
+    func openDownloadedFile(_ file: TS3DownloadedFileSummary) {
         TS3PlatformSupport.openURL(file.url)
+    }
+
+    func clearDownloadedFileHistory() {
+        downloadedFiles = []
+        lastDownloadedFile = nil
+    }
+
+    func removeDownloadedFileHistory(_ file: TS3DownloadedFileSummary) {
+        downloadedFiles.removeAll { $0.id == file.id }
+        if lastDownloadedFile?.id == file.id {
+            lastDownloadedFile = downloadedFiles.first
+        }
     }
 
     func cancelFileTransfer(_ transfer: TS3FileTransferSummary) {
@@ -5594,6 +5612,16 @@ final class TS3AppModel: ObservableObject {
     private var trimmedFileBrowserPassword: String? {
         let password = fileBrowserPassword.trimmingCharacters(in: .whitespacesAndNewlines)
         return password.isEmpty ? nil : password
+    }
+
+    private func recordDownloadedFile(name: String, url: URL) {
+        let record = TS3DownloadedFileSummary(name: name, url: url, downloadedAt: Date())
+        lastDownloadedFile = record
+        downloadedFiles.removeAll { $0.url == url }
+        downloadedFiles.insert(record, at: 0)
+        if downloadedFiles.count > 25 {
+            downloadedFiles.removeLast(downloadedFiles.count - 25)
+        }
     }
 
     private func addFileTransfer(

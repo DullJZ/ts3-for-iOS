@@ -11730,26 +11730,50 @@ struct FileBrowserSheet: View {
                         }
                     }
 
-                    if let downloadedFile = model.lastDownloadedFile {
+                    if !model.downloadedFiles.isEmpty {
                         Divider()
-                        Text("Last download: \(downloadedFile.name)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                         HStack {
-                            Button("Open") {
-                                model.openLastDownloadedFile()
-                            }
-                            .buttonStyle(.borderless)
-                            Button("Copy Path") {
-                                TS3PlatformSupport.copyToPasteboard(downloadedFile.url.path)
-                            }
-                            .buttonStyle(.borderless)
-                            Button("Export") {
-                                exportDownloadedFile(downloadedFile)
+                            Text("Recent Downloads")
+                                .font(.caption.weight(.semibold))
+                            Spacer()
+                            Button("Clear") {
+                                model.clearDownloadedFileHistory()
                             }
                             .buttonStyle(.borderless)
                         }
-                        .font(.caption)
+                        ForEach(model.downloadedFiles.prefix(10)) { downloadedFile in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(downloadedFile.name)
+                                    .font(.caption.weight(.semibold))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Text(downloadedFile.url.path)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                HStack {
+                                    Button("Open") {
+                                        model.openDownloadedFile(downloadedFile)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    Button("Copy Path") {
+                                        TS3PlatformSupport.copyToPasteboard(downloadedFile.url.path)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    Button("Export") {
+                                        exportDownloadedFile(downloadedFile)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    Button("Remove") {
+                                        model.removeDownloadedFileHistory(downloadedFile)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .foregroundColor(.red)
+                                }
+                                .font(.caption)
+                            }
+                        }
                     }
                 }
             }
@@ -12300,6 +12324,9 @@ struct FileBrowserSheet: View {
         let activeCount = model.fileTransfers.filter(\.canCancel).count
         if activeCount > 0 {
             lines.append("Active: \(activeCount)")
+        }
+        if !model.downloadedFiles.isEmpty {
+            lines.append("Recent Downloads: \(model.downloadedFiles.count)")
         }
         if !model.fileTransfers.isEmpty {
             lines.append("")
