@@ -8243,6 +8243,8 @@ struct ServerToolsSheet: View {
                         .foregroundColor(.secondary)
                 }
 
+                NotificationRulesSection()
+
                 Section(header: Text("Privilege Key")) {
                     SecureField("Privilege Key", text: $privilegeKey)
                     Button("Use Privilege Key") {
@@ -18176,6 +18178,8 @@ struct NotificationSettingsSheet: View {
                     }
                 }
 
+                NotificationRulesSection()
+
                 Section(header: Text("Backup")) {
                     Button("Export Notification Settings") {
                         exportNotificationSettings()
@@ -18258,6 +18262,52 @@ struct NotificationSettingsSheet: View {
             try model.importNotificationSettings(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+struct NotificationRulesSection: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    private var hasRules: Bool {
+        !model.mutedNotificationServerKeys.isEmpty ||
+        !model.mutedNotificationContactUniqueIdentifiers.isEmpty
+    }
+
+    var body: some View {
+        Section(header: Text("Rules")) {
+            Toggle("Mute Current Server", isOn: Binding(
+                get: { model.isCurrentServerNotificationsMuted() },
+                set: { model.setCurrentServerNotificationsMuted($0) }
+            ))
+            .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+            HStack {
+                Text("Muted Servers")
+                Spacer()
+                Text("\(model.mutedNotificationServerKeys.count)")
+                    .foregroundColor(.secondary)
+            }
+            HStack {
+                Text("Muted Contacts")
+                Spacer()
+                Text("\(model.mutedNotificationContactUniqueIdentifiers.count)")
+                    .foregroundColor(.secondary)
+            }
+
+            if !model.contacts.isEmpty {
+                ForEach(model.contacts) { contact in
+                    Toggle(contact.nickname, isOn: Binding(
+                        get: { model.isContactNotificationsMuted(contact) },
+                        set: { model.setContactNotificationsMuted($0, contact: contact) }
+                    ))
+                }
+            }
+
+            Button("Clear Notification Rules") {
+                model.clearNotificationRules()
+            }
+            .disabled(!hasRules)
         }
     }
 }

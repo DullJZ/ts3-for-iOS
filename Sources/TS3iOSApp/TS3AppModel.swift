@@ -1383,13 +1383,17 @@ private struct TS3NotificationSettings: Codable {
     var privateMessagesEnabled: Bool
     var pokesEnabled: Bool
     var activityEnabled: Bool
+    var mutedServerKeys: [String]
+    var mutedContactUniqueIdentifiers: [String]
 
     static let defaults = TS3NotificationSettings(
         isEnabled: false,
         soundEnabled: true,
         privateMessagesEnabled: true,
         pokesEnabled: true,
-        activityEnabled: false
+        activityEnabled: false,
+        mutedServerKeys: [],
+        mutedContactUniqueIdentifiers: []
     )
 
     init(
@@ -1397,13 +1401,17 @@ private struct TS3NotificationSettings: Codable {
         soundEnabled: Bool = true,
         privateMessagesEnabled: Bool = true,
         pokesEnabled: Bool = true,
-        activityEnabled: Bool = false
+        activityEnabled: Bool = false,
+        mutedServerKeys: [String] = [],
+        mutedContactUniqueIdentifiers: [String] = []
     ) {
         self.isEnabled = isEnabled
         self.soundEnabled = soundEnabled
         self.privateMessagesEnabled = privateMessagesEnabled
         self.pokesEnabled = pokesEnabled
         self.activityEnabled = activityEnabled
+        self.mutedServerKeys = mutedServerKeys
+        self.mutedContactUniqueIdentifiers = mutedContactUniqueIdentifiers
     }
 
     enum CodingKeys: String, CodingKey {
@@ -1412,6 +1420,8 @@ private struct TS3NotificationSettings: Codable {
         case privateMessagesEnabled
         case pokesEnabled
         case activityEnabled
+        case mutedServerKeys
+        case mutedContactUniqueIdentifiers
     }
 
     init(from decoder: Decoder) throws {
@@ -1421,6 +1431,8 @@ private struct TS3NotificationSettings: Codable {
         privateMessagesEnabled = try container.decodeIfPresent(Bool.self, forKey: .privateMessagesEnabled) ?? true
         pokesEnabled = try container.decodeIfPresent(Bool.self, forKey: .pokesEnabled) ?? true
         activityEnabled = try container.decodeIfPresent(Bool.self, forKey: .activityEnabled) ?? false
+        mutedServerKeys = try container.decodeIfPresent([String].self, forKey: .mutedServerKeys) ?? []
+        mutedContactUniqueIdentifiers = try container.decodeIfPresent([String].self, forKey: .mutedContactUniqueIdentifiers) ?? []
     }
 }
 
@@ -2591,6 +2603,8 @@ final class TS3AppModel: ObservableObject {
     @Published var privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
     @Published var pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
     @Published var activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
+    @Published private(set) var mutedNotificationServerKeys: [String] = []
+    @Published private(set) var mutedNotificationContactUniqueIdentifiers: [String] = []
     @Published private(set) var autoReconnectEnabled = false
     @Published var autoReconnectInitialDelaySeconds = TS3ConnectionRecoverySettings.defaults.initialDelaySeconds
     @Published var autoReconnectMaxDelaySeconds = TS3ConnectionRecoverySettings.defaults.maxDelaySeconds
@@ -3052,6 +3066,22 @@ final class TS3AppModel: ObservableObject {
             return false
         }
         return contactStatus(for: sender) == .blocked
+    }
+
+    private func isNotificationMuted(senderId: Int?, uniqueIdentifier: String?) -> Bool {
+        if isCurrentServerNotificationsMuted() {
+            return true
+        }
+        if let uniqueIdentifier,
+           mutedNotificationContactUniqueIdentifiers.contains(normalizedNotificationKey(uniqueIdentifier)) {
+            return true
+        }
+        guard let senderId,
+              let sender = clients.first(where: { $0.id == senderId }),
+              let uniqueIdentifier = sender.uniqueIdentifier else {
+            return false
+        }
+        return mutedNotificationContactUniqueIdentifiers.contains(normalizedNotificationKey(uniqueIdentifier))
     }
 
     private func applyPlaybackMute(for user: TS3UserSummary) {
@@ -4111,6 +4141,55 @@ final class TS3AppModel: ObservableObject {
         saveNotificationSettings()
     }
 
+    func setCurrentServerNotificationsMuted(_ isMuted: Bool) {
+        let key = currentNotificationServerKey
+        guard !key.isEmpty else { return }
+        setNotificationServerMuted(isMuted, key: key)
+    }
+
+    func isCurrentServerNotificationsMuted() -> Bool {
+        let key = currentNotificationServerKey
+        guard !key.isEmpty else { return false }
+        return mutedNotificationServerKeys.contains(key)
+    }
+
+    func setNotificationServerMuted(_ isMuted: Bool, key: String) {
+        let key = normalizedNotificationKey(key)
+        guard !key.isEmpty else { return }
+        var keys = Set(mutedNotificationServerKeys.map(normalizedNotificationKey))
+        if isMuted {
+            keys.insert(key)
+        } else {
+            keys.remove(key)
+        }
+        mutedNotificationServerKeys = keys.sorted()
+        saveNotificationSettings()
+    }
+
+    func isContactNotificationsMuted(_ contact: TS3ContactEntry) -> Bool {
+        mutedNotificationContactUniqueIdentifiers.contains(normalizedNotificationKey(contact.uniqueIdentifier))
+    }
+
+    func setContactNotificationsMuted(_ isMuted: Bool, contact: TS3ContactEntry) {
+        let uniqueIdentifier = normalizedNotificationKey(contact.uniqueIdentifier)
+        guard !uniqueIdentifier.isEmpty else { return }
+        var identifiers = Set(mutedNotificationContactUniqueIdentifiers.map(normalizedNotificationKey))
+        if isMuted {
+            identifiers.insert(uniqueIdentifier)
+        } else {
+            identifiers.remove(uniqueIdentifier)
+        }
+        mutedNotificationContactUniqueIdentifiers = identifiers.sorted()
+        saveNotificationSettings()
+    }
+
+    func clearNotificationRules() {
+        mutedNotificationServerKeys = []
+        mutedNotificationContactUniqueIdentifiers = []
+        saveNotificationSettings()
+        lastError = nil
+    }
+
     func applyDirectNotificationPreset(soundEnabled: Bool = true) {
         notificationSoundEnabled = soundEnabled
         privateMessageNotificationsEnabled = true
@@ -4135,6 +4214,8 @@ final class TS3AppModel: ObservableObject {
         privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
         pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
         activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
+        mutedNotificationServerKeys = TS3NotificationSettings.defaults.mutedServerKeys
+        mutedNotificationContactUniqueIdentifiers = TS3NotificationSettings.defaults.mutedContactUniqueIdentifiers
         saveNotificationSettings()
         lastError = nil
     }
@@ -8941,6 +9022,8 @@ final class TS3AppModel: ObservableObject {
             privateMessageNotificationsEnabled = TS3NotificationSettings.defaults.privateMessagesEnabled
             pokeNotificationsEnabled = TS3NotificationSettings.defaults.pokesEnabled
             activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
+            mutedNotificationServerKeys = TS3NotificationSettings.defaults.mutedServerKeys
+            mutedNotificationContactUniqueIdentifiers = TS3NotificationSettings.defaults.mutedContactUniqueIdentifiers
             return
         }
         notificationsEnabled = decoded.isEnabled
@@ -8948,6 +9031,8 @@ final class TS3AppModel: ObservableObject {
         privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
         pokeNotificationsEnabled = decoded.pokesEnabled
         activityNotificationsEnabled = decoded.activityEnabled
+        mutedNotificationServerKeys = sanitizedNotificationKeys(decoded.mutedServerKeys)
+        mutedNotificationContactUniqueIdentifiers = sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers)
     }
 
     private func saveNotificationSettings() {
@@ -8974,6 +9059,8 @@ final class TS3AppModel: ObservableObject {
         privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
         pokeNotificationsEnabled = decoded.pokesEnabled
         activityNotificationsEnabled = decoded.activityEnabled
+        mutedNotificationServerKeys = sanitizedNotificationKeys(decoded.mutedServerKeys)
+        mutedNotificationContactUniqueIdentifiers = sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers)
         saveNotificationSettings()
         lastError = nil
     }
@@ -8984,8 +9071,24 @@ final class TS3AppModel: ObservableObject {
             soundEnabled: notificationSoundEnabled,
             privateMessagesEnabled: privateMessageNotificationsEnabled,
             pokesEnabled: pokeNotificationsEnabled,
-            activityEnabled: activityNotificationsEnabled
+            activityEnabled: activityNotificationsEnabled,
+            mutedServerKeys: mutedNotificationServerKeys,
+            mutedContactUniqueIdentifiers: mutedNotificationContactUniqueIdentifiers
         )
+    }
+
+    private var currentNotificationServerKey: String {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else { return "" }
+        return normalizedNotificationKey("\(host):\(serverPort)")
+    }
+
+    private func normalizedNotificationKey(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func sanitizedNotificationKeys(_ keys: [String]) -> [String] {
+        Array(Set(keys.map(normalizedNotificationKey).filter { !$0.isEmpty })).sorted()
     }
 
     private func loadServerLogQueryPresets() {
@@ -11536,7 +11639,10 @@ extension TS3AppModel: TS3ClientDelegate {
             if !message.isOwnMessage && !self.isViewingChat {
                 self.unreadChatMessageCount += 1
             }
-            if self.privateMessageNotificationsEnabled && !message.isOwnMessage && message.targetMode == .client {
+            if self.privateMessageNotificationsEnabled,
+               !message.isOwnMessage,
+               message.targetMode == .client,
+               !self.isNotificationMuted(senderId: message.senderId, uniqueIdentifier: nil) {
                 self.notifyIfInactive(
                     title: "Private message from \(message.senderName)",
                     body: message.message,
@@ -11556,7 +11662,8 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
             }
             self.unreadPokeCount += 1
-            if self.pokeNotificationsEnabled {
+            if self.pokeNotificationsEnabled,
+               !self.isNotificationMuted(senderId: poke.senderId, uniqueIdentifier: poke.senderUniqueIdentifier) {
                 self.notifyIfInactive(
                     title: "Poke from \(poke.senderName)",
                     body: poke.message,
@@ -11575,7 +11682,8 @@ extension TS3AppModel: TS3ClientDelegate {
                 self.activityEvents.removeLast(self.activityEvents.count - 100)
             }
             self.unreadActivityCount += 1
-            if self.activityNotificationsEnabled {
+            if self.activityNotificationsEnabled,
+               !self.isNotificationMuted(senderId: event.invokerId ?? event.clientId, uniqueIdentifier: nil) {
                 self.notifyIfInactive(
                     title: self.activityNotificationTitle(for: summary),
                     body: self.activityNotificationBody(for: summary),
