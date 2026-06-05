@@ -11872,6 +11872,38 @@ struct FileBrowserSheet: View {
                 }
 
                 Section(header: Text("Transfer")) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Downloads Folder")
+                            .font(.caption.weight(.semibold))
+                        Text(model.downloadsDirectoryURL.path)
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        if !model.downloadedFiles.isEmpty {
+                            Text("\(model.downloadedFilesExistingCount) available, \(model.downloadedFilesMissingCount) missing")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        HStack {
+                            Button("Open Folder") {
+                                model.openDownloadsDirectory()
+                            }
+                            .buttonStyle(.borderless)
+                            Button("Copy Folder Path") {
+                                TS3PlatformSupport.copyToPasteboard(model.downloadsDirectoryURL.path)
+                            }
+                            .buttonStyle(.borderless)
+                            Button("Remove Missing") {
+                                model.pruneMissingDownloadedFiles()
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundColor(.red)
+                            .disabled(model.downloadedFilesMissingCount == 0)
+                        }
+                        .font(.caption)
+                    }
+
                     Button {
                         isShowingFileImporter = true
                     } label: {
@@ -11943,6 +11975,9 @@ struct FileBrowserSheet: View {
                             }
                             .buttonStyle(.borderless)
                         }
+                        Text("History persists across launches. Removing a row keeps the local file.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                         ForEach(model.downloadedFiles.prefix(10)) { downloadedFile in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(downloadedFile.name)

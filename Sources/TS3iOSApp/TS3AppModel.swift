@@ -1133,11 +1133,18 @@ struct TS3GroupClientFilterPreset: Identifiable, Codable {
     }
 }
 
-struct TS3DownloadedFileSummary: Identifiable {
-    let id = UUID()
+struct TS3DownloadedFileSummary: Identifiable, Codable {
+    let id: UUID
     let name: String
     let url: URL
     let downloadedAt: Date
+
+    init(id: UUID = UUID(), name: String, url: URL, downloadedAt: Date) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.downloadedAt = downloadedAt
+    }
 }
 
 enum TS3FileTransferDirection: String {
@@ -2545,6 +2552,7 @@ final class TS3AppModel: ObservableObject {
         loadChatHistory()
         loadFileBrowserBookmarks()
         loadFileBrowserFilterPresets()
+        loadDownloadedFiles()
         loadOfflineMessageHistory()
         loadOfflineMessageDrafts()
         loadOfflineMessageFilterPresets()
@@ -5348,9 +5356,18 @@ final class TS3AppModel: ObservableObject {
         TS3PlatformSupport.openURL(file.url)
     }
 
+    func openDownloadsDirectory() {
+        do {
+            TS3PlatformSupport.openURL(try ensureDownloadsDirectory())
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     func clearDownloadedFileHistory() {
         downloadedFiles = []
         lastDownloadedFile = nil
+        saveDownloadedFiles()
     }
 
     func removeDownloadedFileHistory(_ file: TS3DownloadedFileSummary) {
@@ -5358,6 +5375,26 @@ final class TS3AppModel: ObservableObject {
         if lastDownloadedFile?.id == file.id {
             lastDownloadedFile = downloadedFiles.first
         }
+        saveDownloadedFiles()
+    }
+
+    func pruneMissingDownloadedFiles() {
+        downloadedFiles.removeAll { !FileManager.default.fileExists(atPath: $0.url.path) }
+        lastDownloadedFile = downloadedFiles.first
+        saveDownloadedFiles()
+    }
+
+    var downloadsDirectoryURL: URL {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documents.appendingPathComponent("TS3 Downloads", isDirectory: true)
+    }
+
+    var downloadedFilesExistingCount: Int {
+        downloadedFiles.filter { FileManager.default.fileExists(atPath: $0.url.path) }.count
+    }
+
+    var downloadedFilesMissingCount: Int {
+        downloadedFiles.count - downloadedFilesExistingCount
     }
 
     func cancelFileTransfer(_ transfer: TS3FileTransferSummary) {
@@ -5673,6 +5710,7 @@ final class TS3AppModel: ObservableObject {
         if downloadedFiles.count > 25 {
             downloadedFiles.removeLast(downloadedFiles.count - 25)
         }
+        saveDownloadedFiles()
     }
 
     private func addFileTransfer(
@@ -5742,14 +5780,7 @@ final class TS3AppModel: ObservableObject {
     }
 
     private func downloadDestination(for entry: TS3FileEntrySummary) throws -> (url: URL, seekPosition: Int64) {
-        let documents = try FileManager.default.url(
-            for: .documentDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let directory = documents.appendingPathComponent("TS3 Downloads", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directory = try ensureDownloadsDirectory()
         let fallbackName = entry.name.isEmpty ? "download" : entry.name
         let baseURL = directory.appendingPathComponent(fallbackName)
         guard FileManager.default.fileExists(atPath: baseURL.path) else {
@@ -5762,6 +5793,12 @@ final class TS3AppModel: ObservableObject {
             return (baseURL, localSize)
         }
         return (uniqueFileURL(in: directory, named: fallbackName), 0)
+    }
+
+    private func ensureDownloadsDirectory() throws -> URL {
+        let directory = downloadsDirectoryURL
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 
     private func avatarDestination(for hash: String) throws -> URL {
@@ -8134,6 +8171,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-file-browser-filter-presets.json")
     }
 
+    private var downloadedFilesURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-downloaded-files.json")
+    }
+
     private var offlineMessageFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-offline-message-filter-presets.json")
@@ -10042,6 +10084,28 @@ final class TS3AppModel: ObservableObject {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(offlineMessageDrafts)
             try data.write(to: offlineMessageDraftsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func loadDownloadedFiles() {
+        guard let data = try? Data(contentsOf: downloadedFilesURL),
+              let decoded = try? JSONDecoder().decode([TS3DownloadedFileSummary].self, from: data) else {
+            downloadedFiles = []
+            lastDownloadedFile = nil
+            return
+        }
+        downloadedFiles = Array(decoded.sorted { $0.downloadedAt > $1.downloadedAt }.prefix(25))
+        lastDownloadedFile = downloadedFiles.first
+    }
+
+    private func saveDownloadedFiles() {
+        do {
+            let directory = downloadedFilesURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(downloadedFiles)
+            try data.write(to: downloadedFilesURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
         }

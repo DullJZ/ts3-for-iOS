@@ -69,7 +69,7 @@ Status legend:
 | Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets | Add conflict-resolution previews for batch workflows if needed. |
 | Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export | Add folder upload/download if server protocol and platform sandbox allow it. |
 | File operations | Done | Rename, move, delete, create directory, batch actions | Add conflict-resolution previews for batch move/rename. |
-| Local downloaded files | Done | Recent download history, export/open/copy/remove actions, queue row open local file | Add downloads folder management if needed. |
+| Local downloaded files | Done | Persistent recent download history, downloads folder open/copy/cleanup actions, export/open/copy/remove actions, queue row open local file | Add richer downloads folder organization if needed. |
 
 ## Identity, Contacts, Bookmarks, And Migration
 
@@ -99,7 +99,6 @@ Status legend:
 
 ## Next Implementation Priorities
 
-1. Add poke sending UI from any remaining client/contact contexts.
-2. Add downloads folder management and deeper batch conflict previews.
-3. Audit server/channel settings fields against official-client tabs and fill missing fields.
-4. Add user-configurable hotkey capture for PTT, mute, whisper, and common Catalyst actions.
+1. Add deeper batch conflict previews for file move/rename/upload workflows.
+2. Audit server/channel settings fields against official-client tabs and fill missing fields.
+3. Add user-configurable hotkey capture for PTT, mute, whisper, and common Catalyst actions.
