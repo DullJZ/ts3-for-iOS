@@ -11315,9 +11315,14 @@ struct DatabaseClientRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let record: TS3DatabaseClientSummary
     @State private var onlineActionMode: UserActionMode?
+    @State private var databaseActionMode: DatabaseClientActionMode?
 
     private var onlineUser: TS3UserSummary? {
         model.onlineUser(for: record)
+    }
+
+    private var contactStatus: TS3ContactStatus {
+        model.contactStatus(for: record)
     }
 
     var body: some View {
@@ -11340,6 +11345,19 @@ struct DatabaseClientRow: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
+                HStack(spacing: 8) {
+                    if contactStatus == .friend {
+                        Text("Friend")
+                    }
+                    if contactStatus == .blocked {
+                        Text("Blocked")
+                    }
+                    if let note = model.contactNote(for: record) {
+                        Text("Note: \(note)")
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
             }
             .padding(.vertical, 3)
         }
@@ -11354,6 +11372,23 @@ struct DatabaseClientRow: View {
             if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
                 Button("Copy Unique ID") {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+                Menu("Contact") {
+                    Button("Mark as Friend") {
+                        model.setContactStatus(.friend, for: record)
+                    }
+                    .disabled(contactStatus == .friend)
+                    Button("Block Contact") {
+                        model.setContactStatus(.blocked, for: record)
+                    }
+                    .disabled(contactStatus == .blocked)
+                    Button("Set Neutral") {
+                        model.setContactStatus(.neutral, for: record)
+                    }
+                    .disabled(contactStatus == .neutral && model.contactNote(for: record) == nil)
+                    Button("Edit Note") {
+                        databaseActionMode = .contactNote
+                    }
                 }
             }
             if onlineUser != nil {
@@ -11376,6 +11411,10 @@ struct DatabaseClientRow: View {
                     }
                 }
             }
+        }
+        .sheet(item: $databaseActionMode) { mode in
+            DatabaseClientActionSheet(mode: mode, record: record)
+                .environmentObject(model)
         }
         .sheet(item: $onlineActionMode) { mode in
             if let onlineUser {

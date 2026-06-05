@@ -47,7 +47,7 @@ Status legend:
 | Server information | Done | Server info sheet and Catalyst entry | Add more raw virtual server fields where available. |
 | Server edit/settings | Partial | Server settings editor, quotas, host fields, icon support, server-list visibility, temporary password management, complaint and anti-flood controls | Audit all official server edit tabs and fill missing fields. |
 | Channel create/edit/delete/move | Partial | Channel editor with codec quality/latency/encryption controls, move preview, draft import/export, icon import, password prompts | Add full channel permission inheritance visibility and validate advanced codec controls against real servers. |
-| Client actions | Partial | Client row menus, database-record online actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
+| Client actions | Partial | Client row menus, database-record online/contact actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets and log viewing | Add broader log filters and persistent exports per server. |
 | Ban list | Partial | Ban list management entry | Audit ban edit/add fields and test against real servers. |
 | Complaints | Partial | Complaint management with target picker, direct create/delete, visible export, and filter presets | Validate complaint add/remove flows against real servers and fill any official-client context-menu edge cases. |
@@ -77,7 +77,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
 | Bookmarks | Partial | Bookmark list/folders/import/export, connection manager, saved phonetic nickname and local connection notes | Add richer bookmark editing UI for all connection options. |
-| Contacts | Partial | Contact manager entry | Audit friend/block/ignore behavior against real server data. |
+| Contacts | Partial | Contact manager entry, online and database-client friend/block/note shortcuts | Audit friend/block/ignore behavior against real server data. |
 | Client migration | Done | Client package import/export covering local settings groups | Add versioned migration preview before import. |
 
 ## Notifications, Shortcuts, And Platform Integration
