@@ -51,7 +51,7 @@ Status legend:
 | Server logs | Partial | Query presets and log viewing | Add broader log filters and persistent exports per server. |
 | Ban list | Partial | Ban list management entry | Audit ban edit/add fields and test against real servers. |
 | Complaints | Partial | Complaint management entry | Add more direct complaint creation/removal paths from client context menus. |
-| Privilege keys | Partial | Privilege key manager entry | Audit create/edit/delete flows and export coverage. |
+| Privilege keys | Partial | Privilege key manager with create/use/delete, generated-key actions, readable exports/backups, and filter presets | Validate create/use/delete flows against real servers and audit any official-client edge fields. |
 
 ## Permissions And Groups
 

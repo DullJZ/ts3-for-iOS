@@ -3182,6 +3182,34 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func saveCurrentConnectionPrivilegeKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        privilegeKey = trimmed
+        lastError = nil
+    }
+
+    func copyCurrentFullInviteLink(privilegeKey key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let link = inviteLink(
+            name: serverHost,
+            host: serverHost,
+            port: serverPort,
+            nickname: nickname,
+            serverPassword: serverPassword,
+            defaultChannel: defaultChannel,
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: trimmed,
+            includingSecrets: true
+        ) else {
+            lastError = "Current server is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
     func copyCurrentConnectionSummary() {
         let snapshot = currentConnectionSnapshot()
         let rows = [

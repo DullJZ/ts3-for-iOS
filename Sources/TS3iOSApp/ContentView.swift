@@ -13780,11 +13780,13 @@ struct PrivilegeKeysSheet: View {
     @State private var sortAscending = false
     @State private var presetName = ""
     @State private var isExportingKeys = false
+    @State private var isExportingGeneratedKey = false
     @State private var isExportingKeyBackup = false
     @State private var isImportingKeyBackup = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var keysExportDocument = TS3TextFileDocument()
+    @State private var generatedKeyDocument = TS3TextFileDocument()
     @State private var keysBackupDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var pendingKeyBackupImport: KeyBackupImportConfirmation?
@@ -13792,7 +13794,15 @@ struct PrivilegeKeysSheet: View {
     @State private var isConfirmingDeletePresets = false
 
     private var privilegeKeysSnapshot: String {
-        filteredPrivilegeKeys.map(\.clipboardSummary).joined(separator: "\n")
+        filteredPrivilegeKeys
+            .map {
+                $0.clipboardSummary(
+                    serverGroups: model.serverGroups,
+                    channelGroups: model.channelGroups,
+                    channels: model.channels
+                )
+            }
+            .joined(separator: "\n")
     }
 
     init(
@@ -13821,6 +13831,19 @@ struct PrivilegeKeysSheet: View {
                         Button("Copy Generated Key") {
                             TS3PlatformSupport.copyToPasteboard(key)
                         }
+                        Button("Copy Generated Key Summary") {
+                            TS3PlatformSupport.copyToPasteboard(generatedKeySnapshot(key))
+                        }
+                        Button("Copy Full Invite Link With Key") {
+                            model.copyCurrentFullInviteLink(privilegeKey: key)
+                        }
+                        Button("Save as Connection Privilege Key") {
+                            model.saveCurrentConnectionPrivilegeKey(key)
+                        }
+                        Button("Export Generated Key") {
+                            generatedKeyDocument = TS3TextFileDocument(data: Data(generatedKeySnapshot(key).utf8))
+                            isExportingGeneratedKey = true
+                        }
                     }
                 }
 
@@ -13837,6 +13860,9 @@ struct PrivilegeKeysSheet: View {
                                 Text(group.name).tag(group.id)
                             }
                         }
+                        Text("Target: \(serverGroupName(selectedServerGroupId)) (\(selectedServerGroupId))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     } else {
                         Picker("Channel Group", selection: $selectedChannelGroupId) {
                             ForEach(model.channelGroups) { group in
@@ -13848,6 +13874,9 @@ struct PrivilegeKeysSheet: View {
                                 Text(channel.name).tag(channel.id)
                             }
                         }
+                        Text("Target: \(channelGroupName(selectedChannelGroupId)) (\(selectedChannelGroupId)) in \(channelName(selectedChannelId)) (\(selectedChannelId))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
 
                     TextField("Description", text: $description)
@@ -13986,6 +14015,16 @@ struct PrivilegeKeysSheet: View {
                 document: keysExportDocument,
                 contentType: .plainText,
                 defaultFilename: "ts3-privilege-keys"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingGeneratedKey,
+                document: generatedKeyDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-generated-privilege-key"
             ) { result in
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
@@ -14300,6 +14339,46 @@ struct PrivilegeKeysSheet: View {
         }
     }
 
+    private func generatedKeySnapshot(_ key: String) -> String {
+        if let entry = model.privilegeKeys.first(where: { $0.key == key }) {
+            return entry.clipboardSummary(
+                serverGroups: model.serverGroups,
+                channelGroups: model.channelGroups,
+                channels: model.channels
+            )
+        }
+        return [
+            "key=\(key)",
+            "targetType=\(targetType.title)",
+            "group=\(selectedGroupName) (\(selectedGroupId))",
+            "channel=\(selectedChannelText)",
+            "description=\(description.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "customSet=\(customSet.trimmingCharacters(in: .whitespacesAndNewlines))"
+        ]
+        .filter { !$0.hasSuffix("=") }
+        .joined(separator: " | ")
+    }
+
+    private var selectedGroupName: String {
+        targetType == .serverGroup ? serverGroupName(selectedServerGroupId) : channelGroupName(selectedChannelGroupId)
+    }
+
+    private var selectedChannelText: String {
+        targetType == .channelGroup ? "\(channelName(selectedChannelId)) (\(selectedChannelId))" : "None"
+    }
+
+    private func serverGroupName(_ id: Int) -> String {
+        TS3GroupSummary.name(for: id, in: model.serverGroups)
+    }
+
+    private func channelGroupName(_ id: Int) -> String {
+        TS3GroupSummary.name(for: id, in: model.channelGroups)
+    }
+
+    private func channelName(_ id: Int) -> String {
+        model.channels.first { $0.id == id }?.name ?? "Channel \(id)"
+    }
+
 }
 
 struct PrivilegeKeyRow: View {
@@ -14385,14 +14464,26 @@ struct PrivilegeKeyRow: View {
 }
 
 private extension TS3PrivilegeKeySummary {
-    var clipboardSummary: String {
+    func clipboardSummary(
+        serverGroups: [TS3GroupSummary],
+        channelGroups: [TS3GroupSummary],
+        channels: [TS3ChannelSummary]
+    ) -> String {
         var parts = ["key=\(key)"]
         if let type {
             parts.append("type=\(type.title) (\(type.rawValue))")
         }
-        parts.append("groupId=\(groupId)")
+        switch type {
+        case .serverGroup:
+            parts.append("group=\(TS3GroupSummary.name(for: groupId, in: serverGroups)) (\(groupId))")
+        case .channelGroup:
+            parts.append("group=\(TS3GroupSummary.name(for: groupId, in: channelGroups)) (\(groupId))")
+        case nil:
+            parts.append("groupId=\(groupId)")
+        }
         if let channelId {
-            parts.append("channelId=\(channelId)")
+            let channel = channels.first { $0.id == channelId }?.name ?? "Channel \(channelId)"
+            parts.append("channel=\(channel) (\(channelId))")
         }
         if let createdAt {
             parts.append("createdAt=\(PrivilegeKeyRow.dateText(createdAt))")
