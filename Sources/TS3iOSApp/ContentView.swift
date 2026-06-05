@@ -19577,6 +19577,7 @@ struct AudioSettingsSheet: View {
                 Section(header: Text("Diagnostics")) {
                     ServerInfoDetailRow(label: "Transmit Mode", value: model.audioTransmitMode.title)
                     ServerInfoDetailRow(label: "Voice Activation", value: voiceActivationDiagnosticText)
+                    ServerInfoDetailRow(label: "Input Level", value: model.inputLevelText)
                     ServerInfoDetailRow(label: "Input Gain", value: model.inputGainPercentText)
                     ServerInfoDetailRow(label: "Playback Volume", value: model.playbackVolumePercentText)
                     ServerInfoDetailRow(label: "Input Devices", value: String(model.audioInputDevices.count))
@@ -19628,6 +19629,41 @@ struct AudioSettingsSheet: View {
                         }
                         .padding(.vertical, 4)
                     }
+                }
+
+                Section(header: Text("Input Calibration")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Input Level")
+                            Spacer()
+                            Text(model.inputLevelText)
+                                .foregroundColor(.secondary)
+                        }
+                        ProgressView(value: inputMeterProgress)
+                            .progressViewStyle(.linear)
+                        HStack {
+                            Text("Capture \(model.isTalking ? "Active" : "Stopped")")
+                            Spacer()
+                            Text("Voice Gate \(model.isVoiceActivationTriggered ? "Open" : "Closed")")
+                        }
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                        if model.audioTransmitMode == .voiceActivation {
+                            HStack {
+                                Text("Threshold")
+                                Spacer()
+                                Text(model.voiceActivationThresholdText)
+                                    .foregroundColor(.secondary)
+                            }
+                            ProgressView(value: thresholdMeterProgress)
+                                .progressViewStyle(.linear)
+                            Button("Set Threshold From Current Input") {
+                                model.calibrateVoiceActivationThresholdFromInput()
+                            }
+                            .disabled(!model.isTalking)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 Section(header: Text("Microphone")) {
@@ -19921,6 +19957,7 @@ struct AudioSettingsSheet: View {
     private var audioSettingsSnapshot: String {
         var rows = [
             "Transmit Mode: \(model.audioTransmitMode.title)",
+            "Input Level: \(model.inputLevelText)",
             "Input Gain: \(model.inputGainPercentText)",
             "Playback Volume: \(model.playbackVolumePercentText)",
             "Input Route: \(model.audioInputRoute)",
@@ -19944,6 +19981,7 @@ struct AudioSettingsSheet: View {
         [
             "Transmit Mode: \(model.audioTransmitMode.title)",
             "Voice Activation: \(voiceActivationDiagnosticText)",
+            "Input Level: \(model.inputLevelText)",
             "Input Gain: \(model.inputGainPercentText)",
             "Playback Volume: \(model.playbackVolumePercentText)",
             "Input Route: \(model.audioInputRoute)",
@@ -19970,6 +20008,14 @@ struct AudioSettingsSheet: View {
 
     private var selectedInputDeviceName: String {
         model.audioInputDevices.first(where: { $0.isSelected })?.displayName ?? "System Default"
+    }
+
+    private var inputMeterProgress: Double {
+        min(max(model.inputLevel / 0.5, 0), 1)
+    }
+
+    private var thresholdMeterProgress: Double {
+        min(max(model.voiceActivationThreshold / 0.5, 0), 1)
     }
 
     private var userPlaybackSnapshot: String {

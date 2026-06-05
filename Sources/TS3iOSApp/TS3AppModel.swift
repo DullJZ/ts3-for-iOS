@@ -2566,6 +2566,8 @@ final class TS3AppModel: ObservableObject {
     @Published var inputGain: Double = 1.0
     @Published var audioTransmitMode: TS3AudioTransmitMode = .pushToTalk
     @Published var voiceActivationThreshold: Double = 0.03
+    @Published private(set) var inputLevel: Double = 0
+    @Published private(set) var isVoiceActivationTriggered = false
     @Published var prefersSpeakerOutput = true
     @Published private(set) var audioInputDevices: [TS3AudioRouteDeviceSummary] = []
     @Published private(set) var audioInputRoute = "System Default"
@@ -3150,6 +3152,13 @@ final class TS3AppModel: ObservableObject {
                 self?.appendLog(entry)
             }
         }
+        newClient.inputLevelHandler = { [weak self, weak newClient] level, isVoiceActive in
+            DispatchQueue.main.async {
+                guard let self, self.client === newClient else { return }
+                self.inputLevel = Double(level)
+                self.isVoiceActivationTriggered = isVoiceActive
+            }
+        }
         applyAudioSettings(to: newClient)
         client = newClient
 
@@ -3691,6 +3700,7 @@ final class TS3AppModel: ObservableObject {
         client?.delegate = nil
         client?.disconnect(reason: reason.isEmpty ? "ui-disconnect" : reason)
         client = nil
+        resetInputMeter()
         lastDisconnectMessage = nil
         clearConnectionState(keepLastConnection: true)
         state = .disconnected
@@ -3802,6 +3812,7 @@ final class TS3AppModel: ObservableObject {
         fileTransferProgress = nil
         serverInfo = .empty
         isTalking = false
+        resetInputMeter()
         isAway = false
         isInputMuted = false
         isOutputMuted = false
@@ -3888,6 +3899,11 @@ final class TS3AppModel: ObservableObject {
         saveAudioSettings()
     }
 
+    func calibrateVoiceActivationThresholdFromInput() {
+        let calibrated = min(max(inputLevel * 1.35, 0.001), 0.5)
+        updateVoiceActivationThreshold(calibrated)
+    }
+
     func updatePrefersSpeakerOutput(_ prefersSpeaker: Bool) {
         prefersSpeakerOutput = prefersSpeaker
         client?.setPrefersSpeakerOutput(prefersSpeaker)
@@ -3940,6 +3956,7 @@ final class TS3AppModel: ObservableObject {
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
+            resetInputMeter()
         }
         saveAudioSettings()
     }
@@ -3953,6 +3970,7 @@ final class TS3AppModel: ObservableObject {
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
+            resetInputMeter()
         }
         if let client {
             applyAudioSettings(to: client)
@@ -3971,6 +3989,7 @@ final class TS3AppModel: ObservableObject {
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
+            resetInputMeter()
         }
         if let client {
             applyAudioSettings(to: client)
@@ -4099,6 +4118,10 @@ final class TS3AppModel: ObservableObject {
 
     var voiceActivationThresholdText: String {
         String(format: "%.3f", voiceActivationThreshold)
+    }
+
+    var inputLevelText: String {
+        String(format: "%.3f", inputLevel)
     }
 
     func refreshServerView() {
@@ -6414,6 +6437,7 @@ final class TS3AppModel: ObservableObject {
             if newValue, self.isTalking {
                 self.client?.stopMicrophone()
                 self.isTalking = false
+                self.resetInputMeter()
             }
         }
     }
@@ -8640,6 +8664,7 @@ final class TS3AppModel: ObservableObject {
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
+            resetInputMeter()
         }
         if let client {
             applyAudioSettings(to: client)
@@ -10656,6 +10681,7 @@ final class TS3AppModel: ObservableObject {
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
+            resetInputMeter()
             return
         }
 
@@ -10905,6 +10931,7 @@ final class TS3AppModel: ObservableObject {
                 guard result.granted else {
                     self.lastError = result.failureMessage ?? "Microphone access is required for Push To Talk."
                     self.isTalking = false
+                    self.resetInputMeter()
                     self.microphonePermissionPrompt = .openSettings
                     return
                 }
@@ -10954,9 +10981,15 @@ final class TS3AppModel: ObservableObject {
                 await MainActor.run {
                     self.lastError = message(for: error)
                     self.isTalking = false
+                    self.resetInputMeter()
                 }
             }
         }
+    }
+
+    private func resetInputMeter() {
+        inputLevel = 0
+        isVoiceActivationTriggered = false
     }
 
     private func applyAudioSettings(to client: TS3Client) {

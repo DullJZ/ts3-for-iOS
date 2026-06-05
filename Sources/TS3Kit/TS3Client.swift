@@ -7,6 +7,7 @@ public final class TS3Client {
     public weak var delegate: TS3ClientDelegate?
     public private(set) var currentChannelId: Int?
     public var logHandler: ((TS3LogEntry) -> Void)?
+    public var inputLevelHandler: ((Float, Bool) -> Void)?
 
     private let config: TS3ClientConfig
     private let audioQueueKey = DispatchSpecificKey<Void>()
@@ -112,6 +113,9 @@ public final class TS3Client {
                     self?.audioQueue.async { [weak self] in
                         self?.handleEncodedAudioPacket(data)
                     }
+                }
+                engine.onInputLevel = { [weak self] level, isVoiceActive in
+                    self?.inputLevelHandler?(level, isVoiceActive)
                 }
                 engine.onLog = { [weak self] level, message in
                     self?.log(level, "[AUDIO] \(message)")

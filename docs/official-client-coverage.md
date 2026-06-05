@@ -24,8 +24,8 @@ Status legend:
 | --- | --- | --- | --- |
 | Receive voice | Done | Opus audio receive/playback pipeline, per-user playback preferences, and audio diagnostics snapshot with connection loss metrics | Add deeper jitter buffer diagnostics if exposed by the audio engine. |
 | Push-to-talk | Done | PTT action, Catalyst menu shortcut, microphone permission flow, configurable shortcut recorder | Add lower-level global hotkey capture if platform APIs allow it. |
-| Continuous transmission | Done | Audio settings transmit mode presets and persistence | Add live input meter calibration view. |
-| Voice activation | Partial | Mode and threshold settings, presets, persisted profiles, and diagnostics snapshot exist | Verify end-to-end behavior on iOS hardware and Catalyst, then add live input meter calibration. |
+| Continuous transmission | Done | Audio settings transmit mode presets, persistence, live input meter, and calibration diagnostics | Verify long-running capture behavior on iOS hardware and Catalyst. |
+| Voice activation | Partial | Mode and threshold settings, presets, persisted profiles, diagnostics snapshot, live input meter, and threshold calibration action exist | Verify end-to-end behavior on iOS hardware and Catalyst. |
 | Input/output mute | Done | Main UI and Catalyst menu actions | Add clearer global status indicators on compact layouts. |
 | Audio devices and profiles | Partial | Audio routes, profile import/export, user playback backup | Catalyst route selection depends on system availability; add better unavailable-state messaging. |
 

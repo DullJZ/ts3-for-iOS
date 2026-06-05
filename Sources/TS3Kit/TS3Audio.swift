@@ -58,8 +58,10 @@ final class TS3AudioEngine {
     private var voiceActivationThreshold: Float = 0.03
     private var prefersSpeakerOutput = true
     private var wasVoiceActive = false
+    private var lastInputLevelReport = Date.distantPast
 
     var onEncodedPacket: ((Data) -> Void)?
+    var onInputLevel: ((Float, Bool) -> Void)?
     var onLog: ((TS3LogLevel, String) -> Void)?
 
     private var isPlaybackRunning = false
@@ -133,6 +135,7 @@ final class TS3AudioEngine {
         captureBuffer.removeAll()
         encodedPacketCount = 0
         droppedInputBufferCount = 0
+        reportInputLevel(0, isVoiceActive: false, force: true)
         isCaptureRunning = false
         if shouldResumePlayback {
             try? configureSession(needsInput: false)
@@ -411,14 +414,21 @@ final class TS3AudioEngine {
     }
 
     private func shouldTransmit(frame: [Float]) -> Bool {
-        guard transmitMode == .voiceActivation else { return true }
         let rms = sqrt(frame.reduce(Float(0)) { $0 + ($1 * $1) } / Float(max(frame.count, 1)))
         let isVoiceActive = rms >= voiceActivationThreshold
+        reportInputLevel(rms, isVoiceActive: isVoiceActive)
+        guard transmitMode == .voiceActivation else { return true }
         if wasVoiceActive && !isVoiceActive {
             onEncodedPacket?(Data())
         }
         wasVoiceActive = isVoiceActive
         return isVoiceActive
+    }
+
+    private func reportInputLevel(_ level: Float, isVoiceActive: Bool, force: Bool = false) {
+        guard force || Date().timeIntervalSince(lastInputLevelReport) >= 0.08 else { return }
+        lastInputLevelReport = Date()
+        onInputLevel?(min(max(level, 0), 1), isVoiceActive)
     }
 
     private func logDroppedInputBuffer(_ reason: String) {
