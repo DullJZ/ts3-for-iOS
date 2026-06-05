@@ -4342,6 +4342,10 @@ struct ChannelMemberRow: View {
                             model.setContactStatus(.blocked, for: member)
                         }
                         .disabled(contactStatus == .blocked)
+                        Button("Ignore Contact") {
+                            model.setContactStatus(.ignored, for: member)
+                        }
+                        .disabled(contactStatus == .ignored)
                         Button("Set Neutral") {
                             model.setContactStatus(.neutral, for: member)
                         }
@@ -4920,13 +4924,17 @@ struct ContactsSheet: View {
         filterContacts(model.blockedContacts)
     }
 
+    private var filteredIgnored: [TS3ContactEntry] {
+        filterContacts(model.ignoredContacts)
+    }
+
     private var filteredNotes: [TS3ContactEntry] {
         filterContacts(notedContacts)
     }
 
     private var visibleContacts: [TS3ContactEntry] {
         var seen = Set<String>()
-        return (filteredFriends + filteredBlocked + filteredNotes).filter { contact in
+        return (filteredFriends + filteredBlocked + filteredIgnored + filteredNotes).filter { contact in
             seen.insert(contact.uniqueIdentifier).inserted
         }
     }
@@ -4937,6 +4945,10 @@ struct ContactsSheet: View {
 
     private var canBlockVisibleContacts: Bool {
         visibleContacts.contains { $0.status != .blocked }
+    }
+
+    private var canIgnoreVisibleContacts: Bool {
+        visibleContacts.contains { $0.status != .ignored }
     }
 
     private var canSetVisibleNeutral: Bool {
@@ -5021,6 +5033,7 @@ struct ContactsSheet: View {
 
                 contactSection(title: "Friends", contacts: filteredFriends)
                 contactSection(title: "Blocked", contacts: filteredBlocked)
+                contactSection(title: "Ignored", contacts: filteredIgnored)
                 contactSection(title: "Notes", contacts: filteredNotes)
             }
             .navigationTitle("Contacts")
@@ -5053,6 +5066,10 @@ struct ContactsSheet: View {
                             model.updateContacts(visibleContacts, status: .blocked)
                         }
                         .disabled(!canBlockVisibleContacts)
+                        Button("Ignore Visible Contacts") {
+                            model.updateContacts(visibleContacts, status: .ignored)
+                        }
+                        .disabled(!canIgnoreVisibleContacts)
                         Button("Set Visible Neutral") {
                             model.updateContacts(visibleContacts, status: .neutral)
                         }
@@ -10250,6 +10267,10 @@ struct GroupClientRow: View {
                             model.setContactStatus(.blocked, for: databaseRecord)
                         }
                         .disabled(model.contactStatus(for: databaseRecord) == .blocked)
+                        Button("Ignore Contact") {
+                            model.setContactStatus(.ignored, for: databaseRecord)
+                        }
+                        .disabled(model.contactStatus(for: databaseRecord) == .ignored)
                         Button("Set Neutral") {
                             model.setContactStatus(.neutral, for: databaseRecord)
                         }
@@ -10592,6 +10613,10 @@ struct ClientDatabaseSheet: View {
         visibleContactEntries.contains { $0.status != .blocked }
     }
 
+    private var canIgnoreVisibleContacts: Bool {
+        visibleContactEntries.contains { $0.status != .ignored }
+    }
+
     private var canSetVisibleNeutral: Bool {
         visibleContactEntries.contains { $0.status != .neutral }
     }
@@ -10753,6 +10778,10 @@ struct ClientDatabaseSheet: View {
                                     model.setContactStatus(.blocked, for: selected)
                                 }
                                 .disabled(model.contactStatus(for: selected) == .blocked)
+                                Button("Ignore Contact") {
+                                    model.setContactStatus(.ignored, for: selected)
+                                }
+                                .disabled(model.contactStatus(for: selected) == .ignored)
                                 Button("Set Neutral") {
                                     model.setContactStatus(.neutral, for: selected)
                                 }
@@ -10858,6 +10887,10 @@ struct ClientDatabaseSheet: View {
                             model.updateContacts(visibleContactEntries, status: .blocked)
                         }
                         .disabled(!canBlockVisibleContacts)
+                        Button("Ignore Visible Contacts") {
+                            model.updateContacts(visibleContactEntries, status: .ignored)
+                        }
+                        .disabled(!canIgnoreVisibleContacts)
                         Button("Set Visible Neutral") {
                             model.updateContacts(visibleContactEntries, status: .neutral)
                         }
@@ -11538,6 +11571,10 @@ struct DatabaseClientRow: View {
                         model.setContactStatus(.blocked, for: record)
                     }
                     .disabled(contactStatus == .blocked)
+                    Button("Ignore Contact") {
+                        model.setContactStatus(.ignored, for: record)
+                    }
+                    .disabled(contactStatus == .ignored)
                     Button("Set Neutral") {
                         model.setContactStatus(.neutral, for: record)
                     }

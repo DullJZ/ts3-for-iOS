@@ -421,6 +421,7 @@ private struct TS3EventHistoryArchive: Codable {
 enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
     case neutral
     case friend
+    case ignored
     case blocked
 
     var id: String { rawValue }
@@ -431,6 +432,8 @@ enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
             return "Neutral"
         case .friend:
             return "Friend"
+        case .ignored:
+            return "Ignored"
         case .blocked:
             return "Blocked"
         }
@@ -2944,6 +2947,12 @@ final class TS3AppModel: ObservableObject {
             .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
     }
 
+    var ignoredContacts: [TS3ContactEntry] {
+        contacts
+            .filter { $0.status == .ignored }
+            .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+    }
+
     func members(in channelId: Int) -> [TS3UserSummary] {
         clients
             .filter { $0.channelId == channelId }
@@ -3164,26 +3173,31 @@ final class TS3AppModel: ObservableObject {
         syncBlockedContactPlayback()
     }
 
-    private func isBlockedMessage(_ message: TS3TextMessage) -> Bool {
+    private func isSuppressedMessage(_ message: TS3TextMessage) -> Bool {
         guard !message.isOwnMessage,
               let senderId = message.senderId,
               let sender = clients.first(where: { $0.id == senderId }) else {
             return false
         }
-        return contactStatus(for: sender) == .blocked
+        return isSuppressedContactStatus(contactStatus(for: sender))
     }
 
-    private func isBlockedPoke(_ poke: TS3ClientPoke) -> Bool {
+    private func isSuppressedPoke(_ poke: TS3ClientPoke) -> Bool {
         guard !poke.isOwnPoke else { return false }
         if let uniqueIdentifier = poke.senderUniqueIdentifier,
-           contacts.first(where: { $0.uniqueIdentifier == uniqueIdentifier })?.status == .blocked {
+           let status = contacts.first(where: { $0.uniqueIdentifier == uniqueIdentifier })?.status,
+           isSuppressedContactStatus(status) {
             return true
         }
         guard let senderId = poke.senderId,
               let sender = clients.first(where: { $0.id == senderId }) else {
             return false
         }
-        return contactStatus(for: sender) == .blocked
+        return isSuppressedContactStatus(contactStatus(for: sender))
+    }
+
+    private func isSuppressedContactStatus(_ status: TS3ContactStatus) -> Bool {
+        status == .ignored || status == .blocked
     }
 
     private func isNotificationMuted(senderId: Int?, uniqueIdentifier: String?) -> Bool {
@@ -11819,7 +11833,7 @@ extension TS3AppModel: TS3ClientDelegate {
 
     nonisolated func ts3Client(_ client: TS3Client, didReceiveTextMessage message: TS3TextMessage) {
         Task { @MainActor in
-            guard !self.isBlockedMessage(message) else { return }
+            guard !self.isSuppressedMessage(message) else { return }
             self.chatMessages.append(TS3ChatMessageSummary(
                 id: message.id,
                 timestamp: message.timestamp,
@@ -11851,7 +11865,7 @@ extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3Client(_ client: TS3Client, didReceiveClientPoke poke: TS3ClientPoke) {
         Task { @MainActor in
             guard !poke.isOwnPoke else { return }
-            guard !self.isBlockedPoke(poke) else { return }
+            guard !self.isSuppressedPoke(poke) else { return }
             self.pokeEvents.insert(TS3PokeSummary(poke: poke), at: 0)
             if self.pokeEvents.count > 50 {
                 self.pokeEvents.removeLast(self.pokeEvents.count - 50)
