@@ -1385,6 +1385,9 @@ private struct TS3NotificationSettings: Codable {
     var activityEnabled: Bool
     var mutedServerKeys: [String]
     var mutedContactUniqueIdentifiers: [String]
+    var quietHoursEnabled: Bool
+    var quietHoursStartMinute: Int
+    var quietHoursEndMinute: Int
 
     static let defaults = TS3NotificationSettings(
         isEnabled: false,
@@ -1393,7 +1396,10 @@ private struct TS3NotificationSettings: Codable {
         pokesEnabled: true,
         activityEnabled: false,
         mutedServerKeys: [],
-        mutedContactUniqueIdentifiers: []
+        mutedContactUniqueIdentifiers: [],
+        quietHoursEnabled: false,
+        quietHoursStartMinute: 22 * 60,
+        quietHoursEndMinute: 7 * 60
     )
 
     init(
@@ -1403,7 +1409,10 @@ private struct TS3NotificationSettings: Codable {
         pokesEnabled: Bool = true,
         activityEnabled: Bool = false,
         mutedServerKeys: [String] = [],
-        mutedContactUniqueIdentifiers: [String] = []
+        mutedContactUniqueIdentifiers: [String] = [],
+        quietHoursEnabled: Bool = false,
+        quietHoursStartMinute: Int = 22 * 60,
+        quietHoursEndMinute: Int = 7 * 60
     ) {
         self.isEnabled = isEnabled
         self.soundEnabled = soundEnabled
@@ -1412,6 +1421,9 @@ private struct TS3NotificationSettings: Codable {
         self.activityEnabled = activityEnabled
         self.mutedServerKeys = mutedServerKeys
         self.mutedContactUniqueIdentifiers = mutedContactUniqueIdentifiers
+        self.quietHoursEnabled = quietHoursEnabled
+        self.quietHoursStartMinute = quietHoursStartMinute
+        self.quietHoursEndMinute = quietHoursEndMinute
     }
 
     enum CodingKeys: String, CodingKey {
@@ -1422,6 +1434,9 @@ private struct TS3NotificationSettings: Codable {
         case activityEnabled
         case mutedServerKeys
         case mutedContactUniqueIdentifiers
+        case quietHoursEnabled
+        case quietHoursStartMinute
+        case quietHoursEndMinute
     }
 
     init(from decoder: Decoder) throws {
@@ -1433,6 +1448,9 @@ private struct TS3NotificationSettings: Codable {
         activityEnabled = try container.decodeIfPresent(Bool.self, forKey: .activityEnabled) ?? false
         mutedServerKeys = try container.decodeIfPresent([String].self, forKey: .mutedServerKeys) ?? []
         mutedContactUniqueIdentifiers = try container.decodeIfPresent([String].self, forKey: .mutedContactUniqueIdentifiers) ?? []
+        quietHoursEnabled = try container.decodeIfPresent(Bool.self, forKey: .quietHoursEnabled) ?? false
+        quietHoursStartMinute = try container.decodeIfPresent(Int.self, forKey: .quietHoursStartMinute) ?? 22 * 60
+        quietHoursEndMinute = try container.decodeIfPresent(Int.self, forKey: .quietHoursEndMinute) ?? 7 * 60
     }
 }
 
@@ -2605,6 +2623,9 @@ final class TS3AppModel: ObservableObject {
     @Published var activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
     @Published private(set) var mutedNotificationServerKeys: [String] = []
     @Published private(set) var mutedNotificationContactUniqueIdentifiers: [String] = []
+    @Published var notificationQuietHoursEnabled = TS3NotificationSettings.defaults.quietHoursEnabled
+    @Published var notificationQuietHoursStartMinute = TS3NotificationSettings.defaults.quietHoursStartMinute
+    @Published var notificationQuietHoursEndMinute = TS3NotificationSettings.defaults.quietHoursEndMinute
     @Published private(set) var autoReconnectEnabled = false
     @Published var autoReconnectInitialDelaySeconds = TS3ConnectionRecoverySettings.defaults.initialDelaySeconds
     @Published var autoReconnectMaxDelaySeconds = TS3ConnectionRecoverySettings.defaults.maxDelaySeconds
@@ -4141,6 +4162,17 @@ final class TS3AppModel: ObservableObject {
         saveNotificationSettings()
     }
 
+    func setNotificationQuietHoursEnabled(_ isEnabled: Bool) {
+        notificationQuietHoursEnabled = isEnabled
+        saveNotificationSettings()
+    }
+
+    func setNotificationQuietHours(startMinute: Int, endMinute: Int) {
+        notificationQuietHoursStartMinute = sanitizedMinuteOfDay(startMinute)
+        notificationQuietHoursEndMinute = sanitizedMinuteOfDay(endMinute)
+        saveNotificationSettings()
+    }
+
     func setCurrentServerNotificationsMuted(_ isMuted: Bool) {
         let key = currentNotificationServerKey
         guard !key.isEmpty else { return }
@@ -4216,6 +4248,9 @@ final class TS3AppModel: ObservableObject {
         activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
         mutedNotificationServerKeys = TS3NotificationSettings.defaults.mutedServerKeys
         mutedNotificationContactUniqueIdentifiers = TS3NotificationSettings.defaults.mutedContactUniqueIdentifiers
+        notificationQuietHoursEnabled = TS3NotificationSettings.defaults.quietHoursEnabled
+        notificationQuietHoursStartMinute = TS3NotificationSettings.defaults.quietHoursStartMinute
+        notificationQuietHoursEndMinute = TS3NotificationSettings.defaults.quietHoursEndMinute
         saveNotificationSettings()
         lastError = nil
     }
@@ -9024,6 +9059,9 @@ final class TS3AppModel: ObservableObject {
             activityNotificationsEnabled = TS3NotificationSettings.defaults.activityEnabled
             mutedNotificationServerKeys = TS3NotificationSettings.defaults.mutedServerKeys
             mutedNotificationContactUniqueIdentifiers = TS3NotificationSettings.defaults.mutedContactUniqueIdentifiers
+            notificationQuietHoursEnabled = TS3NotificationSettings.defaults.quietHoursEnabled
+            notificationQuietHoursStartMinute = TS3NotificationSettings.defaults.quietHoursStartMinute
+            notificationQuietHoursEndMinute = TS3NotificationSettings.defaults.quietHoursEndMinute
             return
         }
         notificationsEnabled = decoded.isEnabled
@@ -9033,6 +9071,9 @@ final class TS3AppModel: ObservableObject {
         activityNotificationsEnabled = decoded.activityEnabled
         mutedNotificationServerKeys = sanitizedNotificationKeys(decoded.mutedServerKeys)
         mutedNotificationContactUniqueIdentifiers = sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers)
+        notificationQuietHoursEnabled = decoded.quietHoursEnabled
+        notificationQuietHoursStartMinute = sanitizedMinuteOfDay(decoded.quietHoursStartMinute)
+        notificationQuietHoursEndMinute = sanitizedMinuteOfDay(decoded.quietHoursEndMinute)
     }
 
     private func saveNotificationSettings() {
@@ -9061,6 +9102,9 @@ final class TS3AppModel: ObservableObject {
         activityNotificationsEnabled = decoded.activityEnabled
         mutedNotificationServerKeys = sanitizedNotificationKeys(decoded.mutedServerKeys)
         mutedNotificationContactUniqueIdentifiers = sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers)
+        notificationQuietHoursEnabled = decoded.quietHoursEnabled
+        notificationQuietHoursStartMinute = sanitizedMinuteOfDay(decoded.quietHoursStartMinute)
+        notificationQuietHoursEndMinute = sanitizedMinuteOfDay(decoded.quietHoursEndMinute)
         saveNotificationSettings()
         lastError = nil
     }
@@ -9073,7 +9117,10 @@ final class TS3AppModel: ObservableObject {
             pokesEnabled: pokeNotificationsEnabled,
             activityEnabled: activityNotificationsEnabled,
             mutedServerKeys: mutedNotificationServerKeys,
-            mutedContactUniqueIdentifiers: mutedNotificationContactUniqueIdentifiers
+            mutedContactUniqueIdentifiers: mutedNotificationContactUniqueIdentifiers,
+            quietHoursEnabled: notificationQuietHoursEnabled,
+            quietHoursStartMinute: notificationQuietHoursStartMinute,
+            quietHoursEndMinute: notificationQuietHoursEndMinute
         )
     }
 
@@ -9089,6 +9136,10 @@ final class TS3AppModel: ObservableObject {
 
     private func sanitizedNotificationKeys(_ keys: [String]) -> [String] {
         Array(Set(keys.map(normalizedNotificationKey).filter { !$0.isEmpty })).sorted()
+    }
+
+    private func sanitizedMinuteOfDay(_ minute: Int) -> Int {
+        min(max(minute, 0), 23 * 60 + 59)
     }
 
     private func loadServerLogQueryPresets() {
@@ -10092,6 +10143,7 @@ final class TS3AppModel: ObservableObject {
     private func notifyIfInactive(title: String, body: String, identifier: String) {
         #if canImport(UserNotifications)
         guard notificationsEnabled, !isAppActive else { return }
+        guard !isNotificationQuietHoursActive() else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -10104,6 +10156,20 @@ final class TS3AppModel: ObservableObject {
             trigger: nil
         ))
         #endif
+    }
+
+    private func isNotificationQuietHoursActive(date: Date = Date()) -> Bool {
+        guard notificationQuietHoursEnabled else { return false }
+        let start = sanitizedMinuteOfDay(notificationQuietHoursStartMinute)
+        let end = sanitizedMinuteOfDay(notificationQuietHoursEndMinute)
+        guard start != end else { return true }
+
+        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+        let minute = (components.hour ?? 0) * 60 + (components.minute ?? 0)
+        if start < end {
+            return minute >= start && minute < end
+        }
+        return minute >= start || minute < end
     }
 
     private func loadBookmarks() {

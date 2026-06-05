@@ -18274,6 +18274,27 @@ struct NotificationRulesSection: View {
         !model.mutedNotificationContactUniqueIdentifiers.isEmpty
     }
 
+    private var quietHoursEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { model.notificationQuietHoursEnabled },
+            set: { model.setNotificationQuietHoursEnabled($0) }
+        )
+    }
+
+    private var quietHoursStartBinding: Binding<Date> {
+        Binding(
+            get: { Self.date(minuteOfDay: model.notificationQuietHoursStartMinute) },
+            set: { model.setNotificationQuietHours(startMinute: Self.minuteOfDay(from: $0), endMinute: model.notificationQuietHoursEndMinute) }
+        )
+    }
+
+    private var quietHoursEndBinding: Binding<Date> {
+        Binding(
+            get: { Self.date(minuteOfDay: model.notificationQuietHoursEndMinute) },
+            set: { model.setNotificationQuietHours(startMinute: model.notificationQuietHoursStartMinute, endMinute: Self.minuteOfDay(from: $0)) }
+        )
+    }
+
     var body: some View {
         Section(header: Text("Rules")) {
             Toggle("Mute Current Server", isOn: Binding(
@@ -18281,6 +18302,12 @@ struct NotificationRulesSection: View {
                 set: { model.setCurrentServerNotificationsMuted($0) }
             ))
             .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+            Toggle("Quiet Hours", isOn: quietHoursEnabledBinding)
+            DatePicker("Start", selection: quietHoursStartBinding, displayedComponents: .hourAndMinute)
+                .disabled(!model.notificationQuietHoursEnabled)
+            DatePicker("End", selection: quietHoursEndBinding, displayedComponents: .hourAndMinute)
+                .disabled(!model.notificationQuietHoursEnabled)
 
             HStack {
                 Text("Muted Servers")
@@ -18309,6 +18336,18 @@ struct NotificationRulesSection: View {
             }
             .disabled(!hasRules)
         }
+    }
+
+    private static func date(minuteOfDay: Int) -> Date {
+        let minute = min(max(minuteOfDay, 0), 23 * 60 + 59)
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        return calendar.date(byAdding: .minute, value: minute, to: startOfDay) ?? startOfDay
+    }
+
+    private static func minuteOfDay(from date: Date) -> Int {
+        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return min(max((components.hour ?? 0) * 60 + (components.minute ?? 0), 0), 23 * 60 + 59)
     }
 }
 
