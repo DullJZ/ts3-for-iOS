@@ -255,6 +255,9 @@ public final class TS3Client {
         appendParameter(&params, name: "virtualserver_complain_remove_time", value: edit.complainRemoveTime.map(String.init))
         appendParameter(&params, name: "virtualserver_min_clients_in_channel_before_forced_silence", value: edit.minClientsInChannelBeforeForcedSilence.map(String.init))
         appendParameter(&params, name: "virtualserver_priority_speaker_dimm_modificator", value: edit.prioritySpeakerDimmModificator.map { "\($0)" })
+        appendParameter(&params, name: "virtualserver_antiflood_points_tick_reduce", value: edit.antiFloodPointsTickReduce.map(String.init))
+        appendParameter(&params, name: "virtualserver_antiflood_points_needed_command_block", value: edit.antiFloodPointsNeededCommandBlock.map(String.init))
+        appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
         appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
         guard !params.isEmpty else { return }
         _ = try await execute(TS3SingleCommand(name: "serveredit", parameters: params))
@@ -3052,6 +3055,9 @@ private extension TS3Client {
             complainRemoveTime: intValue(command, "virtualserver_complain_remove_time"),
             minClientsInChannelBeforeForcedSilence: intValue(command, "virtualserver_min_clients_in_channel_before_forced_silence"),
             prioritySpeakerDimmModificator: doubleValue(command, "virtualserver_priority_speaker_dimm_modificator"),
+            antiFloodPointsTickReduce: intValue(command, "virtualserver_antiflood_points_tick_reduce"),
+            antiFloodPointsNeededCommandBlock: intValue(command, "virtualserver_antiflood_points_needed_command_block"),
+            antiFloodPointsNeededIPBlock: intValue(command, "virtualserver_antiflood_points_needed_ip_block"),
             clientConnections: intValue(command, "virtualserver_client_connections"),
             queryClientConnections: intValue(command, "virtualserver_query_client_connections"),
             downloadQuota: int64Value(command, "virtualserver_download_quota"),

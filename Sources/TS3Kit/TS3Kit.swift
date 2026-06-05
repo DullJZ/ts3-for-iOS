@@ -96,6 +96,12 @@ public struct TS3ServerInfo {
     public let minClientsInChannelBeforeForcedSilence: Int?
     /// The volume dimming factor applied for priority speakers.
     public let prioritySpeakerDimmModificator: Double?
+    /// Anti-flood points reduced on every server tick.
+    public let antiFloodPointsTickReduce: Int?
+    /// Anti-flood points required before command blocking starts.
+    public let antiFloodPointsNeededCommandBlock: Int?
+    /// Anti-flood points required before IP blocking starts.
+    public let antiFloodPointsNeededIPBlock: Int?
     /// The total number of regular client connections.
     public let clientConnections: Int?
     /// The total number of ServerQuery client connections.
@@ -160,6 +166,9 @@ public struct TS3ServerInfo {
         complainRemoveTime: Int? = nil,
         minClientsInChannelBeforeForcedSilence: Int? = nil,
         prioritySpeakerDimmModificator: Double? = nil,
+        antiFloodPointsTickReduce: Int? = nil,
+        antiFloodPointsNeededCommandBlock: Int? = nil,
+        antiFloodPointsNeededIPBlock: Int? = nil,
         clientConnections: Int? = nil,
         queryClientConnections: Int? = nil,
         downloadQuota: Int64? = nil,
@@ -208,6 +217,9 @@ public struct TS3ServerInfo {
         self.complainRemoveTime = complainRemoveTime
         self.minClientsInChannelBeforeForcedSilence = minClientsInChannelBeforeForcedSilence
         self.prioritySpeakerDimmModificator = prioritySpeakerDimmModificator
+        self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
+        self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
+        self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
         self.clientConnections = clientConnections
         self.queryClientConnections = queryClientConnections
         self.downloadQuota = downloadQuota
@@ -333,6 +345,9 @@ public struct TS3ServerEdit {
     public var complainRemoveTime: Int?
     public var minClientsInChannelBeforeForcedSilence: Int?
     public var prioritySpeakerDimmModificator: Double?
+    public var antiFloodPointsTickReduce: Int?
+    public var antiFloodPointsNeededCommandBlock: Int?
+    public var antiFloodPointsNeededIPBlock: Int?
     public var codecEncryptionMode: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
@@ -357,6 +372,9 @@ public struct TS3ServerEdit {
         complainRemoveTime: Int? = nil,
         minClientsInChannelBeforeForcedSilence: Int? = nil,
         prioritySpeakerDimmModificator: Double? = nil,
+        antiFloodPointsTickReduce: Int? = nil,
+        antiFloodPointsNeededCommandBlock: Int? = nil,
+        antiFloodPointsNeededIPBlock: Int? = nil,
         codecEncryptionMode: Int? = nil
     ) {
         self.name = name
@@ -379,6 +397,9 @@ public struct TS3ServerEdit {
         self.complainRemoveTime = complainRemoveTime
         self.minClientsInChannelBeforeForcedSilence = minClientsInChannelBeforeForcedSilence
         self.prioritySpeakerDimmModificator = prioritySpeakerDimmModificator
+        self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
+        self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
+        self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
         self.codecEncryptionMode = codecEncryptionMode
     }
 }

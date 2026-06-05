@@ -8723,6 +8723,9 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Complaint Remove Time", value: model.serverInfo.complainRemoveTime.map(Self.durationText))
                     ServerInfoDetailRow(label: "Forced Silence Clients", value: model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init))
                     ServerInfoDetailRow(label: "Priority Speaker Dimming", value: model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText))
+                    ServerInfoDetailRow(label: "Anti-Flood Tick Reduce", value: model.serverInfo.antiFloodPointsTickReduce.map(String.init))
+                    ServerInfoDetailRow(label: "Anti-Flood Command Block", value: model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init))
+                    ServerInfoDetailRow(label: "Anti-Flood IP Block", value: model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init))
                 }
 
                 Section(header: Text("Traffic")) {
@@ -8830,6 +8833,9 @@ struct ServerInformationSheet: View {
         rows.append(("Complaint Remove Time", model.serverInfo.complainRemoveTime.map(Self.durationText)))
         rows.append(("Forced Silence Clients", model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init)))
         rows.append(("Priority Speaker Dimming", model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText)))
+        rows.append(("Anti-Flood Tick Reduce", model.serverInfo.antiFloodPointsTickReduce.map(String.init)))
+        rows.append(("Anti-Flood Command Block", model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init)))
+        rows.append(("Anti-Flood IP Block", model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init)))
         rows.append(("Month Downloaded", model.serverInfo.monthlyBytesDownloaded.map(Self.byteText)))
         rows.append(("Month Uploaded", model.serverInfo.monthlyBytesUploaded.map(Self.byteText)))
         rows.append(("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.byteText)))
@@ -11377,6 +11383,9 @@ struct ServerSettingsEditorSheet: View {
         var complainRemoveTime: String
         var minClientsInChannelBeforeForcedSilence: String
         var prioritySpeakerDimmModificator: String
+        var antiFloodPointsTickReduce: String?
+        var antiFloodPointsNeededCommandBlock: String?
+        var antiFloodPointsNeededIPBlock: String?
         var codecEncryptionMode: String
     }
 
@@ -11403,6 +11412,9 @@ struct ServerSettingsEditorSheet: View {
     @State private var complainRemoveTime = ""
     @State private var minClientsInChannelBeforeForcedSilence = ""
     @State private var prioritySpeakerDimmModificator = ""
+    @State private var antiFloodPointsTickReduce = ""
+    @State private var antiFloodPointsNeededCommandBlock = ""
+    @State private var antiFloodPointsNeededIPBlock = ""
     @State private var codecEncryptionMode: Int?
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
@@ -11518,6 +11530,15 @@ struct ServerSettingsEditorSheet: View {
                         .ts3PlainTextField()
                     TextField("Priority Speaker Dimming", text: $prioritySpeakerDimmModificator)
                         .ts3PlainTextField()
+                    TextField("Anti-Flood Tick Reduce", text: $antiFloodPointsTickReduce)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Anti-Flood Command Block", text: $antiFloodPointsNeededCommandBlock)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Anti-Flood IP Block", text: $antiFloodPointsNeededIPBlock)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
                 }
             }
             .navigationTitle("Server Settings")
@@ -11610,6 +11631,9 @@ struct ServerSettingsEditorSheet: View {
             complainRemoveTime: complainRemoveTime,
             minClientsInChannelBeforeForcedSilence: minClientsInChannelBeforeForcedSilence,
             prioritySpeakerDimmModificator: prioritySpeakerDimmModificator,
+            antiFloodPointsTickReduce: antiFloodPointsTickReduce,
+            antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
+            antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
             codecEncryptionMode: codecEncryptionMode.map(String.init) ?? ""
         )
     }
@@ -11637,7 +11661,10 @@ struct ServerSettingsEditorSheet: View {
             ("Auto-Ban Seconds", draft.complainAutoBanTime),
             ("Complaint Remove Seconds", draft.complainRemoveTime),
             ("Forced Silence Client Count", draft.minClientsInChannelBeforeForcedSilence),
-            ("Priority Speaker Dimming", draft.prioritySpeakerDimmModificator)
+            ("Priority Speaker Dimming", draft.prioritySpeakerDimmModificator),
+            ("Anti-Flood Tick Reduce", draft.antiFloodPointsTickReduce ?? ""),
+            ("Anti-Flood Command Block", draft.antiFloodPointsNeededCommandBlock ?? ""),
+            ("Anti-Flood IP Block", draft.antiFloodPointsNeededIPBlock ?? "")
         ]
         rows.append(("Draft Valid", isDraftValid ? "Yes" : "No"))
         return rows.compactMap { label, value in
@@ -11669,6 +11696,9 @@ struct ServerSettingsEditorSheet: View {
         complainRemoveTime = model.serverInfo.complainRemoveTime.map(String.init) ?? ""
         minClientsInChannelBeforeForcedSilence = model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init) ?? ""
         prioritySpeakerDimmModificator = model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText) ?? ""
+        antiFloodPointsTickReduce = model.serverInfo.antiFloodPointsTickReduce.map(String.init) ?? ""
+        antiFloodPointsNeededCommandBlock = model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init) ?? ""
+        antiFloodPointsNeededIPBlock = model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init) ?? ""
         codecEncryptionMode = model.serverInfo.codecEncryptionMode
     }
 
@@ -11685,6 +11715,9 @@ struct ServerSettingsEditorSheet: View {
             && isOptionalInt(complainRemoveTime)
             && isOptionalInt(minClientsInChannelBeforeForcedSilence)
             && isOptionalDouble(prioritySpeakerDimmModificator)
+            && isOptionalInt(antiFloodPointsTickReduce)
+            && isOptionalInt(antiFloodPointsNeededCommandBlock)
+            && isOptionalInt(antiFloodPointsNeededIPBlock)
     }
 
     private func save() {
@@ -11709,6 +11742,9 @@ struct ServerSettingsEditorSheet: View {
             complainRemoveTime: Int(complainRemoveTime.trimmingCharacters(in: .whitespacesAndNewlines)),
             minClientsInChannelBeforeForcedSilence: Int(minClientsInChannelBeforeForcedSilence.trimmingCharacters(in: .whitespacesAndNewlines)),
             prioritySpeakerDimmModificator: Double(prioritySpeakerDimmModificator.trimmingCharacters(in: .whitespacesAndNewlines)),
+            antiFloodPointsTickReduce: Int(antiFloodPointsTickReduce.trimmingCharacters(in: .whitespacesAndNewlines)),
+            antiFloodPointsNeededCommandBlock: Int(antiFloodPointsNeededCommandBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
+            antiFloodPointsNeededIPBlock: Int(antiFloodPointsNeededIPBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             codecEncryptionMode: codecEncryptionMode
         )
     }
@@ -11761,6 +11797,9 @@ struct ServerSettingsEditorSheet: View {
         complainRemoveTime = draft.complainRemoveTime
         minClientsInChannelBeforeForcedSilence = draft.minClientsInChannelBeforeForcedSilence
         prioritySpeakerDimmModificator = draft.prioritySpeakerDimmModificator
+        antiFloodPointsTickReduce = draft.antiFloodPointsTickReduce ?? ""
+        antiFloodPointsNeededCommandBlock = draft.antiFloodPointsNeededCommandBlock ?? ""
+        antiFloodPointsNeededIPBlock = draft.antiFloodPointsNeededIPBlock ?? ""
         codecEncryptionMode = Int(draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 

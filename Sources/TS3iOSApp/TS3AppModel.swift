@@ -1881,6 +1881,9 @@ struct TS3ServerInfoSummary {
     var complainRemoveTime: Int?
     var minClientsInChannelBeforeForcedSilence: Int?
     var prioritySpeakerDimmModificator: Double?
+    var antiFloodPointsTickReduce: Int?
+    var antiFloodPointsNeededCommandBlock: Int?
+    var antiFloodPointsNeededIPBlock: Int?
     var clientConnections: Int?
     var queryClientConnections: Int?
     var downloadQuota: Int64?
@@ -1931,6 +1934,9 @@ struct TS3ServerInfoSummary {
         complainRemoveTime: nil,
         minClientsInChannelBeforeForcedSilence: nil,
         prioritySpeakerDimmModificator: nil,
+        antiFloodPointsTickReduce: nil,
+        antiFloodPointsNeededCommandBlock: nil,
+        antiFloodPointsNeededIPBlock: nil,
         clientConnections: nil,
         queryClientConnections: nil,
         downloadQuota: nil,
@@ -5031,6 +5037,9 @@ final class TS3AppModel: ObservableObject {
         complainRemoveTime: Int?,
         minClientsInChannelBeforeForcedSilence: Int?,
         prioritySpeakerDimmModificator: Double?,
+        antiFloodPointsTickReduce: Int?,
+        antiFloodPointsNeededCommandBlock: Int?,
+        antiFloodPointsNeededIPBlock: Int?,
         codecEncryptionMode: Int?
     ) {
         let edit = TS3ServerEdit(
@@ -5054,6 +5063,9 @@ final class TS3AppModel: ObservableObject {
             complainRemoveTime: complainRemoveTime,
             minClientsInChannelBeforeForcedSilence: minClientsInChannelBeforeForcedSilence,
             prioritySpeakerDimmModificator: prioritySpeakerDimmModificator,
+            antiFloodPointsTickReduce: antiFloodPointsTickReduce,
+            antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
+            antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
             codecEncryptionMode: codecEncryptionMode
         )
         runClientCommand { client in
@@ -10988,6 +11000,9 @@ extension TS3AppModel: TS3ClientDelegate {
                 complainRemoveTime: info.complainRemoveTime,
                 minClientsInChannelBeforeForcedSilence: info.minClientsInChannelBeforeForcedSilence,
                 prioritySpeakerDimmModificator: info.prioritySpeakerDimmModificator,
+                antiFloodPointsTickReduce: info.antiFloodPointsTickReduce,
+                antiFloodPointsNeededCommandBlock: info.antiFloodPointsNeededCommandBlock,
+                antiFloodPointsNeededIPBlock: info.antiFloodPointsNeededIPBlock,
                 clientConnections: info.clientConnections,
                 queryClientConnections: info.queryClientConnections,
                 downloadQuota: info.downloadQuota,
