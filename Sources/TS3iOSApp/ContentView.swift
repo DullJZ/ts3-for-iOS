@@ -754,6 +754,7 @@ struct ConnectView: View {
     @State private var isImportingRecoverySettings = false
     @State private var isExportingRecoverySettings = false
     @State private var isExportingRecoverySnapshot = false
+    @State private var isExportingConnectionDiagnostics = false
     @State private var isImportingClientPackage = false
     @State private var isExportingClientPackage = false
     @State private var deleteConfirmation: DeleteConfirmation?
@@ -762,6 +763,7 @@ struct ConnectView: View {
     @State private var recentConnectionsDocument = TS3BookmarkFileDocument()
     @State private var recoverySettingsDocument = TS3TextFileDocument()
     @State private var recoverySnapshotDocument = TS3TextFileDocument()
+    @State private var connectionDiagnosticsDocument = TS3TextFileDocument()
     @State private var clientPackageDocument = TS3BookmarkFileDocument()
 
     private var autoReconnectBinding: Binding<Bool> {
@@ -1232,6 +1234,32 @@ struct ConnectView: View {
                 }
             }
 
+            Section(header: Text("Connection Diagnostics")) {
+                ServerInfoDetailRow(label: "State", value: model.connectedStatus)
+                ServerInfoDetailRow(label: "Host", value: model.serverHost.isEmpty ? "Not set" : "\(model.serverHost):\(model.serverPort)")
+                ServerInfoDetailRow(label: "Nickname", value: model.nickname.isEmpty ? "Not set" : model.nickname)
+                ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.connectionDecimalText($0)) ms" } ?? "Unknown")
+                ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.connectionLossText) ?? "Unknown")
+                ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.connectionLossText) ?? "Unknown")
+                ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.connectionByteText) ?? "Unknown")
+                ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.connectionByteText) ?? "Unknown")
+                ServerInfoDetailRow(label: "Connected Time", value: model.connectionInfo.connectedSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
+                ServerInfoDetailRow(label: "Idle Time", value: model.connectionInfo.idleSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
+                if let status = model.autoReconnectStatus, !status.isEmpty {
+                    ServerInfoDetailRow(label: "Recovery Status", value: status)
+                }
+                if let message = model.lastDisconnectMessage, !message.isEmpty {
+                    ServerInfoDetailRow(label: "Last Disconnect", value: message)
+                }
+                Button("Copy Connection Diagnostics") {
+                    TS3PlatformSupport.copyToPasteboard(connectionDiagnosticsSnapshot)
+                }
+                Button("Export Connection Diagnostics") {
+                    connectionDiagnosticsDocument = TS3TextFileDocument(data: Data(connectionDiagnosticsSnapshot.utf8))
+                    isExportingConnectionDiagnostics = true
+                }
+            }
+
             Section(header: Text("Connection Recovery")) {
                 Toggle("Reconnect Automatically", isOn: autoReconnectBinding)
                 Stepper(
@@ -1395,6 +1423,16 @@ struct ConnectView: View {
                 model.lastError = error.localizedDescription
             }
         }
+        .fileExporter(
+            isPresented: $isExportingConnectionDiagnostics,
+            document: connectionDiagnosticsDocument,
+            contentType: .plainText,
+            defaultFilename: "ts3-connection-diagnostics"
+        ) { result in
+            if case .failure(let error) = result {
+                model.lastError = error.localizedDescription
+            }
+        }
         .fileImporter(
             isPresented: $isImportingClientPackage,
             allowedContentTypes: [.json, .data],
@@ -1481,6 +1519,55 @@ struct ConnectView: View {
         rows.append("Recent Servers: \(model.recentConnections.count)")
         rows.append("Bookmarks: \(model.bookmarks.count)")
         return rows.joined(separator: "\n")
+    }
+
+    private var connectionDiagnosticsSnapshot: String {
+        var rows = [
+            "Connection State: \(model.connectedStatus)",
+            "Host: \(model.serverHost.isEmpty ? "Not set" : "\(model.serverHost):\(model.serverPort)")",
+            "Nickname: \(model.nickname.isEmpty ? "Not set" : model.nickname)",
+            "Ping: \(model.connectionInfo.ping.map { "\(Self.connectionDecimalText($0)) ms" } ?? "Unknown")",
+            "Packet Loss: \(model.connectionInfo.packetLossTotal.map(Self.connectionLossText) ?? "Unknown")",
+            "Speech Loss: \(model.connectionInfo.packetLossSpeech.map(Self.connectionLossText) ?? "Unknown")",
+            "Keepalive Loss: \(model.connectionInfo.packetLossKeepalive.map(Self.connectionLossText) ?? "Unknown")",
+            "Control Loss: \(model.connectionInfo.packetLossControl.map(Self.connectionLossText) ?? "Unknown")",
+            "Session Downloaded: \(model.connectionInfo.bytesReceived.map(Self.connectionByteText) ?? "Unknown")",
+            "Session Uploaded: \(model.connectionInfo.bytesSent.map(Self.connectionByteText) ?? "Unknown")",
+            "Connected Time: \(model.connectionInfo.connectedSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")",
+            "Idle Time: \(model.connectionInfo.idleSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")",
+            "Auto Reconnect: \(model.autoReconnectEnabled ? "Enabled" : "Disabled")",
+            "Initial Delay: \(model.autoReconnectInitialDelaySeconds)s",
+            "Max Delay: \(model.autoReconnectMaxDelaySeconds)s",
+            "Max Attempts: \(model.autoReconnectMaxAttempts == 0 ? "Unlimited" : String(model.autoReconnectMaxAttempts))",
+            "Recent Servers: \(model.recentConnections.count)",
+            "Bookmarks: \(model.bookmarks.count)"
+        ]
+        if let status = model.autoReconnectStatus, !status.isEmpty {
+            rows.append("Recovery Status: \(status)")
+        }
+        if let snapshot = model.lastConnectionSnapshot {
+            rows.append("Last Server: \(snapshot.host):\(snapshot.port)")
+            rows.append("Last Nickname: \(snapshot.nickname)")
+        }
+        if let message = model.lastDisconnectMessage, !message.isEmpty {
+            rows.append("Last Disconnect: \(message)")
+        }
+        if let error = model.lastError, !error.isEmpty {
+            rows.append("Last Error: \(error)")
+        }
+        return rows.joined(separator: "\n")
+    }
+
+    private static func connectionDecimalText(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+
+    private static func connectionLossText(_ value: Double) -> String {
+        "\(String(format: "%.2f", value * 100))%"
+    }
+
+    private static func connectionByteText(_ value: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
     }
 
     private func exportBookmarks() {

@@ -12,7 +12,7 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Server connection with password | Done | `ConnectView`, `TS3AppModel.connect()`, bookmark and recent connection state | Add more connection diagnostics and reconnect policy controls. |
+| Server connection with password | Done | `ConnectView`, `TS3AppModel.connect()`, bookmark/recent connection state, connection diagnostics export, and reconnect policy controls | Expand real-server troubleshooting fields if additional protocol metrics are exposed. |
 | Channel tree and online clients | Done | Main channel/client list, refresh actions, channel switching, persisted channel tree expansion state | Improve very large server navigation if real-server scale testing shows issues. |
 | Channel join passwords | Done | Password prompts for protected channel join/move operations | Add saved per-channel password helpers if needed. |
 | Invite links | Done | Copy current invite and full invite links, bookmark invite copy | Add incoming invite routing tests for more URL variants. |
