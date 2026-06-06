@@ -14270,7 +14270,7 @@ struct PermissionsSheet: View {
                     Button("Delete Visible Permissions") {
                         isConfirmingDeleteVisible = true
                     }
-                    .disabled(filteredDisplayedPermissions.isEmpty)
+                    .disabled(model.state != .connected || filteredDisplayedPermissions.isEmpty)
                     .foregroundColor(.red)
 
                     Picker("Filter", selection: $assignedFilter) {
@@ -14355,7 +14355,7 @@ struct PermissionsSheet: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredDisplayedPermissions) { permission in
-                            PermissionRow(permission: permission) {
+                            PermissionRow(permission: permission, canDelete: model.state == .connected) {
                                 permissionName = permission.name
                                 permissionValue = "\(permission.value)"
                                 permissionNegated = permission.isNegated
@@ -14385,7 +14385,7 @@ struct PermissionsSheet: View {
                             skip: permissionSkip
                         )
                     }
-                    .disabled(permissionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(model.state != .connected || permissionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Section(header: Text("Permission Directory")) {
@@ -14422,6 +14422,7 @@ struct PermissionsSheet: View {
                         model.refreshGroups()
                         model.refreshSelectedPermissions()
                     }
+                    .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -14673,6 +14674,7 @@ struct PermissionsSheet: View {
 
 struct PermissionRow: View {
     let permission: TS3PermissionSummary
+    let canDelete: Bool
     let edit: () -> Void
     let delete: () -> Void
     @State private var isConfirmingDelete = false
@@ -14704,6 +14706,7 @@ struct PermissionRow: View {
                     isConfirmingDelete = true
                 }
                 .buttonStyle(.borderless)
+                .disabled(!canDelete)
                 .foregroundColor(.red)
             }
             .font(.caption)
@@ -14736,6 +14739,7 @@ struct PermissionRow: View {
             Button("Delete") {
                 isConfirmingDelete = true
             }
+            .disabled(!canDelete)
             .foregroundColor(.red)
         }
     }
