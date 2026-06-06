@@ -12034,6 +12034,16 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
+    var whisperActivationStatus: String {
+        guard isWhisperActivationActive else {
+            return whisperRoute == .none ? "Inactive" : "Ready"
+        }
+        if whisperActivationStartedTalking {
+            return "Active, started microphone"
+        }
+        return "Active, microphone was already live"
+    }
+
     private func whisperGroupName(type: TS3GroupWhisperType, targetId: Int) -> String {
         switch type {
         case .serverGroup:

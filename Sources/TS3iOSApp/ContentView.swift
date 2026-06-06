@@ -17619,6 +17619,8 @@ struct WhisperSheet: View {
         [
             "Route: \(model.whisperRouteDescription)",
             "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
+            "Activation: \(model.whisperActivationStatus)",
+            "Microphone: \(model.isTalking ? "Live" : "Idle")",
             "Preset Filter: \(presetFilter.title)",
             "Preset Sort: \(presetSort.title)",
             "Group Type: \(groupWhisperType.title)",
@@ -17717,11 +17719,17 @@ struct WhisperSheet: View {
                 Section(header: Text("Current Route")) {
                     Text(model.whisperRouteDescription)
                         .foregroundColor(.secondary)
+                    Text(model.whisperActivationStatus)
+                        .font(.caption)
+                        .foregroundColor(model.isWhisperActivationActive ? .accentColor : .secondary)
                     Button(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper") {
                         model.toggleCurrentWhisperActivation()
                     }
                     .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
                     .disabled(model.state != .connected || model.whisperRoute == .none)
+                    WhisperHoldButton()
+                        .environmentObject(model)
+                        .disabled(model.state != .connected || model.whisperRoute == .none)
                 }
 
                 Section(header: Text("Quick Actions")) {
@@ -19624,6 +19632,9 @@ struct TalkControlBar: View {
             .buttonStyle(TS3BorderedButtonStyle(isProminent: model.isWhisperActivationActive))
             .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
             .disabled(model.state != .connected || model.whisperRoute == .none)
+            WhisperHoldButton()
+                .environmentObject(model)
+                .disabled(model.state != .connected || model.whisperRoute == .none)
         }
         .padding()
         .alert(item: $model.microphonePermissionPrompt) { prompt in
@@ -19638,6 +19649,48 @@ struct TalkControlBar: View {
                 }
             )
         }
+    }
+}
+
+struct WhisperHoldButton: View {
+    @EnvironmentObject private var model: TS3AppModel
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isPressing = false
+
+    var body: some View {
+        Text(isPressing || model.isWhisperActivationActive ? "Release to Stop Whisper" : "Hold to Whisper")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+            .background(isPressing || model.isWhisperActivationActive ? Color.accentColor.opacity(0.15) : Color.clear)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.accentColor.opacity(isEnabled ? 0.8 : 0.25), lineWidth: 1)
+            )
+            .foregroundColor(isEnabled ? .primary : .secondary)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard isEnabled, !isPressing else { return }
+                        isPressing = true
+                        model.beginCurrentWhisperActivation()
+                    }
+                    .onEnded { _ in
+                        guard isPressing else { return }
+                        isPressing = false
+                        model.endWhisperActivation()
+                    }
+            )
+            .onDisappear {
+                if isPressing {
+                    isPressing = false
+                    model.endWhisperActivation()
+                }
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel("Hold to Whisper")
+            .accessibilityValue(model.whisperActivationStatus)
     }
 }
 
