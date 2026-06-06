@@ -509,64 +509,30 @@ public final class TS3Client {
         maxFamilyClientsInherited: Bool? = nil,
         iconId: Int? = nil
     ) async throws -> Int? {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "channel_name", value: name)
-        ]
-        if let parentId {
-            params.append(TS3CommandSingleParameter(name: "cpid", value: String(parentId)))
-        }
-        if let phoneticName { params.append(TS3CommandSingleParameter(name: "channel_name_phonetic", value: phoneticName)) }
-        if let topic { params.append(TS3CommandSingleParameter(name: "channel_topic", value: topic)) }
-        if let description { params.append(TS3CommandSingleParameter(name: "channel_description", value: description)) }
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "channel_password", value: password))
-        }
-        if let codec {
-            params.append(TS3CommandSingleParameter(name: "channel_codec", value: String(codec)))
-        }
-        if let codecQuality {
-            params.append(TS3CommandSingleParameter(name: "channel_codec_quality", value: String(codecQuality)))
-        }
-        if let codecLatencyFactor {
-            params.append(TS3CommandSingleParameter(name: "channel_codec_latency_factor", value: String(codecLatencyFactor)))
-        }
-        if let isCodecUnencrypted {
-            params.append(TS3CommandSingleParameter(name: "channel_codec_is_unencrypted", value: isCodecUnencrypted ? "1" : "0"))
-        }
-        if let neededTalkPower {
-            params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))
-        }
-        if let neededSubscribePower {
-            params.append(TS3CommandSingleParameter(name: "channel_needed_subscribe_power", value: String(neededSubscribePower)))
-        }
-        if let deleteDelaySeconds {
-            params.append(TS3CommandSingleParameter(name: "channel_delete_delay", value: String(deleteDelaySeconds)))
-        }
-        if let maxClients {
-            params.append(TS3CommandSingleParameter(name: "channel_maxclients", value: String(maxClients)))
-        }
-        if let maxFamilyClients {
-            params.append(TS3CommandSingleParameter(name: "channel_maxfamilyclients", value: String(maxFamilyClients)))
-        }
-        if let maxClientsUnlimited {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_maxclients_unlimited", value: maxClientsUnlimited ? "1" : "0"))
-        }
-        if let maxFamilyClientsUnlimited {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_unlimited", value: maxFamilyClientsUnlimited ? "1" : "0"))
-        }
-        if let maxFamilyClientsInherited {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_inherited", value: maxFamilyClientsInherited ? "1" : "0"))
-        }
-        if let iconId {
-            params.append(TS3CommandSingleParameter(name: "channel_icon_id", value: String(iconId)))
-        }
-        if permanent {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_permanent", value: "1"))
-        } else if semiPermanent == true {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_semi_permanent", value: "1"))
-        }
-
-        let responses = try await execute(TS3SingleCommand(name: "channelcreate", parameters: params))
+        let command = Self.channelCreateCommand(
+            name: name,
+            parentId: parentId,
+            permanent: permanent,
+            semiPermanent: semiPermanent,
+            phoneticName: phoneticName,
+            topic: topic,
+            description: description,
+            password: password,
+            codec: codec,
+            codecQuality: codecQuality,
+            codecLatencyFactor: codecLatencyFactor,
+            isCodecUnencrypted: isCodecUnencrypted,
+            neededTalkPower: neededTalkPower,
+            neededSubscribePower: neededSubscribePower,
+            deleteDelaySeconds: deleteDelaySeconds,
+            maxClients: maxClients,
+            maxFamilyClients: maxFamilyClients,
+            maxClientsUnlimited: maxClientsUnlimited,
+            maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: maxFamilyClientsInherited,
+            iconId: iconId
+        )
+        let responses = try await execute(command)
         let createdId = responses.compactMap { $0.get("cid")?.value }.compactMap(Int.init).first
         try? await refreshServerView()
         return createdId
@@ -597,63 +563,31 @@ public final class TS3Client {
         maxFamilyClientsInherited: Bool? = nil,
         iconId: Int? = nil
     ) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId))
-        ]
-        if let name { params.append(TS3CommandSingleParameter(name: "channel_name", value: name)) }
-        if let phoneticName { params.append(TS3CommandSingleParameter(name: "channel_name_phonetic", value: phoneticName)) }
-        if let topic { params.append(TS3CommandSingleParameter(name: "channel_topic", value: topic)) }
-        if let description { params.append(TS3CommandSingleParameter(name: "channel_description", value: description)) }
-        if let password { params.append(TS3CommandSingleParameter(name: "channel_password", value: password)) }
-        if let isDefault {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_default", value: isDefault ? "1" : "0"))
-        }
-        if let isPermanent {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_permanent", value: isPermanent ? "1" : "0"))
-        }
-        if let isSemiPermanent {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_semi_permanent", value: isSemiPermanent ? "1" : "0"))
-        }
-        if let neededTalkPower {
-            params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))
-        }
-        if let neededSubscribePower {
-            params.append(TS3CommandSingleParameter(name: "channel_needed_subscribe_power", value: String(neededSubscribePower)))
-        }
-        if let codec {
-            params.append(TS3CommandSingleParameter(name: "channel_codec", value: String(codec)))
-        }
-        if let codecQuality {
-            params.append(TS3CommandSingleParameter(name: "channel_codec_quality", value: String(codecQuality)))
-        }
-        if let codecLatencyFactor {
-            params.append(TS3CommandSingleParameter(name: "channel_codec_latency_factor", value: String(codecLatencyFactor)))
-        }
-        if let isCodecUnencrypted {
-            params.append(TS3CommandSingleParameter(name: "channel_codec_is_unencrypted", value: isCodecUnencrypted ? "1" : "0"))
-        }
-        if let deleteDelaySeconds {
-            params.append(TS3CommandSingleParameter(name: "channel_delete_delay", value: String(deleteDelaySeconds)))
-        }
-        if let maxClients {
-            params.append(TS3CommandSingleParameter(name: "channel_maxclients", value: String(maxClients)))
-        }
-        if let maxFamilyClients {
-            params.append(TS3CommandSingleParameter(name: "channel_maxfamilyclients", value: String(maxFamilyClients)))
-        }
-        if let maxClientsUnlimited {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_maxclients_unlimited", value: maxClientsUnlimited ? "1" : "0"))
-        }
-        if let maxFamilyClientsUnlimited {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_unlimited", value: maxFamilyClientsUnlimited ? "1" : "0"))
-        }
-        if let maxFamilyClientsInherited {
-            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_inherited", value: maxFamilyClientsInherited ? "1" : "0"))
-        }
-        if let iconId {
-            params.append(TS3CommandSingleParameter(name: "channel_icon_id", value: String(iconId)))
-        }
-        _ = try await execute(TS3SingleCommand(name: "channeledit", parameters: params))
+        let command = Self.channelEditCommand(
+            channelId: channelId,
+            name: name,
+            phoneticName: phoneticName,
+            topic: topic,
+            description: description,
+            password: password,
+            isDefault: isDefault,
+            isPermanent: isPermanent,
+            isSemiPermanent: isSemiPermanent,
+            neededTalkPower: neededTalkPower,
+            neededSubscribePower: neededSubscribePower,
+            codec: codec,
+            codecQuality: codecQuality,
+            codecLatencyFactor: codecLatencyFactor,
+            isCodecUnencrypted: isCodecUnencrypted,
+            deleteDelaySeconds: deleteDelaySeconds,
+            maxClients: maxClients,
+            maxFamilyClients: maxFamilyClients,
+            maxClientsUnlimited: maxClientsUnlimited,
+            maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: maxFamilyClientsInherited,
+            iconId: iconId
+        )
+        _ = try await execute(command)
         try? await refreshServerView()
     }
 
@@ -2754,6 +2688,123 @@ private extension TS3Client {
 }
 
 extension TS3Client {
+    static func channelCreateCommand(
+        name: String,
+        parentId: Int?,
+        permanent: Bool,
+        semiPermanent: Bool?,
+        phoneticName: String?,
+        topic: String?,
+        description: String?,
+        password: String?,
+        codec: Int?,
+        codecQuality: Int?,
+        codecLatencyFactor: Int?,
+        isCodecUnencrypted: Bool?,
+        neededTalkPower: Int?,
+        neededSubscribePower: Int?,
+        deleteDelaySeconds: Int?,
+        maxClients: Int?,
+        maxFamilyClients: Int?,
+        maxClientsUnlimited: Bool?,
+        maxFamilyClientsUnlimited: Bool?,
+        maxFamilyClientsInherited: Bool?,
+        iconId: Int?
+    ) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "channel_name", value: name)
+        ]
+        if let parentId {
+            params.append(TS3CommandSingleParameter(name: "cpid", value: String(parentId)))
+        }
+        appendChannelParameters(
+            to: &params,
+            phoneticName: phoneticName,
+            topic: topic,
+            description: description,
+            password: password?.isEmpty == false ? password : nil,
+            neededTalkPower: neededTalkPower,
+            neededSubscribePower: neededSubscribePower,
+            codec: codec,
+            codecQuality: codecQuality,
+            codecLatencyFactor: codecLatencyFactor,
+            isCodecUnencrypted: isCodecUnencrypted,
+            deleteDelaySeconds: deleteDelaySeconds,
+            maxClients: maxClients,
+            maxFamilyClients: maxFamilyClients,
+            maxClientsUnlimited: maxClientsUnlimited,
+            maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: maxFamilyClientsInherited,
+            iconId: iconId
+        )
+        if permanent {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_permanent", value: "1"))
+        } else if semiPermanent == true {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_semi_permanent", value: "1"))
+        }
+        return TS3SingleCommand(name: "channelcreate", parameters: params)
+    }
+
+    static func channelEditCommand(
+        channelId: Int,
+        name: String?,
+        phoneticName: String?,
+        topic: String?,
+        description: String?,
+        password: String?,
+        isDefault: Bool?,
+        isPermanent: Bool?,
+        isSemiPermanent: Bool?,
+        neededTalkPower: Int?,
+        neededSubscribePower: Int?,
+        codec: Int?,
+        codecQuality: Int?,
+        codecLatencyFactor: Int?,
+        isCodecUnencrypted: Bool?,
+        deleteDelaySeconds: Int?,
+        maxClients: Int?,
+        maxFamilyClients: Int?,
+        maxClientsUnlimited: Bool?,
+        maxFamilyClientsUnlimited: Bool?,
+        maxFamilyClientsInherited: Bool?,
+        iconId: Int?
+    ) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId))
+        ]
+        if let name { params.append(TS3CommandSingleParameter(name: "channel_name", value: name)) }
+        appendChannelParameters(
+            to: &params,
+            phoneticName: phoneticName,
+            topic: topic,
+            description: description,
+            password: password,
+            neededTalkPower: neededTalkPower,
+            neededSubscribePower: neededSubscribePower,
+            codec: codec,
+            codecQuality: codecQuality,
+            codecLatencyFactor: codecLatencyFactor,
+            isCodecUnencrypted: isCodecUnencrypted,
+            deleteDelaySeconds: deleteDelaySeconds,
+            maxClients: maxClients,
+            maxFamilyClients: maxFamilyClients,
+            maxClientsUnlimited: maxClientsUnlimited,
+            maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: maxFamilyClientsInherited,
+            iconId: iconId
+        )
+        if let isDefault {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_default", value: isDefault ? "1" : "0"))
+        }
+        if let isPermanent {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_permanent", value: isPermanent ? "1" : "0"))
+        }
+        if let isSemiPermanent {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_semi_permanent", value: isSemiPermanent ? "1" : "0"))
+        }
+        return TS3SingleCommand(name: "channeledit", parameters: params)
+    }
+
     static func serverEditCommand(for edit: TS3ServerEdit) -> TS3SingleCommand {
         var params: [TS3CommandParameter] = []
         func appendParameter(_ params: inout [TS3CommandParameter], name: String, value: String?) {
@@ -2787,6 +2838,71 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_weblist_enabled", value: edit.isWeblistEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
         return TS3SingleCommand(name: "serveredit", parameters: params)
+    }
+
+    private static func appendChannelParameters(
+        to params: inout [TS3CommandParameter],
+        phoneticName: String?,
+        topic: String?,
+        description: String?,
+        password: String?,
+        neededTalkPower: Int?,
+        neededSubscribePower: Int?,
+        codec: Int?,
+        codecQuality: Int?,
+        codecLatencyFactor: Int?,
+        isCodecUnencrypted: Bool?,
+        deleteDelaySeconds: Int?,
+        maxClients: Int?,
+        maxFamilyClients: Int?,
+        maxClientsUnlimited: Bool?,
+        maxFamilyClientsUnlimited: Bool?,
+        maxFamilyClientsInherited: Bool?,
+        iconId: Int?
+    ) {
+        if let phoneticName { params.append(TS3CommandSingleParameter(name: "channel_name_phonetic", value: phoneticName)) }
+        if let topic { params.append(TS3CommandSingleParameter(name: "channel_topic", value: topic)) }
+        if let description { params.append(TS3CommandSingleParameter(name: "channel_description", value: description)) }
+        if let password { params.append(TS3CommandSingleParameter(name: "channel_password", value: password)) }
+        if let neededTalkPower {
+            params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))
+        }
+        if let neededSubscribePower {
+            params.append(TS3CommandSingleParameter(name: "channel_needed_subscribe_power", value: String(neededSubscribePower)))
+        }
+        if let codec {
+            params.append(TS3CommandSingleParameter(name: "channel_codec", value: String(codec)))
+        }
+        if let codecQuality {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_quality", value: String(codecQuality)))
+        }
+        if let codecLatencyFactor {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_latency_factor", value: String(codecLatencyFactor)))
+        }
+        if let isCodecUnencrypted {
+            params.append(TS3CommandSingleParameter(name: "channel_codec_is_unencrypted", value: isCodecUnencrypted ? "1" : "0"))
+        }
+        if let deleteDelaySeconds {
+            params.append(TS3CommandSingleParameter(name: "channel_delete_delay", value: String(deleteDelaySeconds)))
+        }
+        if let maxClients {
+            params.append(TS3CommandSingleParameter(name: "channel_maxclients", value: String(maxClients)))
+        }
+        if let maxFamilyClients {
+            params.append(TS3CommandSingleParameter(name: "channel_maxfamilyclients", value: String(maxFamilyClients)))
+        }
+        if let maxClientsUnlimited {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_maxclients_unlimited", value: maxClientsUnlimited ? "1" : "0"))
+        }
+        if let maxFamilyClientsUnlimited {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_unlimited", value: maxFamilyClientsUnlimited ? "1" : "0"))
+        }
+        if let maxFamilyClientsInherited {
+            params.append(TS3CommandSingleParameter(name: "channel_flag_maxfamilyclients_inherited", value: maxFamilyClientsInherited ? "1" : "0"))
+        }
+        if let iconId {
+            params.append(TS3CommandSingleParameter(name: "channel_icon_id", value: String(iconId)))
+        }
     }
 }
 
