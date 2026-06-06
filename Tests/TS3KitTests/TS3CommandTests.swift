@@ -129,6 +129,50 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(command.build(), "banadd uid=abc\\/def banreason=spam\\s\\p\\sabuse time=600")
     }
 
+    func testServerEditCommandBuildsOfficialVirtualServerParameters() {
+        let edit = TS3ServerEdit(
+            name: "Clan Server",
+            welcomeMessage: "Welcome | Read rules",
+            maxClients: 64,
+            reservedSlots: 4,
+            password: "guest pass",
+            hostMessage: "Maintenance soon",
+            hostMessageMode: 2,
+            hostBannerURL: "https://example.com",
+            hostBannerGraphicsURL: "https://example.com/banner.png",
+            hostButtonTooltip: "Website",
+            hostButtonURL: "https://example.com/forum",
+            hostButtonGraphicsURL: "https://example.com/button.png",
+            iconId: 12345,
+            downloadQuota: 1_048_576,
+            uploadQuota: 2_097_152,
+            complainAutoBanCount: 5,
+            complainAutoBanTime: 600,
+            complainRemoveTime: 86_400,
+            minClientsInChannelBeforeForcedSilence: 12,
+            prioritySpeakerDimmModificator: 0.5,
+            antiFloodPointsTickReduce: 25,
+            antiFloodPointsNeededCommandBlock: 150,
+            antiFloodPointsNeededIPBlock: 250,
+            isWeblistEnabled: true,
+            codecEncryptionMode: 1
+        )
+
+        let command = TS3Client.serverEditCommand(for: edit)
+
+        XCTAssertEqual(
+            command.build(),
+            "serveredit virtualserver_name=Clan\\sServer virtualserver_welcomemessage=Welcome\\s\\p\\sRead\\srules virtualserver_maxclients=64 virtualserver_reserved_slots=4 virtualserver_password=guest\\spass virtualserver_hostmessage=Maintenance\\ssoon virtualserver_hostmessage_mode=2 virtualserver_hostbanner_url=https:\\/\\/example.com virtualserver_hostbanner_gfx_url=https:\\/\\/example.com\\/banner.png virtualserver_hostbutton_tooltip=Website virtualserver_hostbutton_url=https:\\/\\/example.com\\/forum virtualserver_hostbutton_gfx_url=https:\\/\\/example.com\\/button.png virtualserver_icon_id=12345 virtualserver_download_quota=1048576 virtualserver_upload_quota=2097152 virtualserver_complain_autoban_count=5 virtualserver_complain_autoban_time=600 virtualserver_complain_remove_time=86400 virtualserver_min_clients_in_channel_before_forced_silence=12 virtualserver_priority_speaker_dimm_modificator=0.5 virtualserver_antiflood_points_tick_reduce=25 virtualserver_antiflood_points_needed_command_block=150 virtualserver_antiflood_points_needed_ip_block=250 virtualserver_weblist_enabled=1 virtualserver_codec_encryption_mode=1"
+        )
+    }
+
+    func testEmptyServerEditCommandBuildsNoParameters() {
+        let command = TS3Client.serverEditCommand(for: TS3ServerEdit())
+
+        XCTAssertEqual(command.build(), "serveredit")
+        XCTAssertTrue(command.parameters.isEmpty)
+    }
+
     func testListCommandsBuildOptionsForNamesAndPermissionIds() {
         let groupClients = TS3SingleCommand(name: "servergroupclientlist", parameters: [
             TS3CommandSingleParameter(name: "sgid", value: "6"),

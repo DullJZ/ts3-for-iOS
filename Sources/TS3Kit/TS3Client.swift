@@ -238,34 +238,9 @@ public final class TS3Client {
     }
 
     public func editServer(_ edit: TS3ServerEdit) async throws {
-        var params: [TS3CommandParameter] = []
-        appendParameter(&params, name: "virtualserver_name", value: edit.name)
-        appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
-        appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
-        appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))
-        appendParameter(&params, name: "virtualserver_password", value: edit.password)
-        appendParameter(&params, name: "virtualserver_hostmessage", value: edit.hostMessage)
-        appendParameter(&params, name: "virtualserver_hostmessage_mode", value: edit.hostMessageMode.map(String.init))
-        appendParameter(&params, name: "virtualserver_hostbanner_url", value: edit.hostBannerURL)
-        appendParameter(&params, name: "virtualserver_hostbanner_gfx_url", value: edit.hostBannerGraphicsURL)
-        appendParameter(&params, name: "virtualserver_hostbutton_tooltip", value: edit.hostButtonTooltip)
-        appendParameter(&params, name: "virtualserver_hostbutton_url", value: edit.hostButtonURL)
-        appendParameter(&params, name: "virtualserver_hostbutton_gfx_url", value: edit.hostButtonGraphicsURL)
-        appendParameter(&params, name: "virtualserver_icon_id", value: edit.iconId.map(String.init))
-        appendParameter(&params, name: "virtualserver_download_quota", value: edit.downloadQuota.map(String.init))
-        appendParameter(&params, name: "virtualserver_upload_quota", value: edit.uploadQuota.map(String.init))
-        appendParameter(&params, name: "virtualserver_complain_autoban_count", value: edit.complainAutoBanCount.map(String.init))
-        appendParameter(&params, name: "virtualserver_complain_autoban_time", value: edit.complainAutoBanTime.map(String.init))
-        appendParameter(&params, name: "virtualserver_complain_remove_time", value: edit.complainRemoveTime.map(String.init))
-        appendParameter(&params, name: "virtualserver_min_clients_in_channel_before_forced_silence", value: edit.minClientsInChannelBeforeForcedSilence.map(String.init))
-        appendParameter(&params, name: "virtualserver_priority_speaker_dimm_modificator", value: edit.prioritySpeakerDimmModificator.map { "\($0)" })
-        appendParameter(&params, name: "virtualserver_antiflood_points_tick_reduce", value: edit.antiFloodPointsTickReduce.map(String.init))
-        appendParameter(&params, name: "virtualserver_antiflood_points_needed_command_block", value: edit.antiFloodPointsNeededCommandBlock.map(String.init))
-        appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
-        appendParameter(&params, name: "virtualserver_weblist_enabled", value: edit.isWeblistEnabled.map { $0 ? "1" : "0" })
-        appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
-        guard !params.isEmpty else { return }
-        _ = try await execute(TS3SingleCommand(name: "serveredit", parameters: params))
+        let command = Self.serverEditCommand(for: edit)
+        guard !command.parameters.isEmpty else { return }
+        _ = try await execute(command)
         try await refreshServerInfo()
     }
 
@@ -2775,6 +2750,43 @@ private extension TS3Client {
             keyOffset = Int(UInt32(bigEndian: offsetBytes.withUnsafeBytes { $0.load(as: UInt32.self) }))
         }
         return try TS3Identity(privateKeyBytes: privateKeyBytes, keyOffset: keyOffset)
+    }
+}
+
+extension TS3Client {
+    static func serverEditCommand(for edit: TS3ServerEdit) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = []
+        func appendParameter(_ params: inout [TS3CommandParameter], name: String, value: String?) {
+            guard let value else { return }
+            params.append(TS3CommandSingleParameter(name: name, value: value))
+        }
+
+        appendParameter(&params, name: "virtualserver_name", value: edit.name)
+        appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
+        appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
+        appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))
+        appendParameter(&params, name: "virtualserver_password", value: edit.password)
+        appendParameter(&params, name: "virtualserver_hostmessage", value: edit.hostMessage)
+        appendParameter(&params, name: "virtualserver_hostmessage_mode", value: edit.hostMessageMode.map(String.init))
+        appendParameter(&params, name: "virtualserver_hostbanner_url", value: edit.hostBannerURL)
+        appendParameter(&params, name: "virtualserver_hostbanner_gfx_url", value: edit.hostBannerGraphicsURL)
+        appendParameter(&params, name: "virtualserver_hostbutton_tooltip", value: edit.hostButtonTooltip)
+        appendParameter(&params, name: "virtualserver_hostbutton_url", value: edit.hostButtonURL)
+        appendParameter(&params, name: "virtualserver_hostbutton_gfx_url", value: edit.hostButtonGraphicsURL)
+        appendParameter(&params, name: "virtualserver_icon_id", value: edit.iconId.map(String.init))
+        appendParameter(&params, name: "virtualserver_download_quota", value: edit.downloadQuota.map(String.init))
+        appendParameter(&params, name: "virtualserver_upload_quota", value: edit.uploadQuota.map(String.init))
+        appendParameter(&params, name: "virtualserver_complain_autoban_count", value: edit.complainAutoBanCount.map(String.init))
+        appendParameter(&params, name: "virtualserver_complain_autoban_time", value: edit.complainAutoBanTime.map(String.init))
+        appendParameter(&params, name: "virtualserver_complain_remove_time", value: edit.complainRemoveTime.map(String.init))
+        appendParameter(&params, name: "virtualserver_min_clients_in_channel_before_forced_silence", value: edit.minClientsInChannelBeforeForcedSilence.map(String.init))
+        appendParameter(&params, name: "virtualserver_priority_speaker_dimm_modificator", value: edit.prioritySpeakerDimmModificator.map { "\($0)" })
+        appendParameter(&params, name: "virtualserver_antiflood_points_tick_reduce", value: edit.antiFloodPointsTickReduce.map(String.init))
+        appendParameter(&params, name: "virtualserver_antiflood_points_needed_command_block", value: edit.antiFloodPointsNeededCommandBlock.map(String.init))
+        appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
+        appendParameter(&params, name: "virtualserver_weblist_enabled", value: edit.isWeblistEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
+        return TS3SingleCommand(name: "serveredit", parameters: params)
     }
 }
 
