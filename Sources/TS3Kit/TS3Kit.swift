@@ -73,6 +73,8 @@ public struct TS3ServerInfo {
     public let uptimeSeconds: Int?
     public let welcomeMessage: String?
     public let passwordProtected: Bool
+    /// The phonetic virtual server name used by clients with text-to-speech support.
+    public let phoneticName: String?
     /// The virtual server runtime status, such as online.
     public let status: String?
     /// The machine id associated with the virtual server.
@@ -137,11 +139,17 @@ public struct TS3ServerInfo {
     public let hostMessageMode: Int?
     public let hostBannerURL: String?
     public let hostBannerGraphicsURL: String?
+    /// How clients should scale the host banner graphic.
+    public let hostBannerMode: Int?
     public let hostButtonTooltip: String?
     public let hostButtonURL: String?
     public let hostButtonGraphicsURL: String?
     /// The virtual server icon id reported by the server.
     public let iconId: Int?
+    /// Required identity security level for clients joining the server.
+    public let neededIdentitySecurityLevel: Int?
+    /// Minimum TeamSpeak client version required by the server.
+    public let minClientVersion: Int?
 
     /// Creates a virtual server information snapshot.
     public init(
@@ -158,6 +166,7 @@ public struct TS3ServerInfo {
         uptimeSeconds: Int?,
         welcomeMessage: String?,
         passwordProtected: Bool = false,
+        phoneticName: String? = nil,
         status: String? = nil,
         machineId: String? = nil,
         codecEncryptionMode: Int? = nil,
@@ -192,10 +201,13 @@ public struct TS3ServerInfo {
         hostMessageMode: Int? = nil,
         hostBannerURL: String? = nil,
         hostBannerGraphicsURL: String? = nil,
+        hostBannerMode: Int? = nil,
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
         hostButtonGraphicsURL: String? = nil,
-        iconId: Int? = nil
+        iconId: Int? = nil,
+        neededIdentitySecurityLevel: Int? = nil,
+        minClientVersion: Int? = nil
     ) {
         self.uniqueIdentifier = uniqueIdentifier
         self.name = name
@@ -210,6 +222,7 @@ public struct TS3ServerInfo {
         self.uptimeSeconds = uptimeSeconds
         self.welcomeMessage = welcomeMessage
         self.passwordProtected = passwordProtected
+        self.phoneticName = phoneticName
         self.status = status
         self.machineId = machineId
         self.codecEncryptionMode = codecEncryptionMode
@@ -244,10 +257,13 @@ public struct TS3ServerInfo {
         self.hostMessageMode = hostMessageMode
         self.hostBannerURL = hostBannerURL
         self.hostBannerGraphicsURL = hostBannerGraphicsURL
+        self.hostBannerMode = hostBannerMode
         self.hostButtonTooltip = hostButtonTooltip
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
         self.iconId = iconId
+        self.neededIdentitySecurityLevel = neededIdentitySecurityLevel
+        self.minClientVersion = minClientVersion
     }
 }
 
@@ -333,6 +349,7 @@ public struct TS3ServerLogEntry: Identifiable {
 
 public struct TS3ServerEdit {
     public var name: String?
+    public var phoneticName: String?
     public var welcomeMessage: String?
     public var maxClients: Int?
     public var reservedSlots: Int?
@@ -341,6 +358,7 @@ public struct TS3ServerEdit {
     public var hostMessageMode: Int?
     public var hostBannerURL: String?
     public var hostBannerGraphicsURL: String?
+    public var hostBannerMode: Int?
     public var hostButtonTooltip: String?
     public var hostButtonURL: String?
     public var hostButtonGraphicsURL: String?
@@ -360,10 +378,13 @@ public struct TS3ServerEdit {
     public var defaultServerGroupId: Int?
     public var defaultChannelGroupId: Int?
     public var defaultChannelAdminGroupId: Int?
+    public var neededIdentitySecurityLevel: Int?
+    public var minClientVersion: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
     public init(
         name: String? = nil,
+        phoneticName: String? = nil,
         welcomeMessage: String? = nil,
         maxClients: Int? = nil,
         reservedSlots: Int? = nil,
@@ -372,6 +393,7 @@ public struct TS3ServerEdit {
         hostMessageMode: Int? = nil,
         hostBannerURL: String? = nil,
         hostBannerGraphicsURL: String? = nil,
+        hostBannerMode: Int? = nil,
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
         hostButtonGraphicsURL: String? = nil,
@@ -390,9 +412,12 @@ public struct TS3ServerEdit {
         codecEncryptionMode: Int? = nil,
         defaultServerGroupId: Int? = nil,
         defaultChannelGroupId: Int? = nil,
-        defaultChannelAdminGroupId: Int? = nil
+        defaultChannelAdminGroupId: Int? = nil,
+        neededIdentitySecurityLevel: Int? = nil,
+        minClientVersion: Int? = nil
     ) {
         self.name = name
+        self.phoneticName = phoneticName
         self.welcomeMessage = welcomeMessage
         self.maxClients = maxClients
         self.reservedSlots = reservedSlots
@@ -401,6 +426,7 @@ public struct TS3ServerEdit {
         self.hostMessageMode = hostMessageMode
         self.hostBannerURL = hostBannerURL
         self.hostBannerGraphicsURL = hostBannerGraphicsURL
+        self.hostBannerMode = hostBannerMode
         self.hostButtonTooltip = hostButtonTooltip
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
@@ -420,6 +446,8 @@ public struct TS3ServerEdit {
         self.defaultServerGroupId = defaultServerGroupId
         self.defaultChannelGroupId = defaultChannelGroupId
         self.defaultChannelAdminGroupId = defaultChannelAdminGroupId
+        self.neededIdentitySecurityLevel = neededIdentitySecurityLevel
+        self.minClientVersion = minClientVersion
     }
 }
 

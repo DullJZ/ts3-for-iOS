@@ -2912,6 +2912,7 @@ extension TS3Client {
         }
 
         appendParameter(&params, name: "virtualserver_name", value: edit.name)
+        appendParameter(&params, name: "virtualserver_name_phonetic", value: edit.phoneticName)
         appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
         appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
         appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))
@@ -2920,6 +2921,7 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_hostmessage_mode", value: edit.hostMessageMode.map(String.init))
         appendParameter(&params, name: "virtualserver_hostbanner_url", value: edit.hostBannerURL)
         appendParameter(&params, name: "virtualserver_hostbanner_gfx_url", value: edit.hostBannerGraphicsURL)
+        appendParameter(&params, name: "virtualserver_hostbanner_mode", value: edit.hostBannerMode.map(String.init))
         appendParameter(&params, name: "virtualserver_hostbutton_tooltip", value: edit.hostButtonTooltip)
         appendParameter(&params, name: "virtualserver_hostbutton_url", value: edit.hostButtonURL)
         appendParameter(&params, name: "virtualserver_hostbutton_gfx_url", value: edit.hostButtonGraphicsURL)
@@ -2939,6 +2941,8 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_default_server_group", value: edit.defaultServerGroupId.map(String.init))
         appendParameter(&params, name: "virtualserver_default_channel_group", value: edit.defaultChannelGroupId.map(String.init))
         appendParameter(&params, name: "virtualserver_default_channel_admin_group", value: edit.defaultChannelAdminGroupId.map(String.init))
+        appendParameter(&params, name: "virtualserver_needed_identity_security_level", value: edit.neededIdentitySecurityLevel.map(String.init))
+        appendParameter(&params, name: "virtualserver_min_client_version", value: edit.minClientVersion.map(String.init))
         return TS3SingleCommand(name: "serveredit", parameters: params)
     }
 
@@ -3316,6 +3320,7 @@ private extension TS3Client {
             uptimeSeconds: intValue(command, "virtualserver_uptime"),
             welcomeMessage: command.get("virtualserver_welcomemessage")?.value,
             passwordProtected: boolValue(command, "virtualserver_flag_password"),
+            phoneticName: command.get("virtualserver_name_phonetic")?.value,
             status: command.get("virtualserver_status")?.value,
             machineId: command.get("virtualserver_machine_id")?.value,
             codecEncryptionMode: intValue(command, "virtualserver_codec_encryption_mode"),
@@ -3350,10 +3355,13 @@ private extension TS3Client {
             hostMessageMode: intValue(command, "virtualserver_hostmessage_mode"),
             hostBannerURL: command.get("virtualserver_hostbanner_url")?.value,
             hostBannerGraphicsURL: command.get("virtualserver_hostbanner_gfx_url")?.value,
+            hostBannerMode: intValue(command, "virtualserver_hostbanner_mode"),
             hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
             hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
             hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,
-            iconId: intValue(command, "virtualserver_icon_id")
+            iconId: intValue(command, "virtualserver_icon_id"),
+            neededIdentitySecurityLevel: intValue(command, "virtualserver_needed_identity_security_level"),
+            minClientVersion: intValue(command, "virtualserver_min_client_version")
         )
     }
 

@@ -2259,6 +2259,7 @@ struct TS3ServerInfoSummary {
     var uptimeSeconds: Int?
     var welcomeMessage: String?
     var passwordProtected: Bool
+    var phoneticName: String?
     var status: String?
     var machineId: String?
     var codecEncryptionMode: Int?
@@ -2293,11 +2294,14 @@ struct TS3ServerInfoSummary {
     var hostMessageMode: Int?
     var hostBannerURL: String?
     var hostBannerGraphicsURL: String?
+    var hostBannerMode: Int?
     var hostButtonTooltip: String?
     var hostButtonURL: String?
     var hostButtonGraphicsURL: String?
     var iconId: Int?
     var iconURL: URL?
+    var neededIdentitySecurityLevel: Int?
+    var minClientVersion: Int?
 
     static let empty = TS3ServerInfoSummary(
         name: "",
@@ -2313,6 +2317,7 @@ struct TS3ServerInfoSummary {
         uptimeSeconds: nil,
         welcomeMessage: nil,
         passwordProtected: false,
+        phoneticName: nil,
         status: nil,
         machineId: nil,
         codecEncryptionMode: nil,
@@ -2347,11 +2352,14 @@ struct TS3ServerInfoSummary {
         hostMessageMode: nil,
         hostBannerURL: nil,
         hostBannerGraphicsURL: nil,
+        hostBannerMode: nil,
         hostButtonTooltip: nil,
         hostButtonURL: nil,
         hostButtonGraphicsURL: nil,
         iconId: nil,
-        iconURL: nil
+        iconURL: nil,
+        neededIdentitySecurityLevel: nil,
+        minClientVersion: nil
     )
 }
 
@@ -2404,6 +2412,32 @@ enum TS3HostMessageMode: Int, CaseIterable, Identifiable {
 
     static func title(for value: Int) -> String {
         if let mode = TS3HostMessageMode(rawValue: value) {
+            return "\(mode.title) (\(value))"
+        }
+        return "Unknown (\(value))"
+    }
+}
+
+enum TS3HostBannerMode: Int, CaseIterable, Identifiable {
+    case noAdjust = 0
+    case ignoreAspect = 1
+    case keepAspect = 2
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .noAdjust:
+            return "No Adjustment"
+        case .ignoreAspect:
+            return "Ignore Aspect Ratio"
+        case .keepAspect:
+            return "Keep Aspect Ratio"
+        }
+    }
+
+    static func title(for value: Int) -> String {
+        if let mode = TS3HostBannerMode(rawValue: value) {
             return "\(mode.title) (\(value))"
         }
         return "Unknown (\(value))"
@@ -5876,6 +5910,7 @@ final class TS3AppModel: ObservableObject {
 
     func editServerSettings(
         name: String,
+        phoneticName: String,
         welcomeMessage: String,
         maxClients: Int?,
         reservedSlots: Int?,
@@ -5884,6 +5919,7 @@ final class TS3AppModel: ObservableObject {
         hostMessageMode: Int?,
         hostBannerURL: String,
         hostBannerGraphicsURL: String,
+        hostBannerMode: Int?,
         hostButtonTooltip: String,
         hostButtonURL: String,
         hostButtonGraphicsURL: String,
@@ -5902,10 +5938,13 @@ final class TS3AppModel: ObservableObject {
         codecEncryptionMode: Int?,
         defaultServerGroupId: Int?,
         defaultChannelGroupId: Int?,
-        defaultChannelAdminGroupId: Int?
+        defaultChannelAdminGroupId: Int?,
+        neededIdentitySecurityLevel: Int?,
+        minClientVersion: Int?
     ) {
         let edit = TS3ServerEdit(
             name: trimmedValue(name),
+            phoneticName: trimmedValue(phoneticName),
             welcomeMessage: welcomeMessage.trimmingCharacters(in: .whitespacesAndNewlines),
             maxClients: maxClients,
             reservedSlots: reservedSlots,
@@ -5914,6 +5953,7 @@ final class TS3AppModel: ObservableObject {
             hostMessageMode: hostMessageMode,
             hostBannerURL: hostBannerURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostBannerGraphicsURL: hostBannerGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
+            hostBannerMode: hostBannerMode,
             hostButtonTooltip: hostButtonTooltip.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonURL: hostButtonURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonGraphicsURL: hostButtonGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -5932,7 +5972,9 @@ final class TS3AppModel: ObservableObject {
             codecEncryptionMode: codecEncryptionMode,
             defaultServerGroupId: defaultServerGroupId,
             defaultChannelGroupId: defaultChannelGroupId,
-            defaultChannelAdminGroupId: defaultChannelAdminGroupId
+            defaultChannelAdminGroupId: defaultChannelAdminGroupId,
+            neededIdentitySecurityLevel: neededIdentitySecurityLevel,
+            minClientVersion: minClientVersion
         )
         runClientCommand { client in
             try await client.editServer(edit)
@@ -12607,6 +12649,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 uptimeSeconds: info.uptimeSeconds,
                 welcomeMessage: info.welcomeMessage,
                 passwordProtected: info.passwordProtected,
+                phoneticName: info.phoneticName,
                 status: info.status,
                 machineId: info.machineId,
                 codecEncryptionMode: info.codecEncryptionMode,
@@ -12641,11 +12684,14 @@ extension TS3AppModel: TS3ClientDelegate {
                 hostMessageMode: info.hostMessageMode,
                 hostBannerURL: info.hostBannerURL,
                 hostBannerGraphicsURL: info.hostBannerGraphicsURL,
+                hostBannerMode: info.hostBannerMode,
                 hostButtonTooltip: info.hostButtonTooltip,
                 hostButtonURL: info.hostButtonURL,
                 hostButtonGraphicsURL: info.hostButtonGraphicsURL,
                 iconId: info.iconId,
-                iconURL: info.iconId.flatMap { self.iconURLs[$0] }
+                iconURL: info.iconId.flatMap { self.iconURLs[$0] },
+                neededIdentitySecurityLevel: info.neededIdentitySecurityLevel,
+                minClientVersion: info.minClientVersion
             )
             self.refreshMissingIcons()
         }

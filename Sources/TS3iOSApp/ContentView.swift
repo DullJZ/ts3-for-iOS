@@ -9085,6 +9085,7 @@ struct ServerInformationSheet: View {
 
                 Section(header: Text("Overview")) {
                     ServerInfoDetailRow(label: "Name", value: model.serverInfo.name)
+                    ServerInfoDetailRow(label: "Phonetic Name", value: model.serverInfo.phoneticName)
                     ServerInfoDetailRow(label: "Status", value: model.serverInfo.status)
                     ServerInfoDetailRow(label: "Unique ID", value: model.serverInfo.uniqueIdentifier, monospaced: true)
                     ServerInfoDetailRow(label: "Machine ID", value: model.serverInfo.machineId, monospaced: true)
@@ -9124,6 +9125,8 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Reserved Slots", value: model.serverInfo.reservedSlots.map(String.init))
                     ServerInfoDetailRow(label: "Download Quota", value: model.serverInfo.downloadQuota.map(Self.byteText))
                     ServerInfoDetailRow(label: "Upload Quota", value: model.serverInfo.uploadQuota.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Needed Identity Security Level", value: model.serverInfo.neededIdentitySecurityLevel.map(String.init))
+                    ServerInfoDetailRow(label: "Minimum Client Version", value: model.serverInfo.minClientVersion.map(String.init))
                     ServerInfoDetailRow(label: "File Transfer Port", value: model.serverInfo.fileTransferPort.map(String.init))
                     ServerInfoDetailRow(label: "File Base", value: model.serverInfo.fileBase)
                     ServerInfoDetailRow(label: "Codec Encryption", value: model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title))
@@ -9176,6 +9179,7 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Message Mode", value: model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title))
                     ServerInfoDetailRow(label: "Banner URL", value: model.serverInfo.hostBannerURL)
                     ServerInfoDetailRow(label: "Banner Graphic", value: model.serverInfo.hostBannerGraphicsURL)
+                    ServerInfoDetailRow(label: "Banner Mode", value: model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title))
                     ServerInfoDetailRow(label: "Button Tooltip", value: model.serverInfo.hostButtonTooltip)
                     ServerInfoDetailRow(label: "Button URL", value: model.serverInfo.hostButtonURL)
                     ServerInfoDetailRow(label: "Button Graphic", value: model.serverInfo.hostButtonGraphicsURL)
@@ -9216,6 +9220,7 @@ struct ServerInformationSheet: View {
     private var informationSnapshot: String {
         var rows: [(String, String?)] = []
         rows.append(("Name", model.serverInfo.name))
+        rows.append(("Phonetic Name", model.serverInfo.phoneticName))
         rows.append(("Status", model.serverInfo.status))
         rows.append(("Unique ID", model.serverInfo.uniqueIdentifier))
         rows.append(("Machine ID", model.serverInfo.machineId))
@@ -9238,6 +9243,8 @@ struct ServerInformationSheet: View {
         rows.append(("Reserved Slots", model.serverInfo.reservedSlots.map(String.init)))
         rows.append(("Download Quota", model.serverInfo.downloadQuota.map(Self.byteText)))
         rows.append(("Upload Quota", model.serverInfo.uploadQuota.map(Self.byteText)))
+        rows.append(("Needed Identity Security Level", model.serverInfo.neededIdentitySecurityLevel.map(String.init)))
+        rows.append(("Minimum Client Version", model.serverInfo.minClientVersion.map(String.init)))
         rows.append(("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)))
         rows.append(("File Base", model.serverInfo.fileBase))
         rows.append(("Codec Encryption", model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title)))
@@ -9275,6 +9282,7 @@ struct ServerInformationSheet: View {
         rows.append(("Message Mode", model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title)))
         rows.append(("Banner URL", model.serverInfo.hostBannerURL))
         rows.append(("Banner Graphic", model.serverInfo.hostBannerGraphicsURL))
+        rows.append(("Banner Mode", model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title)))
         rows.append(("Button Tooltip", model.serverInfo.hostButtonTooltip))
         rows.append(("Button URL", model.serverInfo.hostButtonURL))
         rows.append(("Button Graphic", model.serverInfo.hostButtonGraphicsURL))
@@ -11952,6 +11960,7 @@ struct DatabaseClientDetailRows: View {
 struct ServerSettingsEditorSheet: View {
     private struct ServerSettingsDraft: Codable {
         var name: String
+        var phoneticName: String?
         var welcomeMessage: String
         var maxClients: String
         var reservedSlots: String
@@ -11961,6 +11970,7 @@ struct ServerSettingsEditorSheet: View {
         var hostMessageMode: String
         var hostBannerURL: String
         var hostBannerGraphicsURL: String
+        var hostBannerMode: String?
         var hostButtonTooltip: String
         var hostButtonURL: String
         var hostButtonGraphicsURL: String
@@ -11980,11 +11990,14 @@ struct ServerSettingsEditorSheet: View {
         var defaultServerGroupId: String?
         var defaultChannelGroupId: String?
         var defaultChannelAdminGroupId: String?
+        var neededIdentitySecurityLevel: String?
+        var minClientVersion: String?
     }
 
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
+    @State private var phoneticName = ""
     @State private var welcomeMessage = ""
     @State private var maxClients = ""
     @State private var reservedSlots = ""
@@ -11994,6 +12007,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var hostMessageMode = "0"
     @State private var hostBannerURL = ""
     @State private var hostBannerGraphicsURL = ""
+    @State private var hostBannerMode: Int?
     @State private var hostButtonTooltip = ""
     @State private var hostButtonURL = ""
     @State private var hostButtonGraphicsURL = ""
@@ -12013,6 +12027,8 @@ struct ServerSettingsEditorSheet: View {
     @State private var defaultServerGroupId = ""
     @State private var defaultChannelGroupId = ""
     @State private var defaultChannelAdminGroupId = ""
+    @State private var neededIdentitySecurityLevel = ""
+    @State private var minClientVersion = ""
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
@@ -12041,6 +12057,8 @@ struct ServerSettingsEditorSheet: View {
 
                 Section(header: Text("General")) {
                     TextField("Server Name", text: $name)
+                        .ts3PlainTextField()
+                    TextField("Phonetic Name", text: $phoneticName)
                         .ts3PlainTextField()
                     TextField("Welcome Message", text: $welcomeMessage)
                         .ts3PlainTextField()
@@ -12087,6 +12105,16 @@ struct ServerSettingsEditorSheet: View {
                         .ts3URLTextField()
                     TextField("Banner Image URL", text: $hostBannerGraphicsURL)
                         .ts3URLTextField()
+                    Picker("Mode", selection: $hostBannerMode) {
+                        Text("Unchanged").tag(Int?.none)
+                        ForEach(TS3HostBannerMode.allCases) { mode in
+                            Text(mode.title).tag(Optional(mode.rawValue))
+                        }
+                        if let hostBannerMode,
+                           TS3HostBannerMode(rawValue: hostBannerMode) == nil {
+                            Text(TS3HostBannerMode.title(for: hostBannerMode)).tag(Optional(hostBannerMode))
+                        }
+                    }
                 }
 
                 Section(header: Text("Host Button")) {
@@ -12103,6 +12131,12 @@ struct ServerSettingsEditorSheet: View {
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     TextField("Upload Quota Bytes", text: $uploadQuota)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Needed Identity Security Level", text: $neededIdentitySecurityLevel)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Minimum Client Version", text: $minClientVersion)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     Picker("Codec Encryption", selection: $codecEncryptionMode) {
@@ -12252,6 +12286,7 @@ struct ServerSettingsEditorSheet: View {
     private var currentDraft: ServerSettingsDraft {
         ServerSettingsDraft(
             name: name,
+            phoneticName: phoneticName,
             welcomeMessage: welcomeMessage,
             maxClients: maxClients,
             reservedSlots: reservedSlots,
@@ -12261,6 +12296,7 @@ struct ServerSettingsEditorSheet: View {
             hostMessageMode: hostMessageMode,
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,
+            hostBannerMode: hostBannerMode.map(String.init) ?? "",
             hostButtonTooltip: hostButtonTooltip,
             hostButtonURL: hostButtonURL,
             hostButtonGraphicsURL: hostButtonGraphicsURL,
@@ -12279,7 +12315,9 @@ struct ServerSettingsEditorSheet: View {
             codecEncryptionMode: codecEncryptionMode.map(String.init) ?? "",
             defaultServerGroupId: defaultServerGroupId,
             defaultChannelGroupId: defaultChannelGroupId,
-            defaultChannelAdminGroupId: defaultChannelAdminGroupId
+            defaultChannelAdminGroupId: defaultChannelAdminGroupId,
+            neededIdentitySecurityLevel: neededIdentitySecurityLevel,
+            minClientVersion: minClientVersion
         )
     }
 
@@ -12287,6 +12325,7 @@ struct ServerSettingsEditorSheet: View {
         let draft = currentDraft
         var rows: [(String, String)] = [
             ("Server Name", draft.name),
+            ("Phonetic Name", draft.phoneticName ?? ""),
             ("Welcome Message", draft.welcomeMessage),
             ("Max Clients", draft.maxClients),
             ("Reserved Slots", draft.reservedSlots),
@@ -12297,11 +12336,14 @@ struct ServerSettingsEditorSheet: View {
             ("Host Message", draft.hostMessage),
             ("Banner Link URL", draft.hostBannerURL),
             ("Banner Image URL", draft.hostBannerGraphicsURL),
+            ("Banner Mode", hostBannerModeTitle(draft.hostBannerMode ?? "")),
             ("Host Button Tooltip", draft.hostButtonTooltip),
             ("Host Button URL", draft.hostButtonURL),
             ("Host Button Image URL", draft.hostButtonGraphicsURL),
             ("Download Quota Bytes", draft.downloadQuota),
             ("Upload Quota Bytes", draft.uploadQuota),
+            ("Needed Identity Security Level", draft.neededIdentitySecurityLevel ?? ""),
+            ("Minimum Client Version", draft.minClientVersion ?? ""),
             ("Codec Encryption Mode", codecEncryptionModeTitle(draft.codecEncryptionMode)),
             ("Default Server Group", groupSnapshotTitle(draft.defaultServerGroupId ?? "", groups: model.serverGroups)),
             ("Default Channel Group", groupSnapshotTitle(draft.defaultChannelGroupId ?? "", groups: model.channelGroups)),
@@ -12325,6 +12367,7 @@ struct ServerSettingsEditorSheet: View {
 
     private func loadCurrentValues() {
         name = model.serverInfo.name
+        phoneticName = model.serverInfo.phoneticName ?? ""
         welcomeMessage = model.serverInfo.welcomeMessage ?? ""
         maxClients = model.serverInfo.maxClients.map(String.init) ?? ""
         reservedSlots = model.serverInfo.reservedSlots.map(String.init) ?? ""
@@ -12334,12 +12377,15 @@ struct ServerSettingsEditorSheet: View {
         hostMessageMode = model.serverInfo.hostMessageMode.map(String.init) ?? "0"
         hostBannerURL = model.serverInfo.hostBannerURL ?? ""
         hostBannerGraphicsURL = model.serverInfo.hostBannerGraphicsURL ?? ""
+        hostBannerMode = model.serverInfo.hostBannerMode
         hostButtonTooltip = model.serverInfo.hostButtonTooltip ?? ""
         hostButtonURL = model.serverInfo.hostButtonURL ?? ""
         hostButtonGraphicsURL = model.serverInfo.hostButtonGraphicsURL ?? ""
         iconId = model.serverInfo.iconId.map(String.init) ?? ""
         downloadQuota = model.serverInfo.downloadQuota.map(String.init) ?? ""
         uploadQuota = model.serverInfo.uploadQuota.map(String.init) ?? ""
+        neededIdentitySecurityLevel = model.serverInfo.neededIdentitySecurityLevel.map(String.init) ?? ""
+        minClientVersion = model.serverInfo.minClientVersion.map(String.init) ?? ""
         complainAutoBanCount = model.serverInfo.complainAutoBanCount.map(String.init) ?? ""
         complainAutoBanTime = model.serverInfo.complainAutoBanTime.map(String.init) ?? ""
         complainRemoveTime = model.serverInfo.complainRemoveTime.map(String.init) ?? ""
@@ -12363,6 +12409,8 @@ struct ServerSettingsEditorSheet: View {
             && isOptionalInt(iconId)
             && isOptionalInt64(downloadQuota)
             && isOptionalInt64(uploadQuota)
+            && isOptionalInt(neededIdentitySecurityLevel)
+            && isOptionalInt(minClientVersion)
             && isOptionalInt(complainAutoBanCount)
             && isOptionalInt(complainAutoBanTime)
             && isOptionalInt(complainRemoveTime)
@@ -12379,6 +12427,7 @@ struct ServerSettingsEditorSheet: View {
     private func save() {
         model.editServerSettings(
             name: name,
+            phoneticName: phoneticName,
             welcomeMessage: welcomeMessage,
             maxClients: Int(maxClients.trimmingCharacters(in: .whitespacesAndNewlines)),
             reservedSlots: Int(reservedSlots.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -12387,6 +12436,7 @@ struct ServerSettingsEditorSheet: View {
             hostMessageMode: Int(hostMessageMode),
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,
+            hostBannerMode: hostBannerMode,
             hostButtonTooltip: hostButtonTooltip,
             hostButtonURL: hostButtonURL,
             hostButtonGraphicsURL: hostButtonGraphicsURL,
@@ -12405,7 +12455,9 @@ struct ServerSettingsEditorSheet: View {
             codecEncryptionMode: codecEncryptionMode,
             defaultServerGroupId: Int(defaultServerGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
             defaultChannelGroupId: Int(defaultChannelGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
-            defaultChannelAdminGroupId: Int(defaultChannelAdminGroupId.trimmingCharacters(in: .whitespacesAndNewlines))
+            defaultChannelAdminGroupId: Int(defaultChannelAdminGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
+            neededIdentitySecurityLevel: Int(neededIdentitySecurityLevel.trimmingCharacters(in: .whitespacesAndNewlines)),
+            minClientVersion: Int(minClientVersion.trimmingCharacters(in: .whitespacesAndNewlines))
         )
     }
 
@@ -12437,6 +12489,7 @@ struct ServerSettingsEditorSheet: View {
 
     private func applyDraft(_ draft: ServerSettingsDraft) {
         name = draft.name
+        phoneticName = draft.phoneticName ?? ""
         welcomeMessage = draft.welcomeMessage
         maxClients = draft.maxClients
         reservedSlots = draft.reservedSlots
@@ -12446,6 +12499,7 @@ struct ServerSettingsEditorSheet: View {
         hostMessageMode = draft.hostMessageMode
         hostBannerURL = draft.hostBannerURL
         hostBannerGraphicsURL = draft.hostBannerGraphicsURL
+        hostBannerMode = Int((draft.hostBannerMode ?? "").trimmingCharacters(in: .whitespacesAndNewlines))
         hostButtonTooltip = draft.hostButtonTooltip
         hostButtonURL = draft.hostButtonURL
         hostButtonGraphicsURL = draft.hostButtonGraphicsURL
@@ -12465,6 +12519,8 @@ struct ServerSettingsEditorSheet: View {
         defaultServerGroupId = draft.defaultServerGroupId ?? ""
         defaultChannelGroupId = draft.defaultChannelGroupId ?? ""
         defaultChannelAdminGroupId = draft.defaultChannelAdminGroupId ?? ""
+        neededIdentitySecurityLevel = draft.neededIdentitySecurityLevel ?? ""
+        minClientVersion = draft.minClientVersion ?? ""
     }
 
     private func hostMessageModeTitle(_ value: String) -> String {
@@ -12477,6 +12533,12 @@ struct ServerSettingsEditorSheet: View {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let numericValue = Int(trimmed) else { return trimmed }
         return TS3CodecEncryptionMode.title(for: numericValue)
+    }
+
+    private func hostBannerModeTitle(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let numericValue = Int(trimmed) else { return trimmed }
+        return TS3HostBannerMode.title(for: numericValue)
     }
 
     private func weblistTitle(_ value: String) -> String {

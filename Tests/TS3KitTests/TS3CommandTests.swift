@@ -251,6 +251,7 @@ final class TS3CommandTests: XCTestCase {
     func testServerEditCommandBuildsOfficialVirtualServerParameters() {
         let edit = TS3ServerEdit(
             name: "Clan Server",
+            phoneticName: "clan",
             welcomeMessage: "Welcome | Read rules",
             maxClients: 64,
             reservedSlots: 4,
@@ -259,6 +260,7 @@ final class TS3CommandTests: XCTestCase {
             hostMessageMode: 2,
             hostBannerURL: "https://example.com",
             hostBannerGraphicsURL: "https://example.com/banner.png",
+            hostBannerMode: 2,
             hostButtonTooltip: "Website",
             hostButtonURL: "https://example.com/forum",
             hostButtonGraphicsURL: "https://example.com/button.png",
@@ -277,14 +279,16 @@ final class TS3CommandTests: XCTestCase {
             codecEncryptionMode: 1,
             defaultServerGroupId: 8,
             defaultChannelGroupId: 9,
-            defaultChannelAdminGroupId: 10
+            defaultChannelAdminGroupId: 10,
+            neededIdentitySecurityLevel: 24,
+            minClientVersion: 15_000
         )
 
         let command = TS3Client.serverEditCommand(for: edit)
 
         XCTAssertEqual(
             command.build(),
-            "serveredit virtualserver_name=Clan\\sServer virtualserver_welcomemessage=Welcome\\s\\p\\sRead\\srules virtualserver_maxclients=64 virtualserver_reserved_slots=4 virtualserver_password=guest\\spass virtualserver_hostmessage=Maintenance\\ssoon virtualserver_hostmessage_mode=2 virtualserver_hostbanner_url=https:\\/\\/example.com virtualserver_hostbanner_gfx_url=https:\\/\\/example.com\\/banner.png virtualserver_hostbutton_tooltip=Website virtualserver_hostbutton_url=https:\\/\\/example.com\\/forum virtualserver_hostbutton_gfx_url=https:\\/\\/example.com\\/button.png virtualserver_icon_id=12345 virtualserver_download_quota=1048576 virtualserver_upload_quota=2097152 virtualserver_complain_autoban_count=5 virtualserver_complain_autoban_time=600 virtualserver_complain_remove_time=86400 virtualserver_min_clients_in_channel_before_forced_silence=12 virtualserver_priority_speaker_dimm_modificator=0.5 virtualserver_antiflood_points_tick_reduce=25 virtualserver_antiflood_points_needed_command_block=150 virtualserver_antiflood_points_needed_ip_block=250 virtualserver_weblist_enabled=1 virtualserver_codec_encryption_mode=1 virtualserver_default_server_group=8 virtualserver_default_channel_group=9 virtualserver_default_channel_admin_group=10"
+            "serveredit virtualserver_name=Clan\\sServer virtualserver_name_phonetic=clan virtualserver_welcomemessage=Welcome\\s\\p\\sRead\\srules virtualserver_maxclients=64 virtualserver_reserved_slots=4 virtualserver_password=guest\\spass virtualserver_hostmessage=Maintenance\\ssoon virtualserver_hostmessage_mode=2 virtualserver_hostbanner_url=https:\\/\\/example.com virtualserver_hostbanner_gfx_url=https:\\/\\/example.com\\/banner.png virtualserver_hostbanner_mode=2 virtualserver_hostbutton_tooltip=Website virtualserver_hostbutton_url=https:\\/\\/example.com\\/forum virtualserver_hostbutton_gfx_url=https:\\/\\/example.com\\/button.png virtualserver_icon_id=12345 virtualserver_download_quota=1048576 virtualserver_upload_quota=2097152 virtualserver_complain_autoban_count=5 virtualserver_complain_autoban_time=600 virtualserver_complain_remove_time=86400 virtualserver_min_clients_in_channel_before_forced_silence=12 virtualserver_priority_speaker_dimm_modificator=0.5 virtualserver_antiflood_points_tick_reduce=25 virtualserver_antiflood_points_needed_command_block=150 virtualserver_antiflood_points_needed_ip_block=250 virtualserver_weblist_enabled=1 virtualserver_codec_encryption_mode=1 virtualserver_default_server_group=8 virtualserver_default_channel_group=9 virtualserver_default_channel_admin_group=10 virtualserver_needed_identity_security_level=24 virtualserver_min_client_version=15000"
         )
     }
 
