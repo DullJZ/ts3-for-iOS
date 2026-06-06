@@ -570,7 +570,7 @@ extension TS3BanEntrySummary {
     }
 }
 
-struct TS3ComplaintSummary: Identifiable {
+struct TS3ComplaintSummary: Identifiable, Codable {
     let id: String
     let targetClientDatabaseId: Int
     let targetName: String?
@@ -2816,6 +2816,7 @@ final class TS3AppModel: ObservableObject {
         loadChatFilterPresets()
         loadBanResults()
         loadBanFilterPresets()
+        loadComplaintResults()
         loadComplaintFilterPresets()
         loadDatabaseClientFilterPresets()
         loadTemporaryServerPasswordResults()
@@ -4013,7 +4014,6 @@ final class TS3AppModel: ObservableObject {
         clients = []
         unreadPokeCount = 0
         unreadActivityCount = 0
-        complaintEntries = []
         complaintTarget = nil
         databaseClients = []
         databaseSearchResults = []
@@ -8020,6 +8020,7 @@ final class TS3AppModel: ObservableObject {
             await MainActor.run {
                 self.complaintTarget = user
                 self.complaintEntries = self.complaintSummaries(from: entries)
+                self.saveComplaintResults()
             }
         }
     }
@@ -8032,6 +8033,7 @@ final class TS3AppModel: ObservableObject {
             await MainActor.run {
                 self.complaintTarget = user
                 self.complaintEntries = self.complaintSummaries(from: entries)
+                self.saveComplaintResults()
             }
         }
     }
@@ -8075,6 +8077,7 @@ final class TS3AppModel: ObservableObject {
             )
             await MainActor.run {
                 self.complaintEntries.removeAll { $0.id == entry.id }
+                self.saveComplaintResults()
             }
         }
     }
@@ -8089,6 +8092,7 @@ final class TS3AppModel: ObservableObject {
             try await client.deleteAllComplaints(clientDatabaseId: databaseId)
             await MainActor.run {
                 self.complaintEntries = []
+                self.saveComplaintResults()
             }
         }
     }
@@ -8108,10 +8112,12 @@ final class TS3AppModel: ObservableObject {
                 let refreshedEntries = try await client.refreshComplaints(clientDatabaseId: databaseId)
                 await MainActor.run {
                     self.complaintEntries = self.complaintSummaries(from: refreshedEntries)
+                    self.saveComplaintResults()
                 }
             } else {
                 await MainActor.run {
                     self.complaintEntries = []
+                    self.saveComplaintResults()
                 }
             }
         }
@@ -8818,6 +8824,11 @@ final class TS3AppModel: ObservableObject {
     private var complaintFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-complaint-filter-presets.json")
+    }
+
+    private var complaintResultsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-complaint-results.json")
     }
 
     private var databaseClientFilterPresetsURL: URL {
@@ -9879,6 +9890,26 @@ final class TS3AppModel: ObservableObject {
             return
         }
         complaintFilterPresets = sanitizedComplaintFilterPresets(decoded)
+    }
+
+    private func loadComplaintResults() {
+        guard let data = try? Data(contentsOf: complaintResultsURL),
+              let decoded = try? JSONDecoder().decode([TS3ComplaintSummary].self, from: data) else {
+            complaintEntries = []
+            return
+        }
+        complaintEntries = Array(decoded.prefix(500))
+    }
+
+    private func saveComplaintResults() {
+        do {
+            let directory = complaintResultsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(Array(complaintEntries.prefix(500)))
+            try data.write(to: complaintResultsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func saveComplaintFilterPresets() {

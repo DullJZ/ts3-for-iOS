@@ -16433,7 +16433,7 @@ struct ComplaintListSheet: View {
                             model.complainAboutUser(target, message: newComplaintMessage)
                             newComplaintMessage = ""
                         }
-                        .disabled(newComplaintMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(model.state != .connected || newComplaintMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
@@ -16531,7 +16531,7 @@ struct ComplaintListSheet: View {
                             isConfirmingDeleteVisible = true
                         }
                         .foregroundColor(.red)
-                        .disabled(filteredComplaintEntries.isEmpty)
+                        .disabled(model.state != .connected || filteredComplaintEntries.isEmpty)
 
                         if filteredComplaintEntries.isEmpty {
                             Text("No matching complaints")
@@ -16551,6 +16551,7 @@ struct ComplaintListSheet: View {
                             isConfirmingDeleteAll = true
                         }
                         .foregroundColor(.red)
+                        .disabled(model.state != .connected || model.complaintTarget == nil)
                     }
                 }
             }
@@ -16594,7 +16595,7 @@ struct ComplaintListSheet: View {
                             model.refreshComplaints(for: target)
                         }
                     }
-                    .disabled(model.complaintTarget == nil)
+                    .disabled(model.state != .connected || model.complaintTarget == nil)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -16639,7 +16640,7 @@ struct ComplaintListSheet: View {
         Binding(
             get: { model.complaintTarget?.id ?? model.clients.first(where: { !$0.isCurrentUser })?.id ?? 0 },
             set: { userId in
-                if let user = model.clients.first(where: { $0.id == userId }) {
+                if model.state == .connected, let user = model.clients.first(where: { $0.id == userId }) {
                     model.refreshComplaints(for: user)
                 }
             }
@@ -16806,6 +16807,7 @@ struct ComplaintEntryRow: View {
             .buttonStyle(.borderless)
             .foregroundColor(.red)
             .font(.caption)
+            .disabled(model.state != .connected)
         }
         .padding(.vertical, 4)
         .alert(isPresented: $isConfirmingDelete) {
@@ -16839,6 +16841,7 @@ struct ComplaintEntryRow: View {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
+            .disabled(model.state != .connected)
         }
     }
 
