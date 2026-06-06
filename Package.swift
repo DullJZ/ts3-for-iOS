@@ -40,7 +40,7 @@ let package = Package(
         ),
         .testTarget(
             name: "TS3KitTests",
-            dependencies: ["TS3Kit"],
+            dependencies: ["TS3Kit", "TS3iOSApp"],
             path: "Tests/TS3KitTests"
         )
     ]
