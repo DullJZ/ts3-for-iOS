@@ -2049,6 +2049,10 @@ struct TS3ClientMigrationPackagePreview {
     }
 }
 
+struct TS3NotificationSettingsPreview {
+    let lines: [String]
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -9727,6 +9731,30 @@ final class TS3AppModel: ObservableObject {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(notificationSettingsSnapshot)
+    }
+
+    func notificationSettingsPreview(from data: Data) throws -> TS3NotificationSettingsPreview {
+        let decoded = try JSONDecoder().decode(TS3NotificationSettings.self, from: data)
+        let sanitized = TS3NotificationSettings(
+            isEnabled: decoded.isEnabled,
+            soundEnabled: decoded.soundEnabled,
+            privateMessagesEnabled: decoded.privateMessagesEnabled,
+            pokesEnabled: decoded.pokesEnabled,
+            activityEnabled: decoded.activityEnabled,
+            mutedServerKeys: sanitizedNotificationKeys(decoded.mutedServerKeys),
+            mutedContactUniqueIdentifiers: sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers),
+            quietHoursEnabled: decoded.quietHoursEnabled,
+            quietHoursStartMinute: sanitizedMinuteOfDay(decoded.quietHoursStartMinute),
+            quietHoursEndMinute: sanitizedMinuteOfDay(decoded.quietHoursEndMinute)
+        )
+        return TS3NotificationSettingsPreview(lines: [
+            "Notifications: \(sanitized.isEnabled ? "Enabled" : "Disabled")",
+            "Notification sounds: \(sanitized.soundEnabled ? "On" : "Off")",
+            "Notification event types: \(notificationEventTypesText(sanitized))",
+            "Quiet hours: \(quietHoursPreviewText(sanitized))",
+            "Muted notification servers: \(sanitized.mutedServerKeys.count)",
+            "Muted notification contacts: \(sanitized.mutedContactUniqueIdentifiers.count)"
+        ])
     }
 
     func importNotificationSettings(from data: Data) throws {

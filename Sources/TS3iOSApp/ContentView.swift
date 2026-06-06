@@ -8118,6 +8118,7 @@ struct OfflineMessageReplySheet: View {
 struct ServerToolsSheet: View {
     private struct NotificationSettingsImportConfirmation: Identifiable {
         let url: URL
+        let previewLines: [String]
         let id = UUID()
     }
 
@@ -8454,7 +8455,7 @@ struct ServerToolsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(url: url)
+                    prepareNotificationSettingsImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -8482,7 +8483,7 @@ struct ServerToolsSheet: View {
             .alert(item: $pendingNotificationSettingsImport) { confirmation in
                 Alert(
                     title: Text("Import Notification Settings?"),
-                    message: Text("This replaces current local notification preferences with the selected settings file."),
+                    message: Text(notificationSettingsImportMessage(for: confirmation)),
                     primaryButton: .destructive(Text("Import")) {
                         importNotificationSettings(from: confirmation.url)
                     },
@@ -8499,6 +8500,32 @@ struct ServerToolsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func prepareNotificationSettingsImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            let preview = try model.notificationSettingsPreview(from: data)
+            pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(
+                url: url,
+                previewLines: preview.lines
+            )
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func notificationSettingsImportMessage(
+        for confirmation: NotificationSettingsImportConfirmation
+    ) -> String {
+        let preview = confirmation.previewLines.joined(separator: "\n")
+        return "\(preview)\n\nThis replaces current local notification preferences with the selected settings file."
     }
 
     private func importNotificationSettings(from url: URL) {
@@ -18676,6 +18703,7 @@ struct ClientMigrationSheet: View {
 struct NotificationSettingsSheet: View {
     private struct NotificationSettingsImportConfirmation: Identifiable {
         let url: URL
+        let previewLines: [String]
         let id = UUID()
     }
 
@@ -18781,7 +18809,7 @@ struct NotificationSettingsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(url: url)
+                    prepareNotificationSettingsImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -18809,7 +18837,7 @@ struct NotificationSettingsSheet: View {
             .alert(item: $pendingNotificationSettingsImport) { confirmation in
                 Alert(
                     title: Text("Import Notification Settings?"),
-                    message: Text("This replaces current local notification preferences with the selected settings file."),
+                    message: Text(notificationSettingsImportMessage(for: confirmation)),
                     primaryButton: .destructive(Text("Import")) {
                         importNotificationSettings(from: confirmation.url)
                     },
@@ -18826,6 +18854,32 @@ struct NotificationSettingsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func prepareNotificationSettingsImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            let preview = try model.notificationSettingsPreview(from: data)
+            pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(
+                url: url,
+                previewLines: preview.lines
+            )
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func notificationSettingsImportMessage(
+        for confirmation: NotificationSettingsImportConfirmation
+    ) -> String {
+        let preview = confirmation.previewLines.joined(separator: "\n")
+        return "\(preview)\n\nThis replaces current local notification preferences with the selected settings file."
     }
 
     private func importNotificationSettings(from url: URL) {
