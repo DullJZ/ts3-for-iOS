@@ -13839,7 +13839,12 @@ struct FileEntryRow: View {
                 .environmentObject(model)
         }
         .sheet(isPresented: $isMoving) {
-            MoveFileEntrySheet(entry: entry, destinationDirectory: $destinationDirectory)
+            MoveFileEntrySheet(
+                entry: entry,
+                destinationDirectory: $destinationDirectory,
+                knownDirectoryPath: model.fileBrowserPath,
+                knownDirectoryEntries: model.fileEntries
+            )
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingInfo) {
@@ -14121,6 +14126,8 @@ struct MoveFileEntrySheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let entry: TS3FileEntrySummary
     @Binding var destinationDirectory: String
+    let knownDirectoryPath: String
+    let knownDirectoryEntries: [TS3FileEntrySummary]
 
     var body: some View {
         NavigationView {
@@ -14132,12 +14139,36 @@ struct MoveFileEntrySheet: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                Section(header: Text("Move Preview")) {
+                    if destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Enter a destination directory.")
+                            .foregroundColor(.secondary)
+                    } else if newPath == entry.path {
+                        Text("Destination is unchanged.")
+                            .foregroundColor(.secondary)
+                    } else if isMovingDirectoryIntoItself {
+                        Text("Cannot move a directory into itself.")
+                            .foregroundColor(.red)
+                    } else if let conflict = destinationConflict {
+                        Text("Conflicts with \(conflict.name) in the destination.")
+                            .foregroundColor(.red)
+                    } else {
+                        Text("\(entry.path) -> \(newPath)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if !isDestinationKnown {
+                        Text("Destination contents are not loaded; the server will still validate conflicts when moving.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
                 Section {
                     Button("Move") {
                         model.moveFileEntry(entry, toDirectory: destinationDirectory)
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isMoveDisabled)
                 }
             }
             .navigationTitle("Move")
@@ -14150,6 +14181,61 @@ struct MoveFileEntrySheet: View {
                 }
             }
         }
+    }
+
+    private var isMoveDisabled: Bool {
+        destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || newPath == entry.path
+            || isMovingDirectoryIntoItself
+            || destinationConflict != nil
+    }
+
+    private var normalizedDestinationDirectory: String {
+        Self.normalizedDirectoryPath(destinationDirectory)
+    }
+
+    private var newPath: String {
+        Self.joinedPath(parentPath: normalizedDestinationDirectory, name: entry.name)
+    }
+
+    private var isDestinationKnown: Bool {
+        normalizedDestinationDirectory == Self.normalizedDirectoryPath(knownDirectoryPath)
+    }
+
+    private var destinationConflict: TS3FileEntrySummary? {
+        guard isDestinationKnown else { return nil }
+        return knownDirectoryEntries.first {
+            $0.id != entry.id
+                && $0.name.caseInsensitiveCompare(entry.name) == .orderedSame
+        }
+    }
+
+    private var isMovingDirectoryIntoItself: Bool {
+        guard entry.isDirectory else { return false }
+        let sourceDirectory = Self.normalizedDirectoryPath(entry.path)
+        return normalizedDestinationDirectory == sourceDirectory
+            || normalizedDestinationDirectory.hasPrefix(sourceDirectory)
+    }
+
+    private static func joinedPath(parentPath: String, name: String) -> String {
+        let parentPath = normalizedDirectoryPath(parentPath)
+        if name.hasPrefix("/") {
+            return name
+        }
+        return parentPath + name
+    }
+
+    private static func normalizedDirectoryPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/" }
+        var result = trimmed
+        if !result.hasPrefix("/") {
+            result = "/" + result
+        }
+        if !result.hasSuffix("/") {
+            result += "/"
+        }
+        return result
     }
 }
 
