@@ -18172,11 +18172,18 @@ struct IdentityManagementSheet: View {
 }
 
 struct ClientMigrationSheet: View {
+    private struct ClientPackageImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3ClientMigrationPackagePreview
+        let id = UUID()
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isImportingClientPackage = false
     @State private var isExportingClientPackage = false
     @State private var clientPackageDocument = TS3BookmarkFileDocument()
+    @State private var pendingClientPackageImport: ClientPackageImportConfirmation?
 
     var body: some View {
         NavigationView {
@@ -18208,7 +18215,7 @@ struct ClientMigrationSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importClientPackage(from: url)
+                    prepareClientPackageImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -18223,6 +18230,16 @@ struct ClientMigrationSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .alert(item: $pendingClientPackageImport) { confirmation in
+                Alert(
+                    title: Text("Import Client Package?"),
+                    message: Text(clientPackagePreviewMessage(confirmation.preview)),
+                    primaryButton: .destructive(Text("Import")) {
+                        importClientPackage(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
@@ -18230,6 +18247,21 @@ struct ClientMigrationSheet: View {
         do {
             clientPackageDocument = TS3BookmarkFileDocument(data: try model.clientMigrationPackageExportData())
             isExportingClientPackage = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareClientPackageImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.clientMigrationPackagePreview(from: Data(contentsOf: url))
+            pendingClientPackageImport = ClientPackageImportConfirmation(url: url, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -18247,6 +18279,27 @@ struct ClientMigrationSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func clientPackagePreviewMessage(_ preview: TS3ClientMigrationPackagePreview) -> String {
+        var lines = [
+            "Schema: \(preview.schemaVersion)",
+            "Exported: \(Self.dateText(preview.exportedAt))",
+            "Items: \(preview.totalItemCount)"
+        ]
+        if !preview.itemCounts.isEmpty {
+            lines.append(preview.itemCounts.map { "\($0.0): \($0.1)" }.joined(separator: "\n"))
+        }
+        lines.append("Settings groups: \(preview.settingsGroups.joined(separator: ", "))")
+        lines.append("Import merges list-style data and applies package settings.")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 

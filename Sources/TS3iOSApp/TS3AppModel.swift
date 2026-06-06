@@ -1951,6 +1951,17 @@ private struct TS3ClientMigrationPackage: Codable {
     }
 }
 
+struct TS3ClientMigrationPackagePreview {
+    let schemaVersion: Int
+    let exportedAt: Date
+    let itemCounts: [(String, Int)]
+    let settingsGroups: [String]
+
+    var totalItemCount: Int {
+        itemCounts.reduce(0) { $0 + $1.1 }
+    }
+}
+
 struct TS3BookmarkSummary: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -10781,6 +10792,49 @@ final class TS3AppModel: ObservableObject {
         try importWhisperPresetBackup(from: encodedPackageSection(package.whisperPresets))
         try importWhisperFilterPresets(from: encodedPackageSection(package.whisperFilterPresets))
         lastError = nil
+    }
+
+    func clientMigrationPackagePreview(from data: Data) throws -> TS3ClientMigrationPackagePreview {
+        let package = try JSONDecoder().decode(TS3ClientMigrationPackage.self, from: data)
+        let itemCounts: [(String, Int)] = [
+            ("Bookmarks", package.bookmarks.count),
+            ("Recent Connections", package.recentConnections.count),
+            ("Contacts", package.contacts.count),
+            ("Server Log Presets", package.serverLogQueryPresets.count),
+            ("Keyboard Shortcuts", package.keyboardShortcuts.count),
+            ("Channel Subscription Presets", package.channelSubscriptionPresets.count),
+            ("Channel Tree Filters", package.channelTreeFilterPresets.count),
+            ("Collapsed Channels", package.collapsedChannelIds.count),
+            ("Event Filters", package.eventFilterPresets.count),
+            ("Chat Filters", package.chatFilterPresets.count),
+            ("File Bookmarks", package.fileBrowserBookmarks.count),
+            ("File Filters", package.fileBrowserFilterPresets.count),
+            ("Offline Message Filters", package.offlineMessageFilterPresets.count),
+            ("Ban Filters", package.banFilterPresets.count),
+            ("Complaint Filters", package.complaintFilterPresets.count),
+            ("Database Client Filters", package.databaseClientFilterPresets.count),
+            ("Privilege Key Filters", package.privilegeKeyFilterPresets.count),
+            ("Permission Filters", package.permissionFilterPresets.count),
+            ("Group Filters", package.groupFilterPresets.count),
+            ("Group Client Filters", package.groupClientFilterPresets.count),
+            ("Audio Profiles", package.audioProfiles.count),
+            ("Playback Preferences", package.userPlaybackPreferences.count),
+            ("Self Status Profiles", package.selfStatusProfiles.count),
+            ("Whisper Presets", package.whisperPresets.count),
+            ("Whisper Filters", package.whisperFilterPresets.count)
+        ]
+        return TS3ClientMigrationPackagePreview(
+            schemaVersion: package.schemaVersion,
+            exportedAt: package.exportedAt,
+            itemCounts: itemCounts.filter { $0.1 > 0 },
+            settingsGroups: [
+                "Notification settings",
+                "Connection recovery settings",
+                "Chat history settings",
+                "Audio settings",
+                "Self status"
+            ]
+        )
     }
 
     private func encodedPackageSection<T: Encodable>(_ value: T) throws -> Data {
