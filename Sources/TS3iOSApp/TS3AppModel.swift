@@ -930,7 +930,7 @@ struct TS3PrivilegeKeySummary: Identifiable, Codable {
     }
 }
 
-struct TS3TemporaryServerPasswordSummary: Identifiable {
+struct TS3TemporaryServerPasswordSummary: Identifiable, Codable {
     let id: String
     let password: String
     let creatorUniqueIdentifier: String?
@@ -2818,6 +2818,7 @@ final class TS3AppModel: ObservableObject {
         loadBanFilterPresets()
         loadComplaintFilterPresets()
         loadDatabaseClientFilterPresets()
+        loadTemporaryServerPasswordResults()
         loadPrivilegeKeyResults()
         loadPrivilegeKeyFilterPresets()
         loadPermissionFilterPresets()
@@ -4014,7 +4015,6 @@ final class TS3AppModel: ObservableObject {
         unreadActivityCount = 0
         complaintEntries = []
         complaintTarget = nil
-        temporaryServerPasswords = []
         databaseClients = []
         databaseSearchResults = []
         clientLocations = []
@@ -8135,6 +8135,7 @@ final class TS3AppModel: ObservableObject {
             let passwords = try await client.refreshTemporaryServerPasswords()
             await MainActor.run {
                 self.temporaryServerPasswords = self.temporaryServerPasswordSummaries(from: passwords)
+                self.saveTemporaryServerPasswordResults()
             }
         }
     }
@@ -8168,6 +8169,7 @@ final class TS3AppModel: ObservableObject {
             let passwords = try await client.refreshTemporaryServerPasswords()
             await MainActor.run {
                 self.temporaryServerPasswords = self.temporaryServerPasswordSummaries(from: passwords)
+                self.saveTemporaryServerPasswordResults()
             }
         }
     }
@@ -8177,6 +8179,7 @@ final class TS3AppModel: ObservableObject {
             try await client.deleteTemporaryServerPassword(entry.password)
             await MainActor.run {
                 self.temporaryServerPasswords.removeAll { $0.id == entry.id }
+                self.saveTemporaryServerPasswordResults()
             }
         }
     }
@@ -8191,6 +8194,7 @@ final class TS3AppModel: ObservableObject {
             let refreshedPasswords = try await client.refreshTemporaryServerPasswords()
             await MainActor.run {
                 self.temporaryServerPasswords = self.temporaryServerPasswordSummaries(from: refreshedPasswords)
+                self.saveTemporaryServerPasswordResults()
             }
         }
     }
@@ -8824,6 +8828,11 @@ final class TS3AppModel: ObservableObject {
     private var privilegeKeyFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-privilege-key-filter-presets.json")
+    }
+
+    private var temporaryServerPasswordResultsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-temporary-server-password-results.json")
     }
 
     private var privilegeKeyResultsURL: URL {
@@ -9987,6 +9996,26 @@ final class TS3AppModel: ObservableObject {
             return
         }
         privilegeKeyFilterPresets = sanitizedPrivilegeKeyFilterPresets(decoded)
+    }
+
+    private func loadTemporaryServerPasswordResults() {
+        guard let data = try? Data(contentsOf: temporaryServerPasswordResultsURL),
+              let decoded = try? JSONDecoder().decode([TS3TemporaryServerPasswordSummary].self, from: data) else {
+            temporaryServerPasswords = []
+            return
+        }
+        temporaryServerPasswords = Array(decoded.prefix(500))
+    }
+
+    private func saveTemporaryServerPasswordResults() {
+        do {
+            let directory = temporaryServerPasswordResultsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(Array(temporaryServerPasswords.prefix(500)))
+            try data.write(to: temporaryServerPasswordResultsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func loadPrivilegeKeyResults() {

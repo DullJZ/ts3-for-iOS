@@ -14806,7 +14806,7 @@ struct TemporaryServerPasswordsSheet: View {
                         )
                         clearCreateForm()
                     }
-                    .disabled(isCreateDisabled)
+                    .disabled(model.state != .connected || isCreateDisabled)
                 }
 
                 Section(header: Text("Passwords")) {
@@ -14825,7 +14825,7 @@ struct TemporaryServerPasswordsSheet: View {
                         isConfirmingDeleteVisible = true
                     }
                     .foregroundColor(.red)
-                    .disabled(filteredPasswords.isEmpty)
+                    .disabled(model.state != .connected || filteredPasswords.isEmpty)
 
                     if model.temporaryServerPasswords.isEmpty {
                         Text("No temporary passwords")
@@ -14845,7 +14845,9 @@ struct TemporaryServerPasswordsSheet: View {
             .ts3InlineNavigationTitle()
             .onAppear {
                 normalizeChannelSelection()
-                model.refreshTemporaryServerPasswords()
+                if model.state == .connected {
+                    model.refreshTemporaryServerPasswords()
+                }
             }
             .onChange(of: model.channels.map(\.id)) { _ in
                 normalizeChannelSelection()
@@ -14875,6 +14877,7 @@ struct TemporaryServerPasswordsSheet: View {
                     Button("Refresh") {
                         model.refreshTemporaryServerPasswords()
                     }
+                    .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -14973,6 +14976,7 @@ struct TemporaryServerPasswordRow: View {
                     Button("Delete Password") {
                         isConfirmingDelete = true
                     }
+                    .disabled(model.state != .connected)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
