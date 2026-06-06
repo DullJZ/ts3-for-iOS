@@ -58,8 +58,8 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Permission viewer/editor | Partial | Permission scopes, filters, presets, backup structures | Validate complete server/channel/client/group permission editing against official semantics. |
-| Server groups | Partial | Group management, member add by database id | Add all official group create/copy/delete/rename workflows if not present. |
-| Channel groups | Partial | Channel group management, member add by database id | Add stronger channel-group member browsing by channel/client context. |
+| Server groups | Partial | Group management with create/copy/rename/delete, member add/remove by database id, visible exports, filter presets, and persistent recent group lists for offline review | Validate group mutation semantics and permission requirements against real servers. |
+| Channel groups | Partial | Channel group management with create/copy/rename/delete, member browsing, set-by-database-id actions, visible exports, filter presets, and persistent recent group lists for offline review | Add stronger channel-group member browsing by channel/client context and validate against real servers. |
 | Permission backup/import | Partial | Permission backup model and import/export code paths | Add guided restore UX and conflict reporting. |
 
 ## Files

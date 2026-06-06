@@ -9357,7 +9357,7 @@ struct GroupManagementSheet: View {
                     Button("Create Group") {
                         createGroup()
                     }
-                    .disabled(newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(model.state != .connected || newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
                 Section(header: Text("Filters")) {
@@ -9462,7 +9462,9 @@ struct GroupManagementSheet: View {
             .navigationTitle("Permission Groups")
             .ts3InlineNavigationTitle()
             .onAppear {
-                model.refreshGroups()
+                if model.state == .connected {
+                    model.refreshGroups()
+                }
             }
             .fileExporter(
                 isPresented: $isExportingGroups,
@@ -9510,6 +9512,7 @@ struct GroupManagementSheet: View {
                     Button("Refresh") {
                         model.refreshGroups()
                     }
+                    .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -9658,26 +9661,32 @@ struct GroupManagementRow: View {
                     refreshMembers()
                     isShowingMembers = true
                 }
+                .disabled(model.state != .connected)
                 Button("Edit Permissions") {
                     model.selectGroupPermissions(group, target: target)
                     isShowingPermissions = true
                 }
+                .disabled(model.state != .connected)
                 Button("Create Privilege Key") {
                     isShowingPrivilegeKeys = true
                 }
-                .disabled(target == .channel && model.channels.isEmpty)
+                .disabled(model.state != .connected || (target == .channel && model.channels.isEmpty))
                 Button("Rename") {
                     isShowingRename = true
                 }
+                .disabled(model.state != .connected)
                 Button("Copy") {
                     isShowingCopy = true
                 }
+                .disabled(model.state != .connected)
                 Button("Delete") {
                     isConfirmingDelete = true
                 }
+                .disabled(model.state != .connected)
                 Button("Force Delete") {
                     isConfirmingForcedDelete = true
                 }
+                .disabled(model.state != .connected)
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -9987,11 +9996,11 @@ struct GroupClientListSheet: View {
                         Button("Add Member by Database ID") {
                             addMemberByDatabaseId()
                         }
-                        .disabled(parsedNewMemberDatabaseId == nil)
+                        .disabled(model.state != .connected || parsedNewMemberDatabaseId == nil)
                         Button("Remove Visible Members") {
                             isConfirmingRemoveVisible = true
                         }
-                        .disabled(filteredClients.isEmpty)
+                        .disabled(model.state != .connected || filteredClients.isEmpty)
                         .foregroundColor(.red)
                     } else {
                         Picker("Channel", selection: newMemberChannelBinding) {
@@ -10005,7 +10014,7 @@ struct GroupClientListSheet: View {
                         Button("Set Channel Group by Database ID") {
                             setChannelGroupByDatabaseId()
                         }
-                        .disabled(parsedNewMemberDatabaseId == nil || selectedNewMemberChannelId == nil)
+                        .disabled(model.state != .connected || parsedNewMemberDatabaseId == nil || selectedNewMemberChannelId == nil)
                     }
                 }
 
@@ -10288,6 +10297,7 @@ struct GroupClientRow: View {
                     Button("Remove From Group") {
                         isConfirmingRemove = true
                     }
+                    .disabled(model.state != .connected)
                 } else if memberCanChangeChannelGroup {
                     Menu("Set Channel Group") {
                         ForEach(model.channelGroups) { channelGroup in
@@ -10297,6 +10307,7 @@ struct GroupClientRow: View {
                             .disabled(channelGroup.id == group.id)
                         }
                     }
+                    .disabled(model.state != .connected)
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -10341,12 +10352,13 @@ struct GroupClientRow: View {
                     isConfirmingRemove = true
                 }
                 .foregroundColor(.red)
+                .disabled(model.state != .connected)
             } else if memberCanChangeChannelGroup {
                 ForEach(model.channelGroups) { channelGroup in
                     Button("Set Channel Group: \(channelGroup.name)") {
                         model.setChannelGroup(channelGroup, for: client)
                     }
-                    .disabled(channelGroup.id == group.id)
+                    .disabled(model.state != .connected || channelGroup.id == group.id)
                 }
             }
         }

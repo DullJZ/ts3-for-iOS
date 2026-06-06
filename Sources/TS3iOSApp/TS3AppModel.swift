@@ -763,10 +763,36 @@ struct TS3ClientLocationSummary: Identifiable {
     }
 }
 
-struct TS3GroupSummary: Identifiable {
+struct TS3GroupSummary: Identifiable, Codable {
     let id: Int
     let name: String
     let type: TS3PermissionGroupDatabaseType?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case type
+    }
+
+    init(id: Int, name: String, type: TS3PermissionGroupDatabaseType?) {
+        self.id = id
+        self.name = name
+        self.type = type
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        type = try container.decodeIfPresent(Int.self, forKey: .type).flatMap(TS3PermissionGroupDatabaseType.init(rawValue:))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(type?.rawValue, forKey: .type)
+    }
 }
 
 struct TS3GroupClientSummary: Identifiable {
@@ -2823,6 +2849,7 @@ final class TS3AppModel: ObservableObject {
         loadPrivilegeKeyResults()
         loadPrivilegeKeyFilterPresets()
         loadPermissionFilterPresets()
+        loadGroupResults()
         loadGroupFilterPresets()
         loadGroupClientFilterPresets()
         loadContacts()
@@ -4020,8 +4047,6 @@ final class TS3AppModel: ObservableObject {
         clientLocations = []
         selectedDatabaseClient = nil
         connectionInfo = .empty
-        serverGroups = []
-        channelGroups = []
         permissionInfos = []
         ownClientPermissions = []
         ownClientDatabaseId = nil
@@ -8861,6 +8886,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-group-filter-presets.json")
     }
 
+    private var groupResultsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-group-results.json")
+    }
+
     private var groupClientFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-group-client-filter-presets.json")
@@ -10188,6 +10218,36 @@ final class TS3AppModel: ObservableObject {
             return
         }
         groupFilterPresets = sanitizedGroupFilterPresets(decoded)
+    }
+
+    private struct TS3GroupResults: Codable {
+        var serverGroups: [TS3GroupSummary]
+        var channelGroups: [TS3GroupSummary]
+    }
+
+    private func loadGroupResults() {
+        guard let data = try? Data(contentsOf: groupResultsURL),
+              let decoded = try? JSONDecoder().decode(TS3GroupResults.self, from: data) else {
+            serverGroups = []
+            channelGroups = []
+            return
+        }
+        serverGroups = Array(decoded.serverGroups.prefix(500))
+        channelGroups = Array(decoded.channelGroups.prefix(500))
+    }
+
+    private func saveGroupResults() {
+        do {
+            let directory = groupResultsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(TS3GroupResults(
+                serverGroups: Array(serverGroups.prefix(500)),
+                channelGroups: Array(channelGroups.prefix(500))
+            ))
+            try data.write(to: groupResultsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func saveGroupFilterPresets() {
@@ -12092,12 +12152,14 @@ extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3Client(_ client: TS3Client, didUpdateServerGroups groups: [TS3ServerGroup]) {
         Task { @MainActor in
             self.serverGroups = groups.map { TS3GroupSummary(id: $0.id, name: $0.name, type: $0.type) }
+            self.saveGroupResults()
         }
     }
 
     nonisolated func ts3Client(_ client: TS3Client, didUpdateChannelGroups groups: [TS3ChannelGroup]) {
         Task { @MainActor in
             self.channelGroups = groups.map { TS3GroupSummary(id: $0.id, name: $0.name, type: $0.type) }
+            self.saveGroupResults()
         }
     }
 }
