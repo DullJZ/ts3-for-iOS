@@ -78,7 +78,7 @@ Status legend:
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
 | Bookmarks | Done | Bookmark list/folders/import/export, connection manager, full bookmark editor for connection options, saved phonetic nickname, local notes, and duplicate cleanup | Audit official-client bookmark edge fields if future TS3 URL options are added. |
 | Contacts | Partial | Contact manager entry, online and database-client friend/block/ignore/note shortcuts, visible batch actions, and local ignore suppression for private messages and pokes | Audit contact behavior against real server data and fill any official-client edge actions. |
-| Client migration | Done | Client package import/export covering local settings groups, channel layout state, schema metadata, and import preview confirmation | Add richer per-section restore choices if package formats expand. |
+| Client migration | Done | Client package import/export covering local settings groups, channel layout state, schema metadata, notification/shortcut/audio preview details, and import preview confirmation | Add richer per-section restore choices if package formats expand. |
 
 ## Notifications, Shortcuts, And Platform Integration
 
@@ -95,7 +95,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Debug logs | Done | Debug log page with level/search filtering, visible-log copy/export, clear, and diagnostic report export package | Add richer packaged attachments if platform sandbox requirements emerge. |
 | Build coverage | Done | README documents SwiftPM, iOS, Catalyst, CI artifact builds | Keep README feature list updated with current capabilities. |
-| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, URLs, byte buffer, icons, whisper | Add more tests for notification settings and import/export packages. |
+| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, URLs, byte buffer, icons, whisper | Add more tests for notification settings and package import/export edge cases. |
 
 ## Next Implementation Priorities
 

@@ -2042,6 +2042,7 @@ struct TS3ClientMigrationPackagePreview {
     let exportedAt: Date
     let itemCounts: [(String, Int)]
     let settingsGroups: [String]
+    let settingsDetails: [String]
 
     var totalItemCount: Int {
         itemCounts.reduce(0) { $0 + $1.1 }
@@ -10973,8 +10974,56 @@ final class TS3AppModel: ObservableObject {
                 "Chat history settings",
                 "Audio settings",
                 "Self status"
-            ]
+            ],
+            settingsDetails: clientMigrationSettingsDetails(for: package)
         )
+    }
+
+    private func clientMigrationSettingsDetails(for package: TS3ClientMigrationPackage) -> [String] {
+        let notificationSettings = package.notificationSettings
+        let enabledShortcuts = package.keyboardShortcuts.filter(\.isEnabled).count
+        let audioMode = TS3AudioTransmitMode(rawValue: package.audioSettings.transmitMode)?.rawValue
+            ?? package.audioSettings.transmitMode
+        return [
+            "Notifications: \(notificationSettings.isEnabled ? "Enabled" : "Disabled")",
+            "Notification sounds: \(notificationSettings.soundEnabled ? "On" : "Off")",
+            "Notification event types: \(notificationEventTypesText(notificationSettings))",
+            "Muted notification servers: \(notificationSettings.mutedServerKeys.count)",
+            "Muted notification contacts: \(notificationSettings.mutedContactUniqueIdentifiers.count)",
+            "Quiet hours: \(quietHoursPreviewText(notificationSettings))",
+            "Auto reconnect: \(package.connectionRecoverySettings.autoReconnectEnabled ? "Enabled" : "Disabled")",
+            "Chat history limit: \(package.chatHistorySettings.messageLimit)",
+            "Keyboard shortcuts: \(enabledShortcuts) enabled / \(package.keyboardShortcuts.count) total",
+            "Audio transmit mode: \(audioMode)",
+            "Self status: \(package.selfStatus.isAway ? "Away" : "Available")"
+        ]
+    }
+
+    private func notificationEventTypesText(_ settings: TS3NotificationSettings) -> String {
+        var eventTypes: [String] = []
+        if settings.privateMessagesEnabled {
+            eventTypes.append("private messages")
+        }
+        if settings.pokesEnabled {
+            eventTypes.append("pokes")
+        }
+        if settings.activityEnabled {
+            eventTypes.append("activity")
+        }
+        return eventTypes.isEmpty ? "none" : eventTypes.joined(separator: ", ")
+    }
+
+    private func quietHoursPreviewText(_ settings: TS3NotificationSettings) -> String {
+        guard settings.quietHoursEnabled else { return "Off" }
+        let start = sanitizedMinuteOfDay(settings.quietHoursStartMinute)
+        let end = sanitizedMinuteOfDay(settings.quietHoursEndMinute)
+        return "\(minuteOfDayPreviewText(start))-\(minuteOfDayPreviewText(end))"
+    }
+
+    private func minuteOfDayPreviewText(_ minute: Int) -> String {
+        let hour = minute / 60
+        let minute = minute % 60
+        return String(format: "%02d:%02d", hour, minute)
     }
 
     private func encodedPackageSection<T: Encodable>(_ value: T) throws -> Data {

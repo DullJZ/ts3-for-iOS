@@ -18658,6 +18658,9 @@ struct ClientMigrationSheet: View {
             lines.append(preview.itemCounts.map { "\($0.0): \($0.1)" }.joined(separator: "\n"))
         }
         lines.append("Settings groups: \(preview.settingsGroups.joined(separator: ", "))")
+        if !preview.settingsDetails.isEmpty {
+            lines.append(preview.settingsDetails.joined(separator: "\n"))
+        }
         lines.append("Import merges list-style data and applies package settings.")
         return lines.joined(separator: "\n")
     }
