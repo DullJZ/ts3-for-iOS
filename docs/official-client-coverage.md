@@ -68,7 +68,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets, move/rename conflict previews | Add deeper cross-directory conflict previews if needed. |
 | Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export | Add folder upload/download if server protocol and platform sandbox allow it. |
-| File operations | Done | Rename, move, delete, create directory, batch actions, rename plus single/batch move conflict previews | Validate conflict behavior against real servers and add cross-directory previews if server listing is expanded. |
+| File operations | Done | Rename, move, delete, create directory, batch actions, rename plus single/batch move conflict previews, and upload overwrite/resume conflict details | Validate conflict behavior against real servers and add cross-directory previews if server listing is expanded. |
 | Local downloaded files | Done | Persistent recent download history, downloads folder open/copy/cleanup actions, export/open/copy/remove actions, queue row open local file | Add richer downloads folder organization if needed. |
 
 ## Identity, Contacts, Bookmarks, And Migration

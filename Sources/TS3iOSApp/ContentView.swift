@@ -12599,6 +12599,24 @@ struct ServerSettingsEditorSheet: View {
 }
 
 struct FileBrowserSheet: View {
+    private struct UploadConflictPreview: Identifiable {
+        let url: URL
+        let remoteEntry: TS3FileEntrySummary
+        let localSize: Int64?
+
+        var id: String {
+            "\(url.path)|\(remoteEntry.id)"
+        }
+
+        var canResume: Bool {
+            !remoteEntry.isDirectory && (remoteEntry.incompleteSize ?? 0) > 0
+        }
+
+        var isBlockingOverwrite: Bool {
+            remoteEntry.isDirectory
+        }
+    }
+
     private enum TransferConfirmation: Identifiable {
         case cancelActive
         case clearCompleted
@@ -12662,7 +12680,7 @@ struct FileBrowserSheet: View {
     @State private var bookmarksDocument = TS3BookmarkFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
     @State private var pendingUploadURLs: [URL] = []
-    @State private var uploadOverwriteNames: [String] = []
+    @State private var uploadConflictPreviews: [UploadConflictPreview] = []
     @State private var isShowingUploadConflictActions = false
     @State private var transferConfirmation: TransferConfirmation?
     @State private var isConfirmingSelectedDelete = false
@@ -13201,8 +13219,9 @@ struct FileBrowserSheet: View {
             }
             .sheet(isPresented: $isShowingUploadConflictActions) {
                 UploadConflictSheet(
-                    message: uploadOverwriteMessage,
+                    items: uploadConflictPreviews.map(uploadConflictSheetItem),
                     canResume: !resumablePendingUploadURLs.isEmpty,
+                    canOverwrite: uploadConflictPreviews.allSatisfy { !$0.isBlockingOverwrite },
                     resume: {
                         resumePendingUploads()
                     },
@@ -13299,41 +13318,38 @@ struct FileBrowserSheet: View {
         }
     }
 
-    private var uploadOverwriteMessage: String {
-        let names = uploadOverwriteNames.prefix(5).joined(separator: ", ")
-        if uploadOverwriteNames.count > 5 {
-            return "\(names), and \(uploadOverwriteNames.count - 5) more already exist in this channel directory."
-        }
-        return "\(names) already exist in this channel directory."
-    }
-
     private func handleSelectedUploadFiles(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
-        let existingNames = Set(model.fileEntries.map { $0.name })
-        let conflicts = urls
-            .map(\.lastPathComponent)
-            .filter { existingNames.contains($0) }
-            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        let entriesByName = Dictionary(model.fileEntries.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        let conflicts = urls.compactMap { url -> UploadConflictPreview? in
+            guard let entry = entriesByName[url.lastPathComponent] else { return nil }
+            return UploadConflictPreview(
+                url: url,
+                remoteEntry: entry,
+                localSize: localFileSize(for: url)
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.remoteEntry.name.localizedCaseInsensitiveCompare(rhs.remoteEntry.name) == .orderedAscending
+        }
         if conflicts.isEmpty {
             model.uploadFiles(urls)
         } else {
             pendingUploadURLs = urls
-            uploadOverwriteNames = conflicts
+            uploadConflictPreviews = conflicts
             isShowingUploadConflictActions = true
         }
     }
 
     private var resumablePendingUploadURLs: [URL] {
-        let partialNames = Set(model.fileEntries.compactMap { entry -> String? in
-            (entry.incompleteSize ?? 0) > 0 ? entry.name : nil
-        })
+        let partialNames = Set(uploadConflictPreviews.filter(\.canResume).map { $0.remoteEntry.name })
         return pendingUploadURLs.filter { partialNames.contains($0.lastPathComponent) }
     }
 
     private func resumePendingUploads() {
         let resumable = resumablePendingUploadURLs
         let freshUploads = pendingUploadURLs.filter { url in
-            !uploadOverwriteNames.contains(url.lastPathComponent)
+            !uploadConflictPreviews.contains { $0.remoteEntry.name == url.lastPathComponent }
         }
         if !freshUploads.isEmpty {
             model.uploadFiles(freshUploads)
@@ -13346,8 +13362,45 @@ struct FileBrowserSheet: View {
 
     private func clearPendingUploads() {
         pendingUploadURLs = []
-        uploadOverwriteNames = []
+        uploadConflictPreviews = []
         isShowingUploadConflictActions = false
+    }
+
+    private func localFileSize(for url: URL) -> Int64? {
+        let didAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        guard let number = try? FileManager.default
+            .attributesOfItem(atPath: url.path)[.size] as? NSNumber else {
+            return nil
+        }
+        return number.int64Value
+    }
+
+    private func uploadConflictSheetItem(_ preview: UploadConflictPreview) -> UploadConflictSheet.Item {
+        let localSize = preview.localSize.map(Self.sizeText) ?? "Unknown"
+        let remoteSize = preview.remoteEntry.isDirectory ? "Directory" : Self.sizeText(preview.remoteEntry.size)
+        var detail = "Local \(localSize) | Remote \(remoteSize)"
+        if let incompleteSize = preview.remoteEntry.incompleteSize, incompleteSize > 0 {
+            detail += " | Partial \(Self.sizeText(incompleteSize))"
+        }
+        let recommendation: String
+        if preview.remoteEntry.isDirectory {
+            recommendation = "Choose a different name or remote directory."
+        } else if preview.canResume {
+            recommendation = "Can resume or overwrite."
+        } else {
+            recommendation = "Overwrite replaces the remote file."
+        }
+        return UploadConflictSheet.Item(
+            name: preview.remoteEntry.name,
+            detail: detail,
+            recommendation: recommendation,
+            isBlockingOverwrite: preview.isBlockingOverwrite
+        )
     }
 
     private func fileBookmarkSummary(_ bookmark: TS3FileBrowserBookmark) -> String {
@@ -14085,9 +14138,19 @@ struct FileEntryInfoSheet: View {
 }
 
 struct UploadConflictSheet: View {
+    struct Item: Identifiable {
+        let name: String
+        let detail: String
+        let recommendation: String
+        let isBlockingOverwrite: Bool
+
+        var id: String { name }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
-    let message: String
+    let items: [Item]
     let canResume: Bool
+    let canOverwrite: Bool
     let resume: () -> Void
     let overwrite: () -> Void
     let cancel: () -> Void
@@ -14096,9 +14159,26 @@ struct UploadConflictSheet: View {
         NavigationView {
             Form {
                 Section(header: Text("Remote Files Exist")) {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
+                    ForEach(items) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.name)
+                                    .font(.subheadline.weight(.semibold))
+                                if item.isBlockingOverwrite {
+                                    Spacer()
+                                    Text("Directory")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            Text(item.detail)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(item.recommendation)
+                                .font(.caption2)
+                                .foregroundColor(item.isBlockingOverwrite ? .red : .secondary)
+                        }
+                    }
                 }
                 Section {
                     Button("Resume Partial Uploads") {
@@ -14111,6 +14191,7 @@ struct UploadConflictSheet: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(.red)
+                    .disabled(!canOverwrite)
                     Button("Cancel") {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
