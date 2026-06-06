@@ -2659,6 +2659,7 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "open-offline-messages", group: "Messaging", action: "Open Offline Messages", defaultKeys: "Command-Shift-I"),
         TS3KeyboardShortcutBinding(actionId: "open-events", group: "Messaging", action: "Open Events", defaultKeys: "Command-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "open-whisper", group: "Messaging", action: "Open Whisper", defaultKeys: "Command-Shift-W"),
+        TS3KeyboardShortcutBinding(actionId: "toggle-whisper-activation", group: "Voice", action: "Start / Stop Temporary Whisper", defaultKeys: "Command-Option-W"),
         TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
         TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),
@@ -2770,6 +2771,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isRequestingTalkPower = false
     @Published var talkRequestMessage = ""
     @Published var whisperRoute: TS3WhisperRoute = .none
+    @Published var isWhisperActivationActive = false
     @Published private(set) var whisperPresets: [TS3WhisperPreset] = []
     @Published private(set) var whisperFilterPresets: [TS3WhisperFilterPreset] = []
     @Published var logs: [TS3LogEntry] = []
@@ -2833,6 +2835,8 @@ final class TS3AppModel: ObservableObject {
     private var reconnectAttempt = 0
     private var isViewingChat = false
     private var isAppActive = true
+    private var whisperActivationPreviousRoute: TS3WhisperRoute?
+    private var whisperActivationStartedTalking = false
 
     init() {
         loadAudioSettings()
@@ -4090,6 +4094,9 @@ final class TS3AppModel: ObservableObject {
         isRequestingTalkPower = false
         talkRequestMessage = ""
         whisperRoute = .none
+        isWhisperActivationActive = false
+        whisperActivationPreviousRoute = nil
+        whisperActivationStartedTalking = false
         microphonePermissionPrompt = nil
         iconURLs = [:]
         iconDownloads = []
@@ -11529,28 +11536,24 @@ final class TS3AppModel: ObservableObject {
             lastError = "Join a channel before enabling whisper to current channel."
             return
         }
-        whisperRoute = .channel(channel.id)
-        client?.startWhisperToChannel(channel.id)
+        applyWhisperRoute(.channel(channel.id))
     }
 
     func enableWhisperToClient(_ user: TS3UserSummary) {
-        whisperRoute = .client(user.id)
-        client?.startWhisperToClient(user.id)
+        applyWhisperRoute(.client(user.id))
     }
 
     func enableWhisperToServer() {
-        whisperRoute = .server
-        client?.startWhisperToServer()
+        applyWhisperRoute(.server)
     }
 
     func disableWhisper() {
-        whisperRoute = .none
-        client?.stopWhisper()
+        endWhisperActivation()
+        applyWhisperRoute(.none)
     }
 
     func enableWhisperToChannel(id: Int) {
-        whisperRoute = .channel(id)
-        client?.startWhisperToChannel(id)
+        applyWhisperRoute(.channel(id))
     }
 
     func enableWhisperList(channelIds: Set<Int>, clientIds: Set<Int>) {
@@ -11560,11 +11563,7 @@ final class TS3AppModel: ObservableObject {
             lastError = "Select at least one whisper target."
             return
         }
-        whisperRoute = .list(channelIds: channels, clientIds: clients)
-        client?.startWhisper(target: .multiple(
-            channelIds: channels.map { UInt64(max($0, 0)) },
-            clientIds: clients.map { UInt16(max(0, min($0, Int(UInt16.max)))) }
-        ))
+        applyWhisperRoute(.list(channelIds: channels, clientIds: clients))
     }
 
     func saveWhisperPreset(name: String, channelIds: Set<Int>, clientIds: Set<Int>) {
@@ -11590,7 +11589,7 @@ final class TS3AppModel: ObservableObject {
     }
 
     func enableWhisperPreset(_ preset: TS3WhisperPreset) {
-        enableWhisperList(channelIds: Set(preset.channelIds), clientIds: Set(preset.clientIds))
+        applyWhisperRoute(.list(channelIds: preset.channelIds, clientIds: preset.clientIds))
     }
 
     func deleteWhisperPreset(_ preset: TS3WhisperPreset) {
@@ -11690,8 +11689,79 @@ final class TS3AppModel: ObservableObject {
     }
 
     func enableGroupWhisper(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int) {
-        whisperRoute = .group(type: type, target: target, targetId: targetId)
-        client?.startWhisper(target: .group(type: type, target: target, targetId: UInt64(max(targetId, 0))))
+        applyWhisperRoute(.group(type: type, target: target, targetId: targetId))
+    }
+
+    func beginWhisperActivation(route: TS3WhisperRoute) {
+        guard route != .none else {
+            lastError = "Select a whisper target before starting temporary whisper."
+            return
+        }
+        guard !isInputMuted else {
+            lastError = "Clear microphone mute before starting temporary whisper."
+            return
+        }
+        guard client != nil else {
+            lastError = "Connect to a server before starting temporary whisper."
+            return
+        }
+        if !isWhisperActivationActive {
+            whisperActivationPreviousRoute = whisperRoute
+            whisperActivationStartedTalking = !isTalking
+        }
+        isWhisperActivationActive = true
+        applyWhisperRoute(route)
+        if !isTalking {
+            toggleTalking()
+        }
+    }
+
+    func beginCurrentWhisperActivation() {
+        beginWhisperActivation(route: whisperRoute)
+    }
+
+    func endWhisperActivation() {
+        guard isWhisperActivationActive else { return }
+        let shouldStopTalking = whisperActivationStartedTalking
+        let restoreRoute = whisperActivationPreviousRoute ?? .none
+        isWhisperActivationActive = false
+        whisperActivationPreviousRoute = nil
+        whisperActivationStartedTalking = false
+        if shouldStopTalking, isTalking {
+            client?.stopMicrophone()
+            isTalking = false
+            resetInputMeter()
+        }
+        applyWhisperRoute(restoreRoute)
+    }
+
+    func toggleCurrentWhisperActivation() {
+        if isWhisperActivationActive {
+            endWhisperActivation()
+        } else {
+            beginCurrentWhisperActivation()
+        }
+    }
+
+    private func applyWhisperRoute(_ route: TS3WhisperRoute) {
+        whisperRoute = route
+        switch route {
+        case .none:
+            client?.stopWhisper()
+        case .server:
+            client?.startWhisperToServer()
+        case let .channel(channelId):
+            client?.startWhisperToChannel(channelId)
+        case let .client(clientId):
+            client?.startWhisperToClient(clientId)
+        case let .list(channelIds, clientIds):
+            client?.startWhisper(target: .multiple(
+                channelIds: channelIds.map { UInt64(max($0, 0)) },
+                clientIds: clientIds.map { UInt16(max(0, min($0, Int(UInt16.max)))) }
+            ))
+        case let .group(type, target, targetId):
+            client?.startWhisper(target: .group(type: type, target: target, targetId: UInt64(max(targetId, 0))))
+        }
     }
 
     var whisperRouteDescription: String {
@@ -11753,6 +11823,7 @@ final class TS3AppModel: ObservableObject {
                     self.lastError = result.failureMessage ?? "Microphone access is required for Push To Talk."
                     self.isTalking = false
                     self.resetInputMeter()
+                    self.endWhisperActivation()
                     self.microphonePermissionPrompt = .openSettings
                     return
                 }
@@ -11760,6 +11831,7 @@ final class TS3AppModel: ObservableObject {
                 self.beginTalking(with: client)
             }
         case .openSettings:
+            endWhisperActivation()
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 TS3PlatformSupport.openMicrophoneSettings()
@@ -11770,6 +11842,7 @@ final class TS3AppModel: ObservableObject {
     func dismissMicrophonePermissionPrompt() {
         appendAudioPermissionLog("prompt", status: "dismissed")
         microphonePermissionPrompt = nil
+        endWhisperActivation()
     }
 
     private func message(for error: Error) -> String {
@@ -11803,6 +11876,7 @@ final class TS3AppModel: ObservableObject {
                     self.lastError = message(for: error)
                     self.isTalking = false
                     self.resetInputMeter()
+                    self.endWhisperActivation()
                 }
             }
         }

@@ -17341,6 +17341,11 @@ struct WhisperSheet: View {
                 Section(header: Text("Current Route")) {
                     Text(model.whisperRouteDescription)
                         .foregroundColor(.secondary)
+                    Button(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper") {
+                        model.toggleCurrentWhisperActivation()
+                    }
+                    .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
+                    .disabled(model.state != .connected || model.whisperRoute == .none)
                 }
 
                 Section(header: Text("Quick Actions")) {
@@ -17366,6 +17371,13 @@ struct WhisperSheet: View {
                         )
                     }
                     .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
+                    Button("Start Temporary Whisper to Selected Targets") {
+                        model.beginWhisperActivation(route: .list(
+                            channelIds: selectedWhisperChannelIds.sorted(),
+                            clientIds: selectedWhisperClientIds.sorted()
+                        ))
+                    }
+                    .disabled(model.state != .connected || (selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty))
                     Button("Select Current Route") {
                         selectCurrentWhisperRoute()
                     }
@@ -17429,6 +17441,12 @@ struct WhisperSheet: View {
                                         Button("Enable Preset") {
                                             model.enableWhisperPreset(preset)
                                         }
+                                        Button("Start Temporary Whisper") {
+                                            model.beginWhisperActivation(route: .list(
+                                                channelIds: preset.channelIds,
+                                                clientIds: preset.clientIds
+                                            ))
+                                        }
                                         Button("Select Targets") {
                                             selectedWhisperChannelIds = Set(preset.channelIds)
                                             selectedWhisperClientIds = Set(preset.clientIds)
@@ -17481,6 +17499,14 @@ struct WhisperSheet: View {
                         )
                     }
                     .disabled(!canEnableGroupWhisper)
+                    Button("Start Temporary Group Whisper") {
+                        model.beginWhisperActivation(route: .group(
+                            type: groupWhisperType,
+                            target: groupWhisperTarget,
+                            targetId: selectedGroupWhisperTargetId
+                        ))
+                    }
+                    .disabled(model.state != .connected || !canEnableGroupWhisper)
                 }
 
                 if !model.channels.isEmpty {
@@ -19131,6 +19157,15 @@ struct TalkControlBar: View {
             }
             .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
             .ts3KeyboardShortcut("toggle-talk", in: model)
+            Button(action: {
+                model.toggleCurrentWhisperActivation()
+            }) {
+                Text(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(TS3BorderedButtonStyle(isProminent: model.isWhisperActivationActive))
+            .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
+            .disabled(model.state != .connected || model.whisperRoute == .none)
         }
         .padding()
         .alert(item: $model.microphonePermissionPrompt) { prompt in
