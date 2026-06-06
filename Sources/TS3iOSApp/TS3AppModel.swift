@@ -872,7 +872,7 @@ extension TS3PrivilegeKeyType {
     }
 }
 
-struct TS3PrivilegeKeySummary: Identifiable {
+struct TS3PrivilegeKeySummary: Identifiable, Codable {
     let id: String
     let key: String
     let type: TS3PrivilegeKeyType?
@@ -891,6 +891,42 @@ struct TS3PrivilegeKeySummary: Identifiable {
         self.createdAt = entry.createdAt
         self.description = entry.description
         self.customSet = entry.customSet
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case key
+        case type
+        case groupId
+        case channelId
+        case createdAt
+        case description
+        case customSet
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decode(String.self, forKey: .key)
+        key = try container.decode(String.self, forKey: .key)
+        type = try container.decodeIfPresent(Int.self, forKey: .type).flatMap(TS3PrivilegeKeyType.init(rawValue:))
+        groupId = try container.decode(Int.self, forKey: .groupId)
+        channelId = try container.decodeIfPresent(Int.self, forKey: .channelId)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        customSet = try container.decodeIfPresent(String.self, forKey: .customSet)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(key, forKey: .key)
+        try container.encodeIfPresent(type?.rawValue, forKey: .type)
+        try container.encode(groupId, forKey: .groupId)
+        try container.encodeIfPresent(channelId, forKey: .channelId)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(customSet, forKey: .customSet)
     }
 }
 
@@ -2782,6 +2818,7 @@ final class TS3AppModel: ObservableObject {
         loadBanFilterPresets()
         loadComplaintFilterPresets()
         loadDatabaseClientFilterPresets()
+        loadPrivilegeKeyResults()
         loadPrivilegeKeyFilterPresets()
         loadPermissionFilterPresets()
         loadGroupFilterPresets()
@@ -3993,7 +4030,6 @@ final class TS3AppModel: ObservableObject {
         selectedChannelGroupPermissionId = nil
         selectedChannelPermissionId = nil
         scopedPermissions = []
-        privilegeKeys = []
         generatedPrivilegeKey = nil
         fileEntries = []
         fileBrowserChannelId = nil
@@ -8215,6 +8251,7 @@ final class TS3AppModel: ObservableObject {
             let keys = try await client.refreshPrivilegeKeys()
             await MainActor.run {
                 self.privilegeKeys = self.privilegeKeySummaries(from: keys)
+                self.savePrivilegeKeyResults()
             }
         }
     }
@@ -8241,6 +8278,7 @@ final class TS3AppModel: ObservableObject {
             await MainActor.run {
                 self.generatedPrivilegeKey = key
                 self.privilegeKeys = self.privilegeKeySummaries(from: keys)
+                self.savePrivilegeKeyResults()
             }
         }
     }
@@ -8253,6 +8291,7 @@ final class TS3AppModel: ObservableObject {
                 if self.generatedPrivilegeKey == key.key {
                     self.generatedPrivilegeKey = nil
                 }
+                self.savePrivilegeKeyResults()
             }
         }
     }
@@ -8270,6 +8309,7 @@ final class TS3AppModel: ObservableObject {
                 if let generatedPrivilegeKey = self.generatedPrivilegeKey, rawKeys.contains(generatedPrivilegeKey) {
                     self.generatedPrivilegeKey = nil
                 }
+                self.savePrivilegeKeyResults()
             }
         }
     }
@@ -8784,6 +8824,11 @@ final class TS3AppModel: ObservableObject {
     private var privilegeKeyFilterPresetsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-privilege-key-filter-presets.json")
+    }
+
+    private var privilegeKeyResultsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-privilege-key-results.json")
     }
 
     private var permissionFilterPresetsURL: URL {
@@ -9942,6 +9987,26 @@ final class TS3AppModel: ObservableObject {
             return
         }
         privilegeKeyFilterPresets = sanitizedPrivilegeKeyFilterPresets(decoded)
+    }
+
+    private func loadPrivilegeKeyResults() {
+        guard let data = try? Data(contentsOf: privilegeKeyResultsURL),
+              let decoded = try? JSONDecoder().decode([TS3PrivilegeKeySummary].self, from: data) else {
+            privilegeKeys = []
+            return
+        }
+        privilegeKeys = Array(decoded.prefix(500))
+    }
+
+    private func savePrivilegeKeyResults() {
+        do {
+            let directory = privilegeKeyResultsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(Array(privilegeKeys.prefix(500)))
+            try data.write(to: privilegeKeyResultsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func savePrivilegeKeyFilterPresets() {

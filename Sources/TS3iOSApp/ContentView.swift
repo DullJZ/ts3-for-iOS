@@ -15197,6 +15197,7 @@ struct PrivilegeKeysSheet: View {
                         Button("Use Generated Key") {
                             model.usePrivilegeKey(key)
                         }
+                        .disabled(model.state != .connected)
                         Button("Copy Generated Key") {
                             TS3PlatformSupport.copyToPasteboard(key)
                         }
@@ -15263,7 +15264,7 @@ struct PrivilegeKeysSheet: View {
                         description = ""
                         customSet = ""
                     }
-                    .disabled(!canCreate)
+                    .disabled(model.state != .connected || !canCreate)
                 }
 
                 Section(header: Text("Existing Keys")) {
@@ -15362,7 +15363,7 @@ struct PrivilegeKeysSheet: View {
                     Button("Delete Visible Keys") {
                         isConfirmingDeleteAll = true
                     }
-                    .disabled(filteredPrivilegeKeys.isEmpty)
+                    .disabled(model.state != .connected || filteredPrivilegeKeys.isEmpty)
                     .foregroundColor(.red)
 
                     if model.privilegeKeys.isEmpty {
@@ -15476,8 +15477,10 @@ struct PrivilegeKeysSheet: View {
             .onAppear {
                 applyInitialSelection()
                 normalizeSelections()
-                model.refreshGroups()
-                model.refreshPrivilegeKeys()
+                if model.state == .connected {
+                    model.refreshGroups()
+                    model.refreshPrivilegeKeys()
+                }
             }
             .onChange(of: model.serverGroups.map(\.id)) { _ in
                 normalizeSelections()
@@ -15494,6 +15497,7 @@ struct PrivilegeKeysSheet: View {
                         model.refreshGroups()
                         model.refreshPrivilegeKeys()
                     }
+                    .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -15782,12 +15786,14 @@ struct PrivilegeKeyRow: View {
                     Button("Use Key") {
                         model.usePrivilegeKey(key.key)
                     }
+                    .disabled(model.state != .connected)
                     Button("Copy Key") {
                         TS3PlatformSupport.copyToPasteboard(key.key)
                     }
                     Button("Delete Key") {
                         isConfirmingDelete = true
                     }
+                    .disabled(model.state != .connected)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
