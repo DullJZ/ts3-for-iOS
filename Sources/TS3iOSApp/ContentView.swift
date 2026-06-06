@@ -11950,6 +11950,9 @@ struct ServerSettingsEditorSheet: View {
         var antiFloodPointsNeededIPBlock: String?
         var weblistEnabled: String?
         var codecEncryptionMode: String
+        var defaultServerGroupId: String?
+        var defaultChannelGroupId: String?
+        var defaultChannelAdminGroupId: String?
     }
 
     @Environment(\.presentationMode) private var presentationMode
@@ -11980,6 +11983,9 @@ struct ServerSettingsEditorSheet: View {
     @State private var antiFloodPointsNeededIPBlock = ""
     @State private var weblistEnabled: Bool?
     @State private var codecEncryptionMode: Int?
+    @State private var defaultServerGroupId = ""
+    @State private var defaultChannelGroupId = ""
+    @State private var defaultChannelAdminGroupId = ""
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
@@ -12082,6 +12088,45 @@ struct ServerSettingsEditorSheet: View {
                             Text(TS3CodecEncryptionMode.title(for: codecEncryptionMode)).tag(Optional(codecEncryptionMode))
                         }
                     }
+                }
+
+                Section(header: Text("Default Groups")) {
+                    Picker("Server Group", selection: $defaultServerGroupId) {
+                        Text("Unchanged").tag("")
+                        ForEach(model.serverGroups) { group in
+                            Text(groupPickerTitle(group)).tag(String(group.id))
+                        }
+                        if shouldShowCustomGroup(defaultServerGroupId, in: model.serverGroups) {
+                            Text(groupDraftTitle(defaultServerGroupId)).tag(defaultServerGroupId)
+                        }
+                    }
+                    TextField("Server Group ID", text: $defaultServerGroupId)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    Picker("Channel Group", selection: $defaultChannelGroupId) {
+                        Text("Unchanged").tag("")
+                        ForEach(model.channelGroups) { group in
+                            Text(groupPickerTitle(group)).tag(String(group.id))
+                        }
+                        if shouldShowCustomGroup(defaultChannelGroupId, in: model.channelGroups) {
+                            Text(groupDraftTitle(defaultChannelGroupId)).tag(defaultChannelGroupId)
+                        }
+                    }
+                    TextField("Channel Group ID", text: $defaultChannelGroupId)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    Picker("Channel Admin", selection: $defaultChannelAdminGroupId) {
+                        Text("Unchanged").tag("")
+                        ForEach(model.channelGroups) { group in
+                            Text(groupPickerTitle(group)).tag(String(group.id))
+                        }
+                        if shouldShowCustomGroup(defaultChannelAdminGroupId, in: model.channelGroups) {
+                            Text(groupDraftTitle(defaultChannelAdminGroupId)).tag(defaultChannelAdminGroupId)
+                        }
+                    }
+                    TextField("Channel Admin Group ID", text: $defaultChannelAdminGroupId)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
                 }
 
                 Section(header: Text("Anti-Flood and Complaints")) {
@@ -12204,7 +12249,10 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
             weblistEnabled: weblistEnabled.map { $0 ? "1" : "0" } ?? "",
-            codecEncryptionMode: codecEncryptionMode.map(String.init) ?? ""
+            codecEncryptionMode: codecEncryptionMode.map(String.init) ?? "",
+            defaultServerGroupId: defaultServerGroupId,
+            defaultChannelGroupId: defaultChannelGroupId,
+            defaultChannelAdminGroupId: defaultChannelAdminGroupId
         )
     }
 
@@ -12228,6 +12276,9 @@ struct ServerSettingsEditorSheet: View {
             ("Download Quota Bytes", draft.downloadQuota),
             ("Upload Quota Bytes", draft.uploadQuota),
             ("Codec Encryption Mode", codecEncryptionModeTitle(draft.codecEncryptionMode)),
+            ("Default Server Group", groupSnapshotTitle(draft.defaultServerGroupId ?? "", groups: model.serverGroups)),
+            ("Default Channel Group", groupSnapshotTitle(draft.defaultChannelGroupId ?? "", groups: model.channelGroups)),
+            ("Default Channel Admin", groupSnapshotTitle(draft.defaultChannelAdminGroupId ?? "", groups: model.channelGroups)),
             ("Auto-Ban Complaint Count", draft.complainAutoBanCount),
             ("Auto-Ban Seconds", draft.complainAutoBanTime),
             ("Complaint Remove Seconds", draft.complainRemoveTime),
@@ -12272,6 +12323,9 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsNeededIPBlock = model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init) ?? ""
         weblistEnabled = model.serverInfo.isWeblistEnabled
         codecEncryptionMode = model.serverInfo.codecEncryptionMode
+        defaultServerGroupId = model.serverInfo.defaultServerGroupId.map(String.init) ?? ""
+        defaultChannelGroupId = model.serverInfo.defaultChannelGroupId.map(String.init) ?? ""
+        defaultChannelAdminGroupId = model.serverInfo.defaultChannelAdminGroupId.map(String.init) ?? ""
     }
 
     private var isDraftValid: Bool {
@@ -12290,6 +12344,9 @@ struct ServerSettingsEditorSheet: View {
             && isOptionalInt(antiFloodPointsTickReduce)
             && isOptionalInt(antiFloodPointsNeededCommandBlock)
             && isOptionalInt(antiFloodPointsNeededIPBlock)
+            && isOptionalInt(defaultServerGroupId)
+            && isOptionalInt(defaultChannelGroupId)
+            && isOptionalInt(defaultChannelAdminGroupId)
     }
 
     private func save() {
@@ -12318,7 +12375,10 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsNeededCommandBlock: Int(antiFloodPointsNeededCommandBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededIPBlock: Int(antiFloodPointsNeededIPBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             isWeblistEnabled: weblistEnabled,
-            codecEncryptionMode: codecEncryptionMode
+            codecEncryptionMode: codecEncryptionMode,
+            defaultServerGroupId: Int(defaultServerGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
+            defaultChannelGroupId: Int(defaultChannelGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
+            defaultChannelAdminGroupId: Int(defaultChannelAdminGroupId.trimmingCharacters(in: .whitespacesAndNewlines))
         )
     }
 
@@ -12375,6 +12435,9 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsNeededIPBlock = draft.antiFloodPointsNeededIPBlock ?? ""
         weblistEnabled = Self.boolDraftValue(draft.weblistEnabled)
         codecEncryptionMode = Int(draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
+        defaultServerGroupId = draft.defaultServerGroupId ?? ""
+        defaultChannelGroupId = draft.defaultChannelGroupId ?? ""
+        defaultChannelAdminGroupId = draft.defaultChannelAdminGroupId ?? ""
     }
 
     private func hostMessageModeTitle(_ value: String) -> String {
@@ -12392,6 +12455,27 @@ struct ServerSettingsEditorSheet: View {
     private func weblistTitle(_ value: String) -> String {
         guard let enabled = Self.boolDraftValue(value) else { return "Unchanged" }
         return enabled ? "Listed" : "Hidden"
+    }
+
+    private func groupPickerTitle(_ group: TS3GroupSummary) -> String {
+        "\(group.name) (\(group.id))"
+    }
+
+    private func groupDraftTitle(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Unchanged" : "Group \(trimmed)"
+    }
+
+    private func groupSnapshotTitle(_ value: String, groups: [TS3GroupSummary]) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let groupId = Int(trimmed) else { return "Unchanged" }
+        return TS3GroupSummary.name(for: groupId, in: groups)
+    }
+
+    private func shouldShowCustomGroup(_ value: String, in groups: [TS3GroupSummary]) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let groupId = Int(trimmed) else { return false }
+        return !groups.contains { $0.id == groupId }
     }
 
     private static func boolDraftValue(_ value: String?) -> Bool? {

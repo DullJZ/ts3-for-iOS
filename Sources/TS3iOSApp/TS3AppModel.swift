@@ -5894,7 +5894,10 @@ final class TS3AppModel: ObservableObject {
         antiFloodPointsNeededCommandBlock: Int?,
         antiFloodPointsNeededIPBlock: Int?,
         isWeblistEnabled: Bool?,
-        codecEncryptionMode: Int?
+        codecEncryptionMode: Int?,
+        defaultServerGroupId: Int?,
+        defaultChannelGroupId: Int?,
+        defaultChannelAdminGroupId: Int?
     ) {
         let edit = TS3ServerEdit(
             name: trimmedValue(name),
@@ -5921,7 +5924,10 @@ final class TS3AppModel: ObservableObject {
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
             isWeblistEnabled: isWeblistEnabled,
-            codecEncryptionMode: codecEncryptionMode
+            codecEncryptionMode: codecEncryptionMode,
+            defaultServerGroupId: defaultServerGroupId,
+            defaultChannelGroupId: defaultChannelGroupId,
+            defaultChannelAdminGroupId: defaultChannelAdminGroupId
         )
         runClientCommand { client in
             try await client.editServer(edit)

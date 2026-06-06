@@ -357,6 +357,9 @@ public struct TS3ServerEdit {
     public var antiFloodPointsNeededIPBlock: Int?
     public var isWeblistEnabled: Bool?
     public var codecEncryptionMode: Int?
+    public var defaultServerGroupId: Int?
+    public var defaultChannelGroupId: Int?
+    public var defaultChannelAdminGroupId: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
     public init(
@@ -384,7 +387,10 @@ public struct TS3ServerEdit {
         antiFloodPointsNeededCommandBlock: Int? = nil,
         antiFloodPointsNeededIPBlock: Int? = nil,
         isWeblistEnabled: Bool? = nil,
-        codecEncryptionMode: Int? = nil
+        codecEncryptionMode: Int? = nil,
+        defaultServerGroupId: Int? = nil,
+        defaultChannelGroupId: Int? = nil,
+        defaultChannelAdminGroupId: Int? = nil
     ) {
         self.name = name
         self.welcomeMessage = welcomeMessage
@@ -411,6 +417,9 @@ public struct TS3ServerEdit {
         self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
         self.isWeblistEnabled = isWeblistEnabled
         self.codecEncryptionMode = codecEncryptionMode
+        self.defaultServerGroupId = defaultServerGroupId
+        self.defaultChannelGroupId = defaultChannelGroupId
+        self.defaultChannelAdminGroupId = defaultChannelAdminGroupId
     }
 }
 

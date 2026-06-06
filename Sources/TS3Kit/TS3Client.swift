@@ -2870,6 +2870,9 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
         appendParameter(&params, name: "virtualserver_weblist_enabled", value: edit.isWeblistEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
+        appendParameter(&params, name: "virtualserver_default_server_group", value: edit.defaultServerGroupId.map(String.init))
+        appendParameter(&params, name: "virtualserver_default_channel_group", value: edit.defaultChannelGroupId.map(String.init))
+        appendParameter(&params, name: "virtualserver_default_channel_admin_group", value: edit.defaultChannelAdminGroupId.map(String.init))
         return TS3SingleCommand(name: "serveredit", parameters: params)
     }
 

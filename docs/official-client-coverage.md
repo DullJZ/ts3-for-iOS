@@ -45,7 +45,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Server information | Done | Server info sheet and Catalyst entry | Add more raw virtual server fields where available. |
-| Server edit/settings | Partial | Server settings editor, quotas, host fields, icon support, server-list visibility, temporary password management with persistent recent results, complaint and anti-flood controls | Audit all official server edit tabs and fill missing fields. |
+| Server edit/settings | Partial | Server settings editor, quotas, host fields, icon support, server-list visibility, default group editing, temporary password management with persistent recent results, complaint and anti-flood controls | Audit all official server edit tabs and fill missing fields. |
 | Channel create/edit/delete/move | Partial | Channel editor with codec quality/latency/encryption controls, move preview, draft import/export, icon import, password prompts, and permission inheritance impact visibility | Validate advanced codec controls against real servers and add deeper inherited effective-value tracing if protocol data allows it. |
 | Client actions | Partial | Client row menus, database-record online/contact actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets, paged log viewing with begin position, visible exports, and persistent recent log results for offline review | Add broader log filters and validate real-server log permissions. |
