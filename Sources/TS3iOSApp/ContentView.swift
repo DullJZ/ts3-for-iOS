@@ -9971,12 +9971,47 @@ struct GroupClientListSheet: View {
         }
     }
 
+    private enum ChannelContextFilter: String, CaseIterable, Identifiable {
+        case allChannels
+        case currentChannel
+        case selectedChannel
+        case withoutChannel
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .allChannels: return "All Channels"
+            case .currentChannel: return "Current Channel"
+            case .selectedChannel: return "Selected Channel"
+            case .withoutChannel: return "No Channel"
+            }
+        }
+
+        func matches(_ client: TS3GroupClientSummary, currentChannelId: Int?, selectedChannelId: Int?) -> Bool {
+            switch self {
+            case .allChannels:
+                return true
+            case .currentChannel:
+                guard let currentChannelId else { return false }
+                return client.channelId == currentChannelId
+            case .selectedChannel:
+                guard let selectedChannelId else { return false }
+                return client.channelId == selectedChannelId
+            case .withoutChannel:
+                return client.channelId == nil
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let group: TS3GroupSummary
     let target: TS3GroupManagementTarget
     @State private var searchText = ""
     @State private var memberFilter: MemberFilter = .all
+    @State private var channelContextFilter: ChannelContextFilter = .allChannels
+    @State private var selectedFilterChannelId: Int?
     @State private var sortMode: MemberSortMode = .nickname
     @State private var sortAscending = true
     @State private var newMemberDatabaseId = ""
@@ -9992,7 +10027,12 @@ struct GroupClientListSheet: View {
 
     private var filteredClients: [TS3GroupClientSummary] {
         let clients = model.groupClients.filter { client in
-            memberFilter.matches(client) && (
+            memberFilter.matches(client)
+                && channelContextFilter.matches(
+                    client,
+                    currentChannelId: model.currentChannel?.id,
+                    selectedChannelId: selectedFilterChannelId
+                ) && (
                 !isSearching
                     || containsSearch(client.displayName)
                     || containsSearch(client.uniqueIdentifier)
@@ -10005,7 +10045,18 @@ struct GroupClientListSheet: View {
     }
 
     private var visibleMembersSnapshot: String {
-        filteredClients.map { client in
+        var lines = [
+            "Group: \(group.name) (\(group.id))",
+            "Target: \(target.title)",
+            "Status Filter: \(memberFilter.title)",
+            "Channel Filter: \(channelContextFilterTitle)",
+            "Sort: \(sortMode.title) \(sortAscending ? "Ascending" : "Descending")"
+        ]
+        if isSearching {
+            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        lines.append("")
+        lines += filteredClients.map { client in
             var parts = [
                 "clientDb=\(client.clientDatabaseId)",
                 "nickname=\(client.displayName)"
@@ -10018,7 +10069,7 @@ struct GroupClientListSheet: View {
             }
             return parts.joined(separator: " | ")
         }
-        .joined(separator: "\n")
+        return lines.joined(separator: "\n")
     }
 
     var body: some View {
@@ -10028,6 +10079,19 @@ struct GroupClientListSheet: View {
                     Picker("Status", selection: $memberFilter) {
                         ForEach(MemberFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Channel Context", selection: $channelContextFilter) {
+                        ForEach(ChannelContextFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    if channelContextFilter == .selectedChannel {
+                        Picker("Filter Channel", selection: selectedFilterChannelBinding) {
+                            Text("Select Channel").tag(0)
+                            ForEach(model.channels) { channel in
+                                Text(channel.name).tag(channel.id)
+                            }
                         }
                     }
                     Picker("Sort By", selection: $sortMode) {
@@ -10044,6 +10108,8 @@ struct GroupClientListSheet: View {
                             model.saveGroupClientFilterPreset(
                                 name: presetName,
                                 memberFilter: memberFilter.rawValue,
+                                channelFilter: channelContextFilter.rawValue,
+                                channelId: selectedFilterChannelId,
                                 sortMode: sortMode.rawValue,
                                 sortAscending: sortAscending,
                                 searchText: searchText
@@ -10091,6 +10157,8 @@ struct GroupClientListSheet: View {
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             memberFilter = .all
+                            channelContextFilter = .allChannels
+                            selectedFilterChannelId = nil
                             sortMode = .nickname
                             sortAscending = true
                             searchText = ""
@@ -10218,7 +10286,11 @@ struct GroupClientListSheet: View {
     }
 
     private var hasLocalFilters: Bool {
-        isSearching || memberFilter != .all || sortMode != .nickname || !sortAscending
+        isSearching
+            || memberFilter != .all
+            || channelContextFilter != .allChannels
+            || sortMode != .nickname
+            || !sortAscending
     }
 
     private var parsedNewMemberDatabaseId: Int? {
@@ -10238,6 +10310,13 @@ struct GroupClientListSheet: View {
         Binding(
             get: { selectedNewMemberChannelId ?? 0 },
             set: { newMemberChannelId = $0 == 0 ? nil : $0 }
+        )
+    }
+
+    private var selectedFilterChannelBinding: Binding<Int> {
+        Binding(
+            get: { selectedFilterChannelId ?? 0 },
+            set: { selectedFilterChannelId = $0 == 0 ? nil : $0 }
         )
     }
 
@@ -10296,8 +10375,22 @@ struct GroupClientListSheet: View {
         return model.channelName(for: channelId) ?? "Channel \(channelId)"
     }
 
+    private var channelContextFilterTitle: String {
+        switch channelContextFilter {
+        case .allChannels, .withoutChannel:
+            return channelContextFilter.title
+        case .currentChannel:
+            return model.currentChannel.map { "\($0.name) (\($0.id))" } ?? "Current Channel Unavailable"
+        case .selectedChannel:
+            guard let channelId = selectedFilterChannelId else { return "Selected Channel Unset" }
+            return "\(model.channelName(for: channelId) ?? "Channel \(channelId)") (\(channelId))"
+        }
+    }
+
     private func applyPreset(_ preset: TS3GroupClientFilterPreset) {
         memberFilter = MemberFilter(rawValue: preset.memberFilter) ?? .all
+        channelContextFilter = ChannelContextFilter(rawValue: preset.channelFilter) ?? .allChannels
+        selectedFilterChannelId = preset.channelId
         sortMode = MemberSortMode(rawValue: preset.sortMode) ?? .nickname
         sortAscending = preset.sortAscending
         searchText = preset.searchText
@@ -10307,6 +10400,7 @@ struct GroupClientListSheet: View {
     private func presetSummary(_ preset: TS3GroupClientFilterPreset) -> String {
         var parts = [
             (MemberFilter(rawValue: preset.memberFilter) ?? .all).title,
+            channelPresetSummary(preset),
             "Sort \((MemberSortMode(rawValue: preset.sortMode) ?? .nickname).title)"
         ]
         if !preset.sortAscending {
@@ -10316,6 +10410,17 @@ struct GroupClientListSheet: View {
             parts.append("Search \(preset.searchText)")
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func channelPresetSummary(_ preset: TS3GroupClientFilterPreset) -> String {
+        let filter = ChannelContextFilter(rawValue: preset.channelFilter) ?? .allChannels
+        switch filter {
+        case .allChannels, .currentChannel, .withoutChannel:
+            return filter.title
+        case .selectedChannel:
+            guard let channelId = preset.channelId else { return "Selected Channel" }
+            return "\(model.channelName(for: channelId) ?? "Channel \(channelId)") (\(channelId))"
+        }
     }
 
     private func exportPresets() {

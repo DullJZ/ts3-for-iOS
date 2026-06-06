@@ -1364,6 +1364,8 @@ struct TS3GroupClientFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
     var memberFilter: String
+    var channelFilter: String
+    var channelId: Int?
     var sortMode: String
     var sortAscending: Bool
     var searchText: String
@@ -1373,6 +1375,8 @@ struct TS3GroupClientFilterPreset: Identifiable, Codable {
         id: UUID = UUID(),
         name: String,
         memberFilter: String,
+        channelFilter: String = "allChannels",
+        channelId: Int? = nil,
         sortMode: String,
         sortAscending: Bool,
         searchText: String,
@@ -1381,10 +1385,37 @@ struct TS3GroupClientFilterPreset: Identifiable, Codable {
         self.id = id
         self.name = name
         self.memberFilter = memberFilter
+        self.channelFilter = channelFilter
+        self.channelId = channelId
         self.sortMode = sortMode
         self.sortAscending = sortAscending
         self.searchText = searchText
         self.updatedAt = updatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case memberFilter
+        case channelFilter
+        case channelId
+        case sortMode
+        case sortAscending
+        case searchText
+        case updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        memberFilter = try container.decodeIfPresent(String.self, forKey: .memberFilter) ?? "all"
+        channelFilter = try container.decodeIfPresent(String.self, forKey: .channelFilter) ?? "allChannels"
+        channelId = try container.decodeIfPresent(Int.self, forKey: .channelId)
+        sortMode = try container.decodeIfPresent(String.self, forKey: .sortMode) ?? "nickname"
+        sortAscending = try container.decodeIfPresent(Bool.self, forKey: .sortAscending) ?? true
+        searchText = try container.decodeIfPresent(String.self, forKey: .searchText) ?? ""
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
 }
 
@@ -8246,6 +8277,8 @@ final class TS3AppModel: ObservableObject {
     func saveGroupClientFilterPreset(
         name: String,
         memberFilter: String,
+        channelFilter: String,
+        channelId: Int?,
         sortMode: String,
         sortAscending: Bool,
         searchText: String
@@ -8253,6 +8286,8 @@ final class TS3AppModel: ObservableObject {
         let preset = sanitizedGroupClientFilterPreset(TS3GroupClientFilterPreset(
             name: name,
             memberFilter: memberFilter,
+            channelFilter: channelFilter,
+            channelId: channelId,
             sortMode: sortMode,
             sortAscending: sortAscending,
             searchText: searchText
@@ -10697,6 +10732,10 @@ final class TS3AppModel: ObservableObject {
         let memberFilter = ["all", "online", "offline", "withUniqueId", "withoutUniqueId"].contains(preset.memberFilter)
             ? preset.memberFilter
             : "all"
+        let channelFilter = ["allChannels", "currentChannel", "selectedChannel", "withoutChannel"].contains(preset.channelFilter)
+            ? preset.channelFilter
+            : "allChannels"
+        let channelId = preset.channelId.flatMap { $0 > 0 ? $0 : nil }
         let sortMode = ["nickname", "databaseId", "channel", "uniqueId"].contains(preset.sortMode)
             ? preset.sortMode
             : "nickname"
@@ -10704,6 +10743,8 @@ final class TS3AppModel: ObservableObject {
             id: preset.id,
             name: name,
             memberFilter: memberFilter,
+            channelFilter: channelFilter == "selectedChannel" && channelId == nil ? "allChannels" : channelFilter,
+            channelId: channelFilter == "selectedChannel" ? channelId : nil,
             sortMode: sortMode,
             sortAscending: preset.sortAscending,
             searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
