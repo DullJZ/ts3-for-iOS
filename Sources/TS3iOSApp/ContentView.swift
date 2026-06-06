@@ -14008,6 +14008,7 @@ private struct MovePreviewItem: Identifiable {
 struct PermissionsSheet: View {
     private struct PermissionBackupImportConfirmation: Identifiable {
         let url: URL
+        let preview: TS3PermissionBackupPreview
         let id = UUID()
     }
 
@@ -14264,6 +14265,7 @@ struct PermissionsSheet: View {
                     Button("Import Permission Backup") {
                         isImportingPermissions = true
                     }
+                    .disabled(model.state != .connected)
 
                     Button("Delete Visible Permissions") {
                         isConfirmingDeleteVisible = true
@@ -14463,7 +14465,7 @@ struct PermissionsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    pendingPermissionBackupImport = PermissionBackupImportConfirmation(url: url)
+                    preparePermissionBackupImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -14491,9 +14493,9 @@ struct PermissionsSheet: View {
             }
             .alert(item: $pendingPermissionBackupImport) { confirmation in
                 Alert(
-                    title: Text("Import Permission Backup?"),
-                    message: Text("This switches the permission target to the selected backup and refreshes its permissions."),
-                    primaryButton: .destructive(Text("Import")) {
+                    title: Text("Restore Permission Backup?"),
+                    message: Text(permissionBackupPreviewMessage(confirmation.preview)),
+                    primaryButton: .destructive(Text("Restore")) {
                         importPermissionBackup(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
@@ -14620,6 +14622,38 @@ struct PermissionsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func preparePermissionBackupImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.permissionBackupPreview(from: Data(contentsOf: url))
+            pendingPermissionBackupImport = PermissionBackupImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func permissionBackupPreviewMessage(_ preview: TS3PermissionBackupPreview) -> String {
+        var lines = [
+            "Target: \(preview.scope.title) - \(preview.targetDescription)",
+            "Backup permissions: \(preview.permissionCount)"
+        ]
+        if let currentPermissionCount = preview.currentPermissionCount,
+           let overwriteCount = preview.overwriteCount,
+           let newPermissionCount = preview.newPermissionCount {
+            lines.append("Current permissions: \(currentPermissionCount)")
+            lines.append("Will update \(overwriteCount) existing and add \(newPermissionCount) new permission entries.")
+        } else {
+            lines.append("Current target is different or not loaded, so conflicts cannot be counted before restore.")
+        }
+        lines.append("Restore updates matching permission names and does not delete permissions missing from the backup.")
+        return lines.joined(separator: "\n")
     }
 
     private func importPermissionBackup(from url: URL) {

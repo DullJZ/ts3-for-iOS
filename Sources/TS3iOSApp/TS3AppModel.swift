@@ -1425,6 +1425,19 @@ private struct TS3PermissionBackup: Codable {
     var permissions: [TS3PermissionBackupPermission]
 }
 
+struct TS3PermissionBackupPreview {
+    let scope: TS3PermissionEditScope
+    let targetDescription: String
+    let permissionCount: Int
+    let currentPermissionCount: Int?
+    let overwriteCount: Int?
+    let newPermissionCount: Int?
+
+    var targetMatchesCurrentSelection: Bool {
+        currentPermissionCount != nil
+    }
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double
@@ -5038,16 +5051,26 @@ final class TS3AppModel: ObservableObject {
 
     func importPermissionBackup(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
-        permissionEditScope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
-        ownClientDatabaseId = decoded.ownClientDatabaseId
-        selectedDatabaseClientPermissionId = decoded.selectedDatabaseClientPermissionId
-        selectedServerGroupPermissionId = decoded.selectedServerGroupPermissionId
-        selectedChannelGroupPermissionId = decoded.selectedChannelGroupPermissionId
-        selectedChannelPermissionId = decoded.selectedChannelPermissionId
-        selectedChannelClientPermissionChannelId = decoded.selectedChannelClientPermissionChannelId
-        selectedChannelClientPermissionClientId = decoded.selectedChannelClientPermissionClientId
-        refreshSelectedPermissions()
-        lastError = nil
+        applyPermissionBackupSelection(decoded)
+        restorePermissionBackup(decoded)
+    }
+
+    func permissionBackupPreview(from data: Data) throws -> TS3PermissionBackupPreview {
+        let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
+        let scope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
+        let currentPermissions = currentPermissionsForBackup(decoded, scope: scope)
+        let currentNames = Set(currentPermissions?.map(\.name) ?? [])
+        let backupNames = Set(decoded.permissions.map(\.name))
+        let overwriteCount = currentPermissions.map { _ in backupNames.intersection(currentNames).count }
+        let newPermissionCount = currentPermissions.map { _ in backupNames.subtracting(currentNames).count }
+        return TS3PermissionBackupPreview(
+            scope: scope,
+            targetDescription: permissionBackupTargetDescription(decoded, scope: scope),
+            permissionCount: decoded.permissions.count,
+            currentPermissionCount: currentPermissions?.count,
+            overwriteCount: overwriteCount,
+            newPermissionCount: newPermissionCount
+        )
     }
 
     func channelClientPermissionMembers() -> [TS3UserSummary] {
@@ -5066,6 +5089,190 @@ final class TS3AppModel: ObservableObject {
             return nil
         }
         return (channelId, user.id, databaseId)
+    }
+
+    private func applyPermissionBackupSelection(_ backup: TS3PermissionBackup) {
+        permissionEditScope = TS3PermissionEditScope(rawValue: backup.scope) ?? .ownClient
+        ownClientDatabaseId = backup.ownClientDatabaseId
+        selectedDatabaseClientPermissionId = backup.selectedDatabaseClientPermissionId
+        selectedServerGroupPermissionId = backup.selectedServerGroupPermissionId
+        selectedChannelGroupPermissionId = backup.selectedChannelGroupPermissionId
+        selectedChannelPermissionId = backup.selectedChannelPermissionId
+        selectedChannelClientPermissionChannelId = backup.selectedChannelClientPermissionChannelId
+        selectedChannelClientPermissionClientId = backup.selectedChannelClientPermissionClientId
+    }
+
+    private func restorePermissionBackup(_ backup: TS3PermissionBackup) {
+        let permissions = backup.permissions
+            .map {
+                TS3PermissionBackupPermission(
+                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    value: $0.value,
+                    isNegated: $0.isNegated,
+                    isSkipped: $0.isSkipped
+                )
+            }
+            .filter { !$0.name.isEmpty }
+        guard !permissions.isEmpty else {
+            refreshSelectedPermissions()
+            lastError = nil
+            return
+        }
+
+        switch permissionEditScope {
+        case .ownClient, .databaseClient:
+            guard let databaseId = permissionEditScope == .ownClient ? ownClientDatabaseId : selectedDatabaseClientPermissionId else {
+                lastError = "Select a database client first."
+                return
+            }
+            runClientCommand { client in
+                for permission in permissions {
+                    try await client.addClientPermission(
+                        clientDatabaseId: databaseId,
+                        permissionName: permission.name,
+                        value: permission.value,
+                        skip: permission.isSkipped
+                    )
+                }
+                let refreshed = try await client.refreshClientPermissions(clientDatabaseId: databaseId)
+                await MainActor.run {
+                    if self.permissionEditScope == .ownClient {
+                        self.ownClientPermissions = self.permissionSummaries(from: refreshed)
+                    } else {
+                        self.scopedPermissions = self.permissionSummaries(from: refreshed)
+                    }
+                    self.lastError = nil
+                }
+            }
+        case .serverGroup:
+            guard let groupId = selectedServerGroupPermissionId else {
+                lastError = "Select a server group first."
+                return
+            }
+            runClientCommand { client in
+                for permission in permissions {
+                    try await client.addServerGroupPermission(
+                        groupId: groupId,
+                        permissionName: permission.name,
+                        value: permission.value,
+                        negated: permission.isNegated,
+                        skip: permission.isSkipped
+                    )
+                }
+                let refreshed = try await client.refreshServerGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: refreshed)
+                    self.lastError = nil
+                }
+            }
+        case .channelGroup:
+            guard let groupId = selectedChannelGroupPermissionId else {
+                lastError = "Select a channel group first."
+                return
+            }
+            runClientCommand { client in
+                for permission in permissions {
+                    try await client.addChannelGroupPermission(
+                        groupId: groupId,
+                        permissionName: permission.name,
+                        value: permission.value,
+                        negated: permission.isNegated,
+                        skip: permission.isSkipped
+                    )
+                }
+                let refreshed = try await client.refreshChannelGroupPermissions(groupId: groupId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: refreshed)
+                    self.lastError = nil
+                }
+            }
+        case .channel:
+            guard let channelId = selectedChannelPermissionId else {
+                lastError = "Select a channel first."
+                return
+            }
+            runClientCommand { client in
+                for permission in permissions {
+                    try await client.addChannelPermission(
+                        channelId: channelId,
+                        permissionName: permission.name,
+                        value: permission.value
+                    )
+                }
+                let refreshed = try await client.refreshChannelPermissions(channelId: channelId)
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: refreshed)
+                    self.lastError = nil
+                }
+            }
+        case .channelClient:
+            guard let selection = selectedChannelClientPermissionTarget() else {
+                lastError = "Select a channel client first."
+                return
+            }
+            runClientCommand { client in
+                for permission in permissions {
+                    try await client.addChannelClientPermission(
+                        channelId: selection.channelId,
+                        clientDatabaseId: selection.databaseId,
+                        permissionName: permission.name,
+                        value: permission.value,
+                        skip: permission.isSkipped
+                    )
+                }
+                let refreshed = try await client.refreshChannelClientPermissions(
+                    channelId: selection.channelId,
+                    clientDatabaseId: selection.databaseId
+                )
+                await MainActor.run {
+                    self.scopedPermissions = self.permissionSummaries(from: refreshed)
+                    self.lastError = nil
+                }
+            }
+        }
+    }
+
+    private func currentPermissionsForBackup(_ backup: TS3PermissionBackup, scope: TS3PermissionEditScope) -> [TS3PermissionSummary]? {
+        switch scope {
+        case .ownClient:
+            guard backup.ownClientDatabaseId == ownClientDatabaseId else { return nil }
+            return ownClientPermissions
+        case .databaseClient:
+            guard backup.selectedDatabaseClientPermissionId == selectedDatabaseClientPermissionId else { return nil }
+            return scopedPermissions
+        case .serverGroup:
+            guard backup.selectedServerGroupPermissionId == selectedServerGroupPermissionId else { return nil }
+            return scopedPermissions
+        case .channelGroup:
+            guard backup.selectedChannelGroupPermissionId == selectedChannelGroupPermissionId else { return nil }
+            return scopedPermissions
+        case .channel:
+            guard backup.selectedChannelPermissionId == selectedChannelPermissionId else { return nil }
+            return scopedPermissions
+        case .channelClient:
+            guard backup.selectedChannelClientPermissionChannelId == selectedChannelClientPermissionChannelId,
+                  backup.selectedChannelClientPermissionClientId == selectedChannelClientPermissionClientId else { return nil }
+            return scopedPermissions
+        }
+    }
+
+    private func permissionBackupTargetDescription(_ backup: TS3PermissionBackup, scope: TS3PermissionEditScope) -> String {
+        switch scope {
+        case .ownClient:
+            return backup.ownClientDatabaseId.map { "Own Client DB \($0)" } ?? "Own Client"
+        case .databaseClient:
+            return backup.selectedDatabaseClientPermissionId.map { "Database Client \($0)" } ?? "Database Client"
+        case .serverGroup:
+            return backup.selectedServerGroupPermissionId.map { TS3GroupSummary.name(for: $0, in: serverGroups) } ?? "Server Group"
+        case .channelGroup:
+            return backup.selectedChannelGroupPermissionId.map { TS3GroupSummary.name(for: $0, in: channelGroups) } ?? "Channel Group"
+        case .channel:
+            return backup.selectedChannelPermissionId.flatMap { channelName(for: $0) } ?? "Channel"
+        case .channelClient:
+            let channel = backup.selectedChannelClientPermissionChannelId.flatMap { channelName(for: $0) } ?? "Channel"
+            let client = backup.selectedChannelClientPermissionClientId.map { "Client \($0)" } ?? "Client"
+            return "\(client) in \(channel)"
+        }
     }
 
     private func permissionSummaries(from permissions: [TS3Permission]) -> [TS3PermissionSummary] {
