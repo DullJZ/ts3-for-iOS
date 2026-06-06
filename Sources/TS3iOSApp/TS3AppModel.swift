@@ -857,6 +857,46 @@ struct TS3PermissionSummary: Identifiable {
     let isNegated: Bool
     let isSkipped: Bool
 
+    var statusLabels: [String] {
+        var labels: [String] = []
+        if isNegated {
+            labels.append("Negated")
+        }
+        if isSkipped {
+            labels.append("Skips inherited")
+        }
+        return labels.isEmpty ? ["Direct"] : labels
+    }
+
+    var inheritanceEffectDescription: String {
+        switch (isNegated, isSkipped) {
+        case (true, true):
+            return "Negates earlier grants and blocks lower inherited permissions."
+        case (true, false):
+            return "Negates earlier grants while later channel or client entries can still override it."
+        case (false, true):
+            return "Allows this value and stops lower inherited permissions from overriding it."
+        case (false, false):
+            return "Direct value; inherited permissions may still apply around this entry."
+        }
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "value=\(value)",
+            "status=\(statusLabels.joined(separator: "+"))"
+        ]
+        if isNegated {
+            parts.append("negated=true")
+        }
+        if isSkipped {
+            parts.append("skip=true")
+        }
+        parts.append("effect=\(inheritanceEffectDescription)")
+        return parts.joined(separator: " ")
+    }
+
     init(permission: TS3Permission) {
         self.id = permission.id
         self.name = permission.name

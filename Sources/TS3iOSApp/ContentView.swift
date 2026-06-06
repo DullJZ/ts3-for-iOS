@@ -14033,7 +14033,7 @@ struct PermissionsSheet: View {
         case all
         case negated
         case skipped
-        case inherited
+        case direct
         case positiveValue
         case zeroValue
         case negativeValue
@@ -14045,7 +14045,7 @@ struct PermissionsSheet: View {
             case .all: return "All Permissions"
             case .negated: return "Negated"
             case .skipped: return "Skipped"
-            case .inherited: return "Inherited"
+            case .direct: return "Direct"
             case .positiveValue: return "Positive Value"
             case .zeroValue: return "Zero Value"
             case .negativeValue: return "Negative Value"
@@ -14060,7 +14060,7 @@ struct PermissionsSheet: View {
                 return permission.isNegated
             case .skipped:
                 return permission.isSkipped
-            case .inherited:
+            case .direct:
                 return !permission.isNegated && !permission.isSkipped
             case .positiveValue:
                 return permission.value > 0
@@ -14135,6 +14135,8 @@ struct PermissionsSheet: View {
                     || String(permission.value).contains(query)
                     || (permission.isNegated && "negated".localizedCaseInsensitiveContains(query))
                     || (permission.isSkipped && "skipped".localizedCaseInsensitiveContains(query))
+                    || permission.statusLabels.contains { $0.localizedCaseInsensitiveContains(query) }
+                    || permission.inheritanceEffectDescription.localizedCaseInsensitiveContains(query)
             )
         }
         return sortedDisplayedPermissions(filtered)
@@ -14586,7 +14588,7 @@ struct PermissionsSheet: View {
         if permission.isSkipped {
             flags.append("Skipped")
         }
-        return flags.isEmpty ? "Inherited" : flags.joined(separator: " ")
+        return flags.isEmpty ? "Direct" : flags.joined(separator: " ")
     }
 
     private func applyPreset(_ preset: TS3PermissionFilterPreset) {
@@ -14708,11 +14710,8 @@ struct PermissionRow: View {
                     .foregroundColor(.secondary)
             }
             HStack(spacing: 10) {
-                if permission.isNegated {
-                    Text("Negated")
-                }
-                if permission.isSkipped {
-                    Text("Skipped")
+                ForEach(permission.statusLabels, id: \.self) { label in
+                    Text(label)
                 }
                 Spacer()
                 Button("Edit") {
@@ -14728,6 +14727,9 @@ struct PermissionRow: View {
             }
             .font(.caption)
             .foregroundColor(.secondary)
+            Text(permission.inheritanceEffectDescription)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 3)
         .alert(isPresented: $isConfirmingDelete) {
@@ -14801,22 +14803,6 @@ struct PermissionInfoRow: View {
                 copyId()
             }
         }
-    }
-}
-
-private extension TS3PermissionSummary {
-    var clipboardSummary: String {
-        var parts = [
-            "name=\(name)",
-            "value=\(value)"
-        ]
-        if isNegated {
-            parts.append("negated=true")
-        }
-        if isSkipped {
-            parts.append("skip=true")
-        }
-        return parts.joined(separator: " ")
     }
 }
 

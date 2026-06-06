@@ -46,7 +46,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Server information | Done | Server info sheet and Catalyst entry | Add more raw virtual server fields where available. |
 | Server edit/settings | Partial | Server settings editor, quotas, host fields, icon support, server-list visibility, temporary password management with persistent recent results, complaint and anti-flood controls | Audit all official server edit tabs and fill missing fields. |
-| Channel create/edit/delete/move | Partial | Channel editor with codec quality/latency/encryption controls, move preview, draft import/export, icon import, password prompts | Add full channel permission inheritance visibility and validate advanced codec controls against real servers. |
+| Channel create/edit/delete/move | Partial | Channel editor with codec quality/latency/encryption controls, move preview, draft import/export, icon import, password prompts, and permission inheritance impact visibility | Validate advanced codec controls against real servers and add deeper inherited effective-value tracing if protocol data allows it. |
 | Client actions | Partial | Client row menus, database-record online/contact actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill missing complaint/bookmark-contact actions. |
 | Server logs | Partial | Query presets, paged log viewing with begin position, visible exports, and persistent recent log results for offline review | Add broader log filters and validate real-server log permissions. |
 | Ban list | Partial | Ban list management, add/delete/delete-visible/delete-all, filters, presets, backup import/export, visible exports, and persistent recent ban results for offline review | Audit ban edit/add fields and test against real servers. |
@@ -57,7 +57,7 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Permission viewer/editor | Partial | Permission scopes, filters, presets, backup structures | Validate complete server/channel/client/group permission editing against official semantics. |
+| Permission viewer/editor | Partial | Permission scopes, direct/negated/skip filters, inheritance-impact labels, presets, backup structures | Validate complete server/channel/client/group permission editing against official semantics. |
 | Server groups | Partial | Group management with create/copy/rename/delete, member add/remove by database id, visible exports, filter presets, and persistent recent group lists for offline review | Validate group mutation semantics and permission requirements against real servers. |
 | Channel groups | Partial | Channel group management with create/copy/rename/delete, member browsing, set-by-database-id actions, visible exports, filter presets, and persistent recent group lists for offline review | Add stronger channel-group member browsing by channel/client context and validate against real servers. |
 | Permission backup/import | Partial | Permission backup export, guided restore preview, upsert restore, and conflict/addition counts | Add broader restore conflict handling and validate permission backup semantics against real servers. |

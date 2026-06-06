@@ -2694,6 +2694,19 @@ private extension TS3Client {
 }
 
 extension TS3Client {
+    static func permission(from command: TS3SingleCommand) -> TS3Permission? {
+        guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
+              let value = command.get("permvalue")?.value.flatMap(Int.init) else {
+            return nil
+        }
+        return TS3Permission(
+            name: name,
+            value: value,
+            isNegated: command.get("permnegated")?.value == "1",
+            isSkipped: command.get("permskip")?.value == "1"
+        )
+    }
+
     static func logViewCommand(
         limit: Int,
         reverse: Bool,
@@ -3612,16 +3625,7 @@ private extension TS3Client {
     }
 
     func permission(from command: TS3SingleCommand) -> TS3Permission? {
-        guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
-              let value = intValue(command, "permvalue") else {
-            return nil
-        }
-        return TS3Permission(
-            name: name,
-            value: value,
-            isNegated: boolValue(command, "permnegated"),
-            isSkipped: boolValue(command, "permskip")
-        )
+        Self.permission(from: command)
     }
 
     func fileEntry(from command: TS3SingleCommand, channelId: Int, parentPath fallbackParentPath: String) -> TS3FileEntry? {

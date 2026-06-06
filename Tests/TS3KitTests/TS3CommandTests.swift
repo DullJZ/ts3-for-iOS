@@ -71,6 +71,19 @@ final class TS3CommandTests: XCTestCase {
         )
     }
 
+    func testPermissionParserKeepsInheritanceFlags() throws {
+        let command = try TS3MultiCommand.parse(
+            "channelgrouppermlist permsid=i_client_needed_kick_from_channel_power permvalue=50 permnegated=1 permskip=1"
+        ).simplifyOne()
+
+        let permission = TS3Client.permission(from: command)
+
+        XCTAssertEqual(permission?.name, "i_client_needed_kick_from_channel_power")
+        XCTAssertEqual(permission?.value, 50)
+        XCTAssertEqual(permission?.isNegated, true)
+        XCTAssertEqual(permission?.isSkipped, true)
+    }
+
     func testChannelCreateCommandBuildsOfficialAdvancedParameters() {
         let command = TS3Client.channelCreateCommand(
             name: "Raid Room",
