@@ -1120,16 +1120,14 @@ public final class TS3Client {
         password: String? = nil
     ) async throws -> TS3FileTransferParameters {
         let transferId = nextTransferId()
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "clientftfid", value: String(transferId)),
-            TS3CommandSingleParameter(name: "name", value: path),
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "seekpos", value: String(seekPosition))
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        let responses = try await execute(TS3SingleCommand(name: "ftinitdownload", parameters: params))
+        let command = Self.fileDownloadInitCommand(
+            channelId: channelId,
+            path: path,
+            clientTransferId: transferId,
+            seekPosition: seekPosition,
+            password: password
+        )
+        let responses = try await execute(command)
         guard let response = responses.first,
               let transfer = fileTransferParameters(from: response, fallbackClientTransferId: transferId) else {
             throw TS3Error.invalidCommand
@@ -1167,18 +1165,16 @@ public final class TS3Client {
         password: String? = nil
     ) async throws -> TS3FileTransferParameters {
         let transferId = nextTransferId()
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "clientftfid", value: String(transferId)),
-            TS3CommandSingleParameter(name: "name", value: path),
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "size", value: String(size)),
-            TS3CommandSingleParameter(name: "overwrite", value: overwrite ? "1" : "0"),
-            TS3CommandSingleParameter(name: "resume", value: resume ? "1" : "0")
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        let responses = try await execute(TS3SingleCommand(name: "ftinitupload", parameters: params))
+        let command = Self.fileUploadInitCommand(
+            channelId: channelId,
+            path: path,
+            clientTransferId: transferId,
+            size: size,
+            overwrite: overwrite,
+            resume: resume,
+            password: password
+        )
+        let responses = try await execute(command)
         guard let response = responses.first,
               let transfer = fileTransferParameters(from: response, fallbackClientTransferId: transferId) else {
             throw TS3Error.invalidCommand
@@ -2721,6 +2717,76 @@ extension TS3Client {
         ])
     }
 
+    static func fileDownloadInitCommand(
+        channelId: Int,
+        path: String,
+        clientTransferId: Int,
+        seekPosition: Int64,
+        password: String?
+    ) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clientftfid", value: String(clientTransferId)),
+            TS3CommandSingleParameter(name: "name", value: path),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "seekpos", value: String(seekPosition))
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        return TS3SingleCommand(name: "ftinitdownload", parameters: params)
+    }
+
+    static func fileUploadInitCommand(
+        channelId: Int,
+        path: String,
+        clientTransferId: Int,
+        size: Int64,
+        overwrite: Bool,
+        resume: Bool,
+        password: String?
+    ) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clientftfid", value: String(clientTransferId)),
+            TS3CommandSingleParameter(name: "name", value: path),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "size", value: String(size)),
+            TS3CommandSingleParameter(name: "overwrite", value: overwrite ? "1" : "0"),
+            TS3CommandSingleParameter(name: "resume", value: resume ? "1" : "0")
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        return TS3SingleCommand(name: "ftinitupload", parameters: params)
+    }
+
+    static func fileTransferParameters(
+        from command: TS3SingleCommand,
+        fallbackClientTransferId: Int,
+        fallbackHost: String
+    ) -> TS3FileTransferParameters? {
+        func intValue(_ name: String) -> Int? {
+            command.get(name)?.value.flatMap(Int.init)
+        }
+        func int64Value(_ name: String) -> Int64? {
+            command.get(name)?.value.flatMap(Int64.init)
+        }
+
+        guard let serverTransferId = intValue("serverftfid"),
+              let key = command.get("ftkey")?.value,
+              let port = intValue("port") else {
+            return nil
+        }
+        return TS3FileTransferParameters(
+            clientTransferId: intValue("clientftfid") ?? fallbackClientTransferId,
+            serverTransferId: serverTransferId,
+            key: key,
+            host: command.get("ip")?.value ?? fallbackHost,
+            port: port,
+            size: int64Value("size"),
+            seekPosition: int64Value("seekpos") ?? 0
+        )
+    }
+
     static func channelCreateCommand(
         name: String,
         parentId: Int?,
@@ -3661,19 +3727,10 @@ private extension TS3Client {
         from command: TS3SingleCommand,
         fallbackClientTransferId: Int
     ) -> TS3FileTransferParameters? {
-        guard let serverTransferId = intValue(command, "serverftfid"),
-              let key = command.get("ftkey")?.value,
-              let port = intValue(command, "port") else {
-            return nil
-        }
-        return TS3FileTransferParameters(
-            clientTransferId: intValue(command, "clientftfid") ?? fallbackClientTransferId,
-            serverTransferId: serverTransferId,
-            key: key,
-            host: command.get("ip")?.value ?? config.host,
-            port: port,
-            size: int64Value(command, "size"),
-            seekPosition: int64Value(command, "seekpos") ?? 0
+        Self.fileTransferParameters(
+            from: command,
+            fallbackClientTransferId: fallbackClientTransferId,
+            fallbackHost: config.host
         )
     }
 
