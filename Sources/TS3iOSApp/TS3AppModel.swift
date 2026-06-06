@@ -2868,6 +2868,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var audioInputDevices: [TS3AudioRouteDeviceSummary] = []
     @Published private(set) var audioInputRoute = "System Default"
     @Published private(set) var audioOutputRoute = "System Default"
+    @Published private(set) var audioRouteAvailabilityNotes: [String] = []
     @Published private(set) var audioProfiles: [TS3AudioProfile] = []
     @Published private(set) var keyboardShortcuts: [TS3KeyboardShortcutBinding] = TS3AppModel.defaultKeyboardShortcuts
     @Published var microphonePermissionPrompt: MicrophonePermissionPrompt?
@@ -4303,10 +4304,18 @@ final class TS3AppModel: ObservableObject {
         }
         audioInputRoute = routeText(for: session.currentRoute.inputs)
         audioOutputRoute = routeText(for: session.currentRoute.outputs)
+        audioRouteAvailabilityNotes = audioRouteNotes(
+            inputDevices: audioInputDevices,
+            inputRoute: audioInputRoute,
+            outputRoute: audioOutputRoute
+        )
         #else
         audioInputDevices = []
         audioInputRoute = "System Default"
         audioOutputRoute = "System Default"
+        audioRouteAvailabilityNotes = [
+            "Audio route selection is controlled by the operating system on this platform."
+        ]
         #endif
     }
 
@@ -12070,6 +12079,29 @@ final class TS3AppModel: ObservableObject {
         }
         .joined(separator: ", ")
     }
+
+    private func audioRouteNotes(
+        inputDevices: [TS3AudioRouteDeviceSummary],
+        inputRoute: String,
+        outputRoute: String
+    ) -> [String] {
+        var notes: [String] = []
+        if inputDevices.isEmpty {
+            notes.append("No selectable input devices are currently reported; the system default microphone will be used when available.")
+        }
+        if inputRoute == "System Default" {
+            notes.append("Input route is controlled by the current system audio device and microphone permission.")
+        }
+        if outputRoute == "System Default" {
+            notes.append("Output route is controlled by the current system audio device.")
+        }
+        #if targetEnvironment(macCatalyst)
+        notes.append("On Mac Catalyst, detailed input and output device switching may be limited by macOS audio routing.")
+        #elseif os(iOS)
+        notes.append("On iOS, Bluetooth, receiver, speaker, and accessory availability can change when devices connect or disconnect.")
+        #endif
+        return notes
+    }
     #endif
 
     private func currentMicrophonePermissionState() -> MicrophonePermissionState {
@@ -12238,7 +12270,8 @@ final class TS3AppModel: ObservableObject {
             "Playback Volume: \(playbackVolumePercentText)",
             "Input Route: \(audioInputRoute)",
             "Output Route: \(audioOutputRoute)",
-            "Default To Speaker: \(prefersSpeakerOutput ? "Yes" : "No")"
+            "Default To Speaker: \(prefersSpeakerOutput ? "Yes" : "No")",
+            "Route Availability: \(audioRouteAvailabilityNotes.isEmpty ? "No route limitations reported" : audioRouteAvailabilityNotes.joined(separator: " | "))"
         ].joined(separator: "\n"))
 
         sections.append([

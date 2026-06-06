@@ -19947,6 +19947,13 @@ struct AudioSettingsSheet: View {
                 Section(header: Text("Audio Device")) {
                     audioRouteRow(title: "Input Route", value: model.audioInputRoute)
                     audioRouteRow(title: "Output Route", value: model.audioOutputRoute)
+                    if !model.audioRouteAvailabilityNotes.isEmpty {
+                        ForEach(model.audioRouteAvailabilityNotes, id: \.self) { note in
+                            Text(note)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                     Toggle("Default to Speaker", isOn: prefersSpeakerBinding)
                     Picker("Input Device", selection: selectedInputDeviceBinding) {
                         Text("System Default").tag("")
@@ -19968,6 +19975,7 @@ struct AudioSettingsSheet: View {
                     ServerInfoDetailRow(label: "Playback Volume", value: model.playbackVolumePercentText)
                     ServerInfoDetailRow(label: "Input Devices", value: String(model.audioInputDevices.count))
                     ServerInfoDetailRow(label: "Selected Input", value: selectedInputDeviceName)
+                    ServerInfoDetailRow(label: "Route Availability", value: audioRouteAvailabilityText)
                     ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" })
                     ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.lossText))
                     ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.lossText))
@@ -20348,6 +20356,7 @@ struct AudioSettingsSheet: View {
             "Playback Volume: \(model.playbackVolumePercentText)",
             "Input Route: \(model.audioInputRoute)",
             "Output Route: \(model.audioOutputRoute)",
+            "Route Availability: \(audioRouteAvailabilityText)",
             "Input Devices: \(model.audioInputDevices.count)",
             "Selected Input: \(selectedInputDeviceName)",
             "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
@@ -20372,6 +20381,7 @@ struct AudioSettingsSheet: View {
             "Playback Volume: \(model.playbackVolumePercentText)",
             "Input Route: \(model.audioInputRoute)",
             "Output Route: \(model.audioOutputRoute)",
+            "Route Availability: \(audioRouteAvailabilityText)",
             "Input Devices: \(model.audioInputDevices.count)",
             "Selected Input: \(selectedInputDeviceName)",
             "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
@@ -20394,6 +20404,12 @@ struct AudioSettingsSheet: View {
 
     private var selectedInputDeviceName: String {
         model.audioInputDevices.first(where: { $0.isSelected })?.displayName ?? "System Default"
+    }
+
+    private var audioRouteAvailabilityText: String {
+        model.audioRouteAvailabilityNotes.isEmpty
+            ? "No route limitations reported"
+            : model.audioRouteAvailabilityNotes.joined(separator: " | ")
     }
 
     private var inputMeterProgress: Double {
