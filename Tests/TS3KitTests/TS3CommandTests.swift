@@ -176,6 +176,20 @@ final class TS3CommandTests: XCTestCase {
         )
     }
 
+    func testChannelCodecConstraintsMatchEditableRanges() {
+        XCTAssertTrue(TS3ChannelCodecConstraints.isValidQuality(nil))
+        XCTAssertTrue(TS3ChannelCodecConstraints.isValidQuality(0))
+        XCTAssertTrue(TS3ChannelCodecConstraints.isValidQuality(10))
+        XCTAssertFalse(TS3ChannelCodecConstraints.isValidQuality(-1))
+        XCTAssertFalse(TS3ChannelCodecConstraints.isValidQuality(11))
+
+        XCTAssertTrue(TS3ChannelCodecConstraints.isValidLatencyFactor(nil))
+        XCTAssertTrue(TS3ChannelCodecConstraints.isValidLatencyFactor(1))
+        XCTAssertTrue(TS3ChannelCodecConstraints.isValidLatencyFactor(10))
+        XCTAssertFalse(TS3ChannelCodecConstraints.isValidLatencyFactor(0))
+        XCTAssertFalse(TS3ChannelCodecConstraints.isValidLatencyFactor(11))
+    }
+
     func testGroupCopyCommandsUseDistinctServerAndChannelParameterNames() {
         let serverCommand = TS3SingleCommand(name: "servergroupcopy", parameters: [
             TS3CommandSingleParameter(name: "ssgid", value: "6"),

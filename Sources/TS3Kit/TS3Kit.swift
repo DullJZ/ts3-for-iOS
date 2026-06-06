@@ -423,6 +423,21 @@ public struct TS3ServerEdit {
     }
 }
 
+public enum TS3ChannelCodecConstraints {
+    public static let qualityRange = 0...10
+    public static let latencyFactorRange = 1...10
+
+    public static func isValidQuality(_ value: Int?) -> Bool {
+        guard let value else { return true }
+        return qualityRange.contains(value)
+    }
+
+    public static func isValidLatencyFactor(_ value: Int?) -> Bool {
+        guard let value else { return true }
+        return latencyFactorRange.contains(value)
+    }
+}
+
 public struct TS3Channel: Identifiable {
     public let id: Int
     public let parentId: Int?

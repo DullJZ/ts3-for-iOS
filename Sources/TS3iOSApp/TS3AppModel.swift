@@ -113,7 +113,7 @@ struct TS3ChannelCodecQuality: Identifiable {
 
     static func title(for value: Int?) -> String? {
         guard let value else { return nil }
-        if (0...10).contains(value) {
+        if TS3ChannelCodecConstraints.qualityRange.contains(value) {
             return "Quality \(value)"
         }
         return "Unknown (\(value))"

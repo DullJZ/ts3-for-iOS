@@ -18965,6 +18965,13 @@ struct ChannelEditorSheet: View {
                     TextField("Codec Latency Factor", text: $codecLatencyFactor)
                         .ts3NumericKeyboard()
                     Toggle("Unencrypted Voice", isOn: $isCodecUnencrypted)
+                    if !codecValidationMessages.isEmpty {
+                        ForEach(codecValidationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
                     TextField("Needed Talk Power", text: $neededTalkPower)
                         .ts3NumericKeyboard()
                     TextField("Needed Subscribe Power", text: $neededSubscribePower)
@@ -19171,6 +19178,7 @@ struct ChannelEditorSheet: View {
             ("Codec", codecTitle(for: draft.codec)),
             ("Codec Quality", codecQualityTitle(for: draft.codecQuality)),
             ("Codec Latency Factor", draft.codecLatencyFactor ?? ""),
+            ("Codec Validation", codecValidationMessages.joined(separator: "; ")),
             ("Unencrypted Voice", draft.isCodecUnencrypted == true ? "Yes" : "No"),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
             ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
@@ -19189,8 +19197,8 @@ struct ChannelEditorSheet: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(neededTalkPower)
             && isOptionalInt(neededSubscribePower)
-            && isOptionalInt(codecQuality)
-            && isOptionalInt(codecLatencyFactor)
+            && isCodecQualityValid
+            && isCodecLatencyFactorValid
             && isOptionalInt(deleteDelaySeconds)
             && isOptionalInt(iconId)
             && (maxClientsUnlimited || isRequiredInt(maxClients))
@@ -19274,6 +19282,27 @@ struct ChannelEditorSheet: View {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let numericValue = Int(trimmed) else { return trimmed }
         return TS3ChannelCodecQuality.title(for: numericValue) ?? trimmed
+    }
+
+    private var codecValidationMessages: [String] {
+        var messages: [String] = []
+        if !isCodecQualityValid {
+            messages.append("Codec quality must be between \(TS3ChannelCodecConstraints.qualityRange.lowerBound) and \(TS3ChannelCodecConstraints.qualityRange.upperBound).")
+        }
+        if !isCodecLatencyFactorValid {
+            messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
+        }
+        return messages
+    }
+
+    private var isCodecQualityValid: Bool {
+        isOptionalInt(codecQuality)
+            && TS3ChannelCodecConstraints.isValidQuality(parsedOptionalInt(codecQuality))
+    }
+
+    private var isCodecLatencyFactorValid: Bool {
+        isOptionalInt(codecLatencyFactor)
+            && TS3ChannelCodecConstraints.isValidLatencyFactor(parsedOptionalInt(codecLatencyFactor))
     }
 
     private func isOptionalInt(_ text: String) -> Bool {
