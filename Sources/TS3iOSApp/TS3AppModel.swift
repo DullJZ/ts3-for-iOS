@@ -2824,6 +2824,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "open-events", group: "Messaging", action: "Open Events", defaultKeys: "Command-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "open-whisper", group: "Messaging", action: "Open Whisper", defaultKeys: "Command-Shift-W"),
         TS3KeyboardShortcutBinding(actionId: "toggle-whisper-activation", group: "Voice", action: "Start / Stop Temporary Whisper", defaultKeys: "Command-Option-W"),
+        TS3KeyboardShortcutBinding(actionId: "start-whisper-activation", group: "Voice", action: "Start Temporary Whisper", defaultKeys: "Command-Option-H"),
+        TS3KeyboardShortcutBinding(actionId: "stop-whisper-activation", group: "Voice", action: "Stop Temporary Whisper", defaultKeys: "Command-Option-Shift-H"),
         TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
         TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),

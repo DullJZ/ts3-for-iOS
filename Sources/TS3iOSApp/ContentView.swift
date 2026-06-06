@@ -17897,6 +17897,21 @@ struct WhisperSheet: View {
                     }
                     .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
                     .disabled(model.state != .connected || model.whisperRoute == .none)
+                    HStack(spacing: 12) {
+                        Button("Start Temporary Whisper") {
+                            model.beginCurrentWhisperActivation()
+                        }
+                        .buttonStyle(.borderless)
+                        .ts3KeyboardShortcut("start-whisper-activation", in: model)
+                        .disabled(model.state != .connected || model.whisperRoute == .none || model.isWhisperActivationActive)
+                        Button("Stop Temporary Whisper") {
+                            model.endWhisperActivation()
+                        }
+                        .buttonStyle(.borderless)
+                        .ts3KeyboardShortcut("stop-whisper-activation", in: model)
+                        .disabled(!model.isWhisperActivationActive)
+                    }
+                    .font(.caption)
                     WhisperHoldButton()
                         .environmentObject(model)
                         .disabled(model.state != .connected || model.whisperRoute == .none)
@@ -19832,6 +19847,22 @@ struct TalkControlBar: View {
             .buttonStyle(TS3BorderedButtonStyle(isProminent: model.isWhisperActivationActive))
             .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
             .disabled(model.state != .connected || model.whisperRoute == .none)
+            HStack(spacing: 12) {
+                Button("Start Whisper") {
+                    model.beginCurrentWhisperActivation()
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                .frame(maxWidth: .infinity)
+                .ts3KeyboardShortcut("start-whisper-activation", in: model)
+                .disabled(model.state != .connected || model.whisperRoute == .none || model.isWhisperActivationActive)
+                Button("Stop Whisper") {
+                    model.endWhisperActivation()
+                }
+                .buttonStyle(TS3BorderedButtonStyle())
+                .frame(maxWidth: .infinity)
+                .ts3KeyboardShortcut("stop-whisper-activation", in: model)
+                .disabled(!model.isWhisperActivationActive)
+            }
             WhisperHoldButton()
                 .environmentObject(model)
                 .disabled(model.state != .connected || model.whisperRoute == .none)
