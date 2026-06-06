@@ -38,7 +38,7 @@ Status legend:
 | Offline messages | Partial | Inbox, compose, read/delete, local cached history, disconnected access, draft persistence, filters and presets | Validate server-side read/delete behavior against real servers. |
 | Pokes | Partial | Receive poke notifications/events, online client-row poke, database-record online poke, poke-back, and online contact poke actions exist | Add broader real-server validation and any remaining context-menu entry points found in official-client audit. |
 | Whisper | Partial | Whisper sheet, presets, targets, temporary activation controls, Catalyst shortcut binding, and tests for protocol serialization | Verify full voice whisper routing against real servers. |
-| Event log | Done | Events sheet, unread handling, filter presets, visible snapshot export, and persistent local event archive | Add import/restore of archived event history if needed. |
+| Event log | Done | Events sheet, unread handling, filter presets, visible snapshot export, persistent local event archive, and archive import/restore preview | Add richer per-event restore choices if archive formats expand. |
 
 ## Server And Channel Administration
 

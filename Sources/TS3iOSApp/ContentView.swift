@@ -6497,6 +6497,12 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 }
 
 struct EventsSheet: View {
+    private struct EventArchiveImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3EventHistoryArchivePreview
+        let id = UUID()
+    }
+
     private enum EventCleanupConfirmation: Identifiable {
         case all
         case activity
@@ -6623,11 +6629,15 @@ struct EventsSheet: View {
     @State private var searchText = ""
     @State private var presetName = ""
     @State private var isExportingEvents = false
+    @State private var isExportingEventArchive = false
+    @State private var isImportingEventArchive = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
     @State private var cleanupConfirmation: EventCleanupConfirmation?
+    @State private var pendingEventArchiveImport: EventArchiveImportConfirmation?
     @State private var eventsDocument = TS3TextFileDocument()
+    @State private var eventArchiveDocument = TS3BookmarkFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
     private var visibleActivityEvents: [TS3ActivitySummary] {
@@ -6838,6 +6848,13 @@ struct EventsSheet: View {
                             isExportingEvents = true
                         }
                         .disabled(!hasVisibleEvents)
+                        Button("Export Event Archive") {
+                            exportEventArchive()
+                        }
+                        .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+                        Button("Import Event Archive") {
+                            isImportingEventArchive = true
+                        }
                         Button("Clear Events") {
                             cleanupConfirmation = .all
                         }
@@ -6875,12 +6892,33 @@ struct EventsSheet: View {
                 }
             }
             .fileExporter(
+                isPresented: $isExportingEventArchive,
+                document: eventArchiveDocument,
+                contentType: .json,
+                defaultFilename: "ts3-event-archive"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
                 isPresented: $isExportingPresets,
                 document: presetsDocument,
                 contentType: .json,
                 defaultFilename: "ts3-event-filter-presets"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingEventArchive,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    prepareEventArchiveImport(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -6918,6 +6956,16 @@ struct EventsSheet: View {
                         case .pokes:
                             model.clearPokeEvents()
                         }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingEventArchiveImport) { confirmation in
+                Alert(
+                    title: Text("Restore Event Archive?"),
+                    message: Text(eventArchivePreviewMessage(confirmation.preview)),
+                    primaryButton: .destructive(Text("Restore")) {
+                        importEventArchive(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
@@ -6990,6 +7038,56 @@ struct EventsSheet: View {
         do {
             presetsDocument = TS3BookmarkFileDocument(data: try model.eventFilterPresetsExportData())
             isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportEventArchive() {
+        do {
+            eventArchiveDocument = TS3BookmarkFileDocument(data: try model.eventHistoryArchiveData())
+            isExportingEventArchive = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareEventArchiveImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.eventHistoryArchivePreview(from: Data(contentsOf: url))
+            pendingEventArchiveImport = EventArchiveImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func eventArchivePreviewMessage(_ preview: TS3EventHistoryArchivePreview) -> String {
+        [
+            "Archive events: \(preview.totalCount)",
+            "Archive activity: \(preview.activityCount)",
+            "Archive pokes: \(preview.pokeCount)",
+            "Current events: \(preview.currentTotalCount)",
+            "Current activity: \(preview.currentActivityCount)",
+            "Current pokes: \(preview.currentPokeCount)",
+            "Restore replaces the local event archive and marks restored events as read."
+        ].joined(separator: "\n")
+    }
+
+    private func importEventArchive(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.restoreEventHistoryArchive(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
         }

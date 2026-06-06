@@ -418,6 +418,21 @@ private struct TS3EventHistoryArchive: Codable {
     static let empty = TS3EventHistoryArchive(activityEvents: [], pokeEvents: [])
 }
 
+struct TS3EventHistoryArchivePreview {
+    let activityCount: Int
+    let pokeCount: Int
+    let currentActivityCount: Int
+    let currentPokeCount: Int
+
+    var totalCount: Int {
+        activityCount + pokeCount
+    }
+
+    var currentTotalCount: Int {
+        currentActivityCount + currentPokeCount
+    }
+}
+
 enum TS3ContactStatus: String, CaseIterable, Codable, Identifiable {
     case neutral
     case friend
@@ -7638,6 +7653,35 @@ final class TS3AppModel: ObservableObject {
         saveEventFilterPresets()
         lastError = nil
         return imported.count
+    }
+
+    func eventHistoryArchiveData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TS3EventHistoryArchive(
+            activityEvents: Array(activityEvents.prefix(100)),
+            pokeEvents: Array(pokeEvents.prefix(50))
+        ))
+    }
+
+    func eventHistoryArchivePreview(from data: Data) throws -> TS3EventHistoryArchivePreview {
+        let archive = try JSONDecoder().decode(TS3EventHistoryArchive.self, from: data)
+        return TS3EventHistoryArchivePreview(
+            activityCount: archive.activityEvents.count,
+            pokeCount: archive.pokeEvents.count,
+            currentActivityCount: activityEvents.count,
+            currentPokeCount: pokeEvents.count
+        )
+    }
+
+    func restoreEventHistoryArchive(from data: Data) throws {
+        let archive = try JSONDecoder().decode(TS3EventHistoryArchive.self, from: data)
+        activityEvents = Array(archive.activityEvents.prefix(100))
+        pokeEvents = Array(archive.pokeEvents.prefix(50))
+        unreadActivityCount = 0
+        unreadPokeCount = 0
+        saveEventHistory()
+        lastError = nil
     }
 
     func saveChatFilterPreset(name: String, messageFilter: String, senderFilter: String, newestFirst: Bool, searchText: String) {
