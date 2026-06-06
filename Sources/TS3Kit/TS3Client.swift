@@ -244,12 +244,18 @@ public final class TS3Client {
         try await refreshServerInfo()
     }
 
-    public func serverLogEntries(limit: Int = 100, reverse: Bool = true, instance: Bool = false) async throws -> [TS3ServerLogEntry] {
-        let responses = try await execute(TS3SingleCommand(name: "logview", parameters: [
-            TS3CommandSingleParameter(name: "lines", value: String(limit)),
-            TS3CommandSingleParameter(name: "reverse", value: reverse ? "1" : "0"),
-            TS3CommandSingleParameter(name: "instance", value: instance ? "1" : "0")
-        ]))
+    public func serverLogEntries(
+        limit: Int = 100,
+        reverse: Bool = true,
+        instance: Bool = false,
+        beginPosition: Int = 0
+    ) async throws -> [TS3ServerLogEntry] {
+        let responses = try await execute(Self.logViewCommand(
+            limit: limit,
+            reverse: reverse,
+            instance: instance,
+            beginPosition: beginPosition
+        ))
         return responses.enumerated().compactMap { index, command in
             serverLogEntry(from: command, index: index)
         }
@@ -2688,6 +2694,20 @@ private extension TS3Client {
 }
 
 extension TS3Client {
+    static func logViewCommand(
+        limit: Int,
+        reverse: Bool,
+        instance: Bool,
+        beginPosition: Int
+    ) -> TS3SingleCommand {
+        TS3SingleCommand(name: "logview", parameters: [
+            TS3CommandSingleParameter(name: "lines", value: String(limit)),
+            TS3CommandSingleParameter(name: "reverse", value: reverse ? "1" : "0"),
+            TS3CommandSingleParameter(name: "instance", value: instance ? "1" : "0"),
+            TS3CommandSingleParameter(name: "begin_pos", value: String(beginPosition))
+        ])
+    }
+
     static func channelCreateCommand(
         name: String,
         parentId: Int?,

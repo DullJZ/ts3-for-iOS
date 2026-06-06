@@ -2396,16 +2396,30 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
     let id: UUID
     var name: String
     var limit: Int
+    var beginPosition: Int
     var reverse: Bool
     var instance: Bool
     var levelFilter: String
     var searchText: String
     var updatedAt: Date
 
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case limit
+        case beginPosition
+        case reverse
+        case instance
+        case levelFilter
+        case searchText
+        case updatedAt
+    }
+
     init(
         id: UUID = UUID(),
         name: String,
         limit: Int,
+        beginPosition: Int = 0,
         reverse: Bool,
         instance: Bool,
         levelFilter: String,
@@ -2415,11 +2429,25 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
         self.id = id
         self.name = name
         self.limit = limit
+        self.beginPosition = beginPosition
         self.reverse = reverse
         self.instance = instance
         self.levelFilter = levelFilter
         self.searchText = searchText
         self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        limit = try container.decode(Int.self, forKey: .limit)
+        beginPosition = try container.decodeIfPresent(Int.self, forKey: .beginPosition) ?? 0
+        reverse = try container.decode(Bool.self, forKey: .reverse)
+        instance = try container.decode(Bool.self, forKey: .instance)
+        levelFilter = try container.decode(String.self, forKey: .levelFilter)
+        searchText = try container.decode(String.self, forKey: .searchText)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
 }
 
@@ -5295,9 +5323,14 @@ final class TS3AppModel: ObservableObject {
         refreshConnectionInfo()
     }
 
-    func refreshServerLogs(limit: Int = 100, reverse: Bool = true, instance: Bool = false) {
+    func refreshServerLogs(limit: Int = 100, reverse: Bool = true, instance: Bool = false, beginPosition: Int = 0) {
         runClientCommand { client in
-            let entries = try await client.serverLogEntries(limit: limit, reverse: reverse, instance: instance)
+            let entries = try await client.serverLogEntries(
+                limit: limit,
+                reverse: reverse,
+                instance: instance,
+                beginPosition: beginPosition
+            )
             await MainActor.run {
                 self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
                 self.saveServerLogResults()
@@ -5383,10 +5416,22 @@ final class TS3AppModel: ObservableObject {
         isShowingComplaints = true
     }
 
-    func addServerLogEntry(level: TS3LogLevel, message: String, limit: Int = 100, reverse: Bool = true, instance: Bool = false) {
+    func addServerLogEntry(
+        level: TS3LogLevel,
+        message: String,
+        limit: Int = 100,
+        reverse: Bool = true,
+        instance: Bool = false,
+        beginPosition: Int = 0
+    ) {
         runClientCommand { client in
             try await client.addServerLogEntry(level: level, message: message)
-            let entries = try await client.serverLogEntries(limit: limit, reverse: reverse, instance: instance)
+            let entries = try await client.serverLogEntries(
+                limit: limit,
+                reverse: reverse,
+                instance: instance,
+                beginPosition: beginPosition
+            )
             await MainActor.run {
                 self.serverLogEntries = entries.map { TS3ServerLogSummary(entry: $0) }
                 self.saveServerLogResults()
@@ -5409,6 +5454,7 @@ final class TS3AppModel: ObservableObject {
     func saveServerLogQueryPreset(
         name: String,
         limit: Int,
+        beginPosition: Int,
         reverse: Bool,
         instance: Bool,
         levelFilter: String,
@@ -5417,6 +5463,7 @@ final class TS3AppModel: ObservableObject {
         let preset = sanitizedServerLogQueryPreset(TS3ServerLogQueryPreset(
             name: name,
             limit: limit,
+            beginPosition: beginPosition,
             reverse: reverse,
             instance: instance,
             levelFilter: levelFilter,
@@ -9645,6 +9692,7 @@ final class TS3AppModel: ObservableObject {
             id: preset.id,
             name: name,
             limit: min(max(preset.limit, 1), 1_000),
+            beginPosition: min(max(preset.beginPosition, 0), 1_000_000),
             reverse: preset.reverse,
             instance: preset.instance,
             levelFilter: normalizedLevel,

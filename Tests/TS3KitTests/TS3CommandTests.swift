@@ -265,6 +265,17 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertTrue(command.parameters.isEmpty)
     }
 
+    func testLogViewCommandBuildsOfficialPaginationParameters() {
+        let command = TS3Client.logViewCommand(
+            limit: 250,
+            reverse: false,
+            instance: true,
+            beginPosition: 500
+        )
+
+        XCTAssertEqual(command.build(), "logview lines=250 reverse=0 instance=1 begin_pos=500")
+    }
+
     func testListCommandsBuildOptionsForNamesAndPermissionIds() {
         let groupClients = TS3SingleCommand(name: "servergroupclientlist", parameters: [
             TS3CommandSingleParameter(name: "sgid", value: "6"),

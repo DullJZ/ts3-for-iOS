@@ -8461,6 +8461,7 @@ struct ServerLogsSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var lineLimit = "100"
+    @State private var beginPosition = "0"
     @State private var reverseOrder = true
     @State private var instanceLogs = false
     @State private var levelFilter: LogLevelFilter = .all
@@ -8484,6 +8485,9 @@ struct ServerLogsSheet: View {
                     TextField("Lines", text: $lineLimit)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
+                    TextField("Begin Position", text: $beginPosition)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
                     Toggle("Reverse Order", isOn: $reverseOrder)
                     Toggle("Instance Logs", isOn: $instanceLogs)
                     Picker("Level Filter", selection: $levelFilter) {
@@ -8503,7 +8507,8 @@ struct ServerLogsSheet: View {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
                             reverse: reverseOrder,
-                            instance: instanceLogs
+                            instance: instanceLogs,
+                            beginPosition: parsedBeginPosition
                         )
                     }
                     .disabled(model.state != .connected)
@@ -8542,6 +8547,7 @@ struct ServerLogsSheet: View {
                         model.saveServerLogQueryPreset(
                             name: presetName,
                             limit: parsedLineLimit,
+                            beginPosition: parsedBeginPosition,
                             reverse: reverseOrder,
                             instance: instanceLogs,
                             levelFilter: levelFilter.rawValue,
@@ -8609,7 +8615,8 @@ struct ServerLogsSheet: View {
                             message: newLogMessage,
                             limit: parsedLineLimit,
                             reverse: reverseOrder,
-                            instance: instanceLogs
+                            instance: instanceLogs,
+                            beginPosition: parsedBeginPosition
                         )
                         newLogMessage = ""
                     }
@@ -8635,7 +8642,8 @@ struct ServerLogsSheet: View {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
                             reverse: reverseOrder,
-                            instance: instanceLogs
+                            instance: instanceLogs,
+                            beginPosition: parsedBeginPosition
                         )
                     }
                     .disabled(model.state != .connected)
@@ -8651,7 +8659,8 @@ struct ServerLogsSheet: View {
                     model.refreshServerLogs(
                         limit: parsedLineLimit,
                         reverse: reverseOrder,
-                        instance: instanceLogs
+                        instance: instanceLogs,
+                        beginPosition: parsedBeginPosition
                     )
                 }
             }
@@ -8734,6 +8743,10 @@ struct ServerLogsSheet: View {
         Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100
     }
 
+    private var parsedBeginPosition: Int {
+        max(0, Int(beginPosition.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0)
+    }
+
     private var normalizedSearchText: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
@@ -8764,6 +8777,7 @@ struct ServerLogsSheet: View {
     private var snapshot: String {
         var lines = [
             "Limit: \(parsedLineLimit)",
+            "Begin Position: \(parsedBeginPosition)",
             "Reverse: \(reverseOrder ? "Yes" : "No")",
             "Instance: \(instanceLogs ? "Yes" : "No")"
         ]
@@ -8787,6 +8801,7 @@ struct ServerLogsSheet: View {
 
     private func applyPreset(_ preset: TS3ServerLogQueryPreset, refresh: Bool) {
         lineLimit = String(preset.limit)
+        beginPosition = String(preset.beginPosition)
         reverseOrder = preset.reverse
         instanceLogs = preset.instance
         levelFilter = LogLevelFilter(rawValue: preset.levelFilter) ?? .all
@@ -8796,7 +8811,8 @@ struct ServerLogsSheet: View {
             model.refreshServerLogs(
                 limit: preset.limit,
                 reverse: preset.reverse,
-                instance: preset.instance
+                instance: preset.instance,
+                beginPosition: preset.beginPosition
             )
         }
     }
@@ -8827,6 +8843,7 @@ struct ServerLogsSheet: View {
     private func presetSummary(_ preset: TS3ServerLogQueryPreset) -> String {
         var parts = [
             "Limit \(preset.limit)",
+            "Begin \(preset.beginPosition)",
             preset.reverse ? "Reverse" : "Forward",
             preset.instance ? "Instance" : "Server"
         ]
