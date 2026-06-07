@@ -2293,6 +2293,7 @@ struct TS3ServerInfoSummary {
     var createdAt: Date?
     var clientsOnline: Int?
     var maxClients: Int?
+    var port: Int?
     var clientsInQuery: Int?
     var reservedSlots: Int?
     var channelsOnline: Int?
@@ -2302,6 +2303,7 @@ struct TS3ServerInfoSummary {
     var phoneticName: String?
     var status: String?
     var machineId: String?
+    var isAutoStartEnabled: Bool?
     var codecEncryptionMode: Int?
     var isWeblistEnabled: Bool?
     var defaultServerGroupId: Int?
@@ -2360,6 +2362,7 @@ struct TS3ServerInfoSummary {
         createdAt: nil,
         clientsOnline: nil,
         maxClients: nil,
+        port: nil,
         clientsInQuery: nil,
         reservedSlots: nil,
         channelsOnline: nil,
@@ -2369,6 +2372,7 @@ struct TS3ServerInfoSummary {
         phoneticName: nil,
         status: nil,
         machineId: nil,
+        isAutoStartEnabled: nil,
         codecEncryptionMode: nil,
         isWeblistEnabled: nil,
         defaultServerGroupId: nil,
@@ -6066,6 +6070,9 @@ final class TS3AppModel: ObservableObject {
     func editServerSettings(
         name: String,
         phoneticName: String,
+        port: Int?,
+        machineId: String,
+        isAutoStartEnabled: Bool?,
         welcomeMessage: String,
         maxClients: Int?,
         reservedSlots: Int?,
@@ -6109,6 +6116,9 @@ final class TS3AppModel: ObservableObject {
         let edit = TS3ServerEdit(
             name: trimmedValue(name),
             phoneticName: trimmedValue(phoneticName),
+            port: port,
+            machineId: trimmedValue(machineId),
+            isAutoStartEnabled: isAutoStartEnabled,
             welcomeMessage: welcomeMessage.trimmingCharacters(in: .whitespacesAndNewlines),
             maxClients: maxClients,
             reservedSlots: reservedSlots,
@@ -13005,6 +13015,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 createdAt: info.createdAt,
                 clientsOnline: info.clientsOnline,
                 maxClients: info.maxClients,
+                port: info.port,
                 clientsInQuery: info.clientsInQuery,
                 reservedSlots: info.reservedSlots,
                 channelsOnline: info.channelsOnline,
@@ -13014,6 +13025,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 phoneticName: info.phoneticName,
                 status: info.status,
                 machineId: info.machineId,
+                isAutoStartEnabled: info.isAutoStartEnabled,
                 codecEncryptionMode: info.codecEncryptionMode,
                 isWeblistEnabled: info.isWeblistEnabled,
                 defaultServerGroupId: info.defaultServerGroupId,

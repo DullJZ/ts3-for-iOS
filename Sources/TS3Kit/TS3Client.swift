@@ -2935,6 +2935,9 @@ extension TS3Client {
 
         appendParameter(&params, name: "virtualserver_name", value: edit.name)
         appendParameter(&params, name: "virtualserver_name_phonetic", value: edit.phoneticName)
+        appendParameter(&params, name: "virtualserver_port", value: edit.port.map(String.init))
+        appendParameter(&params, name: "virtualserver_machine_id", value: edit.machineId)
+        appendParameter(&params, name: "virtualserver_autostart", value: edit.isAutoStartEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
         appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
         appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))
@@ -3349,6 +3352,7 @@ private extension TS3Client {
             createdAt: dateValue(command, "virtualserver_created"),
             clientsOnline: intValue(command, "virtualserver_clientsonline"),
             maxClients: intValue(command, "virtualserver_maxclients"),
+            port: intValue(command, "virtualserver_port"),
             clientsInQuery: intValue(command, "virtualserver_queryclientsonline"),
             reservedSlots: intValue(command, "virtualserver_reserved_slots"),
             channelsOnline: intValue(command, "virtualserver_channelsonline"),
@@ -3358,6 +3362,7 @@ private extension TS3Client {
             phoneticName: command.get("virtualserver_name_phonetic")?.value,
             status: command.get("virtualserver_status")?.value,
             machineId: command.get("virtualserver_machine_id")?.value,
+            isAutoStartEnabled: optionalBoolValue(command, "virtualserver_autostart"),
             codecEncryptionMode: intValue(command, "virtualserver_codec_encryption_mode"),
             isWeblistEnabled: optionalBoolValue(command, "virtualserver_weblist_enabled"),
             defaultServerGroupId: intValue(command, "virtualserver_default_server_group"),

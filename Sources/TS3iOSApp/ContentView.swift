@@ -9273,6 +9273,8 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Status", value: model.serverInfo.status)
                     ServerInfoDetailRow(label: "Unique ID", value: model.serverInfo.uniqueIdentifier, monospaced: true)
                     ServerInfoDetailRow(label: "Machine ID", value: model.serverInfo.machineId, monospaced: true)
+                    ServerInfoDetailRow(label: "Port", value: model.serverInfo.port.map(String.init))
+                    ServerInfoDetailRow(label: "Autostart", value: boolText(model.serverInfo.isAutoStartEnabled))
                     ServerInfoDetailRow(label: "Icon ID", value: model.serverInfo.iconId.map(String.init))
                     ServerInfoDetailRow(label: "Platform", value: model.serverInfo.platform)
                     ServerInfoDetailRow(label: "Version", value: model.serverInfo.version)
@@ -9420,6 +9422,8 @@ struct ServerInformationSheet: View {
         rows.append(("Status", model.serverInfo.status))
         rows.append(("Unique ID", model.serverInfo.uniqueIdentifier))
         rows.append(("Machine ID", model.serverInfo.machineId))
+        rows.append(("Port", model.serverInfo.port.map(String.init)))
+        rows.append(("Autostart", boolText(model.serverInfo.isAutoStartEnabled)))
         rows.append(("Icon ID", model.serverInfo.iconId.map(String.init)))
         rows.append(("Platform", model.serverInfo.platform))
         rows.append(("Version", model.serverInfo.version))
@@ -12170,6 +12174,9 @@ struct ServerSettingsEditorSheet: View {
     private struct ServerSettingsDraft: Codable {
         var name: String
         var phoneticName: String?
+        var port: String?
+        var machineId: String?
+        var autostart: String?
         var welcomeMessage: String
         var maxClients: String
         var reservedSlots: String
@@ -12216,6 +12223,9 @@ struct ServerSettingsEditorSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
     @State private var phoneticName = ""
+    @State private var port = ""
+    @State private var machineId = ""
+    @State private var autostart: Bool?
     @State private var welcomeMessage = ""
     @State private var maxClients = ""
     @State private var reservedSlots = ""
@@ -12287,6 +12297,16 @@ struct ServerSettingsEditorSheet: View {
                         .ts3PlainTextField()
                     TextField("Phonetic Name", text: $phoneticName)
                         .ts3PlainTextField()
+                    TextField("Server Port", text: $port)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Machine ID", text: $machineId)
+                        .ts3PlainTextField()
+                    Picker("Autostart", selection: $autostart) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
                     TextField("Welcome Message", text: $welcomeMessage)
                         .ts3PlainTextField()
                     TextField("Max Clients", text: $maxClients)
@@ -12556,6 +12576,9 @@ struct ServerSettingsEditorSheet: View {
         ServerSettingsDraft(
             name: name,
             phoneticName: phoneticName,
+            port: port,
+            machineId: machineId,
+            autostart: boolDraftText(autostart),
             welcomeMessage: welcomeMessage,
             maxClients: maxClients,
             reservedSlots: reservedSlots,
@@ -12604,6 +12627,9 @@ struct ServerSettingsEditorSheet: View {
         var rows: [(String, String)] = [
             ("Server Name", draft.name),
             ("Phonetic Name", draft.phoneticName ?? ""),
+            ("Server Port", draft.port ?? ""),
+            ("Machine ID", draft.machineId ?? ""),
+            ("Autostart", boolTitle(draft.autostart)),
             ("Welcome Message", draft.welcomeMessage),
             ("Max Clients", draft.maxClients),
             ("Reserved Slots", draft.reservedSlots),
@@ -12655,6 +12681,9 @@ struct ServerSettingsEditorSheet: View {
     private func loadCurrentValues() {
         name = model.serverInfo.name
         phoneticName = model.serverInfo.phoneticName ?? ""
+        port = model.serverInfo.port.map(String.init) ?? ""
+        machineId = model.serverInfo.machineId ?? ""
+        autostart = model.serverInfo.isAutoStartEnabled
         welcomeMessage = model.serverInfo.welcomeMessage ?? ""
         maxClients = model.serverInfo.maxClients.map(String.init) ?? ""
         reservedSlots = model.serverInfo.reservedSlots.map(String.init) ?? ""
@@ -12700,6 +12729,7 @@ struct ServerSettingsEditorSheet: View {
     private var isDraftValid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(maxClients)
+            && isOptionalInt(port)
             && isOptionalInt(reservedSlots)
             && isOptionalInt(hostMessageMode)
             && isOptionalInt(hostBannerGraphicsInterval)
@@ -12727,6 +12757,9 @@ struct ServerSettingsEditorSheet: View {
         model.editServerSettings(
             name: name,
             phoneticName: phoneticName,
+            port: Int(port.trimmingCharacters(in: .whitespacesAndNewlines)),
+            machineId: machineId,
+            isAutoStartEnabled: autostart,
             welcomeMessage: welcomeMessage,
             maxClients: Int(maxClients.trimmingCharacters(in: .whitespacesAndNewlines)),
             reservedSlots: Int(reservedSlots.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -12798,6 +12831,9 @@ struct ServerSettingsEditorSheet: View {
     private func applyDraft(_ draft: ServerSettingsDraft) {
         name = draft.name
         phoneticName = draft.phoneticName ?? ""
+        port = draft.port ?? ""
+        machineId = draft.machineId ?? ""
+        autostart = Self.boolDraftValue(draft.autostart)
         welcomeMessage = draft.welcomeMessage
         maxClients = draft.maxClients
         reservedSlots = draft.reservedSlots

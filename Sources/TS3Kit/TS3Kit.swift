@@ -66,6 +66,8 @@ public struct TS3ServerInfo {
     public let createdAt: Date?
     public let clientsOnline: Int?
     public let maxClients: Int?
+    /// The UDP port on which the virtual server accepts client connections.
+    public let port: Int?
     /// The number of connected ServerQuery clients.
     public let clientsInQuery: Int?
     public let reservedSlots: Int?
@@ -79,6 +81,8 @@ public struct TS3ServerInfo {
     public let status: String?
     /// The machine id associated with the virtual server.
     public let machineId: String?
+    /// Whether the virtual server should start automatically.
+    public let isAutoStartEnabled: Bool?
     /// The codec encryption mode configured on the virtual server.
     public let codecEncryptionMode: Int?
     /// Whether the virtual server is published to the TeamSpeak web server list.
@@ -178,6 +182,7 @@ public struct TS3ServerInfo {
         createdAt: Date? = nil,
         clientsOnline: Int?,
         maxClients: Int?,
+        port: Int? = nil,
         clientsInQuery: Int? = nil,
         reservedSlots: Int?,
         channelsOnline: Int?,
@@ -187,6 +192,7 @@ public struct TS3ServerInfo {
         phoneticName: String? = nil,
         status: String? = nil,
         machineId: String? = nil,
+        isAutoStartEnabled: Bool? = nil,
         codecEncryptionMode: Int? = nil,
         isWeblistEnabled: Bool? = nil,
         defaultServerGroupId: Int? = nil,
@@ -243,6 +249,7 @@ public struct TS3ServerInfo {
         self.createdAt = createdAt
         self.clientsOnline = clientsOnline
         self.maxClients = maxClients
+        self.port = port
         self.clientsInQuery = clientsInQuery
         self.reservedSlots = reservedSlots
         self.channelsOnline = channelsOnline
@@ -252,6 +259,7 @@ public struct TS3ServerInfo {
         self.phoneticName = phoneticName
         self.status = status
         self.machineId = machineId
+        self.isAutoStartEnabled = isAutoStartEnabled
         self.codecEncryptionMode = codecEncryptionMode
         self.isWeblistEnabled = isWeblistEnabled
         self.defaultServerGroupId = defaultServerGroupId
@@ -386,6 +394,9 @@ public struct TS3ServerLogEntry: Identifiable {
 public struct TS3ServerEdit {
     public var name: String?
     public var phoneticName: String?
+    public var port: Int?
+    public var machineId: String?
+    public var isAutoStartEnabled: Bool?
     public var welcomeMessage: String?
     public var maxClients: Int?
     public var reservedSlots: Int?
@@ -430,6 +441,9 @@ public struct TS3ServerEdit {
     public init(
         name: String? = nil,
         phoneticName: String? = nil,
+        port: Int? = nil,
+        machineId: String? = nil,
+        isAutoStartEnabled: Bool? = nil,
         welcomeMessage: String? = nil,
         maxClients: Int? = nil,
         reservedSlots: Int? = nil,
@@ -472,6 +486,9 @@ public struct TS3ServerEdit {
     ) {
         self.name = name
         self.phoneticName = phoneticName
+        self.port = port
+        self.machineId = machineId
+        self.isAutoStartEnabled = isAutoStartEnabled
         self.welcomeMessage = welcomeMessage
         self.maxClients = maxClients
         self.reservedSlots = reservedSlots
