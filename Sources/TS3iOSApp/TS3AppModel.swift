@@ -2543,6 +2543,7 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
     var reverse: Bool
     var instance: Bool
     var levelFilter: String
+    var channelFilter: String
     var searchText: String
     var updatedAt: Date
 
@@ -2554,6 +2555,7 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
         case reverse
         case instance
         case levelFilter
+        case channelFilter
         case searchText
         case updatedAt
     }
@@ -2566,6 +2568,7 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
         reverse: Bool,
         instance: Bool,
         levelFilter: String,
+        channelFilter: String = "",
         searchText: String,
         updatedAt: Date = Date()
     ) {
@@ -2576,6 +2579,7 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
         self.reverse = reverse
         self.instance = instance
         self.levelFilter = levelFilter
+        self.channelFilter = channelFilter
         self.searchText = searchText
         self.updatedAt = updatedAt
     }
@@ -2589,6 +2593,7 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
         reverse = try container.decode(Bool.self, forKey: .reverse)
         instance = try container.decode(Bool.self, forKey: .instance)
         levelFilter = try container.decode(String.self, forKey: .levelFilter)
+        channelFilter = try container.decodeIfPresent(String.self, forKey: .channelFilter) ?? ""
         searchText = try container.decode(String.self, forKey: .searchText)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
@@ -5679,6 +5684,7 @@ final class TS3AppModel: ObservableObject {
         reverse: Bool,
         instance: Bool,
         levelFilter: String,
+        channelFilter: String,
         searchText: String
     ) {
         let preset = sanitizedServerLogQueryPreset(TS3ServerLogQueryPreset(
@@ -5688,6 +5694,7 @@ final class TS3AppModel: ObservableObject {
             reverse: reverse,
             instance: instance,
             levelFilter: levelFilter,
+            channelFilter: channelFilter,
             searchText: searchText
         ))
         guard let preset else {
@@ -10010,6 +10017,7 @@ final class TS3AppModel: ObservableObject {
             reverse: preset.reverse,
             instance: preset.instance,
             levelFilter: normalizedLevel,
+            channelFilter: String(preset.channelFilter.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80)),
             searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
             updatedAt: preset.updatedAt
         )

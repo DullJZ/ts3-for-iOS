@@ -8609,6 +8609,7 @@ struct ServerLogsSheet: View {
     @State private var reverseOrder = true
     @State private var instanceLogs = false
     @State private var levelFilter: LogLevelFilter = .all
+    @State private var channelFilter = ""
     @State private var searchText = ""
     @State private var newLogLevel: TS3LogLevel = .info
     @State private var newLogMessage = ""
@@ -8639,11 +8640,14 @@ struct ServerLogsSheet: View {
                             Text(filter.title).tag(filter)
                         }
                     }
+                    TextField("Log Channel", text: $channelFilter)
+                        .ts3PlainTextField()
                     TextField("Search logs", text: $searchText)
                         .ts3PlainTextField()
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             levelFilter = .all
+                            channelFilter = ""
                             searchText = ""
                         }
                     }
@@ -8695,6 +8699,7 @@ struct ServerLogsSheet: View {
                             reverse: reverseOrder,
                             instance: instanceLogs,
                             levelFilter: levelFilter.rawValue,
+                            channelFilter: channelFilter,
                             searchText: searchText
                         )
                         presetName = ""
@@ -8901,11 +8906,14 @@ struct ServerLogsSheet: View {
 
     private var hasLocalFilters: Bool {
         isSearching || levelFilter != .all
+            || !normalizedChannelFilter.isEmpty
     }
 
     private var filteredEntries: [TS3ServerLogSummary] {
         return model.serverLogEntries.filter { entry in
-            levelFilter.matches(entry.level) && (
+            levelFilter.matches(entry.level)
+                && matchesChannel(entry.channel)
+                && (
                 !isSearching
                     || containsSearch(entry.message)
                     || containsSearch(entry.level)
@@ -8928,6 +8936,9 @@ struct ServerLogsSheet: View {
         if levelFilter != .all {
             lines.append("Level Filter: \(levelFilter.title)")
         }
+        if !normalizedChannelFilter.isEmpty {
+            lines.append("Channel Filter: \(channelFilter.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
         if isSearching {
             lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
         }
@@ -8943,12 +8954,22 @@ struct ServerLogsSheet: View {
         return value.lowercased().contains(normalizedSearchText)
     }
 
+    private var normalizedChannelFilter: String {
+        channelFilter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func matchesChannel(_ value: String?) -> Bool {
+        guard !normalizedChannelFilter.isEmpty else { return true }
+        return value?.lowercased().contains(normalizedChannelFilter) == true
+    }
+
     private func applyPreset(_ preset: TS3ServerLogQueryPreset, refresh: Bool) {
         lineLimit = String(preset.limit)
         beginPosition = String(preset.beginPosition)
         reverseOrder = preset.reverse
         instanceLogs = preset.instance
         levelFilter = LogLevelFilter(rawValue: preset.levelFilter) ?? .all
+        channelFilter = preset.channelFilter
         searchText = preset.searchText
         presetName = preset.name
         if refresh {
@@ -8993,6 +9014,9 @@ struct ServerLogsSheet: View {
         ]
         if preset.levelFilter != LogLevelFilter.all.rawValue {
             parts.append((LogLevelFilter(rawValue: preset.levelFilter) ?? .all).title)
+        }
+        if !preset.channelFilter.isEmpty {
+            parts.append("Channel \(preset.channelFilter)")
         }
         if !preset.searchText.isEmpty {
             parts.append("Search \(preset.searchText)")
