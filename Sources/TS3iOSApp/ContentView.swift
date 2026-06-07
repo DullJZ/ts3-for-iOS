@@ -5843,6 +5843,47 @@ enum TS3TemporaryPasswordDuration: String, CaseIterable, Identifiable {
 }
 
 struct ChatSheet: View {
+    private struct ChatConversationFilter: Identifiable, Hashable {
+        enum Scope: Hashable {
+            case all
+            case server
+            case channel(Int?)
+            case client(Int?)
+        }
+
+        let scope: Scope
+        let title: String
+        let messageCount: Int
+
+        var id: String {
+            switch scope {
+            case .all:
+                return "all"
+            case .server:
+                return "server"
+            case .channel(let id):
+                return "channel:\(id.map(String.init) ?? "unknown")"
+            case .client(let id):
+                return "client:\(id.map(String.init) ?? "unknown")"
+            }
+        }
+
+        func includes(_ message: TS3ChatMessageSummary) -> Bool {
+            switch scope {
+            case .all:
+                return true
+            case .server:
+                return message.targetMode == .server
+            case .channel(let id):
+                return message.targetMode == .channel && message.targetId == id
+            case .client(let id):
+                guard message.targetMode == .client else { return false }
+                let peerId = message.isOwnMessage ? message.targetId : message.senderId
+                return peerId == id
+            }
+        }
+    }
+
     private enum ChatSenderFilter: String, CaseIterable, Identifiable {
         case all
         case own
@@ -5875,6 +5916,7 @@ struct ChatSheet: View {
     @State private var message = ""
     @State private var target: TS3TextMessageTargetMode = .channel
     @State private var selectedPrivateClientId = 0
+    @State private var selectedConversationId = "all"
     @State private var filter: ChatMessageFilter = .all
     @State private var senderFilter: ChatSenderFilter = .all
     @State private var newestFirst = false
@@ -5926,6 +5968,12 @@ struct ChatSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
+
+                    Picker("Conversation", selection: $selectedConversationId) {
+                        ForEach(chatConversationOptions) { conversation in
+                            Text(conversationPickerTitle(conversation)).tag(conversation.id)
+                        }
+                    }
 
                     Picker("Sender", selection: $senderFilter) {
                         ForEach(ChatSenderFilter.allCases) { item in
@@ -5993,6 +6041,7 @@ struct ChatSheet: View {
                         Button("Clear Chat Filters") {
                             filter = .all
                             senderFilter = .all
+                            selectedConversationId = "all"
                             newestFirst = false
                             searchText = ""
                         }
@@ -6148,6 +6197,9 @@ struct ChatSheet: View {
             .onChange(of: model.clients.map(\.id)) { _ in
                 selectDefaultPrivateClientIfNeeded()
             }
+            .onChange(of: model.chatMessages.map(\.id)) { _ in
+                resetSelectedConversationIfNeeded()
+            }
             .onDisappear {
                 model.endViewingChat()
             }
@@ -6198,10 +6250,66 @@ struct ChatSheet: View {
             && (target != .client || selectedPrivateClient != nil)
     }
 
+    private var selectedConversation: ChatConversationFilter {
+        chatConversationOptions.first { $0.id == selectedConversationId } ?? chatConversationOptions[0]
+    }
+
+    private var chatConversationOptions: [ChatConversationFilter] {
+        let messages = model.chatMessages
+        let serverMessages = messages.filter { $0.targetMode == .server }
+        let channelIds = Set(messages.compactMap { message -> Int?? in
+            guard message.targetMode == .channel else { return nil }
+            return .some(message.targetId)
+        })
+        let clientIds = Set(messages.compactMap { message -> Int?? in
+            guard message.targetMode == .client else { return nil }
+            return .some(message.isOwnMessage ? message.targetId : message.senderId)
+        })
+
+        var options = [
+            ChatConversationFilter(scope: .all, title: "All Conversations", messageCount: messages.count)
+        ]
+
+        if !serverMessages.isEmpty {
+            options.append(ChatConversationFilter(scope: .server, title: "Server", messageCount: serverMessages.count))
+        }
+
+        let channelOptions = channelIds.map { id in
+            ChatConversationFilter(
+                scope: .channel(id),
+                title: channelTitle(for: id),
+                messageCount: messages.filter { $0.targetMode == .channel && $0.targetId == id }.count
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+        }
+
+        let clientOptions = clientIds.map { id in
+            ChatConversationFilter(
+                scope: .client(id),
+                title: clientTitle(for: id, in: messages),
+                messageCount: messages.filter { message in
+                    guard message.targetMode == .client else { return false }
+                    return (message.isOwnMessage ? message.targetId : message.senderId) == id
+                }.count
+            )
+        }
+        .sorted { lhs, rhs in
+            lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+        }
+
+        options.append(contentsOf: channelOptions)
+        options.append(contentsOf: clientOptions)
+        return options
+    }
+
     private var filteredMessages: [TS3ChatMessageSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let conversation = selectedConversation
         let messages = model.chatMessages.filter { item in
-            filter.includes(item.targetMode)
+            conversation.includes(item)
+                && filter.includes(item.targetMode)
                 && senderFilter.includes(item)
                 && (query.isEmpty
                     || item.senderName.localizedCaseInsensitiveContains(query)
@@ -6220,6 +6328,7 @@ struct ChatSheet: View {
     private var hasChatFilters: Bool {
         filter != .all
             || senderFilter != .all
+            || selectedConversationId != "all"
             || newestFirst
             || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -6238,6 +6347,32 @@ struct ChatSheet: View {
         if !privateMessageTargets.contains(where: { $0.id == selectedPrivateClientId }) {
             selectedPrivateClientId = privateMessageTargets.first?.id ?? 0
         }
+    }
+
+    private func resetSelectedConversationIfNeeded() {
+        if !chatConversationOptions.contains(where: { $0.id == selectedConversationId }) {
+            selectedConversationId = "all"
+        }
+    }
+
+    private func conversationPickerTitle(_ conversation: ChatConversationFilter) -> String {
+        "\(conversation.title) (\(conversation.messageCount))"
+    }
+
+    private func channelTitle(for id: Int?) -> String {
+        guard let id else { return "Unknown Channel" }
+        return model.channels.first { $0.id == id }?.name ?? "Channel \(id)"
+    }
+
+    private func clientTitle(for id: Int?, in messages: [TS3ChatMessageSummary]) -> String {
+        guard let id else { return "Unknown User" }
+        if let nickname = model.clients.first(where: { $0.id == id })?.nickname {
+            return nickname
+        }
+        if let message = messages.last(where: { !$0.isOwnMessage && $0.senderId == id }) {
+            return message.senderName
+        }
+        return "Client \(id)"
     }
 
     private func exportChatHistory() {
