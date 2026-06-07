@@ -508,6 +508,7 @@ public final class TS3Client {
         neededTalkPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
+        order: Int? = nil,
         deleteDelaySeconds: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
@@ -532,6 +533,7 @@ public final class TS3Client {
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
+            order: order,
             deleteDelaySeconds: deleteDelaySeconds,
             maxClients: maxClients,
             maxFamilyClients: maxFamilyClients,
@@ -564,6 +566,7 @@ public final class TS3Client {
         codecQuality: Int? = nil,
         codecLatencyFactor: Int? = nil,
         isCodecUnencrypted: Bool? = nil,
+        order: Int? = nil,
         deleteDelaySeconds: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
@@ -589,6 +592,7 @@ public final class TS3Client {
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
             isCodecUnencrypted: isCodecUnencrypted,
+            order: order,
             deleteDelaySeconds: deleteDelaySeconds,
             maxClients: maxClients,
             maxFamilyClients: maxFamilyClients,
@@ -2821,6 +2825,7 @@ extension TS3Client {
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
+        order: Int?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -2844,6 +2849,7 @@ extension TS3Client {
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
+            order: order,
             codec: codec,
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
@@ -2881,6 +2887,7 @@ extension TS3Client {
         codecQuality: Int?,
         codecLatencyFactor: Int?,
         isCodecUnencrypted: Bool?,
+        order: Int?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -2902,6 +2909,7 @@ extension TS3Client {
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
+            order: order,
             codec: codec,
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
@@ -2991,6 +2999,7 @@ extension TS3Client {
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
+        order: Int?,
         codec: Int?,
         codecQuality: Int?,
         codecLatencyFactor: Int?,
@@ -3015,6 +3024,9 @@ extension TS3Client {
         }
         if let neededDescriptionViewPower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_description_view_power", value: String(neededDescriptionViewPower)))
+        }
+        if let order {
+            params.append(TS3CommandSingleParameter(name: "channel_order", value: String(order)))
         }
         if let codec {
             params.append(TS3CommandSingleParameter(name: "channel_codec", value: String(codec)))

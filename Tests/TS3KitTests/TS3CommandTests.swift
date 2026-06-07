@@ -101,6 +101,7 @@ final class TS3CommandTests: XCTestCase {
             neededTalkPower: 20,
             neededSubscribePower: 10,
             neededDescriptionViewPower: 30,
+            order: 4,
             deleteDelaySeconds: 3600,
             maxClients: 12,
             maxFamilyClients: 24,
@@ -112,7 +113,7 @@ final class TS3CommandTests: XCTestCase {
 
         XCTAssertEqual(
             command.build(),
-            "channelcreate channel_name=Raid\\sRoom cpid=5 channel_name_phonetic=raid channel_topic=Tonight channel_description=Bring\\sbuffs\\s\\p\\sfood channel_password=room\\spass channel_needed_talk_power=20 channel_needed_subscribe_power=10 channel_needed_description_view_power=30 channel_codec=4 channel_codec_quality=10 channel_codec_latency_factor=1 channel_codec_is_unencrypted=0 channel_delete_delay=3600 channel_maxclients=12 channel_maxfamilyclients=24 channel_flag_maxclients_unlimited=0 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=1 channel_icon_id=456 channel_flag_semi_permanent=1"
+            "channelcreate channel_name=Raid\\sRoom cpid=5 channel_name_phonetic=raid channel_topic=Tonight channel_description=Bring\\sbuffs\\s\\p\\sfood channel_password=room\\spass channel_needed_talk_power=20 channel_needed_subscribe_power=10 channel_needed_description_view_power=30 channel_order=4 channel_codec=4 channel_codec_quality=10 channel_codec_latency_factor=1 channel_codec_is_unencrypted=0 channel_delete_delay=3600 channel_maxclients=12 channel_maxfamilyclients=24 channel_flag_maxclients_unlimited=0 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=1 channel_icon_id=456 channel_flag_semi_permanent=1"
         )
     }
 
@@ -133,6 +134,7 @@ final class TS3CommandTests: XCTestCase {
             neededTalkPower: nil,
             neededSubscribePower: nil,
             neededDescriptionViewPower: nil,
+            order: nil,
             deleteDelaySeconds: nil,
             maxClients: nil,
             maxFamilyClients: nil,
@@ -164,6 +166,7 @@ final class TS3CommandTests: XCTestCase {
             codecQuality: 7,
             codecLatencyFactor: 2,
             isCodecUnencrypted: true,
+            order: 3,
             deleteDelaySeconds: 0,
             maxClients: 8,
             maxFamilyClients: 16,
@@ -175,7 +178,7 @@ final class TS3CommandTests: XCTestCase {
 
         XCTAssertEqual(
             command.build(),
-            "channeledit cid=7 channel_name=Quiet\\sRoom channel_name_phonetic=quiet channel_topic= channel_description=Updated\\sdescription channel_password= channel_needed_talk_power=15 channel_needed_subscribe_power=5 channel_needed_description_view_power=11 channel_codec=5 channel_codec_quality=7 channel_codec_latency_factor=2 channel_codec_is_unencrypted=1 channel_delete_delay=0 channel_maxclients=8 channel_maxfamilyclients=16 channel_flag_maxclients_unlimited=1 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=0 channel_icon_id=789 channel_flag_default=0 channel_flag_permanent=1 channel_flag_semi_permanent=0"
+            "channeledit cid=7 channel_name=Quiet\\sRoom channel_name_phonetic=quiet channel_topic= channel_description=Updated\\sdescription channel_password= channel_needed_talk_power=15 channel_needed_subscribe_power=5 channel_needed_description_view_power=11 channel_order=3 channel_codec=5 channel_codec_quality=7 channel_codec_latency_factor=2 channel_codec_is_unencrypted=1 channel_delete_delay=0 channel_maxclients=8 channel_maxfamilyclients=16 channel_flag_maxclients_unlimited=1 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=0 channel_icon_id=789 channel_flag_default=0 channel_flag_permanent=1 channel_flag_semi_permanent=0"
         )
     }
 

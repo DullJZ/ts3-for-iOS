@@ -20107,6 +20107,7 @@ struct ChannelEditorSheet: View {
         var codecQuality: String
         var codecLatencyFactor: String?
         var isCodecUnencrypted: Bool?
+        var order: String?
         var deleteDelaySeconds: String
         var maxClients: String
         var maxFamilyClients: String
@@ -20134,6 +20135,7 @@ struct ChannelEditorSheet: View {
     @State private var codecQuality = ""
     @State private var codecLatencyFactor = ""
     @State private var isCodecUnencrypted = false
+    @State private var selectedOrderId: Int?
     @State private var deleteDelaySeconds = ""
     @State private var maxClients = ""
     @State private var maxFamilyClients = ""
@@ -20187,6 +20189,12 @@ struct ChannelEditorSheet: View {
                     Picker("Type", selection: $channelType) {
                         ForEach(TS3ChannelType.allCases) { type in
                             Text(type.title).tag(type)
+                        }
+                    }
+                    Picker("Position", selection: $selectedOrderId) {
+                        Text("First").tag(Optional<Int>.none)
+                        ForEach(positionSiblingOptions) { sibling in
+                            Text("After \(sibling.name)").tag(Optional(sibling.id))
                         }
                     }
                     if case .edit = mode {
@@ -20289,6 +20297,7 @@ struct ChannelEditorSheet: View {
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
+                                order: selectedOrderId,
                                 codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
@@ -20314,6 +20323,7 @@ struct ChannelEditorSheet: View {
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
+                                order: selectedOrderId,
                                 codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
@@ -20350,6 +20360,7 @@ struct ChannelEditorSheet: View {
                     codecQuality = channel.codecQuality.map(String.init) ?? ""
                     codecLatencyFactor = channel.codecLatencyFactor.map(String.init) ?? ""
                     isCodecUnencrypted = channel.isCodecUnencrypted ?? false
+                    selectedOrderId = normalizedOrderId(channel.order)
                     deleteDelaySeconds = channel.deleteDelaySeconds.map(String.init) ?? ""
                     maxClients = channel.maxClients.map(String.init) ?? ""
                     maxFamilyClients = channel.maxFamilyClients.map(String.init) ?? ""
@@ -20435,6 +20446,7 @@ struct ChannelEditorSheet: View {
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
             isCodecUnencrypted: isCodecUnencrypted,
+            order: selectedOrderId.map(String.init) ?? "",
             deleteDelaySeconds: deleteDelaySeconds,
             maxClients: maxClients,
             maxFamilyClients: maxFamilyClients,
@@ -20466,6 +20478,7 @@ struct ChannelEditorSheet: View {
             ("Codec Validation", codecValidationMessages.joined(separator: "; ")),
             ("Codec Diagnostics", codecDiagnosticMessages.joined(separator: "; ")),
             ("Unencrypted Voice", draft.isCodecUnencrypted == true ? "Yes" : "No"),
+            ("Position", positionTitle(for: draft.order ?? "")),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
             ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
             ("Max Family Clients", draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)),
@@ -20486,6 +20499,7 @@ struct ChannelEditorSheet: View {
             && isOptionalInt(neededDescriptionViewPower)
             && isCodecQualityValid
             && isCodecLatencyFactorValid
+            && isValidOrderSelection
             && isOptionalInt(deleteDelaySeconds)
             && isOptionalInt(iconId)
             && (maxClientsUnlimited || isRequiredInt(maxClients))
@@ -20556,6 +20570,7 @@ struct ChannelEditorSheet: View {
         codecQuality = draft.codecQuality
         codecLatencyFactor = draft.codecLatencyFactor ?? ""
         isCodecUnencrypted = draft.isCodecUnencrypted ?? false
+        selectedOrderId = parsedOptionalInt(draft.order ?? "")
         deleteDelaySeconds = draft.deleteDelaySeconds
         maxClients = draft.maxClients
         maxFamilyClients = draft.maxFamilyClients
@@ -20605,6 +20620,93 @@ struct ChannelEditorSheet: View {
             codec: codec,
             isCodecUnencrypted: isCodecUnencrypted
         )
+    }
+
+    private var positionSiblingOptions: [TS3ChannelSummary] {
+        orderedSiblings(
+            model.channels.filter { candidate in
+                candidate.id != editingChannelId
+                    && normalizedParentId(candidate.parentId) == targetParentId
+            }
+        )
+    }
+
+    private var editingChannelId: Int? {
+        if case let .edit(channel) = mode {
+            return channel.id
+        }
+        return nil
+    }
+
+    private var targetParentId: Int? {
+        switch mode {
+        case let .create(parent):
+            return normalizedParentId(parent?.id)
+        case let .edit(channel):
+            return normalizedParentId(channel.parentId)
+        }
+    }
+
+    private var isValidOrderSelection: Bool {
+        guard let selectedOrderId else { return true }
+        return positionSiblingOptions.contains { $0.id == selectedOrderId }
+    }
+
+    private func positionTitle(for rawValue: String) -> String {
+        guard let orderId = Int(rawValue.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return "First"
+        }
+        let channelName = model.channels.first { $0.id == orderId }?.name ?? "Channel \(orderId)"
+        return "After \(channelName)"
+    }
+
+    private func normalizedParentId(_ parentId: Int?) -> Int? {
+        guard let parentId, parentId > 0 else { return nil }
+        return parentId
+    }
+
+    private func normalizedOrderId(_ orderId: Int?) -> Int? {
+        guard let orderId, orderId > 0 else { return nil }
+        return orderId
+    }
+
+    private func orderedSiblings(_ channels: [TS3ChannelSummary]) -> [TS3ChannelSummary] {
+        let ids = Set(channels.map(\.id))
+        let byPreviousId = Dictionary(grouping: channels) { channel -> Int? in
+            guard let previousId = channel.order, ids.contains(previousId) else { return nil }
+            return previousId
+        }
+        var visited: Set<Int> = []
+        var result: [TS3ChannelSummary] = []
+
+        func stableSort(_ lhs: TS3ChannelSummary, _ rhs: TS3ChannelSummary) -> Bool {
+            if lhs.order != rhs.order {
+                return (lhs.order ?? Int.min) < (rhs.order ?? Int.min)
+            }
+            if lhs.name != rhs.name {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.id < rhs.id
+        }
+
+        func appendChain(startingAt channel: TS3ChannelSummary) {
+            var current: TS3ChannelSummary? = channel
+            while let channel = current, !visited.contains(channel.id) {
+                visited.insert(channel.id)
+                result.append(channel)
+                current = byPreviousId[channel.id]?.sorted(by: stableSort).first {
+                    !visited.contains($0.id)
+                }
+            }
+        }
+
+        for channel in (byPreviousId[nil] ?? []).sorted(by: stableSort) {
+            appendChain(startingAt: channel)
+        }
+        for channel in channels.sorted(by: stableSort) where !visited.contains(channel.id) {
+            appendChain(startingAt: channel)
+        }
+        return result
     }
 
     private var isCodecQualityValid: Bool {
