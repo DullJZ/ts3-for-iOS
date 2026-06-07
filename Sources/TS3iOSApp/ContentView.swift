@@ -4092,6 +4092,8 @@ struct ChannelInformationSheet: View {
                 Section(header: Text("Audio")) {
                     ServerInfoDetailRow(label: "Codec", value: TS3ChannelCodec.title(for: channel.codec))
                     ServerInfoDetailRow(label: "Codec Quality", value: TS3ChannelCodecQuality.title(for: channel.codecQuality))
+                    ServerInfoDetailRow(label: "Codec Latency Factor", value: channel.codecLatencyFactor.map(String.init))
+                    ServerInfoDetailRow(label: "Unencrypted Voice", value: channel.isCodecUnencrypted.map(yesNo))
                     ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Description View Power", value: channel.neededDescriptionViewPower.map(String.init))
@@ -4183,6 +4185,8 @@ struct ChannelInformationSheet: View {
             ("Description", channel.description),
             ("Codec", TS3ChannelCodec.title(for: channel.codec)),
             ("Codec Quality", TS3ChannelCodecQuality.title(for: channel.codecQuality)),
+            ("Codec Latency Factor", channel.codecLatencyFactor.map(String.init)),
+            ("Unencrypted Voice", channel.isCodecUnencrypted.map(yesNo)),
             ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
             ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
             ("Needed Description View Power", channel.neededDescriptionViewPower.map(String.init)),
