@@ -2977,6 +2977,8 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_default_channel_admin_group", value: edit.defaultChannelAdminGroupId.map(String.init))
         appendParameter(&params, name: "virtualserver_needed_identity_security_level", value: edit.neededIdentitySecurityLevel.map(String.init))
         appendParameter(&params, name: "virtualserver_min_client_version", value: edit.minClientVersion.map(String.init))
+        appendParameter(&params, name: "virtualserver_min_android_version", value: edit.minAndroidVersion.map(String.init))
+        appendParameter(&params, name: "virtualserver_min_ios_version", value: edit.minIOSVersion.map(String.init))
         return TS3SingleCommand(name: "serveredit", parameters: params)
     }
 
@@ -3410,7 +3412,9 @@ private extension TS3Client {
             hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,
             iconId: intValue(command, "virtualserver_icon_id"),
             neededIdentitySecurityLevel: intValue(command, "virtualserver_needed_identity_security_level"),
-            minClientVersion: intValue(command, "virtualserver_min_client_version")
+            minClientVersion: intValue(command, "virtualserver_min_client_version"),
+            minAndroidVersion: intValue(command, "virtualserver_min_android_version"),
+            minIOSVersion: intValue(command, "virtualserver_min_ios_version")
         )
     }
 

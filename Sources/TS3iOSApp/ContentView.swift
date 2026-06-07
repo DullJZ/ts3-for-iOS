@@ -9454,6 +9454,8 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Max Upload Bandwidth", value: model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText))
                     ServerInfoDetailRow(label: "Needed Identity Security Level", value: model.serverInfo.neededIdentitySecurityLevel.map(String.init))
                     ServerInfoDetailRow(label: "Minimum Client Version", value: model.serverInfo.minClientVersion.map(String.init))
+                    ServerInfoDetailRow(label: "Minimum Android Version", value: model.serverInfo.minAndroidVersion.map(String.init))
+                    ServerInfoDetailRow(label: "Minimum iOS Version", value: model.serverInfo.minIOSVersion.map(String.init))
                     ServerInfoDetailRow(label: "File Transfer Port", value: model.serverInfo.fileTransferPort.map(String.init))
                     ServerInfoDetailRow(label: "File Base", value: model.serverInfo.fileBase)
                     ServerInfoDetailRow(label: "Codec Encryption", value: model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title))
@@ -9586,6 +9588,8 @@ struct ServerInformationSheet: View {
         rows.append(("Max Upload Bandwidth", model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText)))
         rows.append(("Needed Identity Security Level", model.serverInfo.neededIdentitySecurityLevel.map(String.init)))
         rows.append(("Minimum Client Version", model.serverInfo.minClientVersion.map(String.init)))
+        rows.append(("Minimum Android Version", model.serverInfo.minAndroidVersion.map(String.init)))
+        rows.append(("Minimum iOS Version", model.serverInfo.minIOSVersion.map(String.init)))
         rows.append(("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)))
         rows.append(("File Base", model.serverInfo.fileBase))
         rows.append(("Codec Encryption", model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title)))
@@ -12356,6 +12360,8 @@ struct ServerSettingsEditorSheet: View {
         var defaultChannelAdminGroupId: String?
         var neededIdentitySecurityLevel: String?
         var minClientVersion: String?
+        var minAndroidVersion: String?
+        var minIOSVersion: String?
     }
 
     @Environment(\.presentationMode) private var presentationMode
@@ -12405,6 +12411,8 @@ struct ServerSettingsEditorSheet: View {
     @State private var defaultChannelAdminGroupId = ""
     @State private var neededIdentitySecurityLevel = ""
     @State private var minClientVersion = ""
+    @State private var minAndroidVersion = ""
+    @State private var minIOSVersion = ""
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
@@ -12532,6 +12540,12 @@ struct ServerSettingsEditorSheet: View {
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     TextField("Minimum Client Version", text: $minClientVersion)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Minimum Android Version", text: $minAndroidVersion)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Minimum iOS Version", text: $minIOSVersion)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     Picker("Codec Encryption", selection: $codecEncryptionMode) {
@@ -12757,7 +12771,9 @@ struct ServerSettingsEditorSheet: View {
             defaultChannelGroupId: defaultChannelGroupId,
             defaultChannelAdminGroupId: defaultChannelAdminGroupId,
             neededIdentitySecurityLevel: neededIdentitySecurityLevel,
-            minClientVersion: minClientVersion
+            minClientVersion: minClientVersion,
+            minAndroidVersion: minAndroidVersion,
+            minIOSVersion: minIOSVersion
         )
     }
 
@@ -12790,6 +12806,8 @@ struct ServerSettingsEditorSheet: View {
             ("Max Upload Bandwidth Bytes/s", draft.maxUploadTotalBandwidth ?? ""),
             ("Needed Identity Security Level", draft.neededIdentitySecurityLevel ?? ""),
             ("Minimum Client Version", draft.minClientVersion ?? ""),
+            ("Minimum Android Version", draft.minAndroidVersion ?? ""),
+            ("Minimum iOS Version", draft.minIOSVersion ?? ""),
             ("Codec Encryption Mode", codecEncryptionModeTitle(draft.codecEncryptionMode)),
             ("Default Server Group", groupSnapshotTitle(draft.defaultServerGroupId ?? "", groups: model.serverGroups)),
             ("Default Channel Group", groupSnapshotTitle(draft.defaultChannelGroupId ?? "", groups: model.channelGroups)),
@@ -12844,6 +12862,8 @@ struct ServerSettingsEditorSheet: View {
         maxUploadTotalBandwidth = model.serverInfo.maxUploadTotalBandwidth.map(String.init) ?? ""
         neededIdentitySecurityLevel = model.serverInfo.neededIdentitySecurityLevel.map(String.init) ?? ""
         minClientVersion = model.serverInfo.minClientVersion.map(String.init) ?? ""
+        minAndroidVersion = model.serverInfo.minAndroidVersion.map(String.init) ?? ""
+        minIOSVersion = model.serverInfo.minIOSVersion.map(String.init) ?? ""
         complainAutoBanCount = model.serverInfo.complainAutoBanCount.map(String.init) ?? ""
         complainAutoBanTime = model.serverInfo.complainAutoBanTime.map(String.init) ?? ""
         complainRemoveTime = model.serverInfo.complainRemoveTime.map(String.init) ?? ""
@@ -12879,6 +12899,8 @@ struct ServerSettingsEditorSheet: View {
             && isOptionalInt64(maxUploadTotalBandwidth)
             && isOptionalInt(neededIdentitySecurityLevel)
             && isOptionalInt(minClientVersion)
+            && isOptionalInt(minAndroidVersion)
+            && isOptionalInt(minIOSVersion)
             && isOptionalInt(complainAutoBanCount)
             && isOptionalInt(complainAutoBanTime)
             && isOptionalInt(complainRemoveTime)
@@ -12937,7 +12959,9 @@ struct ServerSettingsEditorSheet: View {
             defaultChannelGroupId: Int(defaultChannelGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
             defaultChannelAdminGroupId: Int(defaultChannelAdminGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
             neededIdentitySecurityLevel: Int(neededIdentitySecurityLevel.trimmingCharacters(in: .whitespacesAndNewlines)),
-            minClientVersion: Int(minClientVersion.trimmingCharacters(in: .whitespacesAndNewlines))
+            minClientVersion: Int(minClientVersion.trimmingCharacters(in: .whitespacesAndNewlines)),
+            minAndroidVersion: Int(minAndroidVersion.trimmingCharacters(in: .whitespacesAndNewlines)),
+            minIOSVersion: Int(minIOSVersion.trimmingCharacters(in: .whitespacesAndNewlines))
         )
     }
 
@@ -13013,6 +13037,8 @@ struct ServerSettingsEditorSheet: View {
         defaultChannelAdminGroupId = draft.defaultChannelAdminGroupId ?? ""
         neededIdentitySecurityLevel = draft.neededIdentitySecurityLevel ?? ""
         minClientVersion = draft.minClientVersion ?? ""
+        minAndroidVersion = draft.minAndroidVersion ?? ""
+        minIOSVersion = draft.minIOSVersion ?? ""
     }
 
     private func hostMessageModeTitle(_ value: String) -> String {

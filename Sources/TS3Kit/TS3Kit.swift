@@ -172,6 +172,10 @@ public struct TS3ServerInfo {
     public let neededIdentitySecurityLevel: Int?
     /// Minimum TeamSpeak client version required by the server.
     public let minClientVersion: Int?
+    /// Minimum TeamSpeak Android client version required by the server.
+    public let minAndroidVersion: Int?
+    /// Minimum TeamSpeak iOS client version required by the server.
+    public let minIOSVersion: Int?
 
     /// Creates a virtual server information snapshot.
     public init(
@@ -240,7 +244,9 @@ public struct TS3ServerInfo {
         hostButtonGraphicsURL: String? = nil,
         iconId: Int? = nil,
         neededIdentitySecurityLevel: Int? = nil,
-        minClientVersion: Int? = nil
+        minClientVersion: Int? = nil,
+        minAndroidVersion: Int? = nil,
+        minIOSVersion: Int? = nil
     ) {
         self.uniqueIdentifier = uniqueIdentifier
         self.name = name
@@ -308,6 +314,8 @@ public struct TS3ServerInfo {
         self.iconId = iconId
         self.neededIdentitySecurityLevel = neededIdentitySecurityLevel
         self.minClientVersion = minClientVersion
+        self.minAndroidVersion = minAndroidVersion
+        self.minIOSVersion = minIOSVersion
     }
 }
 
@@ -436,6 +444,8 @@ public struct TS3ServerEdit {
     public var defaultChannelAdminGroupId: Int?
     public var neededIdentitySecurityLevel: Int?
     public var minClientVersion: Int?
+    public var minAndroidVersion: Int?
+    public var minIOSVersion: Int?
 
     /// Creates a partial virtual server update. Nil properties are left unchanged.
     public init(
@@ -482,7 +492,9 @@ public struct TS3ServerEdit {
         defaultChannelGroupId: Int? = nil,
         defaultChannelAdminGroupId: Int? = nil,
         neededIdentitySecurityLevel: Int? = nil,
-        minClientVersion: Int? = nil
+        minClientVersion: Int? = nil,
+        minAndroidVersion: Int? = nil,
+        minIOSVersion: Int? = nil
     ) {
         self.name = name
         self.phoneticName = phoneticName
@@ -528,6 +540,8 @@ public struct TS3ServerEdit {
         self.defaultChannelAdminGroupId = defaultChannelAdminGroupId
         self.neededIdentitySecurityLevel = neededIdentitySecurityLevel
         self.minClientVersion = minClientVersion
+        self.minAndroidVersion = minAndroidVersion
+        self.minIOSVersion = minIOSVersion
     }
 }
 

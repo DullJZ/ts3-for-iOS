@@ -2384,6 +2384,8 @@ struct TS3ServerInfoSummary {
     var iconURL: URL?
     var neededIdentitySecurityLevel: Int?
     var minClientVersion: Int?
+    var minAndroidVersion: Int?
+    var minIOSVersion: Int?
 
     static let empty = TS3ServerInfoSummary(
         name: "",
@@ -2452,7 +2454,9 @@ struct TS3ServerInfoSummary {
         iconId: nil,
         iconURL: nil,
         neededIdentitySecurityLevel: nil,
-        minClientVersion: nil
+        minClientVersion: nil,
+        minAndroidVersion: nil,
+        minIOSVersion: nil
     )
 }
 
@@ -6161,7 +6165,9 @@ final class TS3AppModel: ObservableObject {
         defaultChannelGroupId: Int?,
         defaultChannelAdminGroupId: Int?,
         neededIdentitySecurityLevel: Int?,
-        minClientVersion: Int?
+        minClientVersion: Int?,
+        minAndroidVersion: Int?,
+        minIOSVersion: Int?
     ) {
         let edit = TS3ServerEdit(
             name: trimmedValue(name),
@@ -6207,7 +6213,9 @@ final class TS3AppModel: ObservableObject {
             defaultChannelGroupId: defaultChannelGroupId,
             defaultChannelAdminGroupId: defaultChannelAdminGroupId,
             neededIdentitySecurityLevel: neededIdentitySecurityLevel,
-            minClientVersion: minClientVersion
+            minClientVersion: minClientVersion,
+            minAndroidVersion: minAndroidVersion,
+            minIOSVersion: minIOSVersion
         )
         runClientCommand { client in
             try await client.editServer(edit)
@@ -13128,7 +13136,9 @@ extension TS3AppModel: TS3ClientDelegate {
                 iconId: info.iconId,
                 iconURL: info.iconId.flatMap { self.iconURLs[$0] },
                 neededIdentitySecurityLevel: info.neededIdentitySecurityLevel,
-                minClientVersion: info.minClientVersion
+                minClientVersion: info.minClientVersion,
+                minAndroidVersion: info.minAndroidVersion,
+                minIOSVersion: info.minIOSVersion
             )
             self.refreshMissingIcons()
         }
