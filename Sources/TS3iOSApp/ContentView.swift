@@ -18631,6 +18631,7 @@ struct WhisperSheet: View {
         var rows = [
             "Route: \(model.whisperRouteDescription)",
             "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
+            "Activation Mode: \(model.whisperActivationMode.title)",
             "Activation: \(model.whisperActivationStatus)",
             "Microphone: \(model.isTalking ? "Live" : "Idle")",
             "Activation Events: \(model.whisperActivationLog.count)",
@@ -18653,6 +18654,13 @@ struct WhisperSheet: View {
             rows.append(logText)
         }
         return rows.joined(separator: "\n")
+    }
+
+    private var whisperActivationModeBinding: Binding<TS3WhisperActivationMode> {
+        Binding(
+            get: { model.whisperActivationMode },
+            set: { model.updateWhisperActivationMode($0) }
+        )
     }
 
     var body: some View {
@@ -18742,11 +18750,25 @@ struct WhisperSheet: View {
                     Text(model.whisperActivationStatus)
                         .font(.caption)
                         .foregroundColor(model.isWhisperActivationActive ? .accentColor : .secondary)
-                    Button(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper") {
-                        model.toggleCurrentWhisperActivation()
+                    Picker("Activation Mode", selection: whisperActivationModeBinding) {
+                        ForEach(TS3WhisperActivationMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
                     }
-                    .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
-                    .disabled(model.state != .connected || model.whisperRoute == .none)
+                    Text(model.whisperActivationMode.detail)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if model.whisperActivationMode == .tapToToggle {
+                        Button(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper") {
+                            model.toggleCurrentWhisperActivation()
+                        }
+                        .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
+                        .disabled(model.state != .connected || model.whisperRoute == .none)
+                    } else {
+                        WhisperHoldButton()
+                            .environmentObject(model)
+                            .disabled(model.state != .connected || model.whisperRoute == .none)
+                    }
                     HStack(spacing: 12) {
                         Button("Start Temporary Whisper") {
                             model.beginCurrentWhisperActivation()
@@ -18762,9 +18784,6 @@ struct WhisperSheet: View {
                         .disabled(!model.isWhisperActivationActive)
                     }
                     .font(.caption)
-                    WhisperHoldButton()
-                        .environmentObject(model)
-                        .disabled(model.state != .connected || model.whisperRoute == .none)
                 }
 
                 Section(header: Text("Activation Log")) {
@@ -20796,15 +20815,21 @@ struct TalkControlBar: View {
             }
             .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
             .ts3KeyboardShortcut("toggle-talk", in: model)
-            Button(action: {
-                model.toggleCurrentWhisperActivation()
-            }) {
-                Text(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper")
-                    .frame(maxWidth: .infinity)
+            if model.whisperActivationMode == .tapToToggle {
+                Button(action: {
+                    model.toggleCurrentWhisperActivation()
+                }) {
+                    Text(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(TS3BorderedButtonStyle(isProminent: model.isWhisperActivationActive))
+                .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
+                .disabled(model.state != .connected || model.whisperRoute == .none)
+            } else {
+                WhisperHoldButton()
+                    .environmentObject(model)
+                    .disabled(model.state != .connected || model.whisperRoute == .none)
             }
-            .buttonStyle(TS3BorderedButtonStyle(isProminent: model.isWhisperActivationActive))
-            .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
-            .disabled(model.state != .connected || model.whisperRoute == .none)
             HStack(spacing: 12) {
                 Button("Start Whisper") {
                     model.beginCurrentWhisperActivation()
@@ -20821,9 +20846,6 @@ struct TalkControlBar: View {
                 .ts3KeyboardShortcut("stop-whisper-activation", in: model)
                 .disabled(!model.isWhisperActivationActive)
             }
-            WhisperHoldButton()
-                .environmentObject(model)
-                .disabled(model.state != .connected || model.whisperRoute == .none)
         }
         .padding()
         .alert(item: $model.microphonePermissionPrompt) { prompt in

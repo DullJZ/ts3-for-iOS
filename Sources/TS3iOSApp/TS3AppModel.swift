@@ -45,6 +45,31 @@ extension TS3AudioTransmitMode {
     }
 }
 
+enum TS3WhisperActivationMode: String, CaseIterable, Identifiable, Codable {
+    case holdToWhisper
+    case tapToToggle
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .holdToWhisper:
+            return "Hold to Whisper"
+        case .tapToToggle:
+            return "Tap to Toggle"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .holdToWhisper:
+            return "Press and hold the on-screen control, or use separate start and stop shortcuts on Catalyst."
+        case .tapToToggle:
+            return "Tap once to start temporary whisper and tap again to stop it."
+        }
+    }
+}
+
 enum TS3ChannelType: String, CaseIterable, Identifiable {
     case temporary
     case semiPermanent
@@ -1562,13 +1587,15 @@ private struct TS3AudioSettings: Codable {
     var transmitMode: String
     var voiceActivationThreshold: Double
     var prefersSpeakerOutput: Bool
+    var whisperActivationMode: String
 
     static let defaults = TS3AudioSettings(
         playbackVolume: 1.0,
         inputGain: 1.0,
         transmitMode: TS3AudioTransmitMode.pushToTalk.rawValue,
         voiceActivationThreshold: 0.03,
-        prefersSpeakerOutput: true
+        prefersSpeakerOutput: true,
+        whisperActivationMode: TS3WhisperActivationMode.holdToWhisper.rawValue
     )
 
     enum CodingKeys: String, CodingKey {
@@ -1577,6 +1604,7 @@ private struct TS3AudioSettings: Codable {
         case transmitMode
         case voiceActivationThreshold
         case prefersSpeakerOutput
+        case whisperActivationMode
     }
 
     init(
@@ -1584,13 +1612,15 @@ private struct TS3AudioSettings: Codable {
         inputGain: Double,
         transmitMode: String,
         voiceActivationThreshold: Double,
-        prefersSpeakerOutput: Bool
+        prefersSpeakerOutput: Bool,
+        whisperActivationMode: String = TS3WhisperActivationMode.holdToWhisper.rawValue
     ) {
         self.playbackVolume = playbackVolume
         self.inputGain = inputGain
         self.transmitMode = transmitMode
         self.voiceActivationThreshold = voiceActivationThreshold
         self.prefersSpeakerOutput = prefersSpeakerOutput
+        self.whisperActivationMode = whisperActivationMode
     }
 
     init(from decoder: Decoder) throws {
@@ -1600,6 +1630,7 @@ private struct TS3AudioSettings: Codable {
         transmitMode = try container.decodeIfPresent(String.self, forKey: .transmitMode) ?? Self.defaults.transmitMode
         voiceActivationThreshold = try container.decodeIfPresent(Double.self, forKey: .voiceActivationThreshold) ?? Self.defaults.voiceActivationThreshold
         prefersSpeakerOutput = try container.decodeIfPresent(Bool.self, forKey: .prefersSpeakerOutput) ?? Self.defaults.prefersSpeakerOutput
+        whisperActivationMode = try container.decodeIfPresent(String.self, forKey: .whisperActivationMode) ?? Self.defaults.whisperActivationMode
     }
 }
 
@@ -3041,6 +3072,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var whisperActivationLog: [TS3WhisperActivationLogEntry] = []
     @Published private(set) var whisperPresets: [TS3WhisperPreset] = []
     @Published private(set) var whisperFilterPresets: [TS3WhisperFilterPreset] = []
+    @Published var whisperActivationMode: TS3WhisperActivationMode = .holdToWhisper
     @Published var logs: [TS3LogEntry] = []
     @Published var isShowingDebug = false
     @Published var lastError: String?
@@ -4523,6 +4555,11 @@ final class TS3AppModel: ObservableObject {
         saveAudioSettings()
     }
 
+    func updateWhisperActivationMode(_ mode: TS3WhisperActivationMode) {
+        whisperActivationMode = mode
+        saveAudioSettings()
+    }
+
     func refreshAudioRoutes() {
         #if targetEnvironment(macCatalyst) || os(iOS)
         let session = AVAudioSession.sharedInstance()
@@ -4606,6 +4643,7 @@ final class TS3AppModel: ObservableObject {
         audioTransmitMode = TS3AudioTransmitMode(rawValue: defaults.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = defaults.voiceActivationThreshold
         prefersSpeakerOutput = defaults.prefersSpeakerOutput
+        whisperActivationMode = TS3WhisperActivationMode(rawValue: defaults.whisperActivationMode) ?? .holdToWhisper
         if isTalking {
             client?.stopMicrophone()
             isTalking = false
@@ -9742,7 +9780,8 @@ final class TS3AppModel: ObservableObject {
             inputGain: inputGain,
             transmitMode: audioTransmitMode.rawValue,
             voiceActivationThreshold: voiceActivationThreshold,
-            prefersSpeakerOutput: prefersSpeakerOutput
+            prefersSpeakerOutput: prefersSpeakerOutput,
+            whisperActivationMode: whisperActivationMode.rawValue
         )
     }
 
@@ -9790,7 +9829,8 @@ final class TS3AppModel: ObservableObject {
             inputGain: profile.inputGain,
             transmitMode: profile.transmitMode,
             voiceActivationThreshold: profile.voiceActivationThreshold,
-            prefersSpeakerOutput: prefersSpeakerOutput
+            prefersSpeakerOutput: prefersSpeakerOutput,
+            whisperActivationMode: whisperActivationMode.rawValue
         ))
         if isTalking {
             client?.stopMicrophone()
@@ -9949,6 +9989,7 @@ final class TS3AppModel: ObservableObject {
         audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
         voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
         prefersSpeakerOutput = settings.prefersSpeakerOutput
+        whisperActivationMode = TS3WhisperActivationMode(rawValue: settings.whisperActivationMode) ?? .holdToWhisper
     }
 
     private func sanitizedAudioProfiles(_ profiles: [TS3AudioProfile]) -> [TS3AudioProfile] {
@@ -12871,6 +12912,7 @@ final class TS3AppModel: ObservableObject {
             "Output Route: \(audioOutputRoute)",
             "Default To Speaker: \(prefersSpeakerOutput ? "Yes" : "No")",
             "Whisper Route: \(whisperRouteDescription)",
+            "Whisper Activation Mode: \(whisperActivationMode.title)",
             "Whisper Activation: \(whisperActivationStatus)",
             "Whisper Activation Events: \(whisperActivationLog.count)",
             "Route Availability: \(audioRouteAvailabilityNotes.isEmpty ? "No route limitations reported" : audioRouteAvailabilityNotes.joined(separator: " | "))"

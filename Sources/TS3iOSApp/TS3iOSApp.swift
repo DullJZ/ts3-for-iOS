@@ -183,7 +183,9 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("toggle-talk", in: model)
                 .disabled(model.state != .connected)
 
-                Button(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper") {
+                Button(model.whisperActivationMode == .holdToWhisper
+                       ? "Toggle Temporary Whisper"
+                       : (model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper")) {
                     model.toggleCurrentWhisperActivation()
                 }
                 .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
