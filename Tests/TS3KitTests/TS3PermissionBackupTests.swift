@@ -29,9 +29,42 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertTrue(preview.targetMatchesCurrentSelection)
         XCTAssertEqual(preview.currentPermissionCount, 2)
         XCTAssertEqual(preview.overwriteCount, 1)
+        XCTAssertEqual(preview.changedCount, 1)
+        XCTAssertEqual(preview.unchangedCount, 0)
         XCTAssertEqual(preview.newPermissionCount, 2)
         XCTAssertEqual(preview.overwritePermissionNames, ["i_channel_join_power"])
+        XCTAssertEqual(preview.changedPermissionNames, ["i_channel_join_power"])
+        XCTAssertTrue(preview.unchangedPermissionNames.isEmpty)
         XCTAssertEqual(preview.newPermissionNames, ["b_virtualserver_modify_name", "i_client_kick_power"])
+    }
+
+    @MainActor
+    func testPermissionBackupPreviewSeparatesUnchangedExistingPermissions() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50),
+            makePermission("i_client_kick_power", value: 75, isSkipped: true)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50),
+            makePermission("i_client_kick_power", value: 70, isSkipped: true)
+        ]
+
+        let preview = try target.permissionBackupPreview(from: backup)
+
+        XCTAssertEqual(preview.overwriteCount, 2)
+        XCTAssertEqual(preview.changedCount, 1)
+        XCTAssertEqual(preview.unchangedCount, 1)
+        XCTAssertEqual(preview.changedPermissionNames, ["i_client_kick_power"])
+        XCTAssertEqual(preview.unchangedPermissionNames, ["i_channel_join_power"])
     }
 
     @MainActor
@@ -53,17 +86,26 @@ final class TS3PermissionBackupTests: XCTestCase {
 
         XCTAssertFalse(preview.targetMatchesCurrentSelection)
         XCTAssertNil(preview.overwriteCount)
+        XCTAssertNil(preview.changedCount)
+        XCTAssertNil(preview.unchangedCount)
         XCTAssertNil(preview.newPermissionCount)
         XCTAssertTrue(preview.overwritePermissionNames.isEmpty)
+        XCTAssertTrue(preview.changedPermissionNames.isEmpty)
+        XCTAssertTrue(preview.unchangedPermissionNames.isEmpty)
         XCTAssertTrue(preview.newPermissionNames.isEmpty)
     }
 
-    private func makePermission(_ name: String, value: Int) -> TS3PermissionSummary {
+    private func makePermission(
+        _ name: String,
+        value: Int,
+        isNegated: Bool = false,
+        isSkipped: Bool = false
+    ) -> TS3PermissionSummary {
         TS3PermissionSummary(permission: TS3Permission(
             name: name,
             value: value,
-            isNegated: false,
-            isSkipped: false
+            isNegated: isNegated,
+            isSkipped: isSkipped
         ))
     }
 }

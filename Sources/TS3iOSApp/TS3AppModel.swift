@@ -1572,8 +1572,12 @@ struct TS3PermissionBackupPreview {
     let permissionCount: Int
     let currentPermissionCount: Int?
     let overwriteCount: Int?
+    let changedCount: Int?
+    let unchangedCount: Int?
     let newPermissionCount: Int?
     let overwritePermissionNames: [String]
+    let changedPermissionNames: [String]
+    let unchangedPermissionNames: [String]
     let newPermissionNames: [String]
 
     var targetMatchesCurrentSelection: Bool {
@@ -5430,9 +5434,23 @@ final class TS3AppModel: ObservableObject {
         let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
         let scope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
         let currentPermissions = currentPermissionsForBackup(decoded, scope: scope)
-        let currentNames = Set(currentPermissions?.map(\.name) ?? [])
-        let backupNames = Set(decoded.permissions.map(\.name))
+        let currentByName = Dictionary((currentPermissions ?? []).map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
+        let backupByName = Dictionary(decoded.permissions.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
+        let currentNames = Set(currentByName.keys)
+        let backupNames = Set(backupByName.keys)
         let overwritePermissionNames = currentPermissions.map { _ in backupNames.intersection(currentNames).sorted() } ?? []
+        let changedPermissionNames = currentPermissions.map { _ in
+            overwritePermissionNames.filter { name in
+                guard let current = currentByName[name], let backup = backupByName[name] else { return false }
+                return !Self.permissionBackupPermission(backup, matches: current)
+            }
+        } ?? []
+        let unchangedPermissionNames = currentPermissions.map { _ in
+            overwritePermissionNames.filter { name in
+                guard let current = currentByName[name], let backup = backupByName[name] else { return false }
+                return Self.permissionBackupPermission(backup, matches: current)
+            }
+        } ?? []
         let newPermissionNames = currentPermissions.map { _ in backupNames.subtracting(currentNames).sorted() } ?? []
         return TS3PermissionBackupPreview(
             scope: scope,
@@ -5440,8 +5458,12 @@ final class TS3AppModel: ObservableObject {
             permissionCount: decoded.permissions.count,
             currentPermissionCount: currentPermissions?.count,
             overwriteCount: currentPermissions.map { _ in overwritePermissionNames.count },
+            changedCount: currentPermissions.map { _ in changedPermissionNames.count },
+            unchangedCount: currentPermissions.map { _ in unchangedPermissionNames.count },
             newPermissionCount: currentPermissions.map { _ in newPermissionNames.count },
             overwritePermissionNames: overwritePermissionNames,
+            changedPermissionNames: changedPermissionNames,
+            unchangedPermissionNames: unchangedPermissionNames,
             newPermissionNames: newPermissionNames
         )
     }
@@ -5486,7 +5508,14 @@ final class TS3AppModel: ObservableObject {
                 )
             }
             .filter { !$0.name.isEmpty }
-        guard !permissions.isEmpty else {
+        let currentByName = currentPermissionsForBackup(backup, scope: permissionEditScope).map {
+            Dictionary($0.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
+        }
+        let permissionsToRestore = permissions.filter { permission in
+            guard let current = currentByName?[permission.name] else { return true }
+            return !Self.permissionBackupPermission(permission, matches: current)
+        }
+        guard !permissionsToRestore.isEmpty else {
             refreshSelectedPermissions()
             lastError = nil
             return
@@ -5499,7 +5528,7 @@ final class TS3AppModel: ObservableObject {
                 return
             }
             runClientCommand { client in
-                for permission in permissions {
+                for permission in permissionsToRestore {
                     try await client.addClientPermission(
                         clientDatabaseId: databaseId,
                         permissionName: permission.name,
@@ -5523,7 +5552,7 @@ final class TS3AppModel: ObservableObject {
                 return
             }
             runClientCommand { client in
-                for permission in permissions {
+                for permission in permissionsToRestore {
                     try await client.addServerGroupPermission(
                         groupId: groupId,
                         permissionName: permission.name,
@@ -5544,7 +5573,7 @@ final class TS3AppModel: ObservableObject {
                 return
             }
             runClientCommand { client in
-                for permission in permissions {
+                for permission in permissionsToRestore {
                     try await client.addChannelGroupPermission(
                         groupId: groupId,
                         permissionName: permission.name,
@@ -5565,7 +5594,7 @@ final class TS3AppModel: ObservableObject {
                 return
             }
             runClientCommand { client in
-                for permission in permissions {
+                for permission in permissionsToRestore {
                     try await client.addChannelPermission(
                         channelId: channelId,
                         permissionName: permission.name,
@@ -5584,7 +5613,7 @@ final class TS3AppModel: ObservableObject {
                 return
             }
             runClientCommand { client in
-                for permission in permissions {
+                for permission in permissionsToRestore {
                     try await client.addChannelClientPermission(
                         channelId: selection.channelId,
                         clientDatabaseId: selection.databaseId,
@@ -5646,6 +5675,16 @@ final class TS3AppModel: ObservableObject {
             let client = backup.selectedChannelClientPermissionClientId.map { "Client \($0)" } ?? "Client"
             return "\(client) in \(channel)"
         }
+    }
+
+    private static func permissionBackupPermission(
+        _ backupPermission: TS3PermissionBackupPermission,
+        matches current: TS3PermissionSummary
+    ) -> Bool {
+        backupPermission.name == current.name
+            && backupPermission.value == current.value
+            && backupPermission.isNegated == current.isNegated
+            && backupPermission.isSkipped == current.isSkipped
     }
 
     private func permissionSummaries(from permissions: [TS3Permission]) -> [TS3PermissionSummary] {

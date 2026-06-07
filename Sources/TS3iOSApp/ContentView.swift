@@ -15740,11 +15740,20 @@ struct PermissionsSheet: View {
         ]
         if let currentPermissionCount = preview.currentPermissionCount,
            let overwriteCount = preview.overwriteCount,
+           let changedCount = preview.changedCount,
+           let unchangedCount = preview.unchangedCount,
            let newPermissionCount = preview.newPermissionCount {
             lines.append("Current permissions: \(currentPermissionCount)")
-            lines.append("Will update \(overwriteCount) existing and add \(newPermissionCount) new permission entries.")
+            lines.append("Existing entries: \(overwriteCount) total, \(changedCount) changed, \(unchangedCount) unchanged.")
+            lines.append("Will update \(changedCount) existing and add \(newPermissionCount) new permission entries.")
+            if !preview.changedPermissionNames.isEmpty {
+                lines.append("Changing: \(permissionNameSummary(preview.changedPermissionNames))")
+            }
             if !preview.overwritePermissionNames.isEmpty {
-                lines.append("Updating: \(permissionNameSummary(preview.overwritePermissionNames))")
+                lines.append("Existing: \(permissionNameSummary(preview.overwritePermissionNames))")
+            }
+            if !preview.unchangedPermissionNames.isEmpty {
+                lines.append("Unchanged: \(permissionNameSummary(preview.unchangedPermissionNames))")
             }
             if !preview.newPermissionNames.isEmpty {
                 lines.append("Adding: \(permissionNameSummary(preview.newPermissionNames))")
