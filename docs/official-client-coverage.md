@@ -77,7 +77,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
 | Bookmarks | Done | Bookmark list/folders/import/export, connection manager, full bookmark editor for connection options, saved phonetic nickname, local notes, and duplicate cleanup | Audit official-client bookmark edge fields if future TS3 URL options are added. |
-| Contacts | Partial | Contact manager entry, online-user bulk contact import/status actions, complaint-source shortcuts, online and database-client friend/block/ignore/note shortcuts, visible batch actions, and local ignore suppression for private messages and pokes | Audit contact behavior against real server data and fill any official-client edge actions. |
+| Contacts | Partial | Contact manager entry, online-user bulk contact import/status actions, complaint-source shortcuts, online and database-client friend/block/ignore/note shortcuts, visible batch actions, contact backup import preview, and local ignore suppression for private messages and pokes | Audit contact behavior against real server data and fill any official-client edge actions. |
 | Client migration | Done | Client package import/export covering local settings groups, channel layout state, schema metadata, notification/shortcut/audio preview details, and import preview confirmation | Add richer per-section restore choices if package formats expand. |
 
 ## Notifications, Shortcuts, And Platform Integration

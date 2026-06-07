@@ -5025,6 +5025,12 @@ struct UserIconView: View {
 }
 
 struct ContactsSheet: View {
+    private struct ContactImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3ContactImportPreview
+        let id = UUID()
+    }
+
     private enum ContactSortMode: String, CaseIterable, Identifiable {
         case nickname
         case status
@@ -5055,6 +5061,7 @@ struct ContactsSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
+    @State private var pendingContactImport: ContactImportConfirmation?
     @State private var contactsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
@@ -5268,7 +5275,7 @@ struct ContactsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importContacts(from: url)
+                    prepareContactImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -5300,6 +5307,16 @@ struct ContactsSheet: View {
                     message: Text("This removes \(model.contactFilterPresets.count) saved local filter presets."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteAllContactFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingContactImport) { confirmation in
+                Alert(
+                    title: Text("Import Contacts Backup?"),
+                    message: Text(contactImportPreviewMessage(confirmation.preview)),
+                    primaryButton: .default(Text("Import")) {
+                        importContacts(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
@@ -5377,6 +5394,21 @@ struct ContactsSheet: View {
         }
     }
 
+    private func prepareContactImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.contactImportPreview(from: Data(contentsOf: url))
+            pendingContactImport = ContactImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
     private func importContacts(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -5389,6 +5421,37 @@ struct ContactsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func contactImportPreviewMessage(_ preview: TS3ContactImportPreview) -> String {
+        var lines = [
+            "Backup contacts: \(preview.importedCount)",
+            "Valid contacts: \(preview.validCount)"
+        ]
+        if preview.invalidCount > 0 {
+            lines.append("Invalid entries skipped: \(preview.invalidCount)")
+        }
+        if preview.duplicateCount > 0 {
+            lines.append("Duplicate unique IDs: \(preview.duplicateCount) last value wins")
+        }
+        lines.append("Will add \(preview.newCount), update \(preview.updatedCount), and leave \(preview.unchangedCount) unchanged.")
+        if !preview.newContactNames.isEmpty {
+            lines.append("Adding: \(contactNameSummary(preview.newContactNames))")
+        }
+        if !preview.updatedContactNames.isEmpty {
+            lines.append("Updating: \(contactNameSummary(preview.updatedContactNames))")
+        }
+        if !preview.unchangedContactNames.isEmpty {
+            lines.append("Unchanged: \(contactNameSummary(preview.unchangedContactNames))")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func contactNameSummary(_ names: [String]) -> String {
+        let visible = names.prefix(6).joined(separator: ", ")
+        let remainingCount = names.count - min(names.count, 6)
+        guard remainingCount > 0 else { return visible }
+        return "\(visible), +\(remainingCount) more"
     }
 
     private func applyPreset(_ preset: TS3ContactFilterPreset) {

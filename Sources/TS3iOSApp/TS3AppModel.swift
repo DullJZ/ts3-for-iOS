@@ -491,6 +491,19 @@ struct TS3ContactEntry: Identifiable, Codable {
     var id: String { uniqueIdentifier }
 }
 
+struct TS3ContactImportPreview {
+    let importedCount: Int
+    let validCount: Int
+    let invalidCount: Int
+    let duplicateCount: Int
+    let newCount: Int
+    let updatedCount: Int
+    let unchangedCount: Int
+    let newContactNames: [String]
+    let updatedContactNames: [String]
+    let unchangedContactNames: [String]
+}
+
 struct TS3ContactFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -11896,20 +11909,10 @@ final class TS3AppModel: ObservableObject {
     func importContacts(from data: Data) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ContactEntry].self, from: data)
         var merged = contacts
-        for contact in imported {
-            let uniqueIdentifier = contact.uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !uniqueIdentifier.isEmpty else { continue }
-            let nickname = contact.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
-            let note = contact.note.trimmingCharacters(in: .whitespacesAndNewlines)
-            merged.removeAll { $0.uniqueIdentifier == uniqueIdentifier }
+        for contact in sanitizedImportedContacts(imported).contacts {
+            merged.removeAll { $0.uniqueIdentifier == contact.uniqueIdentifier }
             merged.insert(
-                TS3ContactEntry(
-                    uniqueIdentifier: uniqueIdentifier,
-                    nickname: nickname.isEmpty ? uniqueIdentifier : nickname,
-                    status: contact.status,
-                    note: note,
-                    updatedAt: contact.updatedAt
-                ),
+                contact,
                 at: 0
             )
         }
@@ -11918,6 +11921,74 @@ final class TS3AppModel: ObservableObject {
         syncBlockedContactPlayback()
         lastError = nil
         return imported.count
+    }
+
+    func contactImportPreview(from data: Data) throws -> TS3ContactImportPreview {
+        let imported = try JSONDecoder().decode([TS3ContactEntry].self, from: data)
+        let sanitized = sanitizedImportedContacts(imported)
+        let currentByUniqueIdentifier = Dictionary(contacts.map { ($0.uniqueIdentifier, $0) }, uniquingKeysWith: { _, latest in latest })
+        var newContactNames: [String] = []
+        var updatedContactNames: [String] = []
+        var unchangedContactNames: [String] = []
+        for contact in sanitized.contacts {
+            if let current = currentByUniqueIdentifier[contact.uniqueIdentifier] {
+                if contactImportContact(contact, matches: current) {
+                    unchangedContactNames.append(contact.nickname)
+                } else {
+                    updatedContactNames.append(contact.nickname)
+                }
+            } else {
+                newContactNames.append(contact.nickname)
+            }
+        }
+        return TS3ContactImportPreview(
+            importedCount: imported.count,
+            validCount: sanitized.contacts.count,
+            invalidCount: sanitized.invalidCount,
+            duplicateCount: sanitized.duplicateCount,
+            newCount: newContactNames.count,
+            updatedCount: updatedContactNames.count,
+            unchangedCount: unchangedContactNames.count,
+            newContactNames: newContactNames.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending },
+            updatedContactNames: updatedContactNames.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending },
+            unchangedContactNames: unchangedContactNames.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        )
+    }
+
+    private func sanitizedImportedContacts(_ imported: [TS3ContactEntry]) -> (contacts: [TS3ContactEntry], invalidCount: Int, duplicateCount: Int) {
+        var contacts: [TS3ContactEntry] = []
+        var seenUniqueIdentifiers = Set<String>()
+        var duplicateCount = 0
+        var invalidCount = 0
+        for contact in imported {
+            let uniqueIdentifier = contact.uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !uniqueIdentifier.isEmpty else {
+                invalidCount += 1
+                continue
+            }
+            if seenUniqueIdentifiers.contains(uniqueIdentifier) {
+                duplicateCount += 1
+                contacts.removeAll { $0.uniqueIdentifier == uniqueIdentifier }
+            }
+            seenUniqueIdentifiers.insert(uniqueIdentifier)
+            let nickname = contact.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+            let note = contact.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            contacts.append(TS3ContactEntry(
+                uniqueIdentifier: uniqueIdentifier,
+                nickname: nickname.isEmpty ? uniqueIdentifier : nickname,
+                status: contact.status,
+                note: note,
+                updatedAt: contact.updatedAt
+            ))
+        }
+        return (contacts, invalidCount, duplicateCount)
+    }
+
+    private func contactImportContact(_ imported: TS3ContactEntry, matches current: TS3ContactEntry) -> Bool {
+        imported.uniqueIdentifier == current.uniqueIdentifier
+            && imported.nickname == current.nickname
+            && imported.status == current.status
+            && imported.note == current.note
     }
 
     private func loadChatHistory() {
