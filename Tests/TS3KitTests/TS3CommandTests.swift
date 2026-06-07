@@ -190,6 +190,17 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertFalse(TS3ChannelCodecConstraints.isValidLatencyFactor(11))
     }
 
+    func testChannelCodecPresetsUseEditableRanges() {
+        XCTAssertEqual(TS3ChannelCodecPreset.voice.codec, 4)
+        XCTAssertEqual(TS3ChannelCodecPreset.music.codec, 5)
+        XCTAssertEqual(TS3ChannelCodecPreset.compatibilityVoice.codec, 1)
+
+        for preset in TS3ChannelCodecPreset.allPresets {
+            XCTAssertTrue(TS3ChannelCodecConstraints.isValidQuality(preset.quality))
+            XCTAssertTrue(TS3ChannelCodecConstraints.isValidLatencyFactor(preset.latencyFactor))
+        }
+    }
+
     func testGroupCopyCommandsUseDistinctServerAndChannelParameterNames() {
         let serverCommand = TS3SingleCommand(name: "servergroupcopy", parameters: [
             TS3CommandSingleParameter(name: "ssgid", value: "6"),

@@ -19255,6 +19255,20 @@ struct ChannelEditorSheet: View {
                 }
 
                 Section(header: Text("Voice")) {
+                    Menu {
+                        ForEach(TS3ChannelCodecPreset.allPresets) { preset in
+                            Button(preset.title) {
+                                applyCodecPreset(preset)
+                            }
+                        }
+                    } label: {
+                        Label("Codec Presets", systemImage: "waveform")
+                    }
+                    if !codecProfileSummary.isEmpty {
+                        Text(codecProfileSummary)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     Picker("Codec", selection: $codec) {
                         Text("Unchanged").tag(Int?.none)
                         ForEach(TS3ChannelCodec.allCases) { codec in
@@ -19487,6 +19501,7 @@ struct ChannelEditorSheet: View {
             ("Codec", codecTitle(for: draft.codec)),
             ("Codec Quality", codecQualityTitle(for: draft.codecQuality)),
             ("Codec Latency Factor", draft.codecLatencyFactor ?? ""),
+            ("Codec Profile", codecProfileSummary),
             ("Codec Validation", codecValidationMessages.joined(separator: "; ")),
             ("Unencrypted Voice", draft.isCodecUnencrypted == true ? "Yes" : "No"),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
@@ -19527,6 +19542,13 @@ struct ChannelEditorSheet: View {
     private func parsedOptionalInt(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : Int(trimmed)
+    }
+
+    private func applyCodecPreset(_ preset: TS3ChannelCodecPreset) {
+        codec = preset.codec
+        codecQuality = String(preset.quality)
+        codecLatencyFactor = String(preset.latencyFactor)
+        isCodecUnencrypted = preset.isCodecUnencrypted
     }
 
     private func exportDraft() {
@@ -19591,6 +19613,16 @@ struct ChannelEditorSheet: View {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let numericValue = Int(trimmed) else { return trimmed }
         return TS3ChannelCodecQuality.title(for: numericValue) ?? trimmed
+    }
+
+    private var codecProfileSummary: String {
+        let parts = [
+            codec.map { TS3ChannelCodec.title(for: $0) ?? "Codec \($0)" },
+            parsedOptionalInt(codecQuality).map { "quality \($0)" },
+            parsedOptionalInt(codecLatencyFactor).map { "latency \($0)" },
+            isCodecUnencrypted ? "unencrypted" : nil
+        ].compactMap { $0 }
+        return parts.joined(separator: " | ")
     }
 
     private var codecValidationMessages: [String] {

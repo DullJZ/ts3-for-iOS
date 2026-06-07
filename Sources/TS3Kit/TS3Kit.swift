@@ -466,6 +466,61 @@ public enum TS3ChannelCodecConstraints {
     }
 }
 
+public struct TS3ChannelCodecPreset: Identifiable, Equatable {
+    public let id: String
+    public let title: String
+    public let codec: Int
+    public let quality: Int
+    public let latencyFactor: Int
+    public let isCodecUnencrypted: Bool
+
+    public init(
+        id: String,
+        title: String,
+        codec: Int,
+        quality: Int,
+        latencyFactor: Int,
+        isCodecUnencrypted: Bool = false
+    ) {
+        self.id = id
+        self.title = title
+        self.codec = codec
+        self.quality = quality
+        self.latencyFactor = latencyFactor
+        self.isCodecUnencrypted = isCodecUnencrypted
+    }
+
+    public static let voice = TS3ChannelCodecPreset(
+        id: "voice",
+        title: "Voice",
+        codec: 4,
+        quality: 6,
+        latencyFactor: 1
+    )
+
+    public static let music = TS3ChannelCodecPreset(
+        id: "music",
+        title: "Music",
+        codec: 5,
+        quality: 10,
+        latencyFactor: 2
+    )
+
+    public static let compatibilityVoice = TS3ChannelCodecPreset(
+        id: "compatibilityVoice",
+        title: "Compatibility Voice",
+        codec: 1,
+        quality: 7,
+        latencyFactor: 1
+    )
+
+    public static let allPresets: [TS3ChannelCodecPreset] = [
+        .voice,
+        .music,
+        .compatibilityVoice
+    ]
+}
+
 public struct TS3Channel: Identifiable {
     public let id: Int
     public let parentId: Int?
