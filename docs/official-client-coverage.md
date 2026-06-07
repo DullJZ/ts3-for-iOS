@@ -50,7 +50,7 @@ Status legend:
 | Client actions | Partial | Client row menus, online user complaint/contact shortcuts, database-record online/contact actions, move/kick/ban/message style workflows in UI | Audit all official context-menu actions and fill remaining bookmark-contact edge actions. |
 | Server logs | Partial | Query presets, paged log viewing with begin position, level/channel/search filters, visible exports, and persistent recent log results for offline review | Validate broader log filters and real-server log permissions. |
 | Ban list | Partial | Ban list management, add/delete/delete-visible/delete-all, add-rule fields for IP/name/UID/myTeamSpeak ID/last nickname, filters, presets, backup import/export, visible exports, and persistent recent ban results for offline review | Test advanced ban fields against real servers and audit edit behavior. |
-| Complaints | Partial | Complaint management with target picker, direct create/delete, visible export, filter presets, and persistent recent results for offline review | Validate complaint add/remove flows against real servers and fill any official-client context-menu edge cases. |
+| Complaints | Partial | Complaint management with target picker, direct create/delete, visible export, filter presets, complaint-source contact actions, and persistent recent results for offline review | Validate complaint add/remove flows against real servers and fill any remaining official-client context-menu edge cases. |
 | Privilege keys | Partial | Privilege key manager with create/use/delete, generated-key actions, readable exports/backups, filter presets, and persistent recent results for offline review | Validate create/use/delete flows against real servers and audit any official-client edge fields. |
 
 ## Permissions And Groups
@@ -77,7 +77,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
 | Bookmarks | Done | Bookmark list/folders/import/export, connection manager, full bookmark editor for connection options, saved phonetic nickname, local notes, and duplicate cleanup | Audit official-client bookmark edge fields if future TS3 URL options are added. |
-| Contacts | Partial | Contact manager entry, online-user bulk contact import/status actions, online and database-client friend/block/ignore/note shortcuts, visible batch actions, and local ignore suppression for private messages and pokes | Audit contact behavior against real server data and fill any official-client edge actions. |
+| Contacts | Partial | Contact manager entry, online-user bulk contact import/status actions, complaint-source shortcuts, online and database-client friend/block/ignore/note shortcuts, visible batch actions, and local ignore suppression for private messages and pokes | Audit contact behavior against real server data and fill any official-client edge actions. |
 | Client migration | Done | Client package import/export covering local settings groups, channel layout state, schema metadata, notification/shortcut/audio preview details, and import preview confirmation | Add richer per-section restore choices if package formats expand. |
 
 ## Notifications, Shortcuts, And Platform Integration

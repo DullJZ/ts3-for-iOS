@@ -1,5 +1,6 @@
 import XCTest
 @testable import TS3iOSApp
+import TS3Kit
 
 final class TS3ClientActionTests: XCTestCase {
     @MainActor
@@ -29,6 +30,7 @@ final class TS3ClientActionTests: XCTestCase {
     @MainActor
     func testOnlineContactCandidatesSkipCurrentUserAndMissingUniqueIds() {
         let model = TS3AppModel()
+        model.contacts = []
         model.clients = [
             makeUser(id: 1, uniqueIdentifier: "self", nickname: "Me", isCurrentUser: true),
             makeUser(id: 2, uniqueIdentifier: "user-2", nickname: "Beta"),
@@ -47,6 +49,7 @@ final class TS3ClientActionTests: XCTestCase {
     @MainActor
     func testOnlineContactCandidatesRefreshExistingContactNickname() {
         let model = TS3AppModel()
+        model.contacts = []
         model.addContact(uniqueIdentifier: "user-2", nickname: "Old", status: .ignored, note: "keep")
         model.clients = [
             makeUser(id: 2, uniqueIdentifier: "user-2", nickname: "New")
@@ -62,8 +65,60 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(model.contacts.first?.note, "keep")
     }
 
+    @MainActor
+    func testComplaintSourceContactActionsUseLoadedDatabaseClient() throws {
+        let model = TS3AppModel()
+        model.contacts = []
+        model.databaseClients = []
+        model.clients = []
+        let complaint = makeComplaint(sourceDatabaseId: 77, sourceName: "Reported")
+        model.databaseClients = [
+            makeDatabaseClient(id: 77, uniqueIdentifier: "source-uid", nickname: "Loaded Source")
+        ]
+
+        model.setComplaintSourceContactStatus(.blocked, for: complaint)
+
+        let contact = try XCTUnwrap(model.contacts.first { $0.uniqueIdentifier == "source-uid" })
+        XCTAssertEqual(contact.nickname, "Loaded Source")
+        XCTAssertEqual(contact.status, .blocked)
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testComplaintSourceContactActionsFallbackToOnlineUser() throws {
+        let model = TS3AppModel()
+        model.contacts = []
+        model.databaseClients = []
+        model.clients = []
+        let complaint = makeComplaint(sourceDatabaseId: 44, sourceName: "Online Source")
+        model.clients = [
+            makeUser(id: 5, uniqueIdentifier: "online-uid", nickname: "Online Source")
+        ]
+
+        model.setComplaintSourceContactStatus(.friend, for: complaint)
+
+        let contact = try XCTUnwrap(model.contacts.first { $0.uniqueIdentifier == "online-uid" })
+        XCTAssertEqual(contact.nickname, "Online Source")
+        XCTAssertEqual(contact.status, .friend)
+    }
+
+    @MainActor
+    func testComplaintSourceContactActionsRequireLoadedSourceIdentity() {
+        let model = TS3AppModel()
+        model.contacts = []
+        model.databaseClients = []
+        model.clients = []
+        let complaint = makeComplaint(sourceDatabaseId: 77, sourceName: "Unknown")
+
+        model.setComplaintSourceContactStatus(.ignored, for: complaint)
+
+        XCTAssertTrue(model.contacts.isEmpty)
+        XCTAssertEqual(model.lastError, "Load the source database client before changing contact status.")
+    }
+
     private func makeUser(
         id: Int = 12,
+        databaseId: Int? = 44,
         uniqueIdentifier: String?,
         nickname: String = "Tester",
         isCurrentUser: Bool = false
@@ -71,7 +126,7 @@ final class TS3ClientActionTests: XCTestCase {
         TS3UserSummary(
             id: id,
             channelId: 5,
-            databaseId: 44,
+            databaseId: databaseId,
             uniqueIdentifier: uniqueIdentifier,
             nickname: nickname,
             isCurrentUser: isCurrentUser,
@@ -102,5 +157,29 @@ final class TS3ClientActionTests: XCTestCase {
             idleTimeSeconds: nil,
             connectedSeconds: nil
         )
+    }
+
+    private func makeDatabaseClient(id: Int, uniqueIdentifier: String?, nickname: String) -> TS3DatabaseClientSummary {
+        TS3DatabaseClientSummary(
+            id: id,
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+    }
+
+    private func makeComplaint(sourceDatabaseId: Int, sourceName: String?) -> TS3ComplaintSummary {
+        TS3ComplaintSummary(entry: TS3ComplaintEntry(
+            targetClientDatabaseId: 12,
+            targetName: "Target",
+            sourceClientDatabaseId: sourceDatabaseId,
+            sourceName: sourceName,
+            message: "Complaint",
+            timestamp: nil
+        ))
     }
 }

@@ -3326,6 +3326,22 @@ final class TS3AppModel: ObservableObject {
         updateContact(for: record, status: contactStatus(for: record), note: note)
     }
 
+    func databaseClient(forComplaintSource entry: TS3ComplaintSummary) -> TS3DatabaseClientSummary? {
+        if let record = databaseClients.first(where: { $0.id == entry.sourceClientDatabaseId }) {
+            return record
+        }
+        return clients.compactMap(TS3DatabaseClientSummary.init(user:))
+            .first { $0.id == entry.sourceClientDatabaseId }
+    }
+
+    func setComplaintSourceContactStatus(_ status: TS3ContactStatus, for entry: TS3ComplaintSummary) {
+        guard let record = databaseClient(forComplaintSource: entry) else {
+            lastError = "Load the source database client before changing contact status."
+            return
+        }
+        setContactStatus(status, for: record)
+    }
+
     func deleteContact(_ contact: TS3ContactEntry) {
         contacts.removeAll { $0.uniqueIdentifier == contact.uniqueIdentifier }
         saveContacts()

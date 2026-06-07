@@ -17527,6 +17527,20 @@ struct ComplaintEntryRow: View {
                     TS3PlatformSupport.copyToPasteboard(message)
                 }
             }
+            Menu("Contact Source") {
+                Button("Mark as Friend") {
+                    model.setComplaintSourceContactStatus(.friend, for: entry)
+                }
+                Button("Block Contact") {
+                    model.setComplaintSourceContactStatus(.blocked, for: entry)
+                }
+                Button("Ignore Contact") {
+                    model.setComplaintSourceContactStatus(.ignored, for: entry)
+                }
+                Button("Set Neutral") {
+                    model.setComplaintSourceContactStatus(.neutral, for: entry)
+                }
+            }
             Button("Delete Complaint") {
                 isConfirmingDelete = true
             }
