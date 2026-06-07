@@ -45,16 +45,14 @@ struct TS3iOSApp: App {
                 Button("Notification Settings") {
                     model.isShowingNotificationSettings = true
                 }
+            }
 
-                Divider()
-
+            CommandMenu("Connection") {
                 Button("Refresh Channels and Clients") {
                     model.refreshServerView()
                 }
                 .ts3KeyboardShortcut("refresh-server", in: model)
                 .disabled(model.state != .connected)
-
-                Divider()
 
                 Button("Save Current Server as Bookmark") {
                     model.saveCurrentBookmark(name: model.serverHost)
@@ -70,9 +68,9 @@ struct TS3iOSApp: App {
                     model.copyCurrentFullInviteLink()
                 }
                 .disabled(model.state != .connected)
+            }
 
-                Divider()
-
+            CommandMenu("Messaging") {
                 Button("Open Chat") {
                     model.showChat()
                 }
@@ -94,9 +92,9 @@ struct TS3iOSApp: App {
                 }
                 .ts3KeyboardShortcut("open-whisper", in: model)
                 .disabled(model.state != .connected)
+            }
 
-                Divider()
-
+            CommandMenu("Administration") {
                 Button("View Server Logs") {
                     model.showServerLogs()
                 }
@@ -174,9 +172,9 @@ struct TS3iOSApp: App {
                 }
                 .ts3KeyboardShortcut("manage-temporary-passwords", in: model)
                 .disabled(model.state != .connected)
+            }
 
-                Divider()
-
+            CommandMenu("Voice") {
                 Button(model.transmitButtonTitle) {
                     model.toggleTalking()
                 }
