@@ -139,6 +139,10 @@ struct ContentView: View {
                 ComplaintListSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingTemporaryPasswords) {
+                TemporaryServerPasswordsSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingAudioSettings) {
                 AudioSettingsSheet()
                     .environmentObject(model)

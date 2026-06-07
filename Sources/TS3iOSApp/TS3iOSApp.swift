@@ -106,11 +106,13 @@ struct TS3iOSApp: App {
                 Button("View Server Information") {
                     model.showServerInformation()
                 }
+                .ts3KeyboardShortcut("view-server-info", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Edit Server Settings") {
                     model.showServerSettings()
                 }
+                .ts3KeyboardShortcut("edit-server-settings", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Manage Contacts") {
@@ -140,6 +142,7 @@ struct TS3iOSApp: App {
                 Button("Channel Subscription Presets") {
                     model.isShowingSubscriptionPresets = true
                 }
+                .ts3KeyboardShortcut("manage-subscription-presets", in: model)
                 .disabled(model.state != .connected)
 
                 Button("View Permissions") {
@@ -151,6 +154,7 @@ struct TS3iOSApp: App {
                 Button("Manage Permission Groups") {
                     model.showGroupManagement()
                 }
+                .ts3KeyboardShortcut("manage-permission-groups", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Manage Privilege Keys") {
@@ -162,6 +166,13 @@ struct TS3iOSApp: App {
                 Button("Manage Complaints") {
                     model.showComplaints()
                 }
+                .ts3KeyboardShortcut("manage-complaints", in: model)
+                .disabled(model.state != .connected)
+
+                Button("Manage Temporary Passwords") {
+                    model.showTemporaryServerPasswords()
+                }
+                .ts3KeyboardShortcut("manage-temporary-passwords", in: model)
                 .disabled(model.state != .connected)
 
                 Divider()

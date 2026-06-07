@@ -85,8 +85,8 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Local notifications | Done | Global notification settings, presets, import/export with overwrite preview, event types, per-server mute rules, per-contact mute rules, and quiet-hours scheduling | Add richer notification category-specific schedules if official-client parity requires them. |
-| Keyboard shortcuts | Partial | User-editable shortcut bindings, structured recorder, duplicate warnings, import/export/reset controls, validation hints, and Catalyst menu bindings | Add true key-event capture/global hotkey support if platform APIs allow it. |
-| Catalyst menus | Partial | Global TeamSpeak menu for major connected workflows | Split into more native menus if the app grows beyond one command menu. |
+| Keyboard shortcuts | Partial | User-editable shortcut bindings, structured recorder, duplicate warnings, import/export/reset controls, validation hints, and Catalyst menu bindings for messaging, voice, server info/settings, admin tools, permissions, complaints, temporary passwords, and files | Add true key-event capture/global hotkey support if platform APIs allow it. |
+| Catalyst menus | Partial | Global TeamSpeak menu for major connected workflows including server settings/info, logs, files, permissions, groups, complaints, privilege keys, temporary passwords, and voice controls | Split into more native menus if the app grows beyond one command menu. |
 | iOS accessibility and compact layout | Partial | SwiftUI shared sheets and forms | Audit dynamic type, VoiceOver labels, and compact split behavior. |
 
 ## Release And Diagnostics

@@ -2920,12 +2920,18 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "stop-whisper-activation", group: "Voice", action: "Stop Temporary Whisper", defaultKeys: "Command-Option-Shift-H"),
         TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
+        TS3KeyboardShortcutBinding(actionId: "view-server-info", group: "Server", action: "View Server Information", defaultKeys: "Command-Option-I"),
+        TS3KeyboardShortcutBinding(actionId: "edit-server-settings", group: "Server", action: "Edit Server Settings", defaultKeys: "Command-Option-S"),
         TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),
         TS3KeyboardShortcutBinding(actionId: "browse-client-database", group: "Server", action: "Browse Client Database", defaultKeys: "Command-Shift-D"),
         TS3KeyboardShortcutBinding(actionId: "manage-bans", group: "Server", action: "Manage Bans", defaultKeys: "Command-Shift-B"),
         TS3KeyboardShortcutBinding(actionId: "browse-files", group: "Server", action: "Browse Channel Files", defaultKeys: "Command-Shift-F"),
+        TS3KeyboardShortcutBinding(actionId: "manage-subscription-presets", group: "Server", action: "Channel Subscription Presets", defaultKeys: "Command-Option-C"),
         TS3KeyboardShortcutBinding(actionId: "manage-permissions", group: "Server", action: "View Permissions", defaultKeys: "Command-Shift-P"),
-        TS3KeyboardShortcutBinding(actionId: "manage-privilege-keys", group: "Server", action: "Manage Privilege Keys", defaultKeys: "Command-Shift-K")
+        TS3KeyboardShortcutBinding(actionId: "manage-permission-groups", group: "Server", action: "Manage Permission Groups", defaultKeys: "Command-Option-G"),
+        TS3KeyboardShortcutBinding(actionId: "manage-privilege-keys", group: "Server", action: "Manage Privilege Keys", defaultKeys: "Command-Shift-K"),
+        TS3KeyboardShortcutBinding(actionId: "manage-complaints", group: "Server", action: "Manage Complaints", defaultKeys: "Command-Option-L"),
+        TS3KeyboardShortcutBinding(actionId: "manage-temporary-passwords", group: "Server", action: "Manage Temporary Passwords", defaultKeys: "Command-Option-P")
     ]
 
     @Published var state: UIConnectionState = .disconnected
@@ -2950,6 +2956,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingPermissions = false
     @Published var isShowingPrivilegeKeys = false
     @Published var isShowingComplaints = false
+    @Published var isShowingTemporaryPasswords = false
     @Published var isShowingAudioSettings = false
     @Published var isShowingSelfStatus = false
     @Published var channels: [TS3ChannelSummary] = []
@@ -5641,6 +5648,11 @@ final class TS3AppModel: ObservableObject {
     func showServerSettings() {
         refreshServerInfo()
         isShowingServerEditor = true
+    }
+
+    func showTemporaryServerPasswords() {
+        refreshTemporaryServerPasswords()
+        isShowingTemporaryPasswords = true
     }
 
     func showGroupManagement() {
