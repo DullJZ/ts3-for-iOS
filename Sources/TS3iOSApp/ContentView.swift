@@ -15749,6 +15749,9 @@ struct PermissionsSheet: View {
             if !preview.changedPermissionNames.isEmpty {
                 lines.append("Changing: \(permissionNameSummary(preview.changedPermissionNames))")
             }
+            if !preview.changedPermissionDetails.isEmpty {
+                lines.append("Change details: \(permissionDetailSummary(preview.changedPermissionDetails))")
+            }
             if !preview.overwritePermissionNames.isEmpty {
                 lines.append("Existing: \(permissionNameSummary(preview.overwritePermissionNames))")
             }
@@ -15770,6 +15773,13 @@ struct PermissionsSheet: View {
         let remainingCount = names.count - min(names.count, 6)
         guard remainingCount > 0 else { return visible }
         return "\(visible), +\(remainingCount) more"
+    }
+
+    private func permissionDetailSummary(_ details: [String]) -> String {
+        let visible = details.prefix(3).joined(separator: "; ")
+        let remainingCount = details.count - min(details.count, 3)
+        guard remainingCount > 0 else { return visible }
+        return "\(visible); +\(remainingCount) more"
     }
 
     private func importPermissionBackup(from url: URL) {

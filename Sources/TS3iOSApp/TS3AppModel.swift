@@ -1577,6 +1577,7 @@ struct TS3PermissionBackupPreview {
     let newPermissionCount: Int?
     let overwritePermissionNames: [String]
     let changedPermissionNames: [String]
+    let changedPermissionDetails: [String]
     let unchangedPermissionNames: [String]
     let newPermissionNames: [String]
 
@@ -5445,6 +5446,12 @@ final class TS3AppModel: ObservableObject {
                 return !Self.permissionBackupPermission(backup, matches: current)
             }
         } ?? []
+        let changedPermissionDetails: [String] = currentPermissions.map { _ in
+            changedPermissionNames.compactMap { name in
+                guard let current = currentByName[name], let backup = backupByName[name] else { return nil }
+                return Self.permissionBackupChangeDescription(name: name, backup: backup, current: current)
+            }
+        } ?? []
         let unchangedPermissionNames = currentPermissions.map { _ in
             overwritePermissionNames.filter { name in
                 guard let current = currentByName[name], let backup = backupByName[name] else { return false }
@@ -5463,6 +5470,7 @@ final class TS3AppModel: ObservableObject {
             newPermissionCount: currentPermissions.map { _ in newPermissionNames.count },
             overwritePermissionNames: overwritePermissionNames,
             changedPermissionNames: changedPermissionNames,
+            changedPermissionDetails: changedPermissionDetails,
             unchangedPermissionNames: unchangedPermissionNames,
             newPermissionNames: newPermissionNames
         )
@@ -5685,6 +5693,28 @@ final class TS3AppModel: ObservableObject {
             && backupPermission.value == current.value
             && backupPermission.isNegated == current.isNegated
             && backupPermission.isSkipped == current.isSkipped
+    }
+
+    private static func permissionBackupChangeDescription(
+        name: String,
+        backup: TS3PermissionBackupPermission,
+        current: TS3PermissionSummary
+    ) -> String {
+        var changes: [String] = []
+        if backup.value != current.value {
+            changes.append("value \(current.value) -> \(backup.value)")
+        }
+        if backup.isNegated != current.isNegated {
+            changes.append("negated \(permissionBackupFlagDescription(current.isNegated)) -> \(permissionBackupFlagDescription(backup.isNegated))")
+        }
+        if backup.isSkipped != current.isSkipped {
+            changes.append("skip \(permissionBackupFlagDescription(current.isSkipped)) -> \(permissionBackupFlagDescription(backup.isSkipped))")
+        }
+        return "\(name): \(changes.joined(separator: ", "))"
+    }
+
+    private static func permissionBackupFlagDescription(_ value: Bool) -> String {
+        value ? "on" : "off"
     }
 
     private func permissionSummaries(from permissions: [TS3Permission]) -> [TS3PermissionSummary] {

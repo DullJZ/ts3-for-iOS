@@ -34,6 +34,7 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertEqual(preview.newPermissionCount, 2)
         XCTAssertEqual(preview.overwritePermissionNames, ["i_channel_join_power"])
         XCTAssertEqual(preview.changedPermissionNames, ["i_channel_join_power"])
+        XCTAssertEqual(preview.changedPermissionDetails, ["i_channel_join_power: value 25 -> 50"])
         XCTAssertTrue(preview.unchangedPermissionNames.isEmpty)
         XCTAssertEqual(preview.newPermissionNames, ["b_virtualserver_modify_name", "i_client_kick_power"])
     }
@@ -65,6 +66,34 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertEqual(preview.unchangedCount, 1)
         XCTAssertEqual(preview.changedPermissionNames, ["i_client_kick_power"])
         XCTAssertEqual(preview.unchangedPermissionNames, ["i_channel_join_power"])
+        XCTAssertEqual(preview.changedPermissionDetails, ["i_client_kick_power: value 70 -> 75"])
+    }
+
+    @MainActor
+    func testPermissionBackupPreviewListsFlagChangeDetails() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_client_ban_power", value: 60, isNegated: true, isSkipped: true)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_client_ban_power", value: 40)
+        ]
+
+        let preview = try target.permissionBackupPreview(from: backup)
+
+        XCTAssertEqual(preview.changedPermissionNames, ["i_client_ban_power"])
+        XCTAssertEqual(
+            preview.changedPermissionDetails,
+            ["i_client_ban_power: value 40 -> 60, negated off -> on, skip off -> on"]
+        )
     }
 
     @MainActor
@@ -91,6 +120,7 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertNil(preview.newPermissionCount)
         XCTAssertTrue(preview.overwritePermissionNames.isEmpty)
         XCTAssertTrue(preview.changedPermissionNames.isEmpty)
+        XCTAssertTrue(preview.changedPermissionDetails.isEmpty)
         XCTAssertTrue(preview.unchangedPermissionNames.isEmpty)
         XCTAssertTrue(preview.newPermissionNames.isEmpty)
     }
