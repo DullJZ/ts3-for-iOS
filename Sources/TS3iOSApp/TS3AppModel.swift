@@ -865,6 +865,28 @@ extension TS3GroupSummary {
     var typeTitle: String {
         type?.title ?? "Unknown"
     }
+
+    var clipboardSummary: String {
+        "groupId=\(id) | name=\(name) | type=\(typeTitle)"
+    }
+}
+
+extension TS3GroupClientSummary {
+    func clipboardSummary(group: TS3GroupSummary, target: TS3GroupManagementTarget, channelName: String?) -> String {
+        var parts = [
+            "group=\(group.name) (\(group.id))",
+            "target=\(target.title)",
+            "clientDb=\(clientDatabaseId)",
+            "nickname=\(displayName)"
+        ]
+        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let channelId {
+            parts.append("channel=\(channelName ?? "Channel \(channelId)") (\(channelId))")
+        }
+        return parts.joined(separator: " | ")
+    }
 }
 
 extension TS3PermissionGroupDatabaseType {

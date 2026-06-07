@@ -9838,10 +9838,7 @@ struct GroupManagementSheet: View {
     }
 
     private var visibleGroupsSnapshot: String {
-        filteredGroups.map { group in
-            "groupId=\(group.id) | name=\(group.name) | type=\(group.typeTitle)"
-        }
-        .joined(separator: "\n")
+        filteredGroups.map(\.clipboardSummary).joined(separator: "\n")
     }
 
     var body: some View {
@@ -10452,17 +10449,11 @@ struct GroupClientListSheet: View {
         }
         lines.append("")
         lines += filteredClients.map { client in
-            var parts = [
-                "clientDb=\(client.clientDatabaseId)",
-                "nickname=\(client.displayName)"
-            ]
-            if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                parts.append("uid=\(uniqueIdentifier)")
-            }
-            if let channelId = client.channelId {
-                parts.append("channel=\(model.channelName(for: channelId) ?? "Channel \(channelId)")")
-            }
-            return parts.joined(separator: " | ")
+            client.clipboardSummary(
+                group: group,
+                target: target,
+                channelName: client.channelId.flatMap { model.channelName(for: $0) }
+            )
         }
         return lines.joined(separator: "\n")
     }
@@ -10879,6 +10870,9 @@ struct GroupClientRow: View {
                 Button("Copy Nickname") {
                     TS3PlatformSupport.copyToPasteboard(client.displayName)
                 }
+                Button("Copy Summary") {
+                    TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+                }
                 Button("Copy Database ID") {
                     TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
                 }
@@ -10951,6 +10945,9 @@ struct GroupClientRow: View {
             Button("Copy Nickname") {
                 TS3PlatformSupport.copyToPasteboard(client.displayName)
             }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+            }
             Button("Copy Database ID") {
                 TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
             }
@@ -10986,6 +10983,14 @@ struct GroupClientRow: View {
     private var databaseRecord: TS3DatabaseClientSummary {
         TS3DatabaseClientSummary(groupClient: client)
     }
+
+    private var clipboardSummary: String {
+        client.clipboardSummary(
+            group: group,
+            target: target,
+            channelName: client.channelId.flatMap { model.channelName(for: $0) }
+        )
+    }
 }
 
 struct GroupClientInfoSheet: View {
@@ -11012,6 +11017,9 @@ struct GroupClientInfoSheet: View {
                 Section {
                     Button("Copy Nickname") {
                         TS3PlatformSupport.copyToPasteboard(client.displayName)
+                    }
+                    Button("Copy Summary") {
+                        TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                     }
                     Button("Copy Database ID") {
                         TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
@@ -11046,6 +11054,14 @@ struct GroupClientInfoSheet: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.trailing)
         }
+    }
+
+    private var clipboardSummary: String {
+        client.clipboardSummary(
+            group: group,
+            target: target,
+            channelName: client.channelId.flatMap { model.channelName(for: $0) }
+        )
     }
 }
 
