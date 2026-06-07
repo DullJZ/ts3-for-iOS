@@ -201,6 +201,16 @@ final class TS3CommandTests: XCTestCase {
         }
     }
 
+    func testChannelCodecDiagnosticsFlagLegacyAndUnencryptedChoices() {
+        XCTAssertTrue(TS3ChannelCodecConstraints.diagnosticMessages(codec: 4, isCodecUnencrypted: false).isEmpty)
+
+        let legacyMessages = TS3ChannelCodecConstraints.diagnosticMessages(codec: 1, isCodecUnencrypted: true)
+
+        XCTAssertEqual(legacyMessages.count, 2)
+        XCTAssertTrue(legacyMessages[0].contains("Legacy Speex/CELT"))
+        XCTAssertTrue(legacyMessages[1].contains("Voice encryption is disabled"))
+    }
+
     func testGroupCopyCommandsUseDistinctServerAndChannelParameterNames() {
         let serverCommand = TS3SingleCommand(name: "servergroupcopy", parameters: [
             TS3CommandSingleParameter(name: "ssgid", value: "6"),

@@ -19334,6 +19334,13 @@ struct ChannelEditorSheet: View {
                                 .foregroundColor(.red)
                         }
                     }
+                    if !codecDiagnosticMessages.isEmpty {
+                        ForEach(codecDiagnosticMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                     TextField("Needed Talk Power", text: $neededTalkPower)
                         .ts3NumericKeyboard()
                     TextField("Needed Subscribe Power", text: $neededSubscribePower)
@@ -19542,6 +19549,7 @@ struct ChannelEditorSheet: View {
             ("Codec Latency Factor", draft.codecLatencyFactor ?? ""),
             ("Codec Profile", codecProfileSummary),
             ("Codec Validation", codecValidationMessages.joined(separator: "; ")),
+            ("Codec Diagnostics", codecDiagnosticMessages.joined(separator: "; ")),
             ("Unencrypted Voice", draft.isCodecUnencrypted == true ? "Yes" : "No"),
             ("Delete Delay Seconds", draft.deleteDelaySeconds),
             ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
@@ -19673,6 +19681,13 @@ struct ChannelEditorSheet: View {
             messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
         }
         return messages
+    }
+
+    private var codecDiagnosticMessages: [String] {
+        TS3ChannelCodecConstraints.diagnosticMessages(
+            codec: codec,
+            isCodecUnencrypted: isCodecUnencrypted
+        )
     }
 
     private var isCodecQualityValid: Bool {

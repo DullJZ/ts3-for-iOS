@@ -475,6 +475,7 @@ public struct TS3ServerEdit {
 public enum TS3ChannelCodecConstraints {
     public static let qualityRange = 0...10
     public static let latencyFactorRange = 1...10
+    public static let legacyCodecIds: Set<Int> = [0, 1, 2, 3]
 
     public static func isValidQuality(_ value: Int?) -> Bool {
         guard let value else { return true }
@@ -484,6 +485,17 @@ public enum TS3ChannelCodecConstraints {
     public static func isValidLatencyFactor(_ value: Int?) -> Bool {
         guard let value else { return true }
         return latencyFactorRange.contains(value)
+    }
+
+    public static func diagnosticMessages(codec: Int?, isCodecUnencrypted: Bool?) -> [String] {
+        var messages: [String] = []
+        if let codec, legacyCodecIds.contains(codec) {
+            messages.append("Legacy Speex/CELT codec selected; prefer Opus Voice or Opus Music when the server allows it.")
+        }
+        if isCodecUnencrypted == true {
+            messages.append("Voice encryption is disabled for this channel.")
+        }
+        return messages
     }
 }
 
