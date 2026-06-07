@@ -5595,6 +5595,19 @@ final class TS3AppModel: ObservableObject {
         isShowingComplaints = true
     }
 
+    func showComplaints(for user: TS3UserSummary) {
+        refreshComplaints(for: user)
+        isShowingComplaints = true
+    }
+
+    func showContacts(for user: TS3UserSummary) {
+        guard user.uniqueIdentifier != nil else {
+            lastError = "The server did not provide a unique id for \(user.nickname)."
+            return
+        }
+        isShowingContacts = true
+    }
+
     func addServerLogEntry(
         level: TS3LogLevel,
         message: String,

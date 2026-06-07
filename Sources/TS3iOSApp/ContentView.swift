@@ -4291,6 +4291,9 @@ struct ChannelMemberRow: View {
                     Button("Complain") {
                         actionMode = .complain
                     }
+                    Button("View Complaints") {
+                        model.showComplaints(for: member)
+                    }
                 }
                 Button("Whisper to User") {
                     model.enableWhisperToClient(member)
@@ -4334,6 +4337,9 @@ struct ChannelMemberRow: View {
                 .disabled(member.databaseId == nil)
                 if member.uniqueIdentifier != nil {
                     Menu("Contact") {
+                        Button("Open Contact Manager") {
+                            model.showContacts(for: member)
+                        }
                         Button("Mark as Friend") {
                             model.setContactStatus(.friend, for: member)
                         }
