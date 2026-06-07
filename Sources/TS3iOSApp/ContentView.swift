@@ -15445,6 +15445,69 @@ struct PermissionInfoRow: View {
 }
 
 struct TemporaryServerPasswordsSheet: View {
+    private enum PasswordFilter: String, CaseIterable, Identifiable {
+        case all
+        case serverDefault
+        case channelTarget
+        case withDescription
+        case withCreator
+        case withExpiration
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return "All Passwords"
+            case .serverDefault: return "Server Default"
+            case .channelTarget: return "Channel Target"
+            case .withDescription: return "With Description"
+            case .withCreator: return "With Creator"
+            case .withExpiration: return "With Expiration"
+            }
+        }
+
+        func matches(_ entry: TS3TemporaryServerPasswordSummary) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .serverDefault:
+                return entry.targetChannelId == nil || entry.targetChannelId == 0
+            case .channelTarget:
+                return (entry.targetChannelId ?? 0) > 0
+            case .withDescription:
+                return entry.description?.isEmpty == false
+            case .withCreator:
+                return entry.creatorName?.isEmpty == false
+                    || entry.creatorUniqueIdentifier?.isEmpty == false
+                    || entry.creatorDatabaseId != nil
+            case .withExpiration:
+                return entry.durationSeconds != nil
+            }
+        }
+    }
+
+    private enum PasswordSortMode: String, CaseIterable, Identifiable {
+        case created
+        case password
+        case target
+        case duration
+        case creator
+        case description
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .created: return "Created"
+            case .password: return "Password"
+            case .target: return "Target"
+            case .duration: return "Duration"
+            case .creator: return "Creator"
+            case .description: return "Description"
+            }
+        }
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var password = ""
@@ -15454,9 +15517,17 @@ struct TemporaryServerPasswordsSheet: View {
     @State private var targetChannelId = 0
     @State private var targetChannelPassword = ""
     @State private var searchText = ""
+    @State private var passwordFilter: PasswordFilter = .all
+    @State private var sortMode: PasswordSortMode = .created
+    @State private var sortAscending = false
+    @State private var presetName = ""
     @State private var isExportingPasswords = false
+    @State private var isExportingPresets = false
+    @State private var isImportingPresets = false
     @State private var isConfirmingDeleteVisible = false
+    @State private var isConfirmingDeletePresets = false
     @State private var passwordsDocument = TS3TextFileDocument()
+    @State private var presetsDocument = TS3BookmarkFileDocument()
 
     private var passwordsSnapshot: String {
         filteredPasswords.map { $0.clipboardSummary(channels: model.channels) }.joined(separator: "\n")
@@ -15501,8 +15572,77 @@ struct TemporaryServerPasswordsSheet: View {
                 }
 
                 Section(header: Text("Passwords")) {
+                    Picker("Type", selection: $passwordFilter) {
+                        ForEach(PasswordFilter.allCases) { filter in
+                            Text(filter.title).tag(filter)
+                        }
+                    }
+                    Picker("Sort By", selection: $sortMode) {
+                        ForEach(PasswordSortMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    Toggle("Ascending", isOn: $sortAscending)
                     TextField("Search passwords", text: $searchText)
                         .ts3PlainTextField()
+                    Menu {
+                        TextField("Preset Name", text: $presetName)
+                        Button("Save Current Filters") {
+                            model.saveTemporaryServerPasswordFilterPreset(
+                                name: presetName,
+                                passwordFilter: passwordFilter.rawValue,
+                                sortMode: sortMode.rawValue,
+                                sortAscending: sortAscending,
+                                searchText: searchText
+                            )
+                            presetName = ""
+                        }
+                        .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.temporaryServerPasswordFilterPresets.isEmpty {
+                            Text("No saved temporary password filter presets")
+                        } else {
+                            ForEach(model.temporaryServerPasswordFilterPresets) { preset in
+                                Menu {
+                                    Button("Apply Preset") {
+                                        applyPreset(preset)
+                                    }
+                                    Button("Use Name") {
+                                        presetName = preset.name
+                                    }
+                                    Button("Delete Preset") {
+                                        model.deleteTemporaryServerPasswordFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(presetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("Export Presets") {
+                            exportPresets()
+                        }
+                        .disabled(model.temporaryServerPasswordFilterPresets.isEmpty)
+                        Button("Import Presets") {
+                            isImportingPresets = true
+                        }
+                        Button("Delete All Presets") {
+                            isConfirmingDeletePresets = true
+                        }
+                        .disabled(model.temporaryServerPasswordFilterPresets.isEmpty)
+                    } label: {
+                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    if hasLocalFilters {
+                        Button("Clear Filters") {
+                            passwordFilter = .all
+                            sortMode = .created
+                            sortAscending = false
+                            searchText = ""
+                        }
+                    }
                     Button("Copy Visible Passwords") {
                         TS3PlatformSupport.copyToPasteboard(passwordsSnapshot)
                     }
@@ -15553,12 +15693,43 @@ struct TemporaryServerPasswordsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingPresets,
+                document: presetsDocument,
+                contentType: .json,
+                defaultFilename: "ts3-temporary-password-filter-presets"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingPresets,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importPresets(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text("Delete Visible Temporary Passwords?"),
                     message: Text("This removes \(filteredPasswords.count) temporary passwords from the server."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteTemporaryServerPasswords(filteredPasswords)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeletePresets) {
+                Alert(
+                    title: Text("Delete All Temporary Password Filter Presets?"),
+                    message: Text("This removes \(model.temporaryServerPasswordFilterPresets.count) saved local filter presets."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteAllTemporaryServerPasswordFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
@@ -15588,24 +15759,91 @@ struct TemporaryServerPasswordsSheet: View {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var hasLocalFilters: Bool {
+        isSearching || passwordFilter != .all || sortMode != .created || sortAscending
+    }
+
     private var filteredPasswords: [TS3TemporaryServerPasswordSummary] {
-        guard !normalizedSearchText.isEmpty else {
-            return model.temporaryServerPasswords
+        let entries = model.temporaryServerPasswords.filter { entry in
+            passwordFilter.matches(entry) && (
+                !isSearching
+                    || containsSearch(entry.password)
+                    || containsSearch(entry.description)
+                    || containsSearch(entry.creatorName)
+                    || containsSearch(entry.creatorUniqueIdentifier)
+                    || entry.creatorDatabaseId.map { String($0).contains(normalizedSearchText) } == true
+                    || entry.targetChannelId.map { String($0).contains(normalizedSearchText) } == true
+                    || entry.targetChannelId.flatMap(channelName).map { $0.lowercased().contains(normalizedSearchText) } == true
+            )
         }
-        return model.temporaryServerPasswords.filter { entry in
-            containsSearch(entry.password)
-                || containsSearch(entry.description)
-                || containsSearch(entry.creatorName)
-                || containsSearch(entry.creatorUniqueIdentifier)
-                || entry.creatorDatabaseId.map { String($0).contains(normalizedSearchText) } == true
-                || entry.targetChannelId.map { String($0).contains(normalizedSearchText) } == true
-                || entry.targetChannelId.flatMap(channelName).map { $0.lowercased().contains(normalizedSearchText) } == true
-        }
+        return sortedPasswords(entries)
     }
 
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
+    }
+
+    private func sortedPasswords(_ entries: [TS3TemporaryServerPasswordSummary]) -> [TS3TemporaryServerPasswordSummary] {
+        entries.sorted { lhs, rhs in
+            if lhs.id == rhs.id {
+                return false
+            }
+
+            let comparison: ComparisonResult
+            switch sortMode {
+            case .created:
+                comparison = compareDates(lhs.createdAt, rhs.createdAt)
+            case .password:
+                comparison = lhs.password.localizedCaseInsensitiveCompare(rhs.password)
+            case .target:
+                comparison = targetDisplayName(lhs).localizedCaseInsensitiveCompare(targetDisplayName(rhs))
+            case .duration:
+                comparison = compareOptionalInts(lhs.durationSeconds, rhs.durationSeconds)
+            case .creator:
+                comparison = creatorDisplayName(lhs).localizedCaseInsensitiveCompare(creatorDisplayName(rhs))
+            case .description:
+                comparison = (lhs.description ?? "").localizedCaseInsensitiveCompare(rhs.description ?? "")
+            }
+
+            if comparison == .orderedSame {
+                return lhs.password.localizedCaseInsensitiveCompare(rhs.password) == .orderedAscending
+            }
+            return sortAscending ? comparison == .orderedAscending : comparison == .orderedDescending
+        }
+    }
+
+    private func compareDates(_ lhs: Date?, _ rhs: Date?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs.compare(rhs)
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
+    }
+
+    private func compareOptionalInts(_ lhs: Int?, _ rhs: Int?) -> ComparisonResult {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            if lhs == rhs {
+                return .orderedSame
+            }
+            return lhs < rhs ? .orderedAscending : .orderedDescending
+        case (nil, nil):
+            return .orderedSame
+        case (nil, _):
+            return .orderedAscending
+        case (_, nil):
+            return .orderedDescending
+        }
     }
 
     private func normalizeChannelSelection() {
@@ -15616,6 +15854,68 @@ struct TemporaryServerPasswordsSheet: View {
 
     private func channelName(_ id: Int) -> String? {
         model.channels.first { $0.id == id }?.name
+    }
+
+    private func targetDisplayName(_ entry: TS3TemporaryServerPasswordSummary) -> String {
+        guard let targetChannelId = entry.targetChannelId, targetChannelId > 0 else {
+            return "Server Default"
+        }
+        return channelName(targetChannelId) ?? "Channel \(targetChannelId)"
+    }
+
+    private func creatorDisplayName(_ entry: TS3TemporaryServerPasswordSummary) -> String {
+        if let creatorName = entry.creatorName, !creatorName.isEmpty {
+            return creatorName
+        }
+        if let creatorDatabaseId = entry.creatorDatabaseId {
+            return "Client DB \(creatorDatabaseId)"
+        }
+        return entry.creatorUniqueIdentifier ?? ""
+    }
+
+    private func applyPreset(_ preset: TS3TemporaryServerPasswordFilterPreset) {
+        passwordFilter = PasswordFilter(rawValue: preset.passwordFilter) ?? .all
+        sortMode = PasswordSortMode(rawValue: preset.sortMode) ?? .created
+        sortAscending = preset.sortAscending
+        searchText = preset.searchText
+        presetName = preset.name
+    }
+
+    private func presetSummary(_ preset: TS3TemporaryServerPasswordFilterPreset) -> String {
+        var parts = [
+            (PasswordFilter(rawValue: preset.passwordFilter) ?? .all).title,
+            "Sort \((PasswordSortMode(rawValue: preset.sortMode) ?? .created).title)"
+        ]
+        if preset.sortAscending {
+            parts.append("Ascending")
+        }
+        if !preset.searchText.isEmpty {
+            parts.append("Search \(preset.searchText)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func exportPresets() {
+        do {
+            presetsDocument = TS3BookmarkFileDocument(data: try model.temporaryServerPasswordFilterPresetsExportData())
+            isExportingPresets = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            _ = try model.importTemporaryServerPasswordFilterPresets(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private func clearCreateForm() {

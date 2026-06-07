@@ -1237,6 +1237,34 @@ struct TS3ComplaintFilterPreset: Identifiable, Codable {
     }
 }
 
+struct TS3TemporaryServerPasswordFilterPreset: Identifiable, Codable {
+    let id: UUID
+    var name: String
+    var passwordFilter: String
+    var sortMode: String
+    var sortAscending: Bool
+    var searchText: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        passwordFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.passwordFilter = passwordFilter
+        self.sortMode = sortMode
+        self.sortAscending = sortAscending
+        self.searchText = searchText
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3DatabaseClientFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -1803,6 +1831,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset]
     var banFilterPresets: [TS3BanFilterPreset]
     var complaintFilterPresets: [TS3ComplaintFilterPreset]
+    var temporaryServerPasswordFilterPresets: [TS3TemporaryServerPasswordFilterPreset]
     var databaseClientFilterPresets: [TS3DatabaseClientFilterPreset]
     var privilegeKeyFilterPresets: [TS3PrivilegeKeyFilterPreset]
     var permissionFilterPresets: [TS3PermissionFilterPreset]
@@ -1839,6 +1868,7 @@ private struct TS3ClientMigrationPackage: Codable {
         offlineMessageFilterPresets: [TS3OfflineMessageFilterPreset],
         banFilterPresets: [TS3BanFilterPreset],
         complaintFilterPresets: [TS3ComplaintFilterPreset],
+        temporaryServerPasswordFilterPresets: [TS3TemporaryServerPasswordFilterPreset],
         databaseClientFilterPresets: [TS3DatabaseClientFilterPreset],
         privilegeKeyFilterPresets: [TS3PrivilegeKeyFilterPreset],
         permissionFilterPresets: [TS3PermissionFilterPreset],
@@ -1874,6 +1904,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.offlineMessageFilterPresets = offlineMessageFilterPresets
         self.banFilterPresets = banFilterPresets
         self.complaintFilterPresets = complaintFilterPresets
+        self.temporaryServerPasswordFilterPresets = temporaryServerPasswordFilterPresets
         self.databaseClientFilterPresets = databaseClientFilterPresets
         self.privilegeKeyFilterPresets = privilegeKeyFilterPresets
         self.permissionFilterPresets = permissionFilterPresets
@@ -1911,6 +1942,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case offlineMessageFilterPresets
         case banFilterPresets
         case complaintFilterPresets
+        case temporaryServerPasswordFilterPresets
         case databaseClientFilterPresets
         case privilegeKeyFilterPresets
         case permissionFilterPresets
@@ -1993,6 +2025,10 @@ private struct TS3ClientMigrationPackage: Codable {
         complaintFilterPresets = try container.decodeIfPresent(
             [TS3ComplaintFilterPreset].self,
             forKey: .complaintFilterPresets
+        ) ?? []
+        temporaryServerPasswordFilterPresets = try container.decodeIfPresent(
+            [TS3TemporaryServerPasswordFilterPreset].self,
+            forKey: .temporaryServerPasswordFilterPresets
         ) ?? []
         databaseClientFilterPresets = try container.decodeIfPresent(
             [TS3DatabaseClientFilterPreset].self,
@@ -2928,6 +2964,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var chatFilterPresets: [TS3ChatFilterPreset] = []
     @Published private(set) var banFilterPresets: [TS3BanFilterPreset] = []
     @Published private(set) var complaintFilterPresets: [TS3ComplaintFilterPreset] = []
+    @Published private(set) var temporaryServerPasswordFilterPresets: [TS3TemporaryServerPasswordFilterPreset] = []
     @Published private(set) var databaseClientFilterPresets: [TS3DatabaseClientFilterPreset] = []
     @Published private(set) var privilegeKeyFilterPresets: [TS3PrivilegeKeyFilterPreset] = []
     @Published private(set) var permissionFilterPresets: [TS3PermissionFilterPreset] = []
@@ -3068,6 +3105,7 @@ final class TS3AppModel: ObservableObject {
         loadBanFilterPresets()
         loadComplaintResults()
         loadComplaintFilterPresets()
+        loadTemporaryServerPasswordFilterPresets()
         loadDatabaseClientFilterPresets()
         loadTemporaryServerPasswordResults()
         loadPrivilegeKeyResults()
@@ -8204,6 +8242,62 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func saveTemporaryServerPasswordFilterPreset(
+        name: String,
+        passwordFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) {
+        let preset = sanitizedTemporaryServerPasswordFilterPreset(TS3TemporaryServerPasswordFilterPreset(
+            name: name,
+            passwordFilter: passwordFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText
+        ))
+        guard let preset else {
+            lastError = "Enter a name for the temporary password filter preset."
+            return
+        }
+        temporaryServerPasswordFilterPresets.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+        temporaryServerPasswordFilterPresets.insert(preset, at: 0)
+        temporaryServerPasswordFilterPresets = sanitizedTemporaryServerPasswordFilterPresets(temporaryServerPasswordFilterPresets)
+        saveTemporaryServerPasswordFilterPresets()
+        lastError = nil
+    }
+
+    func deleteTemporaryServerPasswordFilterPreset(_ preset: TS3TemporaryServerPasswordFilterPreset) {
+        temporaryServerPasswordFilterPresets.removeAll { $0.id == preset.id }
+        saveTemporaryServerPasswordFilterPresets()
+    }
+
+    func deleteAllTemporaryServerPasswordFilterPresets() {
+        guard !temporaryServerPasswordFilterPresets.isEmpty else { return }
+        temporaryServerPasswordFilterPresets = []
+        saveTemporaryServerPasswordFilterPresets()
+    }
+
+    func temporaryServerPasswordFilterPresetsExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(temporaryServerPasswordFilterPresets)
+    }
+
+    @discardableResult
+    func importTemporaryServerPasswordFilterPresets(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3TemporaryServerPasswordFilterPreset].self, from: data)
+        var merged = temporaryServerPasswordFilterPresets
+        for preset in sanitizedTemporaryServerPasswordFilterPresets(imported) {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
+        }
+        temporaryServerPasswordFilterPresets = sanitizedTemporaryServerPasswordFilterPresets(merged)
+        saveTemporaryServerPasswordFilterPresets()
+        lastError = nil
+        return imported.count
+    }
+
     func saveDatabaseClientFilterPreset(
         name: String,
         recordFilter: String,
@@ -9449,6 +9543,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-temporary-server-password-results.json")
     }
 
+    private var temporaryServerPasswordFilterPresetsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-temporary-server-password-filter-presets.json")
+    }
+
     private var privilegeKeyResultsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-privilege-key-results.json")
@@ -10592,6 +10691,70 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    private func loadTemporaryServerPasswordFilterPresets() {
+        guard let data = try? Data(contentsOf: temporaryServerPasswordFilterPresetsURL),
+              let decoded = try? JSONDecoder().decode([TS3TemporaryServerPasswordFilterPreset].self, from: data) else {
+            temporaryServerPasswordFilterPresets = []
+            return
+        }
+        temporaryServerPasswordFilterPresets = sanitizedTemporaryServerPasswordFilterPresets(decoded)
+    }
+
+    private func saveTemporaryServerPasswordFilterPresets() {
+        do {
+            let directory = temporaryServerPasswordFilterPresetsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(temporaryServerPasswordFilterPresets)
+            try data.write(to: temporaryServerPasswordFilterPresetsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedTemporaryServerPasswordFilterPresets(
+        _ presets: [TS3TemporaryServerPasswordFilterPreset]
+    ) -> [TS3TemporaryServerPasswordFilterPreset] {
+        presets.compactMap(sanitizedTemporaryServerPasswordFilterPreset)
+            .sorted { lhs, rhs in
+                if lhs.updatedAt == rhs.updatedAt {
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+    }
+
+    private func sanitizedTemporaryServerPasswordFilterPreset(
+        _ preset: TS3TemporaryServerPasswordFilterPreset
+    ) -> TS3TemporaryServerPasswordFilterPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return nil }
+        let passwordFilter = [
+            "all",
+            "serverDefault",
+            "channelTarget",
+            "withDescription",
+            "withCreator",
+            "withExpiration"
+        ].contains(preset.passwordFilter) ? preset.passwordFilter : "all"
+        let sortMode = [
+            "created",
+            "password",
+            "target",
+            "duration",
+            "creator",
+            "description"
+        ].contains(preset.sortMode) ? preset.sortMode : "created"
+        return TS3TemporaryServerPasswordFilterPreset(
+            id: preset.id,
+            name: name,
+            passwordFilter: passwordFilter,
+            sortMode: sortMode,
+            sortAscending: preset.sortAscending,
+            searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+            updatedAt: preset.updatedAt
+        )
+    }
+
     private func loadDatabaseClientFilterPresets() {
         guard let data = try? Data(contentsOf: databaseClientFilterPresetsURL),
               let decoded = try? JSONDecoder().decode([TS3DatabaseClientFilterPreset].self, from: data) else {
@@ -11078,6 +11241,7 @@ final class TS3AppModel: ObservableObject {
             offlineMessageFilterPresets: offlineMessageFilterPresets,
             banFilterPresets: banFilterPresets,
             complaintFilterPresets: complaintFilterPresets,
+            temporaryServerPasswordFilterPresets: temporaryServerPasswordFilterPresets,
             databaseClientFilterPresets: databaseClientFilterPresets,
             privilegeKeyFilterPresets: privilegeKeyFilterPresets,
             permissionFilterPresets: permissionFilterPresets,
@@ -11116,6 +11280,7 @@ final class TS3AppModel: ObservableObject {
         try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
         try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
         try importComplaintFilterPresets(from: encodedPackageSection(package.complaintFilterPresets))
+        try importTemporaryServerPasswordFilterPresets(from: encodedPackageSection(package.temporaryServerPasswordFilterPresets))
         try importDatabaseClientFilterPresets(from: encodedPackageSection(package.databaseClientFilterPresets))
         try importPrivilegeKeyFilterPresets(from: encodedPackageSection(package.privilegeKeyFilterPresets))
         try importPermissionFilterPresets(from: encodedPackageSection(package.permissionFilterPresets))
@@ -11149,6 +11314,7 @@ final class TS3AppModel: ObservableObject {
             ("Offline Message Filters", package.offlineMessageFilterPresets.count),
             ("Ban Filters", package.banFilterPresets.count),
             ("Complaint Filters", package.complaintFilterPresets.count),
+            ("Temporary Password Filters", package.temporaryServerPasswordFilterPresets.count),
             ("Database Client Filters", package.databaseClientFilterPresets.count),
             ("Privilege Key Filters", package.privilegeKeyFilterPresets.count),
             ("Permission Filters", package.permissionFilterPresets.count),
