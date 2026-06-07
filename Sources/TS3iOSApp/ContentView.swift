@@ -17753,12 +17753,14 @@ struct WhisperSheet: View {
     @State private var filterPresetName = ""
     @State private var searchText = ""
     @State private var isExportingRoute = false
+    @State private var isExportingActivationLog = false
     @State private var isExportingPresetBackup = false
     @State private var isImportingPresetBackup = false
     @State private var isExportingFilterPresets = false
     @State private var isImportingFilterPresets = false
     @State private var confirmation: WhisperConfirmation?
     @State private var routeDocument = TS3TextFileDocument()
+    @State private var activationLogDocument = TS3TextFileDocument()
     @State private var presetBackupDocument = TS3TextFileDocument()
     @State private var filterPresetsDocument = TS3BookmarkFileDocument()
 
@@ -17825,11 +17827,12 @@ struct WhisperSheet: View {
     }
 
     private var whisperRouteSnapshot: String {
-        [
+        var rows = [
             "Route: \(model.whisperRouteDescription)",
             "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
             "Activation: \(model.whisperActivationStatus)",
             "Microphone: \(model.isTalking ? "Live" : "Idle")",
+            "Activation Events: \(model.whisperActivationLog.count)",
             "Preset Filter: \(presetFilter.title)",
             "Preset Sort: \(presetSort.title)",
             "Group Type: \(groupWhisperType.title)",
@@ -17841,7 +17844,14 @@ struct WhisperSheet: View {
             "Channel Groups: \(filteredChannelGroups.count)",
             "Channels: \(filteredChannels.count)",
             "Users: \(filteredUsers.count)"
-        ].joined(separator: "\n")
+        ]
+        if let logText = String(data: model.whisperActivationLogData(), encoding: .utf8),
+           !logText.isEmpty {
+            rows.append("")
+            rows.append("Recent Activation Log")
+            rows.append(logText)
+        }
+        return rows.joined(separator: "\n")
     }
 
     var body: some View {
@@ -17954,6 +17964,39 @@ struct WhisperSheet: View {
                     WhisperHoldButton()
                         .environmentObject(model)
                         .disabled(model.state != .connected || model.whisperRoute == .none)
+                }
+
+                Section(header: Text("Activation Log")) {
+                    if model.whisperActivationLog.isEmpty {
+                        Text("No whisper activation events")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.whisperActivationLog.prefix(6)) { entry in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(entry.action)
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(Self.dateText(entry.timestamp)) | \(entry.routeDescription)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(entry.activationStatus) | \(entry.isTalking ? "talking" : "idle")")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    Button("Copy Activation Log") {
+                        TS3PlatformSupport.copyToPasteboard(String(data: model.whisperActivationLogData(), encoding: .utf8) ?? "")
+                    }
+                    .disabled(model.whisperActivationLog.isEmpty)
+                    Button("Export Activation Log") {
+                        activationLogDocument = TS3TextFileDocument(data: model.whisperActivationLogData())
+                        isExportingActivationLog = true
+                    }
+                    .disabled(model.whisperActivationLog.isEmpty)
+                    Button("Clear Activation Log") {
+                        model.clearWhisperActivationLog()
+                    }
+                    .disabled(model.whisperActivationLog.isEmpty)
                 }
 
                 Section(header: Text("Quick Actions")) {
@@ -18174,6 +18217,16 @@ struct WhisperSheet: View {
                 document: routeDocument,
                 contentType: .plainText,
                 defaultFilename: "ts3-whisper-route"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
+                isPresented: $isExportingActivationLog,
+                document: activationLogDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-whisper-activation-log"
             ) { result in
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
@@ -18471,6 +18524,13 @@ struct WhisperSheet: View {
                 }
             }
         )
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 }
 

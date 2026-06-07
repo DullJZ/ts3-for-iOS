@@ -2741,6 +2741,31 @@ enum TS3WhisperRoute: Equatable {
     case group(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int)
 }
 
+struct TS3WhisperActivationLogEntry: Identifiable, Codable {
+    let id: UUID
+    let timestamp: Date
+    let action: String
+    let routeDescription: String
+    let activationStatus: String
+    let isTalking: Bool
+
+    init(
+        id: UUID = UUID(),
+        timestamp: Date = Date(),
+        action: String,
+        routeDescription: String,
+        activationStatus: String,
+        isTalking: Bool
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.action = action
+        self.routeDescription = routeDescription
+        self.activationStatus = activationStatus
+        self.isTalking = isTalking
+    }
+}
+
 struct TS3WhisperPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -2944,6 +2969,7 @@ final class TS3AppModel: ObservableObject {
     @Published var talkRequestMessage = ""
     @Published var whisperRoute: TS3WhisperRoute = .none
     @Published var isWhisperActivationActive = false
+    @Published private(set) var whisperActivationLog: [TS3WhisperActivationLogEntry] = []
     @Published private(set) var whisperPresets: [TS3WhisperPreset] = []
     @Published private(set) var whisperFilterPresets: [TS3WhisperFilterPreset] = []
     @Published var logs: [TS3LogEntry] = []
@@ -11923,7 +11949,9 @@ final class TS3AppModel: ObservableObject {
     }
 
     func disableWhisper() {
-        endWhisperActivation()
+        if isWhisperActivationActive {
+            endWhisperActivation()
+        }
         applyWhisperRoute(.none)
     }
 
@@ -12070,14 +12098,17 @@ final class TS3AppModel: ObservableObject {
     func beginWhisperActivation(route: TS3WhisperRoute) {
         guard route != .none else {
             lastError = "Select a whisper target before starting temporary whisper."
+            appendWhisperActivationLog(action: "Start failed: no whisper target")
             return
         }
         guard !isInputMuted else {
             lastError = "Clear microphone mute before starting temporary whisper."
+            appendWhisperActivationLog(action: "Start failed: microphone muted")
             return
         }
         guard client != nil else {
             lastError = "Connect to a server before starting temporary whisper."
+            appendWhisperActivationLog(action: "Start failed: disconnected")
             return
         }
         if !isWhisperActivationActive {
@@ -12089,6 +12120,7 @@ final class TS3AppModel: ObservableObject {
         if !isTalking {
             toggleTalking()
         }
+        appendWhisperActivationLog(action: "Started temporary whisper")
     }
 
     func beginCurrentWhisperActivation() {
@@ -12096,7 +12128,10 @@ final class TS3AppModel: ObservableObject {
     }
 
     func endWhisperActivation() {
-        guard isWhisperActivationActive else { return }
+        guard isWhisperActivationActive else {
+            appendWhisperActivationLog(action: "Stop ignored: inactive")
+            return
+        }
         let shouldStopTalking = whisperActivationStartedTalking
         let restoreRoute = whisperActivationPreviousRoute ?? .none
         isWhisperActivationActive = false
@@ -12108,6 +12143,7 @@ final class TS3AppModel: ObservableObject {
             resetInputMeter()
         }
         applyWhisperRoute(restoreRoute)
+        appendWhisperActivationLog(action: "Stopped temporary whisper")
     }
 
     func toggleCurrentWhisperActivation() {
@@ -12137,6 +12173,7 @@ final class TS3AppModel: ObservableObject {
         case let .group(type, target, targetId):
             client?.startWhisper(target: .group(type: type, target: target, targetId: UInt64(max(targetId, 0))))
         }
+        appendWhisperActivationLog(action: "Route changed")
     }
 
     var whisperRouteDescription: String {
@@ -12175,6 +12212,30 @@ final class TS3AppModel: ObservableObject {
             return "Active, started microphone"
         }
         return "Active, microphone was already live"
+    }
+
+    func clearWhisperActivationLog() {
+        whisperActivationLog.removeAll()
+    }
+
+    func whisperActivationLogData() -> Data {
+        let lines = whisperActivationLog.map { entry in
+            let talking = entry.isTalking ? "talking" : "idle"
+            return "\(Self.transcriptDateFormatter.string(from: entry.timestamp)) [\(talking)] \(entry.action) | \(entry.routeDescription) | \(entry.activationStatus)"
+        }
+        return Data(lines.joined(separator: "\n").utf8)
+    }
+
+    private func appendWhisperActivationLog(action: String) {
+        whisperActivationLog.insert(TS3WhisperActivationLogEntry(
+            action: action,
+            routeDescription: whisperRouteDescription,
+            activationStatus: whisperActivationStatus,
+            isTalking: isTalking
+        ), at: 0)
+        if whisperActivationLog.count > 20 {
+            whisperActivationLog.removeLast(whisperActivationLog.count - 20)
+        }
     }
 
     private func whisperGroupName(type: TS3GroupWhisperType, targetId: Int) -> String {
@@ -12505,6 +12566,9 @@ final class TS3AppModel: ObservableObject {
             "Input Route: \(audioInputRoute)",
             "Output Route: \(audioOutputRoute)",
             "Default To Speaker: \(prefersSpeakerOutput ? "Yes" : "No")",
+            "Whisper Route: \(whisperRouteDescription)",
+            "Whisper Activation: \(whisperActivationStatus)",
+            "Whisper Activation Events: \(whisperActivationLog.count)",
             "Route Availability: \(audioRouteAvailabilityNotes.isEmpty ? "No route limitations reported" : audioRouteAvailabilityNotes.joined(separator: " | "))"
         ].joined(separator: "\n"))
 
@@ -12534,6 +12598,7 @@ final class TS3AppModel: ObservableObject {
         ].joined(separator: "\n"))
 
         sections.append(String(data: debugLogData(), encoding: .utf8).map { "Debug Log\n\($0)" } ?? "Debug Log\n")
+        sections.append(String(data: whisperActivationLogData(), encoding: .utf8).map { "Whisper Activation Log\n\($0)" } ?? "Whisper Activation Log\n")
         return Data(sections.joined(separator: "\n\n").utf8)
     }
 
