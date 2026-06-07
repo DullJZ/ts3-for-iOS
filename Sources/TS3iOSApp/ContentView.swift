@@ -2113,6 +2113,7 @@ struct ChannelListView: View {
     @State private var isShowingChat = false
     @State private var isShowingEvents = false
     @State private var isShowingWhisper = false
+    @State private var isShowingTalkRequests = false
     @State private var isShowingCreateChannel = false
     @State private var isShowingDisconnect = false
     @State private var isShowingSubscriptionPresets = false
@@ -2162,6 +2163,14 @@ struct ChannelListView: View {
                     WhisperButtonLabel(isActive: model.whisperRoute != .none)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
+                if !talkRequestUsers.isEmpty {
+                    Button {
+                        isShowingTalkRequests = true
+                    } label: {
+                        Label("\(talkRequestUsers.count)", systemImage: "hand.raised")
+                    }
+                    .buttonStyle(TS3BorderedButtonStyle())
+                }
                 Button("Disconnect") {
                     isShowingDisconnect = true
                 }
@@ -2346,6 +2355,10 @@ struct ChannelListView: View {
                     Button("Subscription Presets") {
                         isShowingSubscriptionPresets = true
                     }
+                    Button("Talk Requests") {
+                        isShowingTalkRequests = true
+                    }
+                    .disabled(talkRequestUsers.isEmpty)
                 } label: {
                     Label("Channel Tools", systemImage: "list.bullet.rectangle")
                 }
@@ -2372,6 +2385,10 @@ struct ChannelListView: View {
         }
         .sheet(isPresented: $isShowingWhisper) {
             WhisperSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingTalkRequests) {
+            TalkRequestsSheet()
                 .environmentObject(model)
         }
         .sheet(isPresented: $isShowingDisconnect) {
@@ -2456,6 +2473,17 @@ struct ChannelListView: View {
 
     private var visibleBranchChannels: [TS3ChannelSummary] {
         channelTree.filter(\.hasChildren).map(\.channel)
+    }
+
+    private var talkRequestUsers: [TS3UserSummary] {
+        model.clients
+            .filter(\.isRequestingTalkPower)
+            .sorted { lhs, rhs in
+                if lhs.channelId != rhs.channelId {
+                    return lhs.channelId < rhs.channelId
+                }
+                return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
+            }
     }
 
     private var canExpandVisibleChannels: Bool {
@@ -2861,6 +2889,117 @@ struct ChannelSubscriptionPresetsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+}
+
+struct TalkRequestsSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Queue")) {
+                    if requestUsers.isEmpty {
+                        Text("No active talk power requests")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(requestUsers) { user in
+                            HStack(alignment: .top, spacing: 10) {
+                                UserAvatarView(user: user)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 4) {
+                                        Text(user.nickname)
+                                            .font(.subheadline.weight(.semibold))
+                                        UserIconView(user: user)
+                                    }
+                                    Text(channelName(for: user))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    if let message = user.talkRequestMessage, !message.isEmpty {
+                                        Text(message)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    HStack(spacing: 8) {
+                                        Button("Grant") {
+                                            model.setTalker(true, for: user)
+                                        }
+                                        .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
+                                        Button("Deny") {
+                                            model.denyTalkRequest(for: user)
+                                        }
+                                        .buttonStyle(TS3BorderedButtonStyle())
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+
+                Section(header: Text("Batch Actions")) {
+                    Button("Grant All Requests") {
+                        requestUsers.forEach { model.setTalker(true, for: $0) }
+                    }
+                    .disabled(requestUsers.isEmpty)
+                    Button("Deny All Requests") {
+                        requestUsers.forEach { model.denyTalkRequest(for: $0) }
+                    }
+                    .disabled(requestUsers.isEmpty)
+                    Button("Copy Request Queue") {
+                        TS3PlatformSupport.copyToPasteboard(queueSnapshot)
+                    }
+                    .disabled(requestUsers.isEmpty)
+                }
+            }
+            .navigationTitle("Talk Requests")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var requestUsers: [TS3UserSummary] {
+        model.clients
+            .filter(\.isRequestingTalkPower)
+            .sorted { lhs, rhs in
+                if lhs.channelId != rhs.channelId {
+                    return lhs.channelId < rhs.channelId
+                }
+                return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
+            }
+    }
+
+    private var queueSnapshot: String {
+        requestUsers.map { user in
+            var parts = [
+                "nickname=\(user.nickname)",
+                "clientId=\(user.id)",
+                "channel=\(channelName(for: user))"
+            ]
+            if let databaseId = user.databaseId {
+                parts.append("databaseId=\(databaseId)")
+            }
+            if let message = user.talkRequestMessage, !message.isEmpty {
+                parts.append("message=\(message)")
+            }
+            return parts.joined(separator: " | ")
+        }
+        .joined(separator: "\n")
+    }
+
+    private func channelName(for user: TS3UserSummary) -> String {
+        guard let channel = model.channels.first(where: { $0.id == user.channelId }) else {
+            return "Channel \(user.channelId)"
+        }
+        return model.channelPath(for: channel)
     }
 }
 
