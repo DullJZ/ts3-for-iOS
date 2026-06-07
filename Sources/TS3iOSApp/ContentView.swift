@@ -16596,6 +16596,8 @@ struct BanListSheet: View {
     @State private var ip = ""
     @State private var name = ""
     @State private var uniqueIdentifier = ""
+    @State private var myTeamSpeakId = ""
+    @State private var lastNickname = ""
     @State private var reason = ""
     @State private var duration: TS3BanDuration = .permanent
     @State private var customBanMinutes = "60"
@@ -16614,6 +16616,10 @@ struct BanListSheet: View {
                         .ts3PlainTextField()
                     TextField("Unique ID", text: $uniqueIdentifier)
                         .ts3PlainTextField()
+                    TextField("myTeamSpeak ID", text: $myTeamSpeakId)
+                        .ts3PlainTextField()
+                    TextField("Last Nickname", text: $lastNickname)
+                        .ts3PlainTextField()
                     TextField("Reason", text: $reason)
                         .ts3PlainTextField()
                     Picker("Duration", selection: $duration) {
@@ -16631,6 +16637,8 @@ struct BanListSheet: View {
                             ip: ip,
                             name: name,
                             uniqueIdentifier: uniqueIdentifier,
+                            myTeamSpeakId: myTeamSpeakId,
+                            lastNickname: lastNickname,
                             durationSeconds: duration.seconds(customMinutes: customBanMinutes),
                             reason: reason
                         )
@@ -16868,7 +16876,9 @@ struct BanListSheet: View {
     private var isAddDisabled: Bool {
         let hasTarget = !ip.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
             !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            !uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            !uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !myTeamSpeakId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !lastNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if duration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil {
             return true
         }
@@ -16879,6 +16889,8 @@ struct BanListSheet: View {
         ip = ""
         name = ""
         uniqueIdentifier = ""
+        myTeamSpeakId = ""
+        lastNickname = ""
         reason = ""
         duration = .permanent
         customBanMinutes = "60"

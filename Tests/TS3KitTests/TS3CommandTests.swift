@@ -262,11 +262,16 @@ final class TS3CommandTests: XCTestCase {
     func testBanAddCommandRequiresOfficialTargetFieldsAndEscapesReason() {
         let command = TS3SingleCommand(name: "banadd", parameters: [
             TS3CommandSingleParameter(name: "uid", value: "abc/def"),
+            TS3CommandSingleParameter(name: "mytsid", value: "myts id"),
+            TS3CommandSingleParameter(name: "lastnickname", value: "Recent Guest"),
             TS3CommandSingleParameter(name: "banreason", value: "spam | abuse"),
             TS3CommandSingleParameter(name: "time", value: "600")
         ])
 
-        XCTAssertEqual(command.build(), "banadd uid=abc\\/def banreason=spam\\s\\p\\sabuse time=600")
+        XCTAssertEqual(
+            command.build(),
+            "banadd uid=abc\\/def mytsid=myts\\sid lastnickname=Recent\\sGuest banreason=spam\\s\\p\\sabuse time=600"
+        )
     }
 
     func testServerEditCommandBuildsOfficialVirtualServerParameters() {

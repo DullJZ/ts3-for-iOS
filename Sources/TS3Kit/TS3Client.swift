@@ -662,17 +662,27 @@ public final class TS3Client {
         _ = try await execute(TS3SingleCommand(name: "banclient", parameters: params))
     }
 
-    /// Adds a manual ban rule by IP address, nickname pattern, or client unique identifier.
-    public func addBan(ip: String? = nil, name: String? = nil, uniqueIdentifier: String? = nil, durationSeconds: Int? = nil, reason: String? = nil) async throws {
+    /// Adds a manual ban rule by IP address, nickname pattern, client unique identifier, myTeamSpeak ID, or last nickname.
+    public func addBan(
+        ip: String? = nil,
+        name: String? = nil,
+        uniqueIdentifier: String? = nil,
+        myTeamSpeakId: String? = nil,
+        lastNickname: String? = nil,
+        durationSeconds: Int? = nil,
+        reason: String? = nil
+    ) async throws {
         var params: [TS3CommandParameter] = []
         appendParameter(&params, name: "ip", value: trimmedNonEmpty(ip))
         appendParameter(&params, name: "name", value: trimmedNonEmpty(name))
         appendParameter(&params, name: "uid", value: trimmedNonEmpty(uniqueIdentifier))
+        appendParameter(&params, name: "mytsid", value: trimmedNonEmpty(myTeamSpeakId))
+        appendParameter(&params, name: "lastnickname", value: trimmedNonEmpty(lastNickname))
         appendParameter(&params, name: "banreason", value: trimmedNonEmpty(reason))
         if let durationSeconds {
             params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
         }
-        guard params.contains(where: { ["ip", "name", "uid"].contains($0.name) }) else {
+        guard params.contains(where: { ["ip", "name", "uid", "mytsid", "lastnickname"].contains($0.name) }) else {
             throw TS3Error.invalidCommand
         }
         _ = try await execute(TS3SingleCommand(name: "banadd", parameters: params))

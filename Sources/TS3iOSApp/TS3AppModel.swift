@@ -562,6 +562,7 @@ private struct TS3BanBackupEntry: Codable {
     var ip: String?
     var name: String?
     var uniqueIdentifier: String?
+    var lastNickname: String?
     var durationSeconds: Int?
     var reason: String?
 }
@@ -8497,13 +8498,23 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func addBan(ip: String, name: String, uniqueIdentifier: String, durationSeconds: Int?, reason: String) {
+    func addBan(
+        ip: String,
+        name: String,
+        uniqueIdentifier: String,
+        myTeamSpeakId: String,
+        lastNickname: String,
+        durationSeconds: Int?,
+        reason: String
+    ) {
         let ip = ip.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let myTeamSpeakId = myTeamSpeakId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lastNickname = lastNickname.trimmingCharacters(in: .whitespacesAndNewlines)
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !ip.isEmpty || !name.isEmpty || !uniqueIdentifier.isEmpty else {
-            lastError = "Enter an IP address, name, or unique id for the ban rule."
+        guard !ip.isEmpty || !name.isEmpty || !uniqueIdentifier.isEmpty || !myTeamSpeakId.isEmpty || !lastNickname.isEmpty else {
+            lastError = "Enter an IP address, name, unique id, myTeamSpeak id, or last nickname for the ban rule."
             return
         }
         runClientCommand { client in
@@ -8511,12 +8522,15 @@ final class TS3AppModel: ObservableObject {
                 ip: ip.isEmpty ? nil : ip,
                 name: name.isEmpty ? nil : name,
                 uniqueIdentifier: uniqueIdentifier.isEmpty ? nil : uniqueIdentifier,
+                myTeamSpeakId: myTeamSpeakId.isEmpty ? nil : myTeamSpeakId,
+                lastNickname: lastNickname.isEmpty ? nil : lastNickname,
                 durationSeconds: durationSeconds,
                 reason: reason.isEmpty ? nil : reason
             )
             let entries = try await client.refreshBanList()
             await MainActor.run {
                 self.banEntries = self.banEntrySummaries(from: entries)
+                self.saveBanResults()
             }
         }
     }
@@ -8606,6 +8620,7 @@ final class TS3AppModel: ObservableObject {
                     ip: $0.ip,
                     name: $0.name,
                     uniqueIdentifier: $0.uniqueIdentifier,
+                    lastNickname: $0.lastNickname,
                     durationSeconds: $0.durationSeconds,
                     reason: $0.reason
                 )
@@ -8621,6 +8636,8 @@ final class TS3AppModel: ObservableObject {
                 ip: entry.ip ?? "",
                 name: entry.name ?? "",
                 uniqueIdentifier: entry.uniqueIdentifier ?? "",
+                myTeamSpeakId: "",
+                lastNickname: entry.lastNickname ?? "",
                 durationSeconds: entry.durationSeconds,
                 reason: entry.reason ?? ""
             )
