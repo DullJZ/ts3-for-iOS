@@ -19787,13 +19787,13 @@ struct IdentityManagementSheet: View {
     }
 }
 
-struct ClientMigrationSheet: View {
-    private struct ClientPackageImportConfirmation: Identifiable {
-        let url: URL
-        let preview: TS3ClientMigrationPackagePreview
-        let id = UUID()
-    }
+private struct ClientPackageImportConfirmation: Identifiable {
+    let url: URL
+    let preview: TS3ClientMigrationPackagePreview
+    let id = UUID()
+}
 
+struct ClientMigrationSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isImportingClientPackage = false
@@ -19846,15 +19846,13 @@ struct ClientMigrationSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingClientPackageImport) { confirmation in
-                Alert(
-                    title: Text("Import Client Package?"),
-                    message: Text(clientPackagePreviewMessage(confirmation.preview)),
-                    primaryButton: .destructive(Text("Import")) {
-                        importClientPackage(from: confirmation.url)
-                    },
-                    secondaryButton: .cancel()
-                )
+            .sheet(item: $pendingClientPackageImport) { confirmation in
+                ClientPackageImportSheet(
+                    confirmation: confirmation,
+                    previewMessage: clientPackagePreviewMessage(confirmation.preview)
+                ) { options in
+                    importClientPackage(from: confirmation.url, options: options)
+                }
             }
         }
     }
@@ -19883,7 +19881,7 @@ struct ClientMigrationSheet: View {
         }
     }
 
-    private func importClientPackage(from url: URL) {
+    private func importClientPackage(from url: URL, options: TS3ClientMigrationRestoreOptions) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -19891,7 +19889,7 @@ struct ClientMigrationSheet: View {
             }
         }
         do {
-            try model.importClientMigrationPackage(from: Data(contentsOf: url))
+            try model.importClientMigrationPackage(from: Data(contentsOf: url), options: options)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -19919,6 +19917,75 @@ struct ClientMigrationSheet: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+private struct ClientPackageImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let confirmation: ClientPackageImportConfirmation
+    let previewMessage: String
+    let importPackage: (TS3ClientMigrationRestoreOptions) -> Void
+    @State private var options = TS3ClientMigrationRestoreOptions.all
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Package Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Restore Sections")) {
+                    Toggle("Connections", isOn: $options.connections)
+                    Toggle("Contacts", isOn: $options.contacts)
+                    Toggle("Notifications", isOn: $options.notifications)
+                    Toggle("Chat", isOn: $options.chat)
+                    Toggle("Server Administration", isOn: $options.serverAdministration)
+                    Toggle("Channel Layout", isOn: $options.channelLayout)
+                    Toggle("Files", isOn: $options.files)
+                    Toggle("Audio", isOn: $options.audio)
+                    Toggle("Self Status", isOn: $options.selfStatus)
+                    Toggle("Whisper", isOn: $options.whisper)
+                }
+
+                Section {
+                    Button("Select All") {
+                        options = .all
+                    }
+                    Button("Clear Selection") {
+                        options = TS3ClientMigrationRestoreOptions(
+                            connections: false,
+                            contacts: false,
+                            notifications: false,
+                            chat: false,
+                            serverAdministration: false,
+                            channelLayout: false,
+                            files: false,
+                            audio: false,
+                            selfStatus: false,
+                            whisper: false
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Import Client Package")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPackage(options)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!options.hasSelectedSections)
+                }
+            }
+        }
     }
 }
 

@@ -37,4 +37,104 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertTrue(preview.settingsDetails.contains("Audio transmit mode: voiceActivation"))
         XCTAssertTrue(preview.settingsDetails.contains("Self status: Away"))
     }
+
+    @MainActor
+    func testClientMigrationImportCanRestoreOnlyContacts() throws {
+        let source = TS3AppModel()
+        source.contacts = [
+            makeContact(uniqueIdentifier: "contact-1", nickname: "Avery", status: .friend, note: "squad")
+        ]
+        source.updateAudioTransmitMode(.voiceActivation)
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        target.contacts = []
+        target.updateAudioTransmitMode(.pushToTalk)
+
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                contacts: true,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertEqual(target.contacts.map(\.uniqueIdentifier), ["contact-1"])
+        XCTAssertEqual(target.contacts.first?.nickname, "Avery")
+        XCTAssertEqual(target.audioTransmitMode, .pushToTalk)
+    }
+
+    @MainActor
+    func testClientMigrationImportCanRestoreOnlyAudio() throws {
+        let source = TS3AppModel()
+        source.contacts = [
+            makeContact(uniqueIdentifier: "contact-1", nickname: "Avery", status: .friend, note: "squad")
+        ]
+        source.updateAudioTransmitMode(.voiceActivation)
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        target.contacts = []
+        target.updateAudioTransmitMode(.pushToTalk)
+
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: true,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertTrue(target.contacts.isEmpty)
+        XCTAssertEqual(target.audioTransmitMode, .voiceActivation)
+    }
+
+    func testClientMigrationRestoreOptionsExposeSelectedSectionTitles() {
+        let options = TS3ClientMigrationRestoreOptions(
+            connections: true,
+            contacts: false,
+            notifications: true,
+            chat: false,
+            serverAdministration: false,
+            channelLayout: true,
+            files: false,
+            audio: false,
+            selfStatus: false,
+            whisper: true
+        )
+
+        XCTAssertTrue(options.hasSelectedSections)
+        XCTAssertEqual(options.selectedSectionTitles, ["Connections", "Notifications", "Channel Layout", "Whisper"])
+    }
+
+    private func makeContact(
+        uniqueIdentifier: String,
+        nickname: String,
+        status: TS3ContactStatus,
+        note: String
+    ) -> TS3ContactEntry {
+        TS3ContactEntry(
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            status: status,
+            note: note,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
 }

@@ -2160,6 +2160,51 @@ struct TS3ClientMigrationPackagePreview {
     }
 }
 
+struct TS3ClientMigrationRestoreOptions: Codable, Equatable {
+    var connections: Bool
+    var contacts: Bool
+    var notifications: Bool
+    var chat: Bool
+    var serverAdministration: Bool
+    var channelLayout: Bool
+    var files: Bool
+    var audio: Bool
+    var selfStatus: Bool
+    var whisper: Bool
+
+    static let all = TS3ClientMigrationRestoreOptions(
+        connections: true,
+        contacts: true,
+        notifications: true,
+        chat: true,
+        serverAdministration: true,
+        channelLayout: true,
+        files: true,
+        audio: true,
+        selfStatus: true,
+        whisper: true
+    )
+
+    var selectedSectionTitles: [String] {
+        var titles: [String] = []
+        if connections { titles.append("Connections") }
+        if contacts { titles.append("Contacts") }
+        if notifications { titles.append("Notifications") }
+        if chat { titles.append("Chat") }
+        if serverAdministration { titles.append("Server Administration") }
+        if channelLayout { titles.append("Channel Layout") }
+        if files { titles.append("Files") }
+        if audio { titles.append("Audio") }
+        if selfStatus { titles.append("Self Status") }
+        if whisper { titles.append("Whisper") }
+        return titles
+    }
+
+    var hasSelectedSections: Bool {
+        !selectedSectionTitles.isEmpty
+    }
+}
+
 struct TS3NotificationSettingsPreview {
     let lines: [String]
 }
@@ -11467,41 +11512,63 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(package)
     }
 
-    func importClientMigrationPackage(from data: Data) throws {
+    func importClientMigrationPackage(
+        from data: Data,
+        options: TS3ClientMigrationRestoreOptions = .all
+    ) throws {
         let package = try JSONDecoder().decode(TS3ClientMigrationPackage.self, from: data)
-        try importBookmarks(from: encodedPackageSection(package.bookmarks))
-        try importRecentConnections(from: encodedPackageSection(package.recentConnections))
-        try importConnectionFilterPresets(from: encodedPackageSection(package.connectionFilterPresets))
-        try importContacts(from: encodedPackageSection(package.contacts))
-        try importContactFilterPresets(from: encodedPackageSection(package.contactFilterPresets))
-        try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
-        try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
-        try importChatHistorySettings(from: encodedPackageSection(package.chatHistorySettings))
-        try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
-        try importKeyboardShortcuts(from: encodedPackageSection(package.keyboardShortcuts))
-        try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
-        try importChannelTreeFilterPresets(from: encodedPackageSection(package.channelTreeFilterPresets))
-        importCollapsedChannelIds(package.collapsedChannelIds)
-        try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
-        try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
-        try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
-        try importFileBrowserFilterPresets(from: encodedPackageSection(package.fileBrowserFilterPresets))
-        try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
-        try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
-        try importComplaintFilterPresets(from: encodedPackageSection(package.complaintFilterPresets))
-        try importTemporaryServerPasswordFilterPresets(from: encodedPackageSection(package.temporaryServerPasswordFilterPresets))
-        try importDatabaseClientFilterPresets(from: encodedPackageSection(package.databaseClientFilterPresets))
-        try importPrivilegeKeyFilterPresets(from: encodedPackageSection(package.privilegeKeyFilterPresets))
-        try importPermissionFilterPresets(from: encodedPackageSection(package.permissionFilterPresets))
-        try importGroupFilterPresets(from: encodedPackageSection(package.groupFilterPresets))
-        try importGroupClientFilterPresets(from: encodedPackageSection(package.groupClientFilterPresets))
-        try importAudioSettings(from: encodedPackageSection(package.audioSettings))
-        try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
-        try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))
-        try importSelfStatusBackup(from: encodedPackageSection(package.selfStatus))
-        try importSelfStatusProfiles(from: encodedPackageSection(package.selfStatusProfiles))
-        try importWhisperPresetBackup(from: encodedPackageSection(package.whisperPresets))
-        try importWhisperFilterPresets(from: encodedPackageSection(package.whisperFilterPresets))
+        if options.connections {
+            try importBookmarks(from: encodedPackageSection(package.bookmarks))
+            try importRecentConnections(from: encodedPackageSection(package.recentConnections))
+            try importConnectionFilterPresets(from: encodedPackageSection(package.connectionFilterPresets))
+            try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
+        }
+        if options.contacts {
+            try importContacts(from: encodedPackageSection(package.contacts))
+            try importContactFilterPresets(from: encodedPackageSection(package.contactFilterPresets))
+        }
+        if options.notifications {
+            try importNotificationSettings(from: encodedPackageSection(package.notificationSettings))
+        }
+        if options.chat {
+            try importChatHistorySettings(from: encodedPackageSection(package.chatHistorySettings))
+            try importEventFilterPresets(from: encodedPackageSection(package.eventFilterPresets))
+            try importChatFilterPresets(from: encodedPackageSection(package.chatFilterPresets))
+            try importOfflineMessageFilterPresets(from: encodedPackageSection(package.offlineMessageFilterPresets))
+        }
+        if options.serverAdministration {
+            try importServerLogQueryPresets(from: encodedPackageSection(package.serverLogQueryPresets))
+            try importBanFilterPresets(from: encodedPackageSection(package.banFilterPresets))
+            try importComplaintFilterPresets(from: encodedPackageSection(package.complaintFilterPresets))
+            try importTemporaryServerPasswordFilterPresets(from: encodedPackageSection(package.temporaryServerPasswordFilterPresets))
+            try importDatabaseClientFilterPresets(from: encodedPackageSection(package.databaseClientFilterPresets))
+            try importPrivilegeKeyFilterPresets(from: encodedPackageSection(package.privilegeKeyFilterPresets))
+            try importPermissionFilterPresets(from: encodedPackageSection(package.permissionFilterPresets))
+            try importGroupFilterPresets(from: encodedPackageSection(package.groupFilterPresets))
+            try importGroupClientFilterPresets(from: encodedPackageSection(package.groupClientFilterPresets))
+        }
+        if options.channelLayout {
+            try importChannelSubscriptionPresets(from: encodedPackageSection(package.channelSubscriptionPresets))
+            try importChannelTreeFilterPresets(from: encodedPackageSection(package.channelTreeFilterPresets))
+            importCollapsedChannelIds(package.collapsedChannelIds)
+        }
+        if options.files {
+            try importFileBrowserBookmarks(from: encodedPackageSection(package.fileBrowserBookmarks))
+            try importFileBrowserFilterPresets(from: encodedPackageSection(package.fileBrowserFilterPresets))
+        }
+        if options.audio {
+            try importAudioSettings(from: encodedPackageSection(package.audioSettings))
+            try importAudioProfiles(from: encodedPackageSection(package.audioProfiles))
+            try importUserPlaybackPreferences(from: encodedPackageSection(package.userPlaybackPreferences))
+        }
+        if options.selfStatus {
+            try importSelfStatusBackup(from: encodedPackageSection(package.selfStatus))
+            try importSelfStatusProfiles(from: encodedPackageSection(package.selfStatusProfiles))
+        }
+        if options.whisper {
+            try importWhisperPresetBackup(from: encodedPackageSection(package.whisperPresets))
+            try importWhisperFilterPresets(from: encodedPackageSection(package.whisperFilterPresets))
+        }
         lastError = nil
     }
 
