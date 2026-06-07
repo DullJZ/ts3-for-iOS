@@ -2922,12 +2922,15 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_hostbanner_url", value: edit.hostBannerURL)
         appendParameter(&params, name: "virtualserver_hostbanner_gfx_url", value: edit.hostBannerGraphicsURL)
         appendParameter(&params, name: "virtualserver_hostbanner_mode", value: edit.hostBannerMode.map(String.init))
+        appendParameter(&params, name: "virtualserver_hostbanner_gfx_interval", value: edit.hostBannerGraphicsInterval.map(String.init))
         appendParameter(&params, name: "virtualserver_hostbutton_tooltip", value: edit.hostButtonTooltip)
         appendParameter(&params, name: "virtualserver_hostbutton_url", value: edit.hostButtonURL)
         appendParameter(&params, name: "virtualserver_hostbutton_gfx_url", value: edit.hostButtonGraphicsURL)
         appendParameter(&params, name: "virtualserver_icon_id", value: edit.iconId.map(String.init))
         appendParameter(&params, name: "virtualserver_download_quota", value: edit.downloadQuota.map(String.init))
         appendParameter(&params, name: "virtualserver_upload_quota", value: edit.uploadQuota.map(String.init))
+        appendParameter(&params, name: "virtualserver_max_download_total_bandwidth", value: edit.maxDownloadTotalBandwidth.map(String.init))
+        appendParameter(&params, name: "virtualserver_max_upload_total_bandwidth", value: edit.maxUploadTotalBandwidth.map(String.init))
         appendParameter(&params, name: "virtualserver_complain_autoban_count", value: edit.complainAutoBanCount.map(String.init))
         appendParameter(&params, name: "virtualserver_complain_autoban_time", value: edit.complainAutoBanTime.map(String.init))
         appendParameter(&params, name: "virtualserver_complain_remove_time", value: edit.complainRemoveTime.map(String.init))
@@ -3342,6 +3345,8 @@ private extension TS3Client {
             queryClientConnections: intValue(command, "virtualserver_query_client_connections"),
             downloadQuota: int64Value(command, "virtualserver_download_quota"),
             uploadQuota: int64Value(command, "virtualserver_upload_quota"),
+            maxDownloadTotalBandwidth: int64Value(command, "virtualserver_max_download_total_bandwidth"),
+            maxUploadTotalBandwidth: int64Value(command, "virtualserver_max_upload_total_bandwidth"),
             monthlyBytesDownloaded: int64Value(command, "connection_bytes_received_month"),
             monthlyBytesUploaded: int64Value(command, "connection_bytes_sent_month"),
             totalBytesDownloaded: int64Value(command, "connection_bytes_received_total"),
@@ -3356,6 +3361,7 @@ private extension TS3Client {
             hostBannerURL: command.get("virtualserver_hostbanner_url")?.value,
             hostBannerGraphicsURL: command.get("virtualserver_hostbanner_gfx_url")?.value,
             hostBannerMode: intValue(command, "virtualserver_hostbanner_mode"),
+            hostBannerGraphicsInterval: intValue(command, "virtualserver_hostbanner_gfx_interval"),
             hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
             hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
             hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,

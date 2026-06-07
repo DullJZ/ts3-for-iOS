@@ -117,6 +117,10 @@ public struct TS3ServerInfo {
     public let downloadQuota: Int64?
     /// The configured monthly upload quota in bytes.
     public let uploadQuota: Int64?
+    /// The maximum total download bandwidth in bytes per second.
+    public let maxDownloadTotalBandwidth: Int64?
+    /// The maximum total upload bandwidth in bytes per second.
+    public let maxUploadTotalBandwidth: Int64?
     /// The number of bytes downloaded during the current month.
     public let monthlyBytesDownloaded: Int64?
     /// The number of bytes uploaded during the current month.
@@ -141,6 +145,8 @@ public struct TS3ServerInfo {
     public let hostBannerGraphicsURL: String?
     /// How clients should scale the host banner graphic.
     public let hostBannerMode: Int?
+    /// Host banner refresh interval in seconds.
+    public let hostBannerGraphicsInterval: Int?
     public let hostButtonTooltip: String?
     public let hostButtonURL: String?
     public let hostButtonGraphicsURL: String?
@@ -188,6 +194,8 @@ public struct TS3ServerInfo {
         queryClientConnections: Int? = nil,
         downloadQuota: Int64? = nil,
         uploadQuota: Int64? = nil,
+        maxDownloadTotalBandwidth: Int64? = nil,
+        maxUploadTotalBandwidth: Int64? = nil,
         monthlyBytesDownloaded: Int64? = nil,
         monthlyBytesUploaded: Int64? = nil,
         totalBytesDownloaded: Int64? = nil,
@@ -202,6 +210,7 @@ public struct TS3ServerInfo {
         hostBannerURL: String? = nil,
         hostBannerGraphicsURL: String? = nil,
         hostBannerMode: Int? = nil,
+        hostBannerGraphicsInterval: Int? = nil,
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
         hostButtonGraphicsURL: String? = nil,
@@ -244,6 +253,8 @@ public struct TS3ServerInfo {
         self.queryClientConnections = queryClientConnections
         self.downloadQuota = downloadQuota
         self.uploadQuota = uploadQuota
+        self.maxDownloadTotalBandwidth = maxDownloadTotalBandwidth
+        self.maxUploadTotalBandwidth = maxUploadTotalBandwidth
         self.monthlyBytesDownloaded = monthlyBytesDownloaded
         self.monthlyBytesUploaded = monthlyBytesUploaded
         self.totalBytesDownloaded = totalBytesDownloaded
@@ -258,6 +269,7 @@ public struct TS3ServerInfo {
         self.hostBannerURL = hostBannerURL
         self.hostBannerGraphicsURL = hostBannerGraphicsURL
         self.hostBannerMode = hostBannerMode
+        self.hostBannerGraphicsInterval = hostBannerGraphicsInterval
         self.hostButtonTooltip = hostButtonTooltip
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
@@ -359,12 +371,15 @@ public struct TS3ServerEdit {
     public var hostBannerURL: String?
     public var hostBannerGraphicsURL: String?
     public var hostBannerMode: Int?
+    public var hostBannerGraphicsInterval: Int?
     public var hostButtonTooltip: String?
     public var hostButtonURL: String?
     public var hostButtonGraphicsURL: String?
     public var iconId: Int?
     public var downloadQuota: Int64?
     public var uploadQuota: Int64?
+    public var maxDownloadTotalBandwidth: Int64?
+    public var maxUploadTotalBandwidth: Int64?
     public var complainAutoBanCount: Int?
     public var complainAutoBanTime: Int?
     public var complainRemoveTime: Int?
@@ -394,12 +409,15 @@ public struct TS3ServerEdit {
         hostBannerURL: String? = nil,
         hostBannerGraphicsURL: String? = nil,
         hostBannerMode: Int? = nil,
+        hostBannerGraphicsInterval: Int? = nil,
         hostButtonTooltip: String? = nil,
         hostButtonURL: String? = nil,
         hostButtonGraphicsURL: String? = nil,
         iconId: Int? = nil,
         downloadQuota: Int64? = nil,
         uploadQuota: Int64? = nil,
+        maxDownloadTotalBandwidth: Int64? = nil,
+        maxUploadTotalBandwidth: Int64? = nil,
         complainAutoBanCount: Int? = nil,
         complainAutoBanTime: Int? = nil,
         complainRemoveTime: Int? = nil,
@@ -427,12 +445,15 @@ public struct TS3ServerEdit {
         self.hostBannerURL = hostBannerURL
         self.hostBannerGraphicsURL = hostBannerGraphicsURL
         self.hostBannerMode = hostBannerMode
+        self.hostBannerGraphicsInterval = hostBannerGraphicsInterval
         self.hostButtonTooltip = hostButtonTooltip
         self.hostButtonURL = hostButtonURL
         self.hostButtonGraphicsURL = hostButtonGraphicsURL
         self.iconId = iconId
         self.downloadQuota = downloadQuota
         self.uploadQuota = uploadQuota
+        self.maxDownloadTotalBandwidth = maxDownloadTotalBandwidth
+        self.maxUploadTotalBandwidth = maxUploadTotalBandwidth
         self.complainAutoBanCount = complainAutoBanCount
         self.complainAutoBanTime = complainAutoBanTime
         self.complainRemoveTime = complainRemoveTime

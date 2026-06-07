@@ -9125,6 +9125,8 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Reserved Slots", value: model.serverInfo.reservedSlots.map(String.init))
                     ServerInfoDetailRow(label: "Download Quota", value: model.serverInfo.downloadQuota.map(Self.byteText))
                     ServerInfoDetailRow(label: "Upload Quota", value: model.serverInfo.uploadQuota.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Max Download Bandwidth", value: model.serverInfo.maxDownloadTotalBandwidth.map(Self.byteText))
+                    ServerInfoDetailRow(label: "Max Upload Bandwidth", value: model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText))
                     ServerInfoDetailRow(label: "Needed Identity Security Level", value: model.serverInfo.neededIdentitySecurityLevel.map(String.init))
                     ServerInfoDetailRow(label: "Minimum Client Version", value: model.serverInfo.minClientVersion.map(String.init))
                     ServerInfoDetailRow(label: "File Transfer Port", value: model.serverInfo.fileTransferPort.map(String.init))
@@ -9180,6 +9182,7 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Banner URL", value: model.serverInfo.hostBannerURL)
                     ServerInfoDetailRow(label: "Banner Graphic", value: model.serverInfo.hostBannerGraphicsURL)
                     ServerInfoDetailRow(label: "Banner Mode", value: model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title))
+                    ServerInfoDetailRow(label: "Banner Refresh", value: model.serverInfo.hostBannerGraphicsInterval.map(Self.durationText))
                     ServerInfoDetailRow(label: "Button Tooltip", value: model.serverInfo.hostButtonTooltip)
                     ServerInfoDetailRow(label: "Button URL", value: model.serverInfo.hostButtonURL)
                     ServerInfoDetailRow(label: "Button Graphic", value: model.serverInfo.hostButtonGraphicsURL)
@@ -9243,6 +9246,8 @@ struct ServerInformationSheet: View {
         rows.append(("Reserved Slots", model.serverInfo.reservedSlots.map(String.init)))
         rows.append(("Download Quota", model.serverInfo.downloadQuota.map(Self.byteText)))
         rows.append(("Upload Quota", model.serverInfo.uploadQuota.map(Self.byteText)))
+        rows.append(("Max Download Bandwidth", model.serverInfo.maxDownloadTotalBandwidth.map(Self.byteText)))
+        rows.append(("Max Upload Bandwidth", model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText)))
         rows.append(("Needed Identity Security Level", model.serverInfo.neededIdentitySecurityLevel.map(String.init)))
         rows.append(("Minimum Client Version", model.serverInfo.minClientVersion.map(String.init)))
         rows.append(("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)))
@@ -9283,6 +9288,7 @@ struct ServerInformationSheet: View {
         rows.append(("Banner URL", model.serverInfo.hostBannerURL))
         rows.append(("Banner Graphic", model.serverInfo.hostBannerGraphicsURL))
         rows.append(("Banner Mode", model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title)))
+        rows.append(("Banner Refresh", model.serverInfo.hostBannerGraphicsInterval.map(Self.durationText)))
         rows.append(("Button Tooltip", model.serverInfo.hostButtonTooltip))
         rows.append(("Button URL", model.serverInfo.hostButtonURL))
         rows.append(("Button Graphic", model.serverInfo.hostButtonGraphicsURL))
@@ -11971,12 +11977,15 @@ struct ServerSettingsEditorSheet: View {
         var hostBannerURL: String
         var hostBannerGraphicsURL: String
         var hostBannerMode: String?
+        var hostBannerGraphicsInterval: String?
         var hostButtonTooltip: String
         var hostButtonURL: String
         var hostButtonGraphicsURL: String
         var iconId: String
         var downloadQuota: String
         var uploadQuota: String
+        var maxDownloadTotalBandwidth: String?
+        var maxUploadTotalBandwidth: String?
         var complainAutoBanCount: String
         var complainAutoBanTime: String
         var complainRemoveTime: String
@@ -12008,12 +12017,15 @@ struct ServerSettingsEditorSheet: View {
     @State private var hostBannerURL = ""
     @State private var hostBannerGraphicsURL = ""
     @State private var hostBannerMode: Int?
+    @State private var hostBannerGraphicsInterval = ""
     @State private var hostButtonTooltip = ""
     @State private var hostButtonURL = ""
     @State private var hostButtonGraphicsURL = ""
     @State private var iconId = ""
     @State private var downloadQuota = ""
     @State private var uploadQuota = ""
+    @State private var maxDownloadTotalBandwidth = ""
+    @State private var maxUploadTotalBandwidth = ""
     @State private var complainAutoBanCount = ""
     @State private var complainAutoBanTime = ""
     @State private var complainRemoveTime = ""
@@ -12115,6 +12127,9 @@ struct ServerSettingsEditorSheet: View {
                             Text(TS3HostBannerMode.title(for: hostBannerMode)).tag(Optional(hostBannerMode))
                         }
                     }
+                    TextField("Image Refresh Seconds", text: $hostBannerGraphicsInterval)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
                 }
 
                 Section(header: Text("Host Button")) {
@@ -12131,6 +12146,12 @@ struct ServerSettingsEditorSheet: View {
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     TextField("Upload Quota Bytes", text: $uploadQuota)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Max Download Bandwidth Bytes/s", text: $maxDownloadTotalBandwidth)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
+                    TextField("Max Upload Bandwidth Bytes/s", text: $maxUploadTotalBandwidth)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                     TextField("Needed Identity Security Level", text: $neededIdentitySecurityLevel)
@@ -12297,12 +12318,15 @@ struct ServerSettingsEditorSheet: View {
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,
             hostBannerMode: hostBannerMode.map(String.init) ?? "",
+            hostBannerGraphicsInterval: hostBannerGraphicsInterval,
             hostButtonTooltip: hostButtonTooltip,
             hostButtonURL: hostButtonURL,
             hostButtonGraphicsURL: hostButtonGraphicsURL,
             iconId: iconId,
             downloadQuota: downloadQuota,
             uploadQuota: uploadQuota,
+            maxDownloadTotalBandwidth: maxDownloadTotalBandwidth,
+            maxUploadTotalBandwidth: maxUploadTotalBandwidth,
             complainAutoBanCount: complainAutoBanCount,
             complainAutoBanTime: complainAutoBanTime,
             complainRemoveTime: complainRemoveTime,
@@ -12337,11 +12361,14 @@ struct ServerSettingsEditorSheet: View {
             ("Banner Link URL", draft.hostBannerURL),
             ("Banner Image URL", draft.hostBannerGraphicsURL),
             ("Banner Mode", hostBannerModeTitle(draft.hostBannerMode ?? "")),
+            ("Banner Refresh Seconds", draft.hostBannerGraphicsInterval ?? ""),
             ("Host Button Tooltip", draft.hostButtonTooltip),
             ("Host Button URL", draft.hostButtonURL),
             ("Host Button Image URL", draft.hostButtonGraphicsURL),
             ("Download Quota Bytes", draft.downloadQuota),
             ("Upload Quota Bytes", draft.uploadQuota),
+            ("Max Download Bandwidth Bytes/s", draft.maxDownloadTotalBandwidth ?? ""),
+            ("Max Upload Bandwidth Bytes/s", draft.maxUploadTotalBandwidth ?? ""),
             ("Needed Identity Security Level", draft.neededIdentitySecurityLevel ?? ""),
             ("Minimum Client Version", draft.minClientVersion ?? ""),
             ("Codec Encryption Mode", codecEncryptionModeTitle(draft.codecEncryptionMode)),
@@ -12378,12 +12405,15 @@ struct ServerSettingsEditorSheet: View {
         hostBannerURL = model.serverInfo.hostBannerURL ?? ""
         hostBannerGraphicsURL = model.serverInfo.hostBannerGraphicsURL ?? ""
         hostBannerMode = model.serverInfo.hostBannerMode
+        hostBannerGraphicsInterval = model.serverInfo.hostBannerGraphicsInterval.map(String.init) ?? ""
         hostButtonTooltip = model.serverInfo.hostButtonTooltip ?? ""
         hostButtonURL = model.serverInfo.hostButtonURL ?? ""
         hostButtonGraphicsURL = model.serverInfo.hostButtonGraphicsURL ?? ""
         iconId = model.serverInfo.iconId.map(String.init) ?? ""
         downloadQuota = model.serverInfo.downloadQuota.map(String.init) ?? ""
         uploadQuota = model.serverInfo.uploadQuota.map(String.init) ?? ""
+        maxDownloadTotalBandwidth = model.serverInfo.maxDownloadTotalBandwidth.map(String.init) ?? ""
+        maxUploadTotalBandwidth = model.serverInfo.maxUploadTotalBandwidth.map(String.init) ?? ""
         neededIdentitySecurityLevel = model.serverInfo.neededIdentitySecurityLevel.map(String.init) ?? ""
         minClientVersion = model.serverInfo.minClientVersion.map(String.init) ?? ""
         complainAutoBanCount = model.serverInfo.complainAutoBanCount.map(String.init) ?? ""
@@ -12406,9 +12436,12 @@ struct ServerSettingsEditorSheet: View {
             && isOptionalInt(maxClients)
             && isOptionalInt(reservedSlots)
             && isOptionalInt(hostMessageMode)
+            && isOptionalInt(hostBannerGraphicsInterval)
             && isOptionalInt(iconId)
             && isOptionalInt64(downloadQuota)
             && isOptionalInt64(uploadQuota)
+            && isOptionalInt64(maxDownloadTotalBandwidth)
+            && isOptionalInt64(maxUploadTotalBandwidth)
             && isOptionalInt(neededIdentitySecurityLevel)
             && isOptionalInt(minClientVersion)
             && isOptionalInt(complainAutoBanCount)
@@ -12437,12 +12470,15 @@ struct ServerSettingsEditorSheet: View {
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,
             hostBannerMode: hostBannerMode,
+            hostBannerGraphicsInterval: Int(hostBannerGraphicsInterval.trimmingCharacters(in: .whitespacesAndNewlines)),
             hostButtonTooltip: hostButtonTooltip,
             hostButtonURL: hostButtonURL,
             hostButtonGraphicsURL: hostButtonGraphicsURL,
             iconId: Int(iconId.trimmingCharacters(in: .whitespacesAndNewlines)),
             downloadQuota: Int64(downloadQuota.trimmingCharacters(in: .whitespacesAndNewlines)),
             uploadQuota: Int64(uploadQuota.trimmingCharacters(in: .whitespacesAndNewlines)),
+            maxDownloadTotalBandwidth: Int64(maxDownloadTotalBandwidth.trimmingCharacters(in: .whitespacesAndNewlines)),
+            maxUploadTotalBandwidth: Int64(maxUploadTotalBandwidth.trimmingCharacters(in: .whitespacesAndNewlines)),
             complainAutoBanCount: Int(complainAutoBanCount.trimmingCharacters(in: .whitespacesAndNewlines)),
             complainAutoBanTime: Int(complainAutoBanTime.trimmingCharacters(in: .whitespacesAndNewlines)),
             complainRemoveTime: Int(complainRemoveTime.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -12500,12 +12536,15 @@ struct ServerSettingsEditorSheet: View {
         hostBannerURL = draft.hostBannerURL
         hostBannerGraphicsURL = draft.hostBannerGraphicsURL
         hostBannerMode = Int((draft.hostBannerMode ?? "").trimmingCharacters(in: .whitespacesAndNewlines))
+        hostBannerGraphicsInterval = draft.hostBannerGraphicsInterval ?? ""
         hostButtonTooltip = draft.hostButtonTooltip
         hostButtonURL = draft.hostButtonURL
         hostButtonGraphicsURL = draft.hostButtonGraphicsURL
         iconId = draft.iconId
         downloadQuota = draft.downloadQuota
         uploadQuota = draft.uploadQuota
+        maxDownloadTotalBandwidth = draft.maxDownloadTotalBandwidth ?? ""
+        maxUploadTotalBandwidth = draft.maxUploadTotalBandwidth ?? ""
         complainAutoBanCount = draft.complainAutoBanCount
         complainAutoBanTime = draft.complainAutoBanTime
         complainRemoveTime = draft.complainRemoveTime

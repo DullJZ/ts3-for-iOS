@@ -2281,6 +2281,8 @@ struct TS3ServerInfoSummary {
     var queryClientConnections: Int?
     var downloadQuota: Int64?
     var uploadQuota: Int64?
+    var maxDownloadTotalBandwidth: Int64?
+    var maxUploadTotalBandwidth: Int64?
     var monthlyBytesDownloaded: Int64?
     var monthlyBytesUploaded: Int64?
     var totalBytesDownloaded: Int64?
@@ -2295,6 +2297,7 @@ struct TS3ServerInfoSummary {
     var hostBannerURL: String?
     var hostBannerGraphicsURL: String?
     var hostBannerMode: Int?
+    var hostBannerGraphicsInterval: Int?
     var hostButtonTooltip: String?
     var hostButtonURL: String?
     var hostButtonGraphicsURL: String?
@@ -2339,6 +2342,8 @@ struct TS3ServerInfoSummary {
         queryClientConnections: nil,
         downloadQuota: nil,
         uploadQuota: nil,
+        maxDownloadTotalBandwidth: nil,
+        maxUploadTotalBandwidth: nil,
         monthlyBytesDownloaded: nil,
         monthlyBytesUploaded: nil,
         totalBytesDownloaded: nil,
@@ -2353,6 +2358,7 @@ struct TS3ServerInfoSummary {
         hostBannerURL: nil,
         hostBannerGraphicsURL: nil,
         hostBannerMode: nil,
+        hostBannerGraphicsInterval: nil,
         hostButtonTooltip: nil,
         hostButtonURL: nil,
         hostButtonGraphicsURL: nil,
@@ -5922,12 +5928,15 @@ final class TS3AppModel: ObservableObject {
         hostBannerURL: String,
         hostBannerGraphicsURL: String,
         hostBannerMode: Int?,
+        hostBannerGraphicsInterval: Int?,
         hostButtonTooltip: String,
         hostButtonURL: String,
         hostButtonGraphicsURL: String,
         iconId: Int?,
         downloadQuota: Int64?,
         uploadQuota: Int64?,
+        maxDownloadTotalBandwidth: Int64?,
+        maxUploadTotalBandwidth: Int64?,
         complainAutoBanCount: Int?,
         complainAutoBanTime: Int?,
         complainRemoveTime: Int?,
@@ -5956,12 +5965,15 @@ final class TS3AppModel: ObservableObject {
             hostBannerURL: hostBannerURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostBannerGraphicsURL: hostBannerGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostBannerMode: hostBannerMode,
+            hostBannerGraphicsInterval: hostBannerGraphicsInterval,
             hostButtonTooltip: hostButtonTooltip.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonURL: hostButtonURL.trimmingCharacters(in: .whitespacesAndNewlines),
             hostButtonGraphicsURL: hostButtonGraphicsURL.trimmingCharacters(in: .whitespacesAndNewlines),
             iconId: iconId,
             downloadQuota: downloadQuota,
             uploadQuota: uploadQuota,
+            maxDownloadTotalBandwidth: maxDownloadTotalBandwidth,
+            maxUploadTotalBandwidth: maxUploadTotalBandwidth,
             complainAutoBanCount: complainAutoBanCount,
             complainAutoBanTime: complainAutoBanTime,
             complainRemoveTime: complainRemoveTime,
@@ -12673,6 +12685,8 @@ extension TS3AppModel: TS3ClientDelegate {
                 queryClientConnections: info.queryClientConnections,
                 downloadQuota: info.downloadQuota,
                 uploadQuota: info.uploadQuota,
+                maxDownloadTotalBandwidth: info.maxDownloadTotalBandwidth,
+                maxUploadTotalBandwidth: info.maxUploadTotalBandwidth,
                 monthlyBytesDownloaded: info.monthlyBytesDownloaded,
                 monthlyBytesUploaded: info.monthlyBytesUploaded,
                 totalBytesDownloaded: info.totalBytesDownloaded,
@@ -12687,6 +12701,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 hostBannerURL: info.hostBannerURL,
                 hostBannerGraphicsURL: info.hostBannerGraphicsURL,
                 hostBannerMode: info.hostBannerMode,
+                hostBannerGraphicsInterval: info.hostBannerGraphicsInterval,
                 hostButtonTooltip: info.hostButtonTooltip,
                 hostButtonURL: info.hostButtonURL,
                 hostButtonGraphicsURL: info.hostButtonGraphicsURL,
