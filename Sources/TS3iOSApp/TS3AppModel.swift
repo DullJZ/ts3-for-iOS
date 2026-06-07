@@ -2316,6 +2316,12 @@ struct TS3ServerInfoSummary {
     var antiFloodPointsTickReduce: Int?
     var antiFloodPointsNeededCommandBlock: Int?
     var antiFloodPointsNeededIPBlock: Int?
+    var isClientLoggingEnabled: Bool?
+    var isQueryLoggingEnabled: Bool?
+    var isChannelLoggingEnabled: Bool?
+    var isPermissionLoggingEnabled: Bool?
+    var isServerLoggingEnabled: Bool?
+    var isFileTransferLoggingEnabled: Bool?
     var clientConnections: Int?
     var queryClientConnections: Int?
     var downloadQuota: Int64?
@@ -2377,6 +2383,12 @@ struct TS3ServerInfoSummary {
         antiFloodPointsTickReduce: nil,
         antiFloodPointsNeededCommandBlock: nil,
         antiFloodPointsNeededIPBlock: nil,
+        isClientLoggingEnabled: nil,
+        isQueryLoggingEnabled: nil,
+        isChannelLoggingEnabled: nil,
+        isPermissionLoggingEnabled: nil,
+        isServerLoggingEnabled: nil,
+        isFileTransferLoggingEnabled: nil,
         clientConnections: nil,
         queryClientConnections: nil,
         downloadQuota: nil,
@@ -6078,6 +6090,12 @@ final class TS3AppModel: ObservableObject {
         antiFloodPointsTickReduce: Int?,
         antiFloodPointsNeededCommandBlock: Int?,
         antiFloodPointsNeededIPBlock: Int?,
+        isClientLoggingEnabled: Bool?,
+        isQueryLoggingEnabled: Bool?,
+        isChannelLoggingEnabled: Bool?,
+        isPermissionLoggingEnabled: Bool?,
+        isServerLoggingEnabled: Bool?,
+        isFileTransferLoggingEnabled: Bool?,
         isWeblistEnabled: Bool?,
         codecEncryptionMode: Int?,
         defaultServerGroupId: Int?,
@@ -6115,6 +6133,12 @@ final class TS3AppModel: ObservableObject {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            isClientLoggingEnabled: isClientLoggingEnabled,
+            isQueryLoggingEnabled: isQueryLoggingEnabled,
+            isChannelLoggingEnabled: isChannelLoggingEnabled,
+            isPermissionLoggingEnabled: isPermissionLoggingEnabled,
+            isServerLoggingEnabled: isServerLoggingEnabled,
+            isFileTransferLoggingEnabled: isFileTransferLoggingEnabled,
             isWeblistEnabled: isWeblistEnabled,
             codecEncryptionMode: codecEncryptionMode,
             defaultServerGroupId: defaultServerGroupId,
@@ -12998,6 +13022,12 @@ extension TS3AppModel: TS3ClientDelegate {
                 antiFloodPointsTickReduce: info.antiFloodPointsTickReduce,
                 antiFloodPointsNeededCommandBlock: info.antiFloodPointsNeededCommandBlock,
                 antiFloodPointsNeededIPBlock: info.antiFloodPointsNeededIPBlock,
+                isClientLoggingEnabled: info.isClientLoggingEnabled,
+                isQueryLoggingEnabled: info.isQueryLoggingEnabled,
+                isChannelLoggingEnabled: info.isChannelLoggingEnabled,
+                isPermissionLoggingEnabled: info.isPermissionLoggingEnabled,
+                isServerLoggingEnabled: info.isServerLoggingEnabled,
+                isFileTransferLoggingEnabled: info.isFileTransferLoggingEnabled,
                 clientConnections: info.clientConnections,
                 queryClientConnections: info.queryClientConnections,
                 downloadQuota: info.downloadQuota,

@@ -2949,6 +2949,12 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_antiflood_points_tick_reduce", value: edit.antiFloodPointsTickReduce.map(String.init))
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_command_block", value: edit.antiFloodPointsNeededCommandBlock.map(String.init))
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
+        appendParameter(&params, name: "virtualserver_log_client", value: edit.isClientLoggingEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_log_query", value: edit.isQueryLoggingEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_log_channel", value: edit.isChannelLoggingEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_log_permissions", value: edit.isPermissionLoggingEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_log_server", value: edit.isServerLoggingEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_log_filetransfer", value: edit.isFileTransferLoggingEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_weblist_enabled", value: edit.isWeblistEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_codec_encryption_mode", value: edit.codecEncryptionMode.map(String.init))
         appendParameter(&params, name: "virtualserver_default_server_group", value: edit.defaultServerGroupId.map(String.init))
@@ -3351,6 +3357,12 @@ private extension TS3Client {
             antiFloodPointsTickReduce: intValue(command, "virtualserver_antiflood_points_tick_reduce"),
             antiFloodPointsNeededCommandBlock: intValue(command, "virtualserver_antiflood_points_needed_command_block"),
             antiFloodPointsNeededIPBlock: intValue(command, "virtualserver_antiflood_points_needed_ip_block"),
+            isClientLoggingEnabled: optionalBoolValue(command, "virtualserver_log_client"),
+            isQueryLoggingEnabled: optionalBoolValue(command, "virtualserver_log_query"),
+            isChannelLoggingEnabled: optionalBoolValue(command, "virtualserver_log_channel"),
+            isPermissionLoggingEnabled: optionalBoolValue(command, "virtualserver_log_permissions"),
+            isServerLoggingEnabled: optionalBoolValue(command, "virtualserver_log_server"),
+            isFileTransferLoggingEnabled: optionalBoolValue(command, "virtualserver_log_filetransfer"),
             clientConnections: intValue(command, "virtualserver_client_connections"),
             queryClientConnections: intValue(command, "virtualserver_query_client_connections"),
             downloadQuota: int64Value(command, "virtualserver_download_quota"),

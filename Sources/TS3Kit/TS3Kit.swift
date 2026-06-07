@@ -109,6 +109,18 @@ public struct TS3ServerInfo {
     public let antiFloodPointsNeededCommandBlock: Int?
     /// Anti-flood points required before IP blocking starts.
     public let antiFloodPointsNeededIPBlock: Int?
+    /// Whether regular client actions are written to the server log.
+    public let isClientLoggingEnabled: Bool?
+    /// Whether ServerQuery actions are written to the server log.
+    public let isQueryLoggingEnabled: Bool?
+    /// Whether channel actions are written to the server log.
+    public let isChannelLoggingEnabled: Bool?
+    /// Whether permission changes are written to the server log.
+    public let isPermissionLoggingEnabled: Bool?
+    /// Whether server-level actions are written to the server log.
+    public let isServerLoggingEnabled: Bool?
+    /// Whether file transfer actions are written to the server log.
+    public let isFileTransferLoggingEnabled: Bool?
     /// The total number of regular client connections.
     public let clientConnections: Int?
     /// The total number of ServerQuery client connections.
@@ -190,6 +202,12 @@ public struct TS3ServerInfo {
         antiFloodPointsTickReduce: Int? = nil,
         antiFloodPointsNeededCommandBlock: Int? = nil,
         antiFloodPointsNeededIPBlock: Int? = nil,
+        isClientLoggingEnabled: Bool? = nil,
+        isQueryLoggingEnabled: Bool? = nil,
+        isChannelLoggingEnabled: Bool? = nil,
+        isPermissionLoggingEnabled: Bool? = nil,
+        isServerLoggingEnabled: Bool? = nil,
+        isFileTransferLoggingEnabled: Bool? = nil,
         clientConnections: Int? = nil,
         queryClientConnections: Int? = nil,
         downloadQuota: Int64? = nil,
@@ -249,6 +267,12 @@ public struct TS3ServerInfo {
         self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
         self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
         self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
+        self.isClientLoggingEnabled = isClientLoggingEnabled
+        self.isQueryLoggingEnabled = isQueryLoggingEnabled
+        self.isChannelLoggingEnabled = isChannelLoggingEnabled
+        self.isPermissionLoggingEnabled = isPermissionLoggingEnabled
+        self.isServerLoggingEnabled = isServerLoggingEnabled
+        self.isFileTransferLoggingEnabled = isFileTransferLoggingEnabled
         self.clientConnections = clientConnections
         self.queryClientConnections = queryClientConnections
         self.downloadQuota = downloadQuota
@@ -388,6 +412,12 @@ public struct TS3ServerEdit {
     public var antiFloodPointsTickReduce: Int?
     public var antiFloodPointsNeededCommandBlock: Int?
     public var antiFloodPointsNeededIPBlock: Int?
+    public var isClientLoggingEnabled: Bool?
+    public var isQueryLoggingEnabled: Bool?
+    public var isChannelLoggingEnabled: Bool?
+    public var isPermissionLoggingEnabled: Bool?
+    public var isServerLoggingEnabled: Bool?
+    public var isFileTransferLoggingEnabled: Bool?
     public var isWeblistEnabled: Bool?
     public var codecEncryptionMode: Int?
     public var defaultServerGroupId: Int?
@@ -426,6 +456,12 @@ public struct TS3ServerEdit {
         antiFloodPointsTickReduce: Int? = nil,
         antiFloodPointsNeededCommandBlock: Int? = nil,
         antiFloodPointsNeededIPBlock: Int? = nil,
+        isClientLoggingEnabled: Bool? = nil,
+        isQueryLoggingEnabled: Bool? = nil,
+        isChannelLoggingEnabled: Bool? = nil,
+        isPermissionLoggingEnabled: Bool? = nil,
+        isServerLoggingEnabled: Bool? = nil,
+        isFileTransferLoggingEnabled: Bool? = nil,
         isWeblistEnabled: Bool? = nil,
         codecEncryptionMode: Int? = nil,
         defaultServerGroupId: Int? = nil,
@@ -462,6 +498,12 @@ public struct TS3ServerEdit {
         self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
         self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
         self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
+        self.isClientLoggingEnabled = isClientLoggingEnabled
+        self.isQueryLoggingEnabled = isQueryLoggingEnabled
+        self.isChannelLoggingEnabled = isChannelLoggingEnabled
+        self.isPermissionLoggingEnabled = isPermissionLoggingEnabled
+        self.isServerLoggingEnabled = isServerLoggingEnabled
+        self.isFileTransferLoggingEnabled = isFileTransferLoggingEnabled
         self.isWeblistEnabled = isWeblistEnabled
         self.codecEncryptionMode = codecEncryptionMode
         self.defaultServerGroupId = defaultServerGroupId

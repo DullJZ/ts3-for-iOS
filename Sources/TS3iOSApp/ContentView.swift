@@ -9188,6 +9188,15 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Anti-Flood IP Block", value: model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init))
                 }
 
+                Section(header: Text("Server Log Options")) {
+                    ServerInfoDetailRow(label: "Client Log", value: boolText(model.serverInfo.isClientLoggingEnabled))
+                    ServerInfoDetailRow(label: "Query Log", value: boolText(model.serverInfo.isQueryLoggingEnabled))
+                    ServerInfoDetailRow(label: "Channel Log", value: boolText(model.serverInfo.isChannelLoggingEnabled))
+                    ServerInfoDetailRow(label: "Permission Log", value: boolText(model.serverInfo.isPermissionLoggingEnabled))
+                    ServerInfoDetailRow(label: "Server Log", value: boolText(model.serverInfo.isServerLoggingEnabled))
+                    ServerInfoDetailRow(label: "File Transfer Log", value: boolText(model.serverInfo.isFileTransferLoggingEnabled))
+                }
+
                 Section(header: Text("Traffic")) {
                     ServerInfoDetailRow(label: "Month Downloaded", value: model.serverInfo.monthlyBytesDownloaded.map(Self.byteText))
                     ServerInfoDetailRow(label: "Month Uploaded", value: model.serverInfo.monthlyBytesUploaded.map(Self.byteText))
@@ -9304,6 +9313,12 @@ struct ServerInformationSheet: View {
         rows.append(("Anti-Flood Tick Reduce", model.serverInfo.antiFloodPointsTickReduce.map(String.init)))
         rows.append(("Anti-Flood Command Block", model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init)))
         rows.append(("Anti-Flood IP Block", model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init)))
+        rows.append(("Client Log", boolText(model.serverInfo.isClientLoggingEnabled)))
+        rows.append(("Query Log", boolText(model.serverInfo.isQueryLoggingEnabled)))
+        rows.append(("Channel Log", boolText(model.serverInfo.isChannelLoggingEnabled)))
+        rows.append(("Permission Log", boolText(model.serverInfo.isPermissionLoggingEnabled)))
+        rows.append(("Server Log", boolText(model.serverInfo.isServerLoggingEnabled)))
+        rows.append(("File Transfer Log", boolText(model.serverInfo.isFileTransferLoggingEnabled)))
         rows.append(("Month Downloaded", model.serverInfo.monthlyBytesDownloaded.map(Self.byteText)))
         rows.append(("Month Uploaded", model.serverInfo.monthlyBytesUploaded.map(Self.byteText)))
         rows.append(("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.byteText)))
@@ -9351,6 +9366,10 @@ struct ServerInformationSheet: View {
 
     private func groupName(_ id: Int?, groups: [TS3GroupSummary]) -> String? {
         id.map { TS3GroupSummary.name(for: $0, in: groups) }
+    }
+
+    private func boolText(_ value: Bool?) -> String? {
+        value.map { $0 ? "Enabled" : "Disabled" }
     }
 
     private static func dateText(_ date: Date) -> String {
@@ -12037,6 +12056,12 @@ struct ServerSettingsEditorSheet: View {
         var antiFloodPointsTickReduce: String?
         var antiFloodPointsNeededCommandBlock: String?
         var antiFloodPointsNeededIPBlock: String?
+        var logClient: String?
+        var logQuery: String?
+        var logChannel: String?
+        var logPermissions: String?
+        var logServer: String?
+        var logFileTransfer: String?
         var weblistEnabled: String?
         var codecEncryptionMode: String
         var defaultServerGroupId: String?
@@ -12077,6 +12102,12 @@ struct ServerSettingsEditorSheet: View {
     @State private var antiFloodPointsTickReduce = ""
     @State private var antiFloodPointsNeededCommandBlock = ""
     @State private var antiFloodPointsNeededIPBlock = ""
+    @State private var logClient: Bool?
+    @State private var logQuery: Bool?
+    @State private var logChannel: Bool?
+    @State private var logPermissions: Bool?
+    @State private var logServer: Bool?
+    @State private var logFileTransfer: Bool?
     @State private var weblistEnabled: Bool?
     @State private var codecEncryptionMode: Int?
     @State private var defaultServerGroupId = ""
@@ -12279,6 +12310,39 @@ struct ServerSettingsEditorSheet: View {
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                 }
+
+                Section(header: Text("Server Log Options")) {
+                    Picker("Client Log", selection: $logClient) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
+                    Picker("Query Log", selection: $logQuery) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
+                    Picker("Channel Log", selection: $logChannel) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
+                    Picker("Permission Log", selection: $logPermissions) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
+                    Picker("Server Log", selection: $logServer) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
+                    Picker("File Transfer Log", selection: $logFileTransfer) {
+                        Text("Unchanged").tag(Bool?.none)
+                        Text("Enabled").tag(Optional(true))
+                        Text("Disabled").tag(Optional(false))
+                    }
+                }
             }
             .navigationTitle("Server Settings")
             .ts3InlineNavigationTitle()
@@ -12378,6 +12442,12 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            logClient: boolDraftText(logClient),
+            logQuery: boolDraftText(logQuery),
+            logChannel: boolDraftText(logChannel),
+            logPermissions: boolDraftText(logPermissions),
+            logServer: boolDraftText(logServer),
+            logFileTransfer: boolDraftText(logFileTransfer),
             weblistEnabled: weblistEnabled.map { $0 ? "1" : "0" } ?? "",
             codecEncryptionMode: codecEncryptionMode.map(String.init) ?? "",
             defaultServerGroupId: defaultServerGroupId,
@@ -12425,7 +12495,13 @@ struct ServerSettingsEditorSheet: View {
             ("Priority Speaker Dimming", draft.prioritySpeakerDimmModificator),
             ("Anti-Flood Tick Reduce", draft.antiFloodPointsTickReduce ?? ""),
             ("Anti-Flood Command Block", draft.antiFloodPointsNeededCommandBlock ?? ""),
-            ("Anti-Flood IP Block", draft.antiFloodPointsNeededIPBlock ?? "")
+            ("Anti-Flood IP Block", draft.antiFloodPointsNeededIPBlock ?? ""),
+            ("Client Log", boolTitle(draft.logClient)),
+            ("Query Log", boolTitle(draft.logQuery)),
+            ("Channel Log", boolTitle(draft.logChannel)),
+            ("Permission Log", boolTitle(draft.logPermissions)),
+            ("Server Log", boolTitle(draft.logServer)),
+            ("File Transfer Log", boolTitle(draft.logFileTransfer))
         ]
         rows.append(("Draft Valid", isDraftValid ? "Yes" : "No"))
         return rows.compactMap { label, value in
@@ -12467,6 +12543,12 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsTickReduce = model.serverInfo.antiFloodPointsTickReduce.map(String.init) ?? ""
         antiFloodPointsNeededCommandBlock = model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init) ?? ""
         antiFloodPointsNeededIPBlock = model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init) ?? ""
+        logClient = model.serverInfo.isClientLoggingEnabled
+        logQuery = model.serverInfo.isQueryLoggingEnabled
+        logChannel = model.serverInfo.isChannelLoggingEnabled
+        logPermissions = model.serverInfo.isPermissionLoggingEnabled
+        logServer = model.serverInfo.isServerLoggingEnabled
+        logFileTransfer = model.serverInfo.isFileTransferLoggingEnabled
         weblistEnabled = model.serverInfo.isWeblistEnabled
         codecEncryptionMode = model.serverInfo.codecEncryptionMode
         defaultServerGroupId = model.serverInfo.defaultServerGroupId.map(String.init) ?? ""
@@ -12530,6 +12612,12 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: Int(antiFloodPointsTickReduce.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededCommandBlock: Int(antiFloodPointsNeededCommandBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededIPBlock: Int(antiFloodPointsNeededIPBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
+            isClientLoggingEnabled: logClient,
+            isQueryLoggingEnabled: logQuery,
+            isChannelLoggingEnabled: logChannel,
+            isPermissionLoggingEnabled: logPermissions,
+            isServerLoggingEnabled: logServer,
+            isFileTransferLoggingEnabled: logFileTransfer,
             isWeblistEnabled: weblistEnabled,
             codecEncryptionMode: codecEncryptionMode,
             defaultServerGroupId: Int(defaultServerGroupId.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -12596,6 +12684,12 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsTickReduce = draft.antiFloodPointsTickReduce ?? ""
         antiFloodPointsNeededCommandBlock = draft.antiFloodPointsNeededCommandBlock ?? ""
         antiFloodPointsNeededIPBlock = draft.antiFloodPointsNeededIPBlock ?? ""
+        logClient = Self.boolDraftValue(draft.logClient)
+        logQuery = Self.boolDraftValue(draft.logQuery)
+        logChannel = Self.boolDraftValue(draft.logChannel)
+        logPermissions = Self.boolDraftValue(draft.logPermissions)
+        logServer = Self.boolDraftValue(draft.logServer)
+        logFileTransfer = Self.boolDraftValue(draft.logFileTransfer)
         weblistEnabled = Self.boolDraftValue(draft.weblistEnabled)
         codecEncryptionMode = Int(draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
         defaultServerGroupId = draft.defaultServerGroupId ?? ""
@@ -12628,6 +12722,15 @@ struct ServerSettingsEditorSheet: View {
         return enabled ? "Listed" : "Hidden"
     }
 
+    private func boolDraftText(_ value: Bool?) -> String {
+        value.map { $0 ? "1" : "0" } ?? ""
+    }
+
+    private func boolTitle(_ value: String?) -> String {
+        guard let enabled = Self.boolDraftValue(value) else { return "Unchanged" }
+        return enabled ? "Enabled" : "Disabled"
+    }
+
     private func groupPickerTitle(_ group: TS3GroupSummary) -> String {
         "\(group.name) (\(group.id))"
     }
@@ -12651,9 +12754,9 @@ struct ServerSettingsEditorSheet: View {
 
     private static func boolDraftValue(_ value: String?) -> Bool? {
         switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "1", "true", "yes", "listed":
+        case "1", "true", "yes", "listed", "enabled":
             return true
-        case "0", "false", "no", "hidden":
+        case "0", "false", "no", "hidden", "disabled":
             return false
         default:
             return nil
