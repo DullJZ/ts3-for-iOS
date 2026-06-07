@@ -1621,6 +1621,30 @@ struct TS3PermissionBackupPreview {
     }
 }
 
+struct TS3PermissionBackupRestoreOptions: Equatable {
+    var changedExisting: Bool
+    var newPermissions: Bool
+    var restoreWhenTargetCannotBeCompared: Bool
+
+    static let all = TS3PermissionBackupRestoreOptions(
+        changedExisting: true,
+        newPermissions: true,
+        restoreWhenTargetCannotBeCompared: true
+    )
+
+    var hasSelectedComparableEntries: Bool {
+        changedExisting || newPermissions
+    }
+}
+
+struct TS3PermissionBackupRestorePlan {
+    let permissionNames: [String]
+
+    var permissionCount: Int {
+        permissionNames.count
+    }
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double
@@ -5505,10 +5529,13 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(snapshot)
     }
 
-    func importPermissionBackup(from data: Data) throws {
+    func importPermissionBackup(
+        from data: Data,
+        options: TS3PermissionBackupRestoreOptions = .all
+    ) throws {
         let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
         applyPermissionBackupSelection(decoded)
-        restorePermissionBackup(decoded)
+        restorePermissionBackup(decoded, options: options)
     }
 
     func permissionBackupPreview(from data: Data) throws -> TS3PermissionBackupPreview {
@@ -5556,6 +5583,24 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    func permissionBackupRestorePlan(
+        from data: Data,
+        options: TS3PermissionBackupRestoreOptions
+    ) throws -> TS3PermissionBackupRestorePlan {
+        let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
+        let scope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
+        let permissions = sanitizedPermissionBackupPermissions(decoded.permissions)
+        let currentByName = currentPermissionsForBackup(decoded, scope: scope).map {
+            Dictionary($0.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
+        }
+        let plannedNames = permissionsToRestore(
+            permissions,
+            currentByName: currentByName,
+            options: options
+        ).map(\.name)
+        return TS3PermissionBackupRestorePlan(permissionNames: plannedNames)
+    }
+
     func channelClientPermissionMembers() -> [TS3UserSummary] {
         let channelId = selectedChannelClientPermissionChannelId ?? currentChannel?.id ?? channels.first?.id
         guard let channelId else { return [] }
@@ -5585,24 +5630,19 @@ final class TS3AppModel: ObservableObject {
         selectedChannelClientPermissionClientId = backup.selectedChannelClientPermissionClientId
     }
 
-    private func restorePermissionBackup(_ backup: TS3PermissionBackup) {
-        let permissions = backup.permissions
-            .map {
-                TS3PermissionBackupPermission(
-                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    value: $0.value,
-                    isNegated: $0.isNegated,
-                    isSkipped: $0.isSkipped
-                )
-            }
-            .filter { !$0.name.isEmpty }
+    private func restorePermissionBackup(
+        _ backup: TS3PermissionBackup,
+        options: TS3PermissionBackupRestoreOptions = .all
+    ) {
+        let permissions = sanitizedPermissionBackupPermissions(backup.permissions)
         let currentByName = currentPermissionsForBackup(backup, scope: permissionEditScope).map {
             Dictionary($0.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
         }
-        let permissionsToRestore = permissions.filter { permission in
-            guard let current = currentByName?[permission.name] else { return true }
-            return !Self.permissionBackupPermission(permission, matches: current)
-        }
+        let permissionsToRestore = permissionsToRestore(
+            permissions,
+            currentByName: currentByName,
+            options: options
+        )
         guard !permissionsToRestore.isEmpty else {
             refreshSelectedPermissions()
             lastError = nil
@@ -5719,6 +5759,37 @@ final class TS3AppModel: ObservableObject {
                     self.lastError = nil
                 }
             }
+        }
+    }
+
+    private func sanitizedPermissionBackupPermissions(
+        _ permissions: [TS3PermissionBackupPermission]
+    ) -> [TS3PermissionBackupPermission] {
+        permissions
+            .map {
+                TS3PermissionBackupPermission(
+                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    value: $0.value,
+                    isNegated: $0.isNegated,
+                    isSkipped: $0.isSkipped
+                )
+            }
+            .filter { !$0.name.isEmpty }
+    }
+
+    private func permissionsToRestore(
+        _ permissions: [TS3PermissionBackupPermission],
+        currentByName: [String: TS3PermissionSummary]?,
+        options: TS3PermissionBackupRestoreOptions
+    ) -> [TS3PermissionBackupPermission] {
+        permissions.filter { permission in
+            guard let currentByName else {
+                return options.restoreWhenTargetCannotBeCompared
+            }
+            guard let current = currentByName[permission.name] else {
+                return options.newPermissions
+            }
+            return options.changedExisting && !Self.permissionBackupPermission(permission, matches: current)
         }
     }
 

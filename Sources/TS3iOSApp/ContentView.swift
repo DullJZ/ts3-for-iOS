@@ -15193,8 +15193,9 @@ private struct MovePreviewItem: Identifiable {
 }
 
 struct PermissionsSheet: View {
-    private struct PermissionBackupImportConfirmation: Identifiable {
+    fileprivate struct PermissionBackupImportConfirmation: Identifiable {
         let url: URL
+        let data: Data
         let preview: TS3PermissionBackupPreview
         let id = UUID()
     }
@@ -15681,15 +15682,17 @@ struct PermissionsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingPermissionBackupImport) { confirmation in
-                Alert(
-                    title: Text("Restore Permission Backup?"),
-                    message: Text(permissionBackupPreviewMessage(confirmation.preview)),
-                    primaryButton: .destructive(Text("Restore")) {
-                        importPermissionBackup(from: confirmation.url)
-                    },
-                    secondaryButton: .cancel()
-                )
+            .sheet(item: $pendingPermissionBackupImport) { confirmation in
+                PermissionBackupImportSheet(
+                    confirmation: confirmation,
+                    previewMessage: permissionBackupPreviewMessage(confirmation.preview)
+                ) { options in
+                    importPermissionBackup(data: confirmation.data, options: options)
+                    pendingPermissionBackupImport = nil
+                } cancel: {
+                    pendingPermissionBackupImport = nil
+                }
+                .environmentObject(model)
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
@@ -15822,8 +15825,9 @@ struct PermissionsSheet: View {
             }
         }
         do {
-            let preview = try model.permissionBackupPreview(from: Data(contentsOf: url))
-            pendingPermissionBackupImport = PermissionBackupImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.permissionBackupPreview(from: data)
+            pendingPermissionBackupImport = PermissionBackupImportConfirmation(url: url, data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -15878,17 +15882,83 @@ struct PermissionsSheet: View {
         return "\(visible); +\(remainingCount) more"
     }
 
-    private func importPermissionBackup(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importPermissionBackup(data: Data, options: TS3PermissionBackupRestoreOptions) {
         do {
-            try model.importPermissionBackup(from: Data(contentsOf: url))
+            try model.importPermissionBackup(from: data, options: options)
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct PermissionBackupImportSheet: View {
+    let confirmation: PermissionsSheet.PermissionBackupImportConfirmation
+    let previewMessage: String
+    let restore: (TS3PermissionBackupRestoreOptions) -> Void
+    let cancel: () -> Void
+
+    @EnvironmentObject private var model: TS3AppModel
+    @State private var options = TS3PermissionBackupRestoreOptions.all
+
+    private var plan: TS3PermissionBackupRestorePlan? {
+        try? model.permissionBackupRestorePlan(from: confirmation.data, options: options)
+    }
+
+    private var canRestore: Bool {
+        if confirmation.preview.targetMatchesCurrentSelection {
+            return options.hasSelectedComparableEntries && (plan?.permissionCount ?? 0) > 0
+        }
+        return options.restoreWhenTargetCannotBeCompared && (plan?.permissionCount ?? 0) > 0
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if let plan {
+                        Text("Selected restore entries: \(plan.permissionCount)")
+                            .font(.caption.weight(.semibold))
+                    }
+                }
+
+                Section(header: Text("Restore Entries")) {
+                    if confirmation.preview.targetMatchesCurrentSelection {
+                        Toggle(
+                            "Changed existing permissions",
+                            isOn: $options.changedExisting
+                        )
+                        .disabled((confirmation.preview.changedCount ?? 0) == 0)
+                        Toggle(
+                            "New permissions",
+                            isOn: $options.newPermissions
+                        )
+                        .disabled((confirmation.preview.newPermissionCount ?? 0) == 0)
+                    } else {
+                        Toggle(
+                            "Restore without conflict comparison",
+                            isOn: $options.restoreWhenTargetCannotBeCompared
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Restore Permissions")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Restore") {
+                        restore(options)
+                    }
+                    .disabled(!canRestore)
+                }
+            }
         }
     }
 }

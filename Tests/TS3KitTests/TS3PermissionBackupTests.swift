@@ -125,6 +125,99 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertTrue(preview.newPermissionNames.isEmpty)
     }
 
+    @MainActor
+    func testPermissionBackupRestorePlanCanSelectOnlyChangedPermissions() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50),
+            makePermission("i_client_kick_power", value: 75),
+            makePermission("b_virtualserver_modify_name", value: 1)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25),
+            makePermission("i_client_kick_power", value: 75)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: TS3PermissionBackupRestoreOptions(
+                changedExisting: true,
+                newPermissions: false,
+                restoreWhenTargetCannotBeCompared: true
+            )
+        )
+
+        XCTAssertEqual(plan.permissionNames, ["i_channel_join_power"])
+        XCTAssertEqual(plan.permissionCount, 1)
+    }
+
+    @MainActor
+    func testPermissionBackupRestorePlanCanSelectOnlyNewPermissions() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50),
+            makePermission("i_client_kick_power", value: 75)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: TS3PermissionBackupRestoreOptions(
+                changedExisting: false,
+                newPermissions: true,
+                restoreWhenTargetCannotBeCompared: true
+            )
+        )
+
+        XCTAssertEqual(plan.permissionNames, ["i_client_kick_power"])
+    }
+
+    @MainActor
+    func testPermissionBackupRestorePlanCanSkipUncomparableTarget() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .channel
+        source.selectedChannelPermissionId = 9
+        source.scopedPermissions = [
+            makePermission("i_channel_needed_join_power", value: 30)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .channel
+        target.selectedChannelPermissionId = 10
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: TS3PermissionBackupRestoreOptions(
+                changedExisting: true,
+                newPermissions: true,
+                restoreWhenTargetCannotBeCompared: false
+            )
+        )
+
+        XCTAssertTrue(plan.permissionNames.isEmpty)
+        XCTAssertEqual(plan.permissionCount, 0)
+    }
+
     private func makePermission(
         _ name: String,
         value: Int,
