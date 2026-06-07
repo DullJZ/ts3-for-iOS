@@ -134,6 +134,7 @@ struct TS3ChannelSummary: Identifiable {
     var isSemiPermanent: Bool?
     var neededTalkPower: Int?
     var neededSubscribePower: Int?
+    var neededDescriptionViewPower: Int?
     var codec: Int?
     var codecQuality: Int?
     var codecLatencyFactor: Int?
@@ -3655,6 +3656,7 @@ final class TS3AppModel: ObservableObject {
                 isSemiPermanent: nil,
                 neededTalkPower: nil,
                 neededSubscribePower: nil,
+                neededDescriptionViewPower: nil,
                 codec: nil,
                 codecQuality: nil,
                 codecLatencyFactor: nil,
@@ -7545,6 +7547,7 @@ final class TS3AppModel: ObservableObject {
         description: String,
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
+        neededDescriptionViewPower: Int?,
         codec: Int?,
         codecQuality: Int?,
         codecLatencyFactor: Int?,
@@ -7575,6 +7578,7 @@ final class TS3AppModel: ObservableObject {
                 isCodecUnencrypted: isCodecUnencrypted,
                 neededTalkPower: neededTalkPower,
                 neededSubscribePower: neededSubscribePower,
+                neededDescriptionViewPower: neededDescriptionViewPower,
                 deleteDelaySeconds: deleteDelaySeconds,
                 maxClients: maxClientsUnlimited ? nil : maxClients,
                 maxFamilyClients: maxFamilyClientsUnlimited || maxFamilyClientsInherited ? nil : maxFamilyClients,
@@ -7597,6 +7601,7 @@ final class TS3AppModel: ObservableObject {
         channelType: TS3ChannelType,
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
+        neededDescriptionViewPower: Int?,
         codec: Int?,
         codecQuality: Int?,
         codecLatencyFactor: Int?,
@@ -7622,6 +7627,7 @@ final class TS3AppModel: ObservableObject {
                 isSemiPermanent: channelType == .semiPermanent,
                 neededTalkPower: neededTalkPower,
                 neededSubscribePower: neededSubscribePower,
+                neededDescriptionViewPower: neededDescriptionViewPower,
                 codec: codec,
                 codecQuality: codecQuality,
                 codecLatencyFactor: codecLatencyFactor,
@@ -12968,6 +12974,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     isSemiPermanent: channel.isSemiPermanent,
                     neededTalkPower: channel.neededTalkPower,
                     neededSubscribePower: channel.neededSubscribePower,
+                    neededDescriptionViewPower: channel.neededDescriptionViewPower,
                     codec: channel.codec,
                     codecQuality: channel.codecQuality,
                     codecLatencyFactor: channel.codecLatencyFactor,

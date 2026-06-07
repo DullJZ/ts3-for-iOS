@@ -507,6 +507,7 @@ public final class TS3Client {
         isCodecUnencrypted: Bool? = nil,
         neededTalkPower: Int? = nil,
         neededSubscribePower: Int? = nil,
+        neededDescriptionViewPower: Int? = nil,
         deleteDelaySeconds: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
@@ -530,6 +531,7 @@ public final class TS3Client {
             isCodecUnencrypted: isCodecUnencrypted,
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
+            neededDescriptionViewPower: neededDescriptionViewPower,
             deleteDelaySeconds: deleteDelaySeconds,
             maxClients: maxClients,
             maxFamilyClients: maxFamilyClients,
@@ -557,6 +559,7 @@ public final class TS3Client {
         isSemiPermanent: Bool? = nil,
         neededTalkPower: Int? = nil,
         neededSubscribePower: Int? = nil,
+        neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
         codecLatencyFactor: Int? = nil,
@@ -581,6 +584,7 @@ public final class TS3Client {
             isSemiPermanent: isSemiPermanent,
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
+            neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec,
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
@@ -2412,6 +2416,7 @@ private extension TS3Client {
             isSemiPermanent: optionalBoolValue(command, "channel_flag_semi_permanent"),
             neededTalkPower: intValue(command, "channel_needed_talk_power"),
             neededSubscribePower: intValue(command, "channel_needed_subscribe_power"),
+            neededDescriptionViewPower: intValue(command, "channel_needed_description_view_power"),
             codec: intValue(command, "channel_codec"),
             codecQuality: intValue(command, "channel_codec_quality"),
             codecLatencyFactor: intValue(command, "channel_codec_latency_factor"),
@@ -2456,8 +2461,11 @@ private extension TS3Client {
             isSemiPermanent: channel.isSemiPermanent,
             neededTalkPower: channel.neededTalkPower,
             neededSubscribePower: channel.neededSubscribePower,
+            neededDescriptionViewPower: channel.neededDescriptionViewPower,
             codec: channel.codec,
             codecQuality: channel.codecQuality,
+            codecLatencyFactor: channel.codecLatencyFactor,
+            isCodecUnencrypted: channel.isCodecUnencrypted,
             deleteDelaySeconds: channel.deleteDelaySeconds,
             maxClients: channel.maxClients,
             maxFamilyClients: channel.maxFamilyClients,
@@ -2812,6 +2820,7 @@ extension TS3Client {
         isCodecUnencrypted: Bool?,
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
+        neededDescriptionViewPower: Int?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -2834,6 +2843,7 @@ extension TS3Client {
             password: password?.isEmpty == false ? password : nil,
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
+            neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec,
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
@@ -2866,6 +2876,7 @@ extension TS3Client {
         isSemiPermanent: Bool?,
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
+        neededDescriptionViewPower: Int?,
         codec: Int?,
         codecQuality: Int?,
         codecLatencyFactor: Int?,
@@ -2890,6 +2901,7 @@ extension TS3Client {
             password: password,
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
+            neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec,
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
@@ -2973,6 +2985,7 @@ extension TS3Client {
         password: String?,
         neededTalkPower: Int?,
         neededSubscribePower: Int?,
+        neededDescriptionViewPower: Int?,
         codec: Int?,
         codecQuality: Int?,
         codecLatencyFactor: Int?,
@@ -2994,6 +3007,9 @@ extension TS3Client {
         }
         if let neededSubscribePower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_subscribe_power", value: String(neededSubscribePower)))
+        }
+        if let neededDescriptionViewPower {
+            params.append(TS3CommandSingleParameter(name: "channel_needed_description_view_power", value: String(neededDescriptionViewPower)))
         }
         if let codec {
             params.append(TS3CommandSingleParameter(name: "channel_codec", value: String(codec)))

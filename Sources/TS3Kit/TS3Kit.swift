@@ -613,6 +613,8 @@ public struct TS3Channel: Identifiable {
     public let neededTalkPower: Int?
     /// The subscribe power required to receive channel updates.
     public let neededSubscribePower: Int?
+    /// The permission power required to view the channel description.
+    public let neededDescriptionViewPower: Int?
     public let codec: Int?
     /// The configured codec quality, when reported by the server.
     public let codecQuality: Int?
@@ -652,6 +654,7 @@ public struct TS3Channel: Identifiable {
         isSemiPermanent: Bool? = nil,
         neededTalkPower: Int? = nil,
         neededSubscribePower: Int? = nil,
+        neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
         codecLatencyFactor: Int? = nil,
@@ -678,6 +681,7 @@ public struct TS3Channel: Identifiable {
         self.isSemiPermanent = isSemiPermanent
         self.neededTalkPower = neededTalkPower
         self.neededSubscribePower = neededSubscribePower
+        self.neededDescriptionViewPower = neededDescriptionViewPower
         self.codec = codec
         self.codecQuality = codecQuality
         self.codecLatencyFactor = codecLatencyFactor

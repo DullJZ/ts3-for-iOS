@@ -3951,6 +3951,7 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: "Codec Quality", value: TS3ChannelCodecQuality.title(for: channel.codecQuality))
                     ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
+                    ServerInfoDetailRow(label: "Needed Description View Power", value: channel.neededDescriptionViewPower.map(String.init))
                 }
 
                 Section(header: Text("Limits")) {
@@ -4041,6 +4042,7 @@ struct ChannelInformationSheet: View {
             ("Codec Quality", TS3ChannelCodecQuality.title(for: channel.codecQuality)),
             ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
             ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
+            ("Needed Description View Power", channel.neededDescriptionViewPower.map(String.init)),
             ("Max Clients", maxClientsText),
             ("Max Family Clients", maxFamilyClientsText),
             ("Delete Delay", channel.deleteDelaySeconds.map { "\($0)s" })
@@ -19741,6 +19743,7 @@ struct ChannelEditorSheet: View {
         var isDefault: Bool
         var neededTalkPower: String
         var neededSubscribePower: String
+        var neededDescriptionViewPower: String?
         var codec: String
         var codecQuality: String
         var codecLatencyFactor: String?
@@ -19767,6 +19770,7 @@ struct ChannelEditorSheet: View {
     @State private var isDefault = false
     @State private var neededTalkPower = ""
     @State private var neededSubscribePower = ""
+    @State private var neededDescriptionViewPower = ""
     @State private var codec: Int?
     @State private var codecQuality = ""
     @State private var codecLatencyFactor = ""
@@ -19890,6 +19894,8 @@ struct ChannelEditorSheet: View {
                         .ts3NumericKeyboard()
                     TextField("Needed Subscribe Power", text: $neededSubscribePower)
                         .ts3NumericKeyboard()
+                    TextField("Needed Description View Power", text: $neededDescriptionViewPower)
+                        .ts3NumericKeyboard()
                     TextField("Delete Delay Seconds", text: $deleteDelaySeconds)
                         .ts3NumericKeyboard()
                 }
@@ -19923,6 +19929,7 @@ struct ChannelEditorSheet: View {
                                 description: description,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
+                                neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
                                 codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
@@ -19947,6 +19954,7 @@ struct ChannelEditorSheet: View {
                                 channelType: channelType,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
+                                neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
                                 codec: codec,
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
@@ -19978,6 +19986,7 @@ struct ChannelEditorSheet: View {
                     isDefault = channel.isDefault
                     neededTalkPower = channel.neededTalkPower.map(String.init) ?? ""
                     neededSubscribePower = channel.neededSubscribePower.map(String.init) ?? ""
+                    neededDescriptionViewPower = channel.neededDescriptionViewPower.map(String.init) ?? ""
                     codec = channel.codec
                     codecQuality = channel.codecQuality.map(String.init) ?? ""
                     codecLatencyFactor = channel.codecLatencyFactor.map(String.init) ?? ""
@@ -20062,6 +20071,7 @@ struct ChannelEditorSheet: View {
             isDefault: isDefault,
             neededTalkPower: neededTalkPower,
             neededSubscribePower: neededSubscribePower,
+            neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec.map(String.init) ?? "",
             codecQuality: codecQuality,
             codecLatencyFactor: codecLatencyFactor,
@@ -20089,6 +20099,7 @@ struct ChannelEditorSheet: View {
             ("Default", draft.isDefault ? "Yes" : "No"),
             ("Needed Talk Power", draft.neededTalkPower),
             ("Needed Subscribe Power", draft.neededSubscribePower),
+            ("Needed Description View Power", draft.neededDescriptionViewPower ?? ""),
             ("Codec", codecTitle(for: draft.codec)),
             ("Codec Quality", codecQualityTitle(for: draft.codecQuality)),
             ("Codec Latency Factor", draft.codecLatencyFactor ?? ""),
@@ -20113,6 +20124,7 @@ struct ChannelEditorSheet: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(neededTalkPower)
             && isOptionalInt(neededSubscribePower)
+            && isOptionalInt(neededDescriptionViewPower)
             && isCodecQualityValid
             && isCodecLatencyFactorValid
             && isOptionalInt(deleteDelaySeconds)
@@ -20180,6 +20192,7 @@ struct ChannelEditorSheet: View {
         isDefault = draft.isDefault
         neededTalkPower = draft.neededTalkPower
         neededSubscribePower = draft.neededSubscribePower
+        neededDescriptionViewPower = draft.neededDescriptionViewPower ?? ""
         codec = parsedOptionalInt(draft.codec)
         codecQuality = draft.codecQuality
         codecLatencyFactor = draft.codecLatencyFactor ?? ""
