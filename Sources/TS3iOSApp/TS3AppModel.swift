@@ -1519,6 +1519,8 @@ struct TS3PermissionBackupPreview {
     let currentPermissionCount: Int?
     let overwriteCount: Int?
     let newPermissionCount: Int?
+    let overwritePermissionNames: [String]
+    let newPermissionNames: [String]
 
     var targetMatchesCurrentSelection: Bool {
         currentPermissionCount != nil
@@ -5325,15 +5327,17 @@ final class TS3AppModel: ObservableObject {
         let currentPermissions = currentPermissionsForBackup(decoded, scope: scope)
         let currentNames = Set(currentPermissions?.map(\.name) ?? [])
         let backupNames = Set(decoded.permissions.map(\.name))
-        let overwriteCount = currentPermissions.map { _ in backupNames.intersection(currentNames).count }
-        let newPermissionCount = currentPermissions.map { _ in backupNames.subtracting(currentNames).count }
+        let overwritePermissionNames = currentPermissions.map { _ in backupNames.intersection(currentNames).sorted() } ?? []
+        let newPermissionNames = currentPermissions.map { _ in backupNames.subtracting(currentNames).sorted() } ?? []
         return TS3PermissionBackupPreview(
             scope: scope,
             targetDescription: permissionBackupTargetDescription(decoded, scope: scope),
             permissionCount: decoded.permissions.count,
             currentPermissionCount: currentPermissions?.count,
-            overwriteCount: overwriteCount,
-            newPermissionCount: newPermissionCount
+            overwriteCount: currentPermissions.map { _ in overwritePermissionNames.count },
+            newPermissionCount: currentPermissions.map { _ in newPermissionNames.count },
+            overwritePermissionNames: overwritePermissionNames,
+            newPermissionNames: newPermissionNames
         )
     }
 

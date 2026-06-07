@@ -15294,11 +15294,24 @@ struct PermissionsSheet: View {
            let newPermissionCount = preview.newPermissionCount {
             lines.append("Current permissions: \(currentPermissionCount)")
             lines.append("Will update \(overwriteCount) existing and add \(newPermissionCount) new permission entries.")
+            if !preview.overwritePermissionNames.isEmpty {
+                lines.append("Updating: \(permissionNameSummary(preview.overwritePermissionNames))")
+            }
+            if !preview.newPermissionNames.isEmpty {
+                lines.append("Adding: \(permissionNameSummary(preview.newPermissionNames))")
+            }
         } else {
             lines.append("Current target is different or not loaded, so conflicts cannot be counted before restore.")
         }
         lines.append("Restore updates matching permission names and does not delete permissions missing from the backup.")
         return lines.joined(separator: "\n")
+    }
+
+    private func permissionNameSummary(_ names: [String]) -> String {
+        let visible = names.prefix(6).joined(separator: ", ")
+        let remainingCount = names.count - min(names.count, 6)
+        guard remainingCount > 0 else { return visible }
+        return "\(visible), +\(remainingCount) more"
     }
 
     private func importPermissionBackup(from url: URL) {
