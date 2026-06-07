@@ -6102,7 +6102,11 @@ struct ChatSheet: View {
                     .disabled(model.chatMessages.isEmpty)
                     Menu {
                         Button("Export Transcript") {
-                            transcriptDocument = TS3TextFileDocument(data: model.chatTranscriptData(messages: filteredMessages))
+                            transcriptDocument = TS3TextFileDocument(data: model.chatTranscriptData(
+                                messages: filteredMessages,
+                                title: selectedConversation.title,
+                                filterSummary: transcriptFilterSummary
+                            ))
                             isExportingTranscript = true
                         }
                         .disabled(filteredMessages.isEmpty)
@@ -6335,6 +6339,19 @@ struct ChatSheet: View {
             || selectedConversationId != "all"
             || newestFirst
             || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var transcriptFilterSummary: String {
+        var parts = [
+            filter.title,
+            senderFilter.title,
+            newestFirst ? "Newest first" : "Oldest first"
+        ]
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            parts.append("Search: \(query)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func replyUser(for item: TS3ChatMessageSummary) -> TS3UserSummary? {

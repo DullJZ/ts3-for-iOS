@@ -33,8 +33,8 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Channel/server/private text chat | Done | `ChatSheet`, send methods, local history, per-conversation filtering for server/channel/private threads | Add richer transcript formatting. |
-| Chat history management | Done | Local history, filters, conversation selector, presets, transcript/history import/export, offline access, configurable retention settings | Add richer transcript formatting if needed. |
+| Channel/server/private text chat | Done | `ChatSheet`, send methods, local history, per-conversation filtering for server/channel/private threads, and metadata-rich grouped transcript export | Monitor real-user transcript formatting needs. |
+| Chat history management | Done | Local history, filters, conversation selector, presets, metadata-rich transcript/history import/export, offline access, configurable retention settings | Add richer per-message restore choices if history formats expand. |
 | Offline messages | Partial | Inbox, compose, read/delete, local cached history, disconnected access, draft persistence, filters and presets | Validate server-side read/delete behavior against real servers. |
 | Pokes | Partial | Receive poke notifications/events, online client-row poke, database-record online poke, poke-back, and online contact poke actions exist | Add broader real-server validation and any remaining context-menu entry points found in official-client audit. |
 | Whisper | Partial | Whisper sheet, presets, targets, configurable hold-to-whisper/tap-to-toggle activation, temporary activation controls, separate Catalyst start/stop shortcut bindings, route snapshots, recent activation log export, activation diagnostics, and tests for protocol serialization plus activation log behavior | Verify full voice whisper routing against real servers and add true key-up global hotkey capture if platform APIs allow it. |

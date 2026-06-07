@@ -12127,21 +12127,84 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
-    func chatTranscriptData(messages: [TS3ChatMessageSummary]) -> Data {
-        let lines = messages.map { message in
-            let mode: String
-            switch message.targetMode {
-            case .server:
-                mode = "Server"
-            case .channel:
-                mode = "Channel"
-            case .client:
-                mode = "Private"
+    func chatTranscriptData(
+        messages: [TS3ChatMessageSummary],
+        title: String = "All Conversations",
+        filterSummary: String = "All messages",
+        generatedAt: Date = Date()
+    ) -> Data {
+        Data(chatTranscriptText(
+            messages: messages,
+            title: title,
+            filterSummary: filterSummary,
+            generatedAt: generatedAt
+        ).utf8)
+    }
+
+    func chatTranscriptText(
+        messages: [TS3ChatMessageSummary],
+        title: String = "All Conversations",
+        filterSummary: String = "All messages",
+        generatedAt: Date = Date()
+    ) -> String {
+        let sortedMessages = messages.sorted {
+            if $0.timestamp == $1.timestamp {
+                return $0.id.uuidString < $1.id.uuidString
             }
-            let direction = message.isOwnMessage ? "out" : "in"
-            return "\(Self.transcriptDateFormatter.string(from: message.timestamp)) [\(mode)] [\(direction)] \(message.senderName): \(message.message)"
+            return $0.timestamp < $1.timestamp
         }
-        return Data(lines.joined(separator: "\n").utf8)
+        var lines = [
+            "TeamSpeak 3 Chat Transcript",
+            "Generated: \(Self.transcriptDateFormatter.string(from: generatedAt))",
+            "Scope: \(title)",
+            "Filters: \(filterSummary)",
+            "Messages: \(sortedMessages.count)"
+        ]
+        guard !sortedMessages.isEmpty else {
+            return lines.joined(separator: "\n")
+        }
+
+        var currentConversation = ""
+        for message in sortedMessages {
+            let conversation = chatTranscriptConversationTitle(for: message)
+            if conversation != currentConversation {
+                lines.append("")
+                lines.append("## \(conversation)")
+                currentConversation = conversation
+            }
+            lines.append(contentsOf: chatTranscriptLines(for: message))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func chatTranscriptConversationTitle(for message: TS3ChatMessageSummary) -> String {
+        switch message.targetMode {
+        case .server:
+            return "Server Chat"
+        case .channel:
+            guard let targetId = message.targetId else { return "Channel Chat: Unknown Channel" }
+            return "Channel Chat: \(channelName(for: targetId) ?? "Channel \(targetId)") (\(targetId))"
+        case .client:
+            let peerId = message.isOwnMessage ? message.targetId : message.senderId
+            let peerName = peerId.flatMap { clientName(for: $0) } ?? message.senderName
+            if let peerId {
+                return "Private Chat: \(peerName) (\(peerId))"
+            }
+            return "Private Chat: \(peerName)"
+        }
+    }
+
+    private func chatTranscriptLines(for message: TS3ChatMessageSummary) -> [String] {
+        let direction = message.isOwnMessage ? "out" : "in"
+        let sender = message.senderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : message.senderName
+        let prefix = "\(Self.transcriptDateFormatter.string(from: message.timestamp)) [\(direction)] \(sender):"
+        let bodyLines = message.message.components(separatedBy: .newlines)
+        guard let firstLine = bodyLines.first else {
+            return ["\(prefix)"]
+        }
+        var lines = ["\(prefix) \(firstLine)"]
+        lines += bodyLines.dropFirst().map { "    \($0)" }
+        return lines
     }
 
     func beginViewingChat() {
@@ -12347,6 +12410,10 @@ final class TS3AppModel: ObservableObject {
     func channelName(for id: Int?) -> String? {
         guard let id else { return nil }
         return channels.first { $0.id == id }?.name ?? "Channel \(id)"
+    }
+
+    private func clientName(for id: Int) -> String? {
+        clients.first { $0.id == id }?.nickname
     }
 
     func toggleTalking() {
