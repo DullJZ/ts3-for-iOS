@@ -5064,6 +5064,19 @@ struct ContactsSheet: View {
                             isImportingContacts = true
                         }
                         Divider()
+                        Button("Mark Online Users as Friends") {
+                            model.updateOnlineContacts(status: .friend)
+                        }
+                        .disabled(model.onlineContactCandidates.isEmpty)
+                        Button("Block Online Users") {
+                            model.updateOnlineContacts(status: .blocked)
+                        }
+                        .disabled(model.onlineContactCandidates.isEmpty)
+                        Button("Ignore Online Users") {
+                            model.updateOnlineContacts(status: .ignored)
+                        }
+                        .disabled(model.onlineContactCandidates.isEmpty)
+                        Divider()
                         Button("Mark Visible Friends") {
                             model.updateContacts(visibleContacts, status: .friend)
                         }

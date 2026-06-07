@@ -26,14 +26,55 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(model.lastError, "The server did not provide a unique id for Tester.")
     }
 
-    private func makeUser(uniqueIdentifier: String?) -> TS3UserSummary {
+    @MainActor
+    func testOnlineContactCandidatesSkipCurrentUserAndMissingUniqueIds() {
+        let model = TS3AppModel()
+        model.clients = [
+            makeUser(id: 1, uniqueIdentifier: "self", nickname: "Me", isCurrentUser: true),
+            makeUser(id: 2, uniqueIdentifier: "user-2", nickname: "Beta"),
+            makeUser(id: 3, uniqueIdentifier: nil, nickname: "Anonymous")
+        ]
+
+        XCTAssertEqual(model.onlineContactCandidates.map(\.uniqueIdentifier), ["user-2"])
+
+        model.updateOnlineContacts(status: .friend)
+
+        XCTAssertEqual(model.contacts.count, 1)
+        XCTAssertEqual(model.contacts.first?.nickname, "Beta")
+        XCTAssertEqual(model.contacts.first?.status, .friend)
+    }
+
+    @MainActor
+    func testOnlineContactCandidatesRefreshExistingContactNickname() {
+        let model = TS3AppModel()
+        model.addContact(uniqueIdentifier: "user-2", nickname: "Old", status: .ignored, note: "keep")
+        model.clients = [
+            makeUser(id: 2, uniqueIdentifier: "user-2", nickname: "New")
+        ]
+
+        XCTAssertEqual(model.onlineContactCandidates.first?.nickname, "New")
+
+        model.updateOnlineContacts(status: .blocked)
+
+        XCTAssertEqual(model.contacts.count, 1)
+        XCTAssertEqual(model.contacts.first?.nickname, "New")
+        XCTAssertEqual(model.contacts.first?.status, .blocked)
+        XCTAssertEqual(model.contacts.first?.note, "keep")
+    }
+
+    private func makeUser(
+        id: Int = 12,
+        uniqueIdentifier: String?,
+        nickname: String = "Tester",
+        isCurrentUser: Bool = false
+    ) -> TS3UserSummary {
         TS3UserSummary(
-            id: 12,
+            id: id,
             channelId: 5,
             databaseId: 44,
             uniqueIdentifier: uniqueIdentifier,
-            nickname: "Tester",
-            isCurrentUser: false,
+            nickname: nickname,
+            isCurrentUser: isCurrentUser,
             isInputMuted: false,
             isOutputMuted: false,
             isAway: false,

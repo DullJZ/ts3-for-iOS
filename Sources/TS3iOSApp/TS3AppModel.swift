@@ -3387,6 +3387,7 @@ final class TS3AppModel: ObservableObject {
             if status == .neutral && note.isEmpty {
                 contacts.removeAll { $0.uniqueIdentifier == entry.uniqueIdentifier }
             } else if let index = contacts.firstIndex(where: { $0.uniqueIdentifier == entry.uniqueIdentifier }) {
+                contacts[index].nickname = entry.nickname
                 contacts[index].status = status
                 contacts[index].note = note
                 contacts[index].updatedAt = now
@@ -3403,6 +3404,33 @@ final class TS3AppModel: ObservableObject {
         saveContacts()
         syncBlockedContactPlayback()
         lastError = nil
+    }
+
+    var onlineContactCandidates: [TS3ContactEntry] {
+        clients
+            .filter { !$0.isCurrentUser }
+            .compactMap { user in
+                guard let uniqueIdentifier = user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !uniqueIdentifier.isEmpty else {
+                    return nil
+                }
+                if var existing = contacts.first(where: { $0.uniqueIdentifier == uniqueIdentifier }) {
+                    existing.nickname = user.nickname
+                    return existing
+                }
+                return TS3ContactEntry(
+                    uniqueIdentifier: uniqueIdentifier,
+                    nickname: user.nickname,
+                    status: .neutral,
+                    note: "",
+                    updatedAt: Date()
+                )
+            }
+            .sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+    }
+
+    func updateOnlineContacts(status: TS3ContactStatus) {
+        updateContacts(onlineContactCandidates, status: status)
     }
 
     private func updateContact(for user: TS3UserSummary, status: TS3ContactStatus, note: String) {
