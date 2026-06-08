@@ -632,6 +632,25 @@ private struct TS3BanBackup: Codable {
     var entries: [TS3BanBackupEntry]
 }
 
+struct TS3BanBackupPreview {
+    let ruleCount: Int
+    let skippedRuleCount: Int
+    let ipRuleCount: Int
+    let nameRuleCount: Int
+    let uniqueIdentifierRuleCount: Int
+    let lastNicknameRuleCount: Int
+    let firstIP: String?
+    let firstName: String?
+    let firstUniqueIdentifier: String?
+    let firstLastNickname: String?
+    let firstDurationSeconds: Int?
+    let firstReason: String?
+
+    var hasRules: Bool {
+        ruleCount > 0
+    }
+}
+
 extension TS3BanEntrySummary {
     init(entry: TS3BanEntry) {
         self.id = entry.id
@@ -9292,7 +9311,7 @@ final class TS3AppModel: ObservableObject {
 
     func importBanBackup(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3BanBackup.self, from: data)
-        for entry in decoded.entries {
+        for entry in sanitizedBanBackupEntries(decoded.entries).entries {
             addBan(
                 ip: entry.ip ?? "",
                 name: entry.name ?? "",
@@ -9304,6 +9323,74 @@ final class TS3AppModel: ObservableObject {
             )
         }
         lastError = nil
+    }
+
+    func banBackupPreview(from data: Data) throws -> TS3BanBackupPreview {
+        let decoded = try JSONDecoder().decode(TS3BanBackup.self, from: data)
+        let sanitized = sanitizedBanBackupEntries(decoded.entries)
+        let entries = sanitized.entries
+        let first = entries.first
+        return TS3BanBackupPreview(
+            ruleCount: entries.count,
+            skippedRuleCount: sanitized.skippedCount,
+            ipRuleCount: entries.filter { $0.ip?.isEmpty == false }.count,
+            nameRuleCount: entries.filter { $0.name?.isEmpty == false }.count,
+            uniqueIdentifierRuleCount: entries.filter { $0.uniqueIdentifier?.isEmpty == false }.count,
+            lastNicknameRuleCount: entries.filter { $0.lastNickname?.isEmpty == false }.count,
+            firstIP: first?.ip,
+            firstName: first?.name,
+            firstUniqueIdentifier: first?.uniqueIdentifier,
+            firstLastNickname: first?.lastNickname,
+            firstDurationSeconds: first?.durationSeconds,
+            firstReason: first?.reason
+        )
+    }
+
+    private func sanitizedBanBackupEntries(
+        _ entries: [TS3BanBackupEntry]
+    ) -> (entries: [TS3BanBackupEntry], skippedCount: Int) {
+        var skippedCount = 0
+        var seen: Set<String> = []
+        let sanitizedEntries = entries.compactMap { entry -> TS3BanBackupEntry? in
+            let ip = trimmedBackupValue(entry.ip)
+            let name = trimmedBackupValue(entry.name)
+            let uniqueIdentifier = trimmedBackupValue(entry.uniqueIdentifier)
+            let lastNickname = trimmedBackupValue(entry.lastNickname)
+            let reason = trimmedBackupValue(entry.reason)
+            guard ip != nil || name != nil || uniqueIdentifier != nil || lastNickname != nil else {
+                skippedCount += 1
+                return nil
+            }
+            let duplicateKey = [
+                ip ?? "",
+                name ?? "",
+                uniqueIdentifier ?? "",
+                lastNickname ?? "",
+                entry.durationSeconds.map(String.init) ?? "",
+                reason ?? ""
+            ].joined(separator: "\u{1F}")
+            guard seen.insert(duplicateKey).inserted else {
+                skippedCount += 1
+                return nil
+            }
+            return TS3BanBackupEntry(
+                ip: ip,
+                name: name,
+                uniqueIdentifier: uniqueIdentifier,
+                lastNickname: lastNickname,
+                durationSeconds: entry.durationSeconds,
+                reason: reason
+            )
+        }
+        return (sanitizedEntries, skippedCount)
+    }
+
+    private func trimmedBackupValue(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 
     func deleteComplaint(_ entry: TS3ComplaintSummary) {

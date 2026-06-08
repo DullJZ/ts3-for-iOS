@@ -17864,6 +17864,7 @@ private extension TS3PrivilegeKeySummary {
 struct BanListSheet: View {
     private struct BanBackupImportConfirmation: Identifiable {
         let url: URL
+        let preview: TS3BanBackupPreview
         let id = UUID()
     }
 
@@ -18124,7 +18125,7 @@ struct BanListSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    pendingBanBackupImport = BanBackupImportConfirmation(url: url)
+                    prepareBanBackupImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -18183,7 +18184,7 @@ struct BanListSheet: View {
             .alert(item: $pendingBanBackupImport) { confirmation in
                 Alert(
                     title: Text("Import Ban Backup?"),
-                    message: Text("This adds every ban rule from the selected backup to the server."),
+                    message: Text(banBackupPreviewMessage(confirmation.preview)),
                     primaryButton: .destructive(Text("Import")) {
                         importBanBackup(from: confirmation.url)
                     },
@@ -18305,6 +18306,21 @@ struct BanListSheet: View {
         }
     }
 
+    private func prepareBanBackupImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.banBackupPreview(from: Data(contentsOf: url))
+            pendingBanBackupImport = BanBackupImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
     private func importBanBackup(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -18317,6 +18333,39 @@ struct BanListSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func banBackupPreviewMessage(_ preview: TS3BanBackupPreview) -> String {
+        var lines = [
+            "Rules: \(preview.ruleCount)",
+            "IP rules: \(preview.ipRuleCount)",
+            "Name rules: \(preview.nameRuleCount)",
+            "Unique ID rules: \(preview.uniqueIdentifierRuleCount)",
+            "Last nickname rules: \(preview.lastNicknameRuleCount)"
+        ]
+        if preview.skippedRuleCount > 0 {
+            lines.append("Skipped empty or duplicate rules: \(preview.skippedRuleCount)")
+        }
+        if let ip = preview.firstIP {
+            lines.append("First IP: \(ip)")
+        }
+        if let name = preview.firstName {
+            lines.append("First name: \(name)")
+        }
+        if let uniqueIdentifier = preview.firstUniqueIdentifier {
+            lines.append("First unique ID: \(uniqueIdentifier)")
+        }
+        if let lastNickname = preview.firstLastNickname {
+            lines.append("First last nickname: \(lastNickname)")
+        }
+        if let duration = preview.firstDurationSeconds {
+            lines.append("First duration: \(duration == 0 ? "Permanent" : "\(duration) seconds")")
+        }
+        if let reason = preview.firstReason {
+            lines.append("First reason: \(reason)")
+        }
+        lines.append(preview.hasRules ? "Import adds these ban rules to the server." : "The backup has no usable ban rules.")
+        return lines.joined(separator: "\n")
     }
 }
 
