@@ -923,6 +923,27 @@ struct TS3DatabaseClientSummary: Identifiable {
     }
 }
 
+struct TS3DatabaseClientBackupPreview {
+    let clientCount: Int
+    let skippedClientCount: Int
+    let uniqueIdentifierCount: Int
+    let descriptionCount: Int
+    let lastIPCount: Int
+    let connectionCount: Int
+    let clientSummaries: [String]
+    let firstNickname: String?
+    let firstUniqueIdentifier: String?
+    let firstDatabaseId: Int?
+
+    var hasClients: Bool {
+        clientCount > 0
+    }
+
+    var clipboardSummary: String {
+        clientSummaries.joined(separator: "\n")
+    }
+}
+
 private struct TS3DatabaseClientBackupEntry: Codable {
     var id: Int
     var uniqueIdentifier: String?
@@ -6721,21 +6742,28 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(snapshot)
     }
 
+    func databaseClientBackupPreview(from data: Data) throws -> TS3DatabaseClientBackupPreview {
+        let decoded = try JSONDecoder().decode(TS3DatabaseClientBackup.self, from: data)
+        let sanitized = sanitizedDatabaseClientBackupEntries(decoded.entries)
+        let clients = sanitized.clients
+        let first = clients.first
+        return TS3DatabaseClientBackupPreview(
+            clientCount: clients.count,
+            skippedClientCount: sanitized.skippedCount,
+            uniqueIdentifierCount: clients.filter { $0.uniqueIdentifier?.isEmpty == false }.count,
+            descriptionCount: clients.filter { $0.description?.isEmpty == false }.count,
+            lastIPCount: clients.filter { $0.lastIP?.isEmpty == false }.count,
+            connectionCount: clients.filter { $0.totalConnections != nil }.count,
+            clientSummaries: clients.prefix(10).map(Self.databaseClientBackupSummary),
+            firstNickname: first?.nickname,
+            firstUniqueIdentifier: first?.uniqueIdentifier,
+            firstDatabaseId: first?.id
+        )
+    }
+
     func importDatabaseClientBackup(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3DatabaseClientBackup.self, from: data)
-        let imported = decoded.entries.map {
-            TS3DatabaseClientSummary(
-                id: $0.id,
-                uniqueIdentifier: $0.uniqueIdentifier,
-                nickname: $0.nickname,
-                createdAt: $0.createdAt,
-                lastConnectedAt: $0.lastConnectedAt,
-                totalConnections: $0.totalConnections,
-                description: $0.description,
-                lastIP: $0.lastIP
-            )
-        }
-        databaseClients = imported.sorted { $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending }
+        databaseClients = sanitizedDatabaseClientBackupEntries(decoded.entries).clients
         lastError = nil
     }
 
@@ -10312,6 +10340,68 @@ final class TS3AppModel: ObservableObject {
 
         replace(in: &databaseClients)
         replace(in: &databaseSearchResults)
+    }
+
+    private func sanitizedDatabaseClientBackupEntries(
+        _ entries: [TS3DatabaseClientBackupEntry]
+    ) -> (clients: [TS3DatabaseClientSummary], skippedCount: Int) {
+        var skippedCount = 0
+        var seenIds: Set<Int> = []
+        let clients = entries.compactMap { entry -> TS3DatabaseClientSummary? in
+            guard entry.id > 0, seenIds.insert(entry.id).inserted else {
+                skippedCount += 1
+                return nil
+            }
+            let nickname = entry.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !nickname.isEmpty else {
+                skippedCount += 1
+                return nil
+            }
+            return TS3DatabaseClientSummary(
+                id: entry.id,
+                uniqueIdentifier: trimmedArchiveValue(entry.uniqueIdentifier),
+                nickname: nickname,
+                createdAt: entry.createdAt,
+                lastConnectedAt: entry.lastConnectedAt,
+                totalConnections: entry.totalConnections,
+                description: trimmedArchiveValue(entry.description),
+                lastIP: trimmedArchiveValue(entry.lastIP)
+            )
+        }
+        .sorted { lhs, rhs in
+            let comparison = lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname)
+            if comparison == .orderedSame {
+                return lhs.id < rhs.id
+            }
+            return comparison == .orderedAscending
+        }
+        return (clients, skippedCount)
+    }
+
+    private static func databaseClientBackupSummary(_ client: TS3DatabaseClientSummary) -> String {
+        var parts = [
+            "db=\(client.id)",
+            "nickname=\(client.nickname)"
+        ]
+        if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let totalConnections = client.totalConnections {
+            parts.append("connections=\(totalConnections)")
+        }
+        if let lastIP = client.lastIP, !lastIP.isEmpty {
+            parts.append("lastIP=\(lastIP)")
+        }
+        if client.description?.isEmpty == false {
+            parts.append("description=true")
+        }
+        if let createdAt = client.createdAt {
+            parts.append("created=\(Int(createdAt.timeIntervalSince1970))")
+        }
+        if let lastConnectedAt = client.lastConnectedAt {
+            parts.append("lastConnected=\(Int(lastConnectedAt.timeIntervalSince1970))")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func copyUser(

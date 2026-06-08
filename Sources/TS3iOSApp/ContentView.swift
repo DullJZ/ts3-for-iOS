@@ -11821,6 +11821,7 @@ struct GroupNameSheet: View {
 struct ClientDatabaseSheet: View {
     private struct DatabaseBackupImportConfirmation: Identifiable {
         let url: URL
+        let preview: TS3DatabaseClientBackupPreview
         let id = UUID()
     }
 
@@ -12331,7 +12332,7 @@ struct ClientDatabaseSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    pendingDatabaseBackupImport = DatabaseBackupImportConfirmation(url: url)
+                    prepareDatabaseBackupImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -12347,14 +12348,17 @@ struct ClientDatabaseSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingDatabaseBackupImport) { confirmation in
-                Alert(
-                    title: Text("Import Database Backup?"),
-                    message: Text("This replaces the currently loaded local database client list with the selected backup."),
-                    primaryButton: .destructive(Text("Import")) {
+            .sheet(item: $pendingDatabaseBackupImport) { confirmation in
+                DatabaseBackupImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: databaseBackupPreviewMessage(confirmation.preview),
+                    importBackup: {
                         importDatabaseBackup(from: confirmation.url)
+                        pendingDatabaseBackupImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingDatabaseBackupImport = nil
+                    }
                 )
             }
             .onAppear {
@@ -12561,6 +12565,41 @@ struct ClientDatabaseSheet: View {
         }
     }
 
+    private func prepareDatabaseBackupImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            let preview = try model.databaseClientBackupPreview(from: data)
+            pendingDatabaseBackupImport = DatabaseBackupImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func databaseBackupPreviewMessage(_ preview: TS3DatabaseClientBackupPreview) -> String {
+        var lines = [
+            "\(preview.clientCount) database clients will replace the currently loaded local list.",
+            "\(preview.uniqueIdentifierCount) with unique IDs, \(preview.descriptionCount) with descriptions, \(preview.lastIPCount) with last IPs, \(preview.connectionCount) with connection counts."
+        ]
+        if preview.skippedClientCount > 0 {
+            lines.append("\(preview.skippedClientCount) invalid or duplicate records will be skipped.")
+        }
+        if let firstNickname = preview.firstNickname, let firstDatabaseId = preview.firstDatabaseId {
+            var first = "First: \(firstNickname) (DB \(firstDatabaseId))"
+            if let firstUniqueIdentifier = preview.firstUniqueIdentifier, !firstUniqueIdentifier.isEmpty {
+                first += " uid \(firstUniqueIdentifier)"
+            }
+            lines.append(first)
+        }
+        lines.append(preview.hasClients ? "Import replaces only the local cached database client list." : "The backup has no usable database client records.")
+        return lines.joined(separator: "\n")
+    }
+
     private func importPresets(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -12586,6 +12625,57 @@ struct ClientDatabaseSheet: View {
             try model.importDatabaseClientBackup(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct DatabaseBackupImportSheet: View {
+    let preview: TS3DatabaseClientBackupPreview
+    let previewMessage: String
+    let importBackup: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasClients {
+                        Button("Copy Client Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(Array(preview.clientSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces the local cached client database list for offline review and does not create, edit, or delete server database records.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Database")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importBackup()
+                    }
+                    .disabled(!preview.hasClients)
+                }
+            }
         }
     }
 }
