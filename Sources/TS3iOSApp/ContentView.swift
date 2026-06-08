@@ -9288,14 +9288,21 @@ struct ServerToolsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingNotificationSettingsImport) { confirmation in
-                Alert(
-                    title: Text("Import Notification Settings?"),
-                    message: Text(notificationSettingsImportMessage(for: confirmation)),
-                    primaryButton: .destructive(Text("Import")) {
+            .sheet(
+                item: $pendingNotificationSettingsImport,
+                onDismiss: {
+                    pendingNotificationSettingsImport = nil
+                }
+            ) { confirmation in
+                NotificationSettingsImportSheet(
+                    previewLines: confirmation.previewLines,
+                    importSettings: {
                         importNotificationSettings(from: confirmation.url)
+                        pendingNotificationSettingsImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingNotificationSettingsImport = nil
+                    }
                 )
             }
         }
@@ -9329,13 +9336,6 @@ struct ServerToolsSheet: View {
         }
     }
 
-    private func notificationSettingsImportMessage(
-        for confirmation: NotificationSettingsImportConfirmation
-    ) -> String {
-        let preview = confirmation.previewLines.joined(separator: "\n")
-        return "\(preview)\n\nThis replaces current local notification preferences with the selected settings file."
-    }
-
     private func importNotificationSettings(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -9347,6 +9347,55 @@ struct ServerToolsSheet: View {
             try model.importNotificationSettings(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct NotificationSettingsImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let previewLines: [String]
+    let importSettings: () -> Void
+    let cancel: () -> Void
+
+    private var previewSummary: String {
+        previewLines.joined(separator: "\n")
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    ForEach(previewLines, id: \.self) { line in
+                        Text(line)
+                    }
+                    Button("Copy Notification Summary") {
+                        TS3PlatformSupport.copyToPasteboard(previewSummary)
+                    }
+                }
+
+                Section {
+                    Text("Importing replaces current local notification preferences, event rules, muted servers, muted contacts, and quiet hours with the selected settings file.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Notification Settings")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importSettings()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
 }
@@ -21940,14 +21989,21 @@ struct NotificationSettingsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingNotificationSettingsImport) { confirmation in
-                Alert(
-                    title: Text("Import Notification Settings?"),
-                    message: Text(notificationSettingsImportMessage(for: confirmation)),
-                    primaryButton: .destructive(Text("Import")) {
+            .sheet(
+                item: $pendingNotificationSettingsImport,
+                onDismiss: {
+                    pendingNotificationSettingsImport = nil
+                }
+            ) { confirmation in
+                NotificationSettingsImportSheet(
+                    previewLines: confirmation.previewLines,
+                    importSettings: {
                         importNotificationSettings(from: confirmation.url)
+                        pendingNotificationSettingsImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingNotificationSettingsImport = nil
+                    }
                 )
             }
         }
@@ -21979,13 +22035,6 @@ struct NotificationSettingsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
-    }
-
-    private func notificationSettingsImportMessage(
-        for confirmation: NotificationSettingsImportConfirmation
-    ) -> String {
-        let preview = confirmation.previewLines.joined(separator: "\n")
-        return "\(preview)\n\nThis replaces current local notification preferences with the selected settings file."
     }
 
     private func importNotificationSettings(from url: URL) {
