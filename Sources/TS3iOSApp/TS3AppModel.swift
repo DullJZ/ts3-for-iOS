@@ -684,6 +684,47 @@ struct TS3ComplaintSummary: Identifiable, Codable {
         self.message = entry.message
         self.timestamp = entry.timestamp
     }
+
+    init(
+        id: String,
+        targetClientDatabaseId: Int,
+        targetName: String?,
+        sourceClientDatabaseId: Int,
+        sourceName: String?,
+        message: String?,
+        timestamp: Date?
+    ) {
+        self.id = id
+        self.targetClientDatabaseId = targetClientDatabaseId
+        self.targetName = targetName
+        self.sourceClientDatabaseId = sourceClientDatabaseId
+        self.sourceName = sourceName
+        self.message = message
+        self.timestamp = timestamp
+    }
+}
+
+private struct TS3ComplaintArchive: Codable {
+    var entries: [TS3ComplaintSummary]
+}
+
+struct TS3ComplaintArchivePreview {
+    let complaintCount: Int
+    let skippedComplaintCount: Int
+    let targetCount: Int
+    let namedSourceCount: Int
+    let anonymousSourceCount: Int
+    let messageCount: Int
+    let firstTargetName: String?
+    let firstTargetDatabaseId: Int?
+    let firstSourceName: String?
+    let firstSourceDatabaseId: Int?
+    let firstMessage: String?
+    let firstTimestamp: Date?
+
+    var hasComplaints: Bool {
+        complaintCount > 0
+    }
 }
 
 struct TS3SelfStatusBackup: Codable {
@@ -8792,6 +8833,41 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func complaintArchiveData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TS3ComplaintArchive(entries: sanitizedComplaintArchiveEntries(complaintEntries).entries))
+    }
+
+    func complaintArchivePreview(from data: Data) throws -> TS3ComplaintArchivePreview {
+        let decoded = try JSONDecoder().decode(TS3ComplaintArchive.self, from: data)
+        let sanitized = sanitizedComplaintArchiveEntries(decoded.entries)
+        let entries = sanitized.entries
+        let first = entries.first
+        return TS3ComplaintArchivePreview(
+            complaintCount: entries.count,
+            skippedComplaintCount: sanitized.skippedCount,
+            targetCount: Set(entries.map(\.targetClientDatabaseId)).count,
+            namedSourceCount: entries.filter { $0.sourceName?.isEmpty == false }.count,
+            anonymousSourceCount: entries.filter { $0.sourceName?.isEmpty != false }.count,
+            messageCount: entries.filter { $0.message?.isEmpty == false }.count,
+            firstTargetName: first?.targetName,
+            firstTargetDatabaseId: first?.targetClientDatabaseId,
+            firstSourceName: first?.sourceName,
+            firstSourceDatabaseId: first?.sourceClientDatabaseId,
+            firstMessage: first?.message,
+            firstTimestamp: first?.timestamp
+        )
+    }
+
+    func importComplaintArchive(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3ComplaintArchive.self, from: data)
+        let entries = sanitizedComplaintArchiveEntries(decoded.entries).entries
+        complaintEntries = Array(entries.prefix(500))
+        saveComplaintResults()
+        lastError = nil
+    }
+
     func saveTemporaryServerPasswordFilterPreset(
         name: String,
         passwordFilter: String,
@@ -11539,7 +11615,7 @@ final class TS3AppModel: ObservableObject {
             complaintEntries = []
             return
         }
-        complaintEntries = Array(decoded.prefix(500))
+        complaintEntries = Array(sanitizedComplaintArchiveEntries(decoded).entries.prefix(500))
     }
 
     private func saveComplaintResults() {
@@ -11597,6 +11673,60 @@ final class TS3AppModel: ObservableObject {
             searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
             updatedAt: preset.updatedAt
         )
+    }
+
+    private func sanitizedComplaintArchiveEntries(
+        _ entries: [TS3ComplaintSummary]
+    ) -> (entries: [TS3ComplaintSummary], skippedCount: Int) {
+        var skippedCount = 0
+        var seen: Set<String> = []
+        let sanitizedEntries = entries.compactMap { entry -> TS3ComplaintSummary? in
+            guard entry.targetClientDatabaseId > 0, entry.sourceClientDatabaseId > 0 else {
+                skippedCount += 1
+                return nil
+            }
+            let targetName = trimmedArchiveValue(entry.targetName)
+            let sourceName = trimmedArchiveValue(entry.sourceName)
+            let message = trimmedArchiveValue(entry.message)
+            let stableId = "complaint-\(entry.targetClientDatabaseId)-\(entry.sourceClientDatabaseId)-\(entry.timestamp?.timeIntervalSince1970 ?? 0)-\(message ?? "")"
+            let id = entry.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? stableId : entry.id
+            let duplicateKey = [
+                String(entry.targetClientDatabaseId),
+                String(entry.sourceClientDatabaseId),
+                entry.timestamp?.timeIntervalSince1970.description ?? "",
+                message ?? ""
+            ].joined(separator: "\u{1F}")
+            guard seen.insert(duplicateKey).inserted else {
+                skippedCount += 1
+                return nil
+            }
+            return TS3ComplaintSummary(
+                id: id,
+                targetClientDatabaseId: entry.targetClientDatabaseId,
+                targetName: targetName,
+                sourceClientDatabaseId: entry.sourceClientDatabaseId,
+                sourceName: sourceName,
+                message: message,
+                timestamp: entry.timestamp
+            )
+        }
+        .sorted {
+            switch ($0.timestamp, $1.timestamp) {
+            case let (lhs?, rhs?): return lhs > rhs
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil): return $0.sourceClientDatabaseId < $1.sourceClientDatabaseId
+            }
+        }
+        return (sanitizedEntries, skippedCount)
+    }
+
+    private func trimmedArchiveValue(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 
     private func loadTemporaryServerPasswordFilterPresets() {

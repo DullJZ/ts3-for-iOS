@@ -18370,6 +18370,12 @@ struct BanListSheet: View {
 }
 
 struct ComplaintListSheet: View {
+    private struct ComplaintArchiveImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3ComplaintArchivePreview
+        let id = UUID()
+    }
+
     private enum ComplaintFilter: String, CaseIterable, Identifiable {
         case all
         case namedSource
@@ -18432,11 +18438,15 @@ struct ComplaintListSheet: View {
     @State private var isConfirmingDeleteAll = false
     @State private var isConfirmingDeleteVisible = false
     @State private var isExportingComplaints = false
+    @State private var isExportingComplaintArchive = false
+    @State private var isImportingComplaintArchive = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
     @State private var complaintExportDocument = TS3TextFileDocument()
+    @State private var complaintArchiveDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingComplaintArchiveImport: ComplaintArchiveImportConfirmation?
     @State private var searchText = ""
     @State private var complaintFilter: ComplaintFilter = .all
     @State private var sortMode: ComplaintSortMode = .date
@@ -18557,6 +18567,10 @@ struct ComplaintListSheet: View {
                 }
 
                 Section(header: Text("Complaints")) {
+                    Button("Import Complaint Archive") {
+                        isImportingComplaintArchive = true
+                    }
+
                     if model.complaintEntries.isEmpty {
                         Text("No complaints")
                             .foregroundColor(.secondary)
@@ -18571,6 +18585,11 @@ struct ComplaintListSheet: View {
                             isExportingComplaints = true
                         }
                         .disabled(filteredComplaintEntries.isEmpty)
+
+                        Button("Export Complaint Archive") {
+                            exportComplaintArchive()
+                        }
+                        .disabled(model.complaintEntries.isEmpty)
 
                         Button("Delete Visible Complaints") {
                             isConfirmingDeleteVisible = true
@@ -18611,12 +18630,33 @@ struct ComplaintListSheet: View {
                 }
             }
             .fileExporter(
+                isPresented: $isExportingComplaintArchive,
+                document: complaintArchiveDocument,
+                contentType: .json,
+                defaultFilename: "ts3-complaint-archive"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
                 isPresented: $isExportingPresets,
                 document: presetsDocument,
                 contentType: .json,
                 defaultFilename: "ts3-complaint-filter-presets"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingComplaintArchive,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    prepareComplaintArchiveImport(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -18664,6 +18704,16 @@ struct ComplaintListSheet: View {
                     message: Text(model.complaintTarget?.nickname ?? "Selected user"),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteComplaints(filteredComplaintEntries)
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(item: $pendingComplaintArchiveImport) { confirmation in
+                Alert(
+                    title: Text("Import Complaint Archive?"),
+                    message: Text(complaintArchivePreviewMessage(confirmation.preview)),
+                    primaryButton: .default(Text("Import")) {
+                        importComplaintArchive(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
                 )
@@ -18818,6 +18868,75 @@ struct ComplaintListSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func exportComplaintArchive() {
+        do {
+            complaintArchiveDocument = TS3TextFileDocument(data: try model.complaintArchiveData())
+            isExportingComplaintArchive = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareComplaintArchiveImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.complaintArchivePreview(from: Data(contentsOf: url))
+            pendingComplaintArchiveImport = ComplaintArchiveImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importComplaintArchive(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importComplaintArchive(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func complaintArchivePreviewMessage(_ preview: TS3ComplaintArchivePreview) -> String {
+        var lines = [
+            "Complaints: \(preview.complaintCount)",
+            "Targets: \(preview.targetCount)",
+            "Named sources: \(preview.namedSourceCount)",
+            "Anonymous sources: \(preview.anonymousSourceCount)",
+            "With messages: \(preview.messageCount)"
+        ]
+        if preview.skippedComplaintCount > 0 {
+            lines.append("Skipped invalid or duplicate complaints: \(preview.skippedComplaintCount)")
+        }
+        if let targetName = preview.firstTargetName {
+            lines.append("First target: \(targetName)")
+        } else if let targetDatabaseId = preview.firstTargetDatabaseId {
+            lines.append("First target DB: \(targetDatabaseId)")
+        }
+        if let sourceName = preview.firstSourceName {
+            lines.append("First source: \(sourceName)")
+        } else if let sourceDatabaseId = preview.firstSourceDatabaseId {
+            lines.append("First source DB: \(sourceDatabaseId)")
+        }
+        if let firstTimestamp = preview.firstTimestamp {
+            lines.append("First date: \(ComplaintEntryRow.dateText(firstTimestamp))")
+        }
+        if let firstMessage = preview.firstMessage {
+            lines.append("First message: \(firstMessage)")
+        }
+        lines.append(preview.hasComplaints ? "Import replaces the local cached complaint list for offline review; it does not submit complaints to the server." : "The archive has no usable complaints.")
+        return lines.joined(separator: "\n")
     }
 }
 
