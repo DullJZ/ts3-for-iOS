@@ -3062,6 +3062,7 @@ struct TS3ServerLogArchivePreview {
     let levelCount: Int
     let channelCount: Int
     let timestampCount: Int
+    let entrySummaries: [String]
     let firstLevel: String?
     let firstChannel: String?
     let firstMessage: String?
@@ -3069,6 +3070,10 @@ struct TS3ServerLogArchivePreview {
 
     var hasEntries: Bool {
         entryCount > 0
+    }
+
+    var clipboardSummary: String {
+        entrySummaries.joined(separator: "\n")
     }
 }
 
@@ -6491,6 +6496,7 @@ final class TS3AppModel: ObservableObject {
             levelCount: entries.filter { $0.level?.isEmpty == false }.count,
             channelCount: entries.filter { $0.channel?.isEmpty == false }.count,
             timestampCount: entries.filter { $0.timestamp != nil }.count,
+            entrySummaries: entries.prefix(10).map(Self.serverLogArchiveSummary),
             firstLevel: first?.level,
             firstChannel: first?.channel,
             firstMessage: first?.message,
@@ -11568,6 +11574,23 @@ final class TS3AppModel: ObservableObject {
             }
         }
         return (sanitizedEntries, skippedCount)
+    }
+
+    private static func serverLogArchiveSummary(_ entry: TS3ServerLogSummary) -> String {
+        var parts = [
+            "id=\(entry.id)",
+            "message=\(entry.message)"
+        ]
+        if let level = entry.level, !level.isEmpty {
+            parts.append("level=\(level)")
+        }
+        if let channel = entry.channel, !channel.isEmpty {
+            parts.append("channel=\(channel)")
+        }
+        if let timestamp = entry.timestamp {
+            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func loadChannelSubscriptionPresets() {

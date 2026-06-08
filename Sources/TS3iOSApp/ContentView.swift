@@ -9611,14 +9611,17 @@ struct ServerLogsSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingLogArchiveImport) { confirmation in
-                Alert(
-                    title: Text("Import Log Archive?"),
-                    message: Text(logArchivePreviewMessage(confirmation.preview)),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingLogArchiveImport) { confirmation in
+                ServerLogArchiveImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: logArchivePreviewMessage(confirmation.preview),
+                    importArchive: {
                         importLogArchive(from: confirmation.url)
+                        pendingLogArchiveImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingLogArchiveImport = nil
+                    }
                 )
             }
             .alert(item: $confirmation) { confirmation in
@@ -9868,6 +9871,57 @@ struct ServerLogsSheet: View {
 
     private static func transcript(from entries: [TS3ServerLogSummary]) -> String {
         entries.map(\.clipboardText).joined(separator: "\n")
+    }
+}
+
+private struct ServerLogArchiveImportSheet: View {
+    let preview: TS3ServerLogArchivePreview
+    let previewMessage: String
+    let importArchive: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasEntries {
+                        Button("Copy Log Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(Array(preview.entrySummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces the local cached server log results for offline review and does not change server-side logs.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Logs")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importArchive()
+                    }
+                    .disabled(!preview.hasEntries)
+                }
+            }
+        }
     }
 }
 
