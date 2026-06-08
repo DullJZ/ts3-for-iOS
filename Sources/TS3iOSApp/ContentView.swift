@@ -2182,6 +2182,9 @@ struct ChannelListView: View {
             }
             .padding(.horizontal)
 
+            CompactVoiceStatusStrip()
+                .padding(.horizontal)
+
             ServerHeaderView()
                 .padding(.horizontal)
 
@@ -3549,6 +3552,100 @@ struct CurrentChannelCard: View {
                 .stroke(Color.accentColor.opacity(0.25), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct CompactVoiceStatusStrip: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    private var items: [CompactVoiceStatusItem] {
+        [
+            CompactVoiceStatusItem(
+                title: model.state.title,
+                detail: model.currentChannel?.name ?? model.serverHost,
+                systemImage: model.state == .connected ? "network" : "network.slash",
+                isActive: model.state == .connected
+            ),
+            CompactVoiceStatusItem(
+                title: model.isInputMuted ? "Mic Muted" : "Mic Ready",
+                detail: model.talkStatus,
+                systemImage: model.isInputMuted ? "mic.slash.fill" : (model.isTalking ? "waveform" : "mic.fill"),
+                isActive: model.isTalking && !model.isInputMuted
+            ),
+            CompactVoiceStatusItem(
+                title: model.isOutputMuted ? "Sound Muted" : "Sound On",
+                detail: model.isOutputMuted ? "Playback muted" : "Playback enabled",
+                systemImage: model.isOutputMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                isActive: !model.isOutputMuted
+            ),
+            CompactVoiceStatusItem(
+                title: TS3AudioTransmitMode.title(for: model.audioTransmitMode.rawValue),
+                detail: model.transmitButtonTitle,
+                systemImage: model.audioTransmitMode == .voiceActivation ? "dot.radiowaves.left.and.right" : "person.wave.2.fill",
+                isActive: model.isTalking
+            ),
+            CompactVoiceStatusItem(
+                title: model.whisperRoute == .none ? "Whisper Off" : "Whisper Ready",
+                detail: model.whisperActivationStatus,
+                systemImage: model.whisperRoute == .none ? "scope" : "scope.fill",
+                isActive: model.whisperRoute != .none || model.isWhisperActivationActive
+            )
+        ]
+    }
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(items) { item in
+                    CompactVoiceStatusPill(item: item)
+                }
+            }
+            .padding(.vertical, 1)
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct CompactVoiceStatusItem: Identifiable {
+    let title: String
+    let detail: String
+    let systemImage: String
+    let isActive: Bool
+
+    var id: String {
+        "\(title)-\(systemImage)"
+    }
+}
+
+private struct CompactVoiceStatusPill: View {
+    let item: CompactVoiceStatusItem
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: item.systemImage)
+                .frame(width: 18, height: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Text(item.detail)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(minWidth: 128, maxWidth: 190, alignment: .leading)
+        .background(item.isActive ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
+        .overlay(
+            Capsule()
+                .stroke(item.isActive ? Color.accentColor.opacity(0.35) : Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+        .clipShape(Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.title)
+        .accessibilityValue(item.detail)
     }
 }
 

@@ -26,7 +26,7 @@ Status legend:
 | Push-to-talk | Done | PTT action, Catalyst menu shortcut, microphone permission flow, configurable shortcut recorder | Add lower-level global hotkey capture if platform APIs allow it. |
 | Continuous transmission | Done | Audio settings transmit mode presets, persistence, live input meter, and calibration diagnostics | Verify long-running capture behavior on iOS hardware and Catalyst. |
 | Voice activation | Partial | Mode and threshold settings, presets, persisted profiles, diagnostics snapshot, live input meter, and threshold calibration action exist | Verify end-to-end behavior on iOS hardware and Catalyst. |
-| Input/output mute | Done | Main UI and Catalyst menu actions | Add clearer global status indicators on compact layouts. |
+| Input/output mute | Done | Main UI, compact global voice status strip, VoiceOver-readable mic/sound state, and Catalyst menu actions | Monitor compact layout feedback on real devices. |
 | Audio devices and profiles | Partial | Audio routes, route availability notes, profile import/export, user playback backup | Validate route switching behavior on real iOS and Mac Catalyst devices. |
 
 ## Messaging
@@ -87,7 +87,7 @@ Status legend:
 | Local notifications | Done | Global notification settings, presets, import/export with overwrite preview, event types, per-server mute rules, per-contact mute rules, and quiet-hours scheduling | Add richer notification category-specific schedules if official-client parity requires them. |
 | Keyboard shortcuts | Partial | User-editable shortcut bindings, structured recorder, duplicate warnings, import/export/reset controls, validation hints, and Catalyst menu bindings for messaging, voice, server info/settings, admin tools, permissions, complaints, temporary passwords, and files | Add true key-event capture/global hotkey support if platform APIs allow it. |
 | Catalyst menus | Done | Native Catalyst/macOS command menus split into TeamSpeak, Connection, Messaging, Administration, and Voice workflows with shortcuts for major connected tools | Add new command groups as future workflows are added. |
-| iOS accessibility and compact layout | Partial | SwiftUI shared sheets and forms | Audit dynamic type, VoiceOver labels, and compact split behavior. |
+| iOS accessibility and compact layout | Partial | SwiftUI shared sheets/forms, compact voice status strip, and VoiceOver labels/values for global mic/output/transmit/whisper state | Continue auditing dynamic type and dense administration sheets. |
 
 ## Release And Diagnostics
 
