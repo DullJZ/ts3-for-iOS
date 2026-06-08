@@ -8355,14 +8355,17 @@ struct OfflineMessagesSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingInboxArchiveImport) { confirmation in
-                Alert(
-                    title: Text("Import Inbox Archive?"),
-                    message: Text(inboxArchivePreviewMessage(confirmation.preview)),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingInboxArchiveImport) { confirmation in
+                OfflineMessageArchiveImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: inboxArchivePreviewMessage(confirmation.preview),
+                    importArchive: {
                         importInboxArchive(from: confirmation.url)
+                        pendingInboxArchiveImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingInboxArchiveImport = nil
+                    }
                 )
             }
             .alert(item: $deleteConfirmation) { confirmation in
@@ -8589,6 +8592,57 @@ struct OfflineMessagesSheet: View {
         }
         lines.append(preview.hasMessages ? "Import replaces the local cached inbox for offline review; it does not mark, send, or delete server messages." : "The archive has no usable offline messages.")
         return lines.joined(separator: "\n")
+    }
+}
+
+private struct OfflineMessageArchiveImportSheet: View {
+    let preview: TS3OfflineMessageArchivePreview
+    let previewMessage: String
+    let importArchive: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasMessages {
+                        Button("Copy Message Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(Array(preview.messageSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces the local cached inbox for offline review and does not mark, send, or delete server messages.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Inbox")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importArchive()
+                    }
+                    .disabled(!preview.hasMessages)
+                }
+            }
+        }
     }
 }
 

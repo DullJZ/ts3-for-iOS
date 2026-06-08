@@ -601,6 +601,7 @@ struct TS3OfflineMessageArchivePreview {
     let withBodyCount: Int
     let replyableCount: Int
     let unknownSenderCount: Int
+    let messageSummaries: [String]
     let firstSenderName: String?
     let firstSenderUniqueIdentifier: String?
     let firstSubject: String?
@@ -608,6 +609,10 @@ struct TS3OfflineMessageArchivePreview {
 
     var hasMessages: Bool {
         messageCount > 0
+    }
+
+    var clipboardSummary: String {
+        messageSummaries.joined(separator: "\n")
     }
 }
 
@@ -8986,6 +8991,7 @@ final class TS3AppModel: ObservableObject {
             withBodyCount: messages.filter { $0.message?.isEmpty == false }.count,
             replyableCount: messages.filter { $0.senderUniqueIdentifier?.isEmpty == false }.count,
             unknownSenderCount: messages.filter { $0.senderName?.isEmpty != false && $0.senderUniqueIdentifier?.isEmpty != false }.count,
+            messageSummaries: messages.prefix(10).map(Self.offlineMessageArchiveSummary),
             firstSenderName: first?.senderName,
             firstSenderUniqueIdentifier: first?.senderUniqueIdentifier,
             firstSubject: first?.subject,
@@ -13440,6 +13446,27 @@ final class TS3AppModel: ObservableObject {
             }
         }
         return (sanitizedMessages, skippedCount)
+    }
+
+    private static func offlineMessageArchiveSummary(_ message: TS3OfflineMessageSummary) -> String {
+        var parts = [
+            "id=\(message.id)",
+            "read=\(message.isRead ? "true" : "false")",
+            "subject=\(message.subject)"
+        ]
+        if let senderName = message.senderName, !senderName.isEmpty {
+            parts.append("sender=\(senderName)")
+        }
+        if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
+            parts.append("senderUid=\(senderUniqueIdentifier)")
+        }
+        if let timestamp = message.timestamp {
+            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
+        }
+        if message.message?.isEmpty == false {
+            parts.append("body=true")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func saveOfflineMessageHistory() {
