@@ -3732,6 +3732,15 @@ final class TS3AppModel: ObservableObject {
         syncBlockedContactPlayback()
     }
 
+    func deleteContacts(_ entries: [TS3ContactEntry]) {
+        let identifiers = Set(entries.map(\.uniqueIdentifier))
+        guard !identifiers.isEmpty else { return }
+        contacts.removeAll { identifiers.contains($0.uniqueIdentifier) }
+        saveContacts()
+        syncBlockedContactPlayback()
+        lastError = nil
+    }
+
     func addContact(
         uniqueIdentifier: String,
         nickname: String,

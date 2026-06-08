@@ -5158,6 +5158,7 @@ struct ContactsSheet: View {
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
+    @State private var isConfirmingDeleteVisibleContacts = false
     @State private var pendingContactImport: ContactImportConfirmation?
     @State private var contactsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -5346,6 +5347,11 @@ struct ContactsSheet: View {
                             model.updateContacts(visibleContacts, status: .neutral)
                         }
                         .disabled(!canSetVisibleNeutral)
+                        Button("Delete Visible Contacts") {
+                            isConfirmingDeleteVisibleContacts = true
+                        }
+                        .disabled(visibleContacts.isEmpty)
+                        .foregroundColor(.red)
                     } label: {
                         Label("Contacts", systemImage: "ellipsis.circle")
                     }
@@ -5404,6 +5410,16 @@ struct ContactsSheet: View {
                     message: Text("This removes \(model.contactFilterPresets.count) saved local filter presets."),
                     primaryButton: .destructive(Text("Delete")) {
                         model.deleteAllContactFilterPresets()
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(isPresented: $isConfirmingDeleteVisibleContacts) {
+                Alert(
+                    title: Text("Delete Visible Contacts?"),
+                    message: Text("This removes \(visibleContacts.count) contacts matching the current filters."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        model.deleteContacts(visibleContacts)
                     },
                     secondaryButton: .cancel()
                 )

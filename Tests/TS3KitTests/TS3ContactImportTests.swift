@@ -51,6 +51,20 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(model.contacts.first?.note, "last")
     }
 
+    @MainActor
+    func testDeleteContactsRemovesOnlySelectedEntries() {
+        let model = TS3AppModel()
+        let keep = makeContact(uniqueIdentifier: "uid-keep", nickname: "Keep", status: .friend, note: "")
+        let removeFriend = makeContact(uniqueIdentifier: "uid-remove-friend", nickname: "Remove Friend", status: .friend, note: "")
+        let removeBlocked = makeContact(uniqueIdentifier: "uid-remove-blocked", nickname: "Remove Blocked", status: .blocked, note: "")
+        model.contacts = [keep, removeFriend, removeBlocked]
+
+        model.deleteContacts([removeFriend, removeBlocked])
+
+        XCTAssertEqual(model.contacts.map(\.uniqueIdentifier), ["uid-keep"])
+        XCTAssertNil(model.lastError)
+    }
+
     private func makeContact(
         uniqueIdentifier: String,
         nickname: String,
