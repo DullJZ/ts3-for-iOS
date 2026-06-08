@@ -7877,6 +7877,12 @@ struct PokeOfflineReplySheet: View {
 }
 
 struct OfflineMessagesSheet: View {
+    private struct OfflineMessageArchiveImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3OfflineMessageArchivePreview
+        let id = UUID()
+    }
+
     private enum OfflineContentFilter: String, CaseIterable, Identifiable {
         case all
         case withBody
@@ -7979,11 +7985,15 @@ struct OfflineMessagesSheet: View {
     @State private var sortAscending = false
     @State private var presetName = ""
     @State private var isExportingInbox = false
+    @State private var isExportingInboxArchive = false
+    @State private var isImportingInboxArchive = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var deleteConfirmation: DeleteConfirmation?
     @State private var inboxDocument = TS3TextFileDocument()
+    @State private var inboxArchiveDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingInboxArchiveImport: OfflineMessageArchiveImportConfirmation?
 
     private var canUseServerInboxActions: Bool {
         model.state == .connected
@@ -8164,6 +8174,14 @@ struct OfflineMessagesSheet: View {
                             isExportingInbox = true
                         }
                         .disabled(filteredMessages.isEmpty)
+                        Button("Export Inbox Archive") {
+                            exportInboxArchive()
+                        }
+                        .disabled(model.offlineMessages.isEmpty)
+                        Button("Import Inbox Archive") {
+                            isImportingInboxArchive = true
+                        }
+                        Divider()
                         Button("Load Visible Message Bodies") {
                             model.loadOfflineMessageBodies(filteredMessages)
                         }
@@ -8221,12 +8239,33 @@ struct OfflineMessagesSheet: View {
                 }
             }
             .fileExporter(
+                isPresented: $isExportingInboxArchive,
+                document: inboxArchiveDocument,
+                contentType: .json,
+                defaultFilename: "ts3-offline-inbox-archive"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
                 isPresented: $isExportingPresets,
                 document: presetsDocument,
                 contentType: .json,
                 defaultFilename: "ts3-offline-message-filter-presets"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingInboxArchive,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    prepareInboxArchiveImport(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -8240,6 +8279,16 @@ struct OfflineMessagesSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(item: $pendingInboxArchiveImport) { confirmation in
+                Alert(
+                    title: Text("Import Inbox Archive?"),
+                    message: Text(inboxArchivePreviewMessage(confirmation.preview)),
+                    primaryButton: .default(Text("Import")) {
+                        importInboxArchive(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .alert(item: $deleteConfirmation) { confirmation in
                 switch confirmation {
@@ -8402,6 +8451,70 @@ struct OfflineMessagesSheet: View {
             model.lastError = error.localizedDescription
         }
     }
+
+    private func exportInboxArchive() {
+        do {
+            inboxArchiveDocument = TS3TextFileDocument(data: try model.offlineMessageArchiveData())
+            isExportingInboxArchive = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareInboxArchiveImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.offlineMessageArchivePreview(from: Data(contentsOf: url))
+            pendingInboxArchiveImport = OfflineMessageArchiveImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importInboxArchive(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importOfflineMessageArchive(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func inboxArchivePreviewMessage(_ preview: TS3OfflineMessageArchivePreview) -> String {
+        var lines = [
+            "Messages: \(preview.messageCount)",
+            "Unread: \(preview.unreadCount)",
+            "With body: \(preview.withBodyCount)",
+            "Replyable: \(preview.replyableCount)",
+            "Unknown sender: \(preview.unknownSenderCount)"
+        ]
+        if preview.skippedMessageCount > 0 {
+            lines.append("Skipped invalid or duplicate messages: \(preview.skippedMessageCount)")
+        }
+        if let senderName = preview.firstSenderName {
+            lines.append("First sender: \(senderName)")
+        } else if let senderUniqueIdentifier = preview.firstSenderUniqueIdentifier {
+            lines.append("First sender UID: \(senderUniqueIdentifier)")
+        }
+        if let firstSubject = preview.firstSubject {
+            lines.append("First subject: \(firstSubject)")
+        }
+        if let firstTimestamp = preview.firstTimestamp {
+            lines.append("First date: \(OfflineMessageRow.dateText(firstTimestamp))")
+        }
+        lines.append(preview.hasMessages ? "Import replaces the local cached inbox for offline review; it does not mark, send, or delete server messages." : "The archive has no usable offline messages.")
+        return lines.joined(separator: "\n")
+    }
 }
 
 struct OfflineMessageRow: View {
@@ -8508,7 +8621,7 @@ struct OfflineMessageRow: View {
         message.message?.isEmpty == false
     }
 
-    private static func dateText(_ date: Date) -> String {
+    fileprivate static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short

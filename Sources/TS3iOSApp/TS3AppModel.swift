@@ -576,6 +576,27 @@ struct TS3OfflineMessageSummary: Identifiable, Codable {
     let isRead: Bool
 }
 
+private struct TS3OfflineMessageArchive: Codable {
+    var messages: [TS3OfflineMessageSummary]
+}
+
+struct TS3OfflineMessageArchivePreview {
+    let messageCount: Int
+    let skippedMessageCount: Int
+    let unreadCount: Int
+    let withBodyCount: Int
+    let replyableCount: Int
+    let unknownSenderCount: Int
+    let firstSenderName: String?
+    let firstSenderUniqueIdentifier: String?
+    let firstSubject: String?
+    let firstTimestamp: Date?
+
+    var hasMessages: Bool {
+        messageCount > 0
+    }
+}
+
 extension TS3OfflineMessageSummary {
     init(message: TS3OfflineMessage, messageOverride: String? = nil, isReadOverride: Bool? = nil) {
         self.id = message.id
@@ -8777,6 +8798,38 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func offlineMessageArchiveData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TS3OfflineMessageArchive(messages: sanitizedOfflineMessageArchiveMessages(offlineMessages).messages))
+    }
+
+    func offlineMessageArchivePreview(from data: Data) throws -> TS3OfflineMessageArchivePreview {
+        let decoded = try JSONDecoder().decode(TS3OfflineMessageArchive.self, from: data)
+        let sanitized = sanitizedOfflineMessageArchiveMessages(decoded.messages)
+        let messages = sanitized.messages
+        let first = messages.first
+        return TS3OfflineMessageArchivePreview(
+            messageCount: messages.count,
+            skippedMessageCount: sanitized.skippedCount,
+            unreadCount: messages.filter { !$0.isRead }.count,
+            withBodyCount: messages.filter { $0.message?.isEmpty == false }.count,
+            replyableCount: messages.filter { $0.senderUniqueIdentifier?.isEmpty == false }.count,
+            unknownSenderCount: messages.filter { $0.senderName?.isEmpty != false && $0.senderUniqueIdentifier?.isEmpty != false }.count,
+            firstSenderName: first?.senderName,
+            firstSenderUniqueIdentifier: first?.senderUniqueIdentifier,
+            firstSubject: first?.subject,
+            firstTimestamp: first?.timestamp
+        )
+    }
+
+    func importOfflineMessageArchive(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3OfflineMessageArchive.self, from: data)
+        offlineMessages = Array(sanitizedOfflineMessageArchiveMessages(decoded.messages).messages.prefix(500))
+        saveOfflineMessageHistory()
+        lastError = nil
+    }
+
     func saveComplaintFilterPreset(
         name: String,
         complaintFilter: String,
@@ -12964,7 +13017,35 @@ final class TS3AppModel: ObservableObject {
             offlineMessages = []
             return
         }
-        offlineMessages = decoded.sorted { lhs, rhs in
+        offlineMessages = sanitizedOfflineMessageArchiveMessages(decoded).messages
+    }
+
+    private func sanitizedOfflineMessageArchiveMessages(
+        _ messages: [TS3OfflineMessageSummary]
+    ) -> (messages: [TS3OfflineMessageSummary], skippedCount: Int) {
+        var skippedCount = 0
+        var seen: Set<Int> = []
+        let sanitizedMessages = messages.compactMap { message -> TS3OfflineMessageSummary? in
+            guard message.id > 0, seen.insert(message.id).inserted else {
+                skippedCount += 1
+                return nil
+            }
+            let subject = message.subject.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !subject.isEmpty else {
+                skippedCount += 1
+                return nil
+            }
+            return TS3OfflineMessageSummary(
+                id: message.id,
+                senderUniqueIdentifier: trimmedArchiveValue(message.senderUniqueIdentifier),
+                senderName: trimmedArchiveValue(message.senderName),
+                subject: String(subject.prefix(200)),
+                message: trimmedArchiveValue(message.message),
+                timestamp: message.timestamp,
+                isRead: message.isRead
+            )
+        }
+        .sorted { lhs, rhs in
             switch (lhs.timestamp, rhs.timestamp) {
             case let (lhs?, rhs?):
                 return lhs > rhs
@@ -12976,6 +13057,7 @@ final class TS3AppModel: ObservableObject {
                 return lhs.id > rhs.id
             }
         }
+        return (sanitizedMessages, skippedCount)
     }
 
     private func saveOfflineMessageHistory() {
