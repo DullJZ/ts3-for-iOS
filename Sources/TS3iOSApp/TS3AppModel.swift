@@ -526,6 +526,20 @@ struct TS3ContactImportPreview {
     let unchangedContactNames: [String]
 }
 
+struct TS3ContactImportOptions: Equatable {
+    var newContacts: Bool
+    var updatedContacts: Bool
+
+    static let all = TS3ContactImportOptions(
+        newContacts: true,
+        updatedContacts: true
+    )
+
+    var hasSelectedEntries: Bool {
+        newContacts || updatedContacts
+    }
+}
+
 struct TS3ContactFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -13096,10 +13110,20 @@ final class TS3AppModel: ObservableObject {
     }
 
     @discardableResult
-    func importContacts(from data: Data) throws -> Int {
+    func importContacts(
+        from data: Data,
+        options: TS3ContactImportOptions = .all
+    ) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ContactEntry].self, from: data)
         var merged = contacts
-        for contact in sanitizedImportedContacts(imported).contacts {
+        let currentByUniqueIdentifier = Dictionary(contacts.map { ($0.uniqueIdentifier, $0) }, uniquingKeysWith: { _, latest in latest })
+        let contactsToImport = sanitizedImportedContacts(imported).contacts.filter { contact in
+            guard let current = currentByUniqueIdentifier[contact.uniqueIdentifier] else {
+                return options.newContacts
+            }
+            return options.updatedContacts && !contactImportContact(contact, matches: current)
+        }
+        for contact in contactsToImport {
             merged.removeAll { $0.uniqueIdentifier == contact.uniqueIdentifier }
             merged.insert(
                 contact,

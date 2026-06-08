@@ -5428,14 +5428,17 @@ struct ContactsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingContactImport) { confirmation in
-                Alert(
-                    title: Text("Import Contacts Backup?"),
-                    message: Text(contactImportPreviewMessage(confirmation.preview)),
-                    primaryButton: .default(Text("Import")) {
-                        importContacts(from: confirmation.url)
+            .sheet(item: $pendingContactImport) { confirmation in
+                ContactImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: contactImportPreviewMessage(confirmation.preview),
+                    importContacts: { options in
+                        importContacts(from: confirmation.url, options: options)
+                        pendingContactImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingContactImport = nil
+                    }
                 )
             }
             .sheet(isPresented: $isShowingNewContact) {
@@ -5535,7 +5538,7 @@ struct ContactsSheet: View {
         }
     }
 
-    private func importContacts(from url: URL) {
+    private func importContacts(from url: URL, options: TS3ContactImportOptions) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -5543,7 +5546,7 @@ struct ContactsSheet: View {
             }
         }
         do {
-            _ = try model.importContacts(from: Data(contentsOf: url))
+            _ = try model.importContacts(from: Data(contentsOf: url), options: options)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -5662,6 +5665,65 @@ struct ContactsSheet: View {
                 ForEach(contacts) { contact in
                     ContactRow(contact: contact)
                         .environmentObject(model)
+                }
+            }
+        }
+    }
+}
+
+private struct ContactImportSheet: View {
+    let preview: TS3ContactImportPreview
+    let previewMessage: String
+    let importContacts: (TS3ContactImportOptions) -> Void
+    let cancel: () -> Void
+
+    @State private var options = TS3ContactImportOptions.all
+
+    private var selectedCount: Int {
+        (options.newContacts ? preview.newCount : 0)
+            + (options.updatedContacts ? preview.updatedCount : 0)
+    }
+
+    private var canImport: Bool {
+        options.hasSelectedEntries && selectedCount > 0
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("Selected import entries: \(selectedCount)")
+                        .font(.caption.weight(.semibold))
+                }
+
+                Section(header: Text("Import Entries")) {
+                    Toggle("New contacts", isOn: $options.newContacts)
+                        .disabled(preview.newCount == 0)
+                    Toggle("Updated contacts", isOn: $options.updatedContacts)
+                        .disabled(preview.updatedCount == 0)
+                    if preview.unchangedCount > 0 {
+                        Text("\(preview.unchangedCount) unchanged contacts will be skipped.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Import Contacts")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importContacts(options)
+                    }
+                    .disabled(!canImport)
                 }
             }
         }

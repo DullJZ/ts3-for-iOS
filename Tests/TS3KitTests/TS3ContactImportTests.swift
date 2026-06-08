@@ -52,6 +52,54 @@ final class TS3ContactImportTests: XCTestCase {
     }
 
     @MainActor
+    func testContactImportCanApplyOnlyNewContacts() throws {
+        let model = TS3AppModel()
+        model.contacts = [
+            makeContact(uniqueIdentifier: "uid-existing", nickname: "Existing", status: .friend, note: "old")
+        ]
+        let backup = [
+            makeContact(uniqueIdentifier: "uid-existing", nickname: "Updated", status: .blocked, note: "new"),
+            makeContact(uniqueIdentifier: "uid-new", nickname: "New", status: .ignored, note: "note")
+        ]
+
+        _ = try model.importContacts(
+            from: encodedContacts(backup),
+            options: TS3ContactImportOptions(newContacts: true, updatedContacts: false)
+        )
+
+        XCTAssertEqual(model.contacts.count, 2)
+        XCTAssertEqual(model.contacts.first?.uniqueIdentifier, "uid-new")
+        XCTAssertEqual(model.contacts.first?.status, .ignored)
+        XCTAssertEqual(model.contacts.first?.note, "note")
+        XCTAssertEqual(model.contacts.last?.uniqueIdentifier, "uid-existing")
+        XCTAssertEqual(model.contacts.last?.nickname, "Existing")
+        XCTAssertEqual(model.contacts.last?.status, .friend)
+    }
+
+    @MainActor
+    func testContactImportCanApplyOnlyUpdatedContacts() throws {
+        let model = TS3AppModel()
+        model.contacts = [
+            makeContact(uniqueIdentifier: "uid-existing", nickname: "Existing", status: .friend, note: "old")
+        ]
+        let backup = [
+            makeContact(uniqueIdentifier: "uid-existing", nickname: "Updated", status: .blocked, note: "new"),
+            makeContact(uniqueIdentifier: "uid-new", nickname: "New", status: .ignored, note: "note")
+        ]
+
+        _ = try model.importContacts(
+            from: encodedContacts(backup),
+            options: TS3ContactImportOptions(newContacts: false, updatedContacts: true)
+        )
+
+        XCTAssertEqual(model.contacts.count, 1)
+        XCTAssertEqual(model.contacts.first?.uniqueIdentifier, "uid-existing")
+        XCTAssertEqual(model.contacts.first?.nickname, "Updated")
+        XCTAssertEqual(model.contacts.first?.status, .blocked)
+        XCTAssertEqual(model.contacts.first?.note, "new")
+    }
+
+    @MainActor
     func testVisibleContactBackupExportSanitizesSelectedEntries() throws {
         let model = TS3AppModel()
         let exported = try model.contactsExportData([
