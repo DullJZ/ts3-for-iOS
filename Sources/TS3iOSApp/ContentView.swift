@@ -12565,6 +12565,12 @@ struct DatabaseClientDetailRows: View {
 }
 
 struct ServerSettingsEditorSheet: View {
+    private struct ServerSettingsDraftImportConfirmation: Identifiable {
+        let draft: ServerSettingsDraft
+        let previewMessage: String
+        let id = UUID()
+    }
+
     private struct ServerSettingsDraft: Codable {
         var name: String
         var phoneticName: String?
@@ -12668,6 +12674,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
     @State private var isExportingSnapshot = false
+    @State private var pendingDraftImport: ServerSettingsDraftImportConfirmation?
     @State private var draftDocument = TS3TextFileDocument()
     @State private var snapshotDocument = TS3TextFileDocument()
 
@@ -12948,7 +12955,7 @@ struct ServerSettingsEditorSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importDraft(from: url)
+                    prepareDraftImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -12972,6 +12979,16 @@ struct ServerSettingsEditorSheet: View {
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(item: $pendingDraftImport) { confirmation in
+                Alert(
+                    title: Text("Import Server Settings Draft?"),
+                    message: Text(confirmation.previewMessage),
+                    primaryButton: .default(Text("Import")) {
+                        applyDraft(confirmation.draft)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
@@ -13029,7 +13046,13 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private var settingsSnapshot: String {
-        let draft = currentDraft
+        settingsSnapshotMessage(for: currentDraft, validationMessages: isDraftValid ? [] : serverDraftValidationMessages(for: currentDraft))
+    }
+
+    private func settingsSnapshotMessage(
+        for draft: ServerSettingsDraft,
+        validationMessages: [String]
+    ) -> String {
         var rows: [(String, String)] = [
             ("Server Name", draft.name),
             ("Phonetic Name", draft.phoneticName ?? ""),
@@ -13078,12 +13101,14 @@ struct ServerSettingsEditorSheet: View {
             ("Server Log", boolTitle(draft.logServer)),
             ("File Transfer Log", boolTitle(draft.logFileTransfer))
         ]
-        rows.append(("Draft Valid", isDraftValid ? "Yes" : "No"))
-        return rows.compactMap { label, value in
+        rows.append(("Draft Valid", validationMessages.isEmpty ? "Yes" : "No"))
+        let summary = rows.compactMap { label, value in
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
             return "\(label): \(trimmed)"
         }.joined(separator: "\n")
+        guard !validationMessages.isEmpty else { return summary }
+        return "\(summary)\n\(validationMessages.joined(separator: "\n"))"
     }
 
     private func loadCurrentValues() {
@@ -13227,7 +13252,7 @@ struct ServerSettingsEditorSheet: View {
         }
     }
 
-    private func importDraft(from url: URL) {
+    private func prepareDraftImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -13236,10 +13261,105 @@ struct ServerSettingsEditorSheet: View {
         }
         do {
             let draft = try JSONDecoder().decode(ServerSettingsDraft.self, from: Data(contentsOf: url))
-            applyDraft(draft)
+            pendingDraftImport = ServerSettingsDraftImportConfirmation(
+                draft: draft,
+                previewMessage: settingsSnapshotMessage(
+                    for: draft,
+                    validationMessages: serverDraftValidationMessages(for: draft)
+                )
+            )
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func serverDraftValidationMessages(for draft: ServerSettingsDraft) -> [String] {
+        var messages: [String] = []
+        if draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Server name is required before saving.")
+        }
+        if !isOptionalInt(draft.maxClients) {
+            messages.append("Max clients must be numeric.")
+        }
+        if !isOptionalInt(draft.port ?? "") {
+            messages.append("Server port must be numeric.")
+        }
+        if !isOptionalInt(draft.reservedSlots) {
+            messages.append("Reserved slots must be numeric.")
+        }
+        if !isOptionalInt(draft.hostMessageMode) {
+            messages.append("Host message mode must be numeric.")
+        }
+        if !isOptionalInt(draft.hostBannerMode ?? "") {
+            messages.append("Host banner mode must be numeric.")
+        }
+        if !isOptionalInt(draft.hostBannerGraphicsInterval ?? "") {
+            messages.append("Banner refresh seconds must be numeric.")
+        }
+        if !isOptionalInt(draft.iconId) {
+            messages.append("Icon ID must be numeric.")
+        }
+        if !isOptionalInt64(draft.downloadQuota) {
+            messages.append("Download quota must be numeric.")
+        }
+        if !isOptionalInt64(draft.uploadQuota) {
+            messages.append("Upload quota must be numeric.")
+        }
+        if !isOptionalInt64(draft.maxDownloadTotalBandwidth ?? "") {
+            messages.append("Max download bandwidth must be numeric.")
+        }
+        if !isOptionalInt64(draft.maxUploadTotalBandwidth ?? "") {
+            messages.append("Max upload bandwidth must be numeric.")
+        }
+        if !isOptionalInt(draft.neededIdentitySecurityLevel ?? "") {
+            messages.append("Needed identity security level must be numeric.")
+        }
+        if !isOptionalInt(draft.minClientVersion ?? "") {
+            messages.append("Minimum client version must be numeric.")
+        }
+        if !isOptionalInt(draft.minAndroidVersion ?? "") {
+            messages.append("Minimum Android version must be numeric.")
+        }
+        if !isOptionalInt(draft.minIOSVersion ?? "") {
+            messages.append("Minimum iOS version must be numeric.")
+        }
+        if !isOptionalInt(draft.complainAutoBanCount) {
+            messages.append("Auto-ban complaint count must be numeric.")
+        }
+        if !isOptionalInt(draft.complainAutoBanTime) {
+            messages.append("Auto-ban seconds must be numeric.")
+        }
+        if !isOptionalInt(draft.complainRemoveTime) {
+            messages.append("Complaint remove seconds must be numeric.")
+        }
+        if !isOptionalInt(draft.minClientsInChannelBeforeForcedSilence) {
+            messages.append("Forced silence client count must be numeric.")
+        }
+        if !isOptionalDouble(draft.prioritySpeakerDimmModificator) {
+            messages.append("Priority speaker dimming must be numeric.")
+        }
+        if !isOptionalInt(draft.antiFloodPointsTickReduce ?? "") {
+            messages.append("Anti-flood tick reduce must be numeric.")
+        }
+        if !isOptionalInt(draft.antiFloodPointsNeededCommandBlock ?? "") {
+            messages.append("Anti-flood command block must be numeric.")
+        }
+        if !isOptionalInt(draft.antiFloodPointsNeededIPBlock ?? "") {
+            messages.append("Anti-flood IP block must be numeric.")
+        }
+        if !isOptionalInt(draft.codecEncryptionMode) {
+            messages.append("Codec encryption mode must be numeric.")
+        }
+        if !isOptionalInt(draft.defaultServerGroupId ?? "") {
+            messages.append("Default server group ID must be numeric.")
+        }
+        if !isOptionalInt(draft.defaultChannelGroupId ?? "") {
+            messages.append("Default channel group ID must be numeric.")
+        }
+        if !isOptionalInt(draft.defaultChannelAdminGroupId ?? "") {
+            messages.append("Default channel admin group ID must be numeric.")
+        }
+        return messages
     }
 
     private func applyDraft(_ draft: ServerSettingsDraft) {
