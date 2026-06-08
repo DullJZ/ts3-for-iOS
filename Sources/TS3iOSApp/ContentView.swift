@@ -22366,15 +22366,58 @@ struct ChannelEditorSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingDraftImport) { confirmation in
-                Alert(
-                    title: Text("Import Channel Draft?"),
-                    message: Text(confirmation.previewMessage),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingDraftImport) { confirmation in
+                ChannelDraftImportSheet(
+                    previewMessage: confirmation.previewMessage,
+                    importDraft: {
                         applyDraft(confirmation.draft)
+                        pendingDraftImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingDraftImport = nil
+                    }
                 )
+            }
+        }
+    }
+
+    private struct ChannelDraftImportSheet: View {
+        let previewMessage: String
+        let importDraft: () -> Void
+        let cancel: () -> Void
+
+        var body: some View {
+            NavigationView {
+                Form {
+                    Section(header: Text("Preview")) {
+                        Text(previewMessage)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Copy Channel Summary") {
+                            TS3PlatformSupport.copyToPasteboard(previewMessage)
+                        }
+                    }
+
+                    Section(header: Text("Import Behavior")) {
+                        Text("Import fills the channel editor with this draft. It does not create or edit a channel until the final channel action is tapped.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .navigationTitle("Import Channel")
+                .ts3InlineNavigationTitle()
+                .toolbar {
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                        Button("Cancel") {
+                            cancel()
+                        }
+                    }
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                        Button("Import") {
+                            importDraft()
+                        }
+                    }
+                }
             }
         }
     }
