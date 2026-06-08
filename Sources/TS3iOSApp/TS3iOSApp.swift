@@ -33,18 +33,22 @@ struct TS3iOSApp: App {
                 Button("Manage Identity") {
                     model.isShowingIdentity = true
                 }
+                .ts3KeyboardShortcut("manage-identity", in: model)
 
                 Button("Connection Manager") {
                     model.isShowingConnectionManager = true
                 }
+                .ts3KeyboardShortcut("connection-manager", in: model)
 
                 Button("Client Migration") {
                     model.isShowingClientMigration = true
                 }
+                .ts3KeyboardShortcut("client-migration", in: model)
 
                 Button("Notification Settings") {
                     model.isShowingNotificationSettings = true
                 }
+                .ts3KeyboardShortcut("notification-settings", in: model)
             }
 
             CommandMenu("Connection") {
@@ -57,16 +61,19 @@ struct TS3iOSApp: App {
                 Button("Save Current Server as Bookmark") {
                     model.saveCurrentBookmark(name: model.serverHost)
                 }
+                .ts3KeyboardShortcut("save-bookmark", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Copy Invite Link") {
                     model.copyCurrentInviteLink()
                 }
+                .ts3KeyboardShortcut("copy-invite", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Copy Full Invite Link") {
                     model.copyCurrentFullInviteLink()
                 }
+                .ts3KeyboardShortcut("copy-full-invite", in: model)
                 .disabled(model.state != .connected)
             }
 
@@ -216,11 +223,13 @@ struct TS3iOSApp: App {
                 Button("Self Status") {
                     model.isShowingSelfStatus = true
                 }
+                .ts3KeyboardShortcut("self-status", in: model)
                 .disabled(model.state != .connected)
 
                 Button("Audio Settings") {
                     model.isShowingAudioSettings = true
                 }
+                .ts3KeyboardShortcut("audio-settings", in: model)
             }
         }
         #endif
