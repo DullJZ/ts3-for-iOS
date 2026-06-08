@@ -55,6 +55,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             from: exported,
             options: TS3ClientMigrationRestoreOptions(
                 connections: false,
+                identities: false,
                 contacts: true,
                 notifications: false,
                 chat: false,
@@ -89,6 +90,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             from: exported,
             options: TS3ClientMigrationRestoreOptions(
                 connections: false,
+                identities: false,
                 contacts: false,
                 notifications: false,
                 chat: false,
@@ -108,6 +110,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
     func testClientMigrationRestoreOptionsExposeSelectedSectionTitles() {
         let options = TS3ClientMigrationRestoreOptions(
             connections: true,
+            identities: false,
             contacts: false,
             notifications: true,
             chat: false,
@@ -170,6 +173,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             from: exported,
             options: TS3ClientMigrationRestoreOptions(
                 connections: true,
+                identities: false,
                 contacts: false,
                 notifications: false,
                 chat: false,
@@ -186,6 +190,36 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertTrue(target.contacts.isEmpty)
         let preview = try target.clientMigrationPackagePreview(from: exported)
         XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Saved Channel Passwords" && $0.1 >= 1 })
+    }
+
+    @MainActor
+    func testClientMigrationCanRestoreIdentityProfilesSeparately() async throws {
+        let source = TS3AppModel()
+        await source.refreshIdentitySummary()
+        source.saveCurrentIdentityProfile(name: "Main Identity")
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                identities: true,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertTrue(target.identityProfiles.contains { $0.name == "Main Identity" && $0.uid == source.identitySummary.uid })
+        let preview = try target.clientMigrationPackagePreview(from: exported)
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Identity Profiles" && $0.1 >= 1 })
     }
 
     private func makeContact(

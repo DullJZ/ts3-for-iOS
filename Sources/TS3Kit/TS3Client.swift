@@ -1274,6 +1274,17 @@ public final class TS3Client {
         )
     }
 
+    public static func identitySnapshot(fromExportString exportString: String) throws -> TS3IdentitySnapshot {
+        let client = TS3Client(config: TS3ClientConfig(host: "localhost", port: 9987, nickname: "Identity", serverPassword: nil))
+        let identity = try client.identity(fromExportString: exportString)
+        return TS3IdentitySnapshot(
+            uid: identity.uid.toBase64(),
+            securityLevel: identity.securityLevel(),
+            keyOffset: identity.keyOffset,
+            exportString: try client.identityExportString(for: identity)
+        )
+    }
+
     public func importIdentity(exportString: String) async throws -> TS3IdentitySnapshot {
         guard state == .disconnected else {
             throw TS3Error.invalidState

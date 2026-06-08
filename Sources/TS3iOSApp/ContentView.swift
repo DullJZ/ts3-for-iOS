@@ -19977,7 +19977,9 @@ struct IdentityManagementSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var importedIdentity = ""
+    @State private var identityProfileName = ""
     @State private var isImportingIdentity = false
+    @State private var isImportingIdentityProfile = false
     @State private var isExportingIdentity = false
     @State private var isExportingIdentitySnapshot = false
     @State private var identityExportDocument = TS3TextFileDocument()
@@ -20002,6 +20004,27 @@ struct IdentityManagementSheet: View {
                     }
                     .disabled(model.identitySummary.exportString.isEmpty)
                 }
+                Section(header: Text("Identity Profiles")) {
+                    TextField("Profile Name", text: $identityProfileName)
+                        .ts3PlainTextField()
+                    Button("Save Current Identity as Profile") {
+                        model.saveCurrentIdentityProfile(name: identityProfileName)
+                        identityProfileName = ""
+                    }
+                    .disabled(model.identitySummary.exportString.isEmpty)
+                    Button("Import Backup as Profile") {
+                        isImportingIdentityProfile = true
+                    }
+                    if model.identityProfiles.isEmpty {
+                        Text("No saved identity profiles")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.identityProfiles) { profile in
+                            IdentityProfileRow(profile: profile)
+                                .environmentObject(model)
+                        }
+                    }
+                }
             }
             .navigationTitle("Identity")
             .ts3InlineNavigationTitle()
@@ -20024,6 +20047,17 @@ struct IdentityManagementSheet: View {
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
                     importIdentity(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingIdentityProfile,
+                allowedContentTypes: [.plainText, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    importIdentityProfile(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -20079,6 +20113,158 @@ struct IdentityManagementSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func importIdentityProfile(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            guard let exportString = String(data: data, encoding: .utf8) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            model.importIdentityProfile(name: identityProfileName, exportString: exportString)
+            identityProfileName = ""
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct IdentityProfileRow: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let profile: TS3IdentityProfile
+    @State private var editedName = ""
+    @State private var isEditingName = false
+    @State private var isConfirmingDelete = false
+
+    private var isActive: Bool {
+        model.activeIdentityProfileId == profile.id
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(profile.name)
+                        .font(.subheadline.weight(.semibold))
+                    Text(profile.uid)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text("Security \(profile.securityLevel) · Offset \(profile.keyOffset)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if isActive {
+                    Text("Active")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.accentColor)
+                }
+            }
+            HStack {
+                Button("Use") {
+                    model.activateIdentityProfile(profile)
+                }
+                .buttonStyle(.borderless)
+                .disabled(model.state != .disconnected || isActive)
+                Button("Rename") {
+                    editedName = profile.name
+                    isEditingName = true
+                }
+                .buttonStyle(.borderless)
+                Button("Copy Backup") {
+                    TS3PlatformSupport.copyToPasteboard(profile.exportString)
+                }
+                .buttonStyle(.borderless)
+                Button("Delete") {
+                    isConfirmingDelete = true
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(.red)
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 3)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(profile.name)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Use Identity") {
+            model.activateIdentityProfile(profile)
+        }
+        .contextMenu {
+            Button("Use Identity") {
+                model.activateIdentityProfile(profile)
+            }
+            .disabled(model.state != .disconnected || isActive)
+            Button("Copy Backup") {
+                TS3PlatformSupport.copyToPasteboard(profile.exportString)
+            }
+            Button("Copy UID") {
+                TS3PlatformSupport.copyToPasteboard(profile.uid)
+            }
+            Button("Rename") {
+                editedName = profile.name
+                isEditingName = true
+            }
+            Button("Delete") {
+                isConfirmingDelete = true
+            }
+            .foregroundColor(.red)
+        }
+        .sheet(isPresented: $isEditingName) {
+            NavigationView {
+                Form {
+                    TextField("Profile Name", text: $editedName)
+                        .ts3PlainTextField()
+                }
+                .navigationTitle("Rename Identity")
+                .ts3InlineNavigationTitle()
+                .toolbar {
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                        Button("Cancel") {
+                            isEditingName = false
+                        }
+                    }
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                        Button("Save") {
+                            model.renameIdentityProfile(profile, name: editedName)
+                            isEditingName = false
+                        }
+                        .disabled(editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+        }
+        .alert(isPresented: $isConfirmingDelete) {
+            Alert(
+                title: Text("Delete Identity Profile?"),
+                message: Text(profile.name),
+                primaryButton: .destructive(Text("Delete")) {
+                    model.deleteIdentityProfile(profile)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private var accessibilityValue: String {
+        var parts = [
+            isActive ? "Active" : "Saved",
+            "Security level \(profile.securityLevel)",
+            "Key offset \(profile.keyOffset)",
+            "UID \(profile.uid)"
+        ]
+        if model.state != .disconnected {
+            parts.append("Disconnect before switching identities")
+        }
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -20233,6 +20419,7 @@ private struct ClientPackageImportSheet: View {
 
                 Section(header: Text("Restore Sections")) {
                     Toggle("Connections", isOn: $options.connections)
+                    Toggle("Identities", isOn: $options.identities)
                     Toggle("Contacts", isOn: $options.contacts)
                     Toggle("Notifications", isOn: $options.notifications)
                     Toggle("Chat", isOn: $options.chat)
@@ -20251,6 +20438,7 @@ private struct ClientPackageImportSheet: View {
                     Button("Clear Selection") {
                         options = TS3ClientMigrationRestoreOptions(
                             connections: false,
+                            identities: false,
                             contacts: false,
                             notifications: false,
                             chat: false,

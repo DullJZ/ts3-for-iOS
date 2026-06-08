@@ -1933,6 +1933,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var recentConnections: [TS3ConnectionSnapshot]
     var connectionFilterPresets: [TS3ConnectionFilterPreset]
     var savedChannelPasswords: [TS3SavedChannelPassword]
+    var identityProfiles: [TS3IdentityProfile]
     var contacts: [TS3ContactEntry]
     var contactFilterPresets: [TS3ContactFilterPreset]
     var notificationSettings: TS3NotificationSettings
@@ -1971,6 +1972,7 @@ private struct TS3ClientMigrationPackage: Codable {
         recentConnections: [TS3ConnectionSnapshot],
         connectionFilterPresets: [TS3ConnectionFilterPreset],
         savedChannelPasswords: [TS3SavedChannelPassword],
+        identityProfiles: [TS3IdentityProfile],
         contacts: [TS3ContactEntry],
         contactFilterPresets: [TS3ContactFilterPreset],
         notificationSettings: TS3NotificationSettings,
@@ -2008,6 +2010,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.recentConnections = recentConnections
         self.connectionFilterPresets = connectionFilterPresets
         self.savedChannelPasswords = savedChannelPasswords
+        self.identityProfiles = identityProfiles
         self.contacts = contacts
         self.contactFilterPresets = contactFilterPresets
         self.notificationSettings = notificationSettings
@@ -2047,6 +2050,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case recentConnections
         case connectionFilterPresets
         case savedChannelPasswords
+        case identityProfiles
         case contacts
         case contactFilterPresets
         case notificationSettings
@@ -2092,6 +2096,10 @@ private struct TS3ClientMigrationPackage: Codable {
         savedChannelPasswords = try container.decodeIfPresent(
             [TS3SavedChannelPassword].self,
             forKey: .savedChannelPasswords
+        ) ?? []
+        identityProfiles = try container.decodeIfPresent(
+            [TS3IdentityProfile].self,
+            forKey: .identityProfiles
         ) ?? []
         contacts = try container.decodeIfPresent([TS3ContactEntry].self, forKey: .contacts) ?? []
         contactFilterPresets = try container.decodeIfPresent(
@@ -2216,6 +2224,7 @@ struct TS3ClientMigrationPackagePreview {
 
 struct TS3ClientMigrationRestoreOptions: Codable, Equatable {
     var connections: Bool
+    var identities: Bool
     var contacts: Bool
     var notifications: Bool
     var chat: Bool
@@ -2228,6 +2237,7 @@ struct TS3ClientMigrationRestoreOptions: Codable, Equatable {
 
     static let all = TS3ClientMigrationRestoreOptions(
         connections: true,
+        identities: true,
         contacts: true,
         notifications: true,
         chat: true,
@@ -2242,6 +2252,7 @@ struct TS3ClientMigrationRestoreOptions: Codable, Equatable {
     var selectedSectionTitles: [String] {
         var titles: [String] = []
         if connections { titles.append("Connections") }
+        if identities { titles.append("Identities") }
         if contacts { titles.append("Contacts") }
         if notifications { titles.append("Notifications") }
         if chat { titles.append("Chat") }
@@ -2453,6 +2464,60 @@ struct TS3IdentitySummary {
     }
 
     static let empty = TS3IdentitySummary(uid: "", securityLevel: 0, keyOffset: 0, exportString: "")
+}
+
+struct TS3IdentityProfile: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var uid: String
+    var securityLevel: Int
+    var keyOffset: Int
+    var exportString: String
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        uid: String,
+        securityLevel: Int,
+        keyOffset: Int,
+        exportString: String,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.uid = uid
+        self.securityLevel = securityLevel
+        self.keyOffset = keyOffset
+        self.exportString = exportString
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case uid
+        case securityLevel
+        case keyOffset
+        case exportString
+        case createdAt
+        case updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Identity"
+        uid = try container.decode(String.self, forKey: .uid)
+        securityLevel = try container.decodeIfPresent(Int.self, forKey: .securityLevel) ?? 0
+        keyOffset = try container.decodeIfPresent(Int.self, forKey: .keyOffset) ?? 0
+        exportString = try container.decode(String.self, forKey: .exportString)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+    }
 }
 
 struct TS3ServerInfoSummary {
@@ -3201,6 +3266,8 @@ final class TS3AppModel: ObservableObject {
     @Published var contacts: [TS3ContactEntry] = []
     @Published private(set) var contactFilterPresets: [TS3ContactFilterPreset] = []
     @Published var identitySummary: TS3IdentitySummary = .empty
+    @Published private(set) var identityProfiles: [TS3IdentityProfile] = []
+    @Published private(set) var activeIdentityProfileId: UUID?
     @Published var serverInfo: TS3ServerInfoSummary = .empty
     @Published var connectionInfo: TS3ConnectionInfoSummary = .empty
     @Published var isTalking = false
@@ -3327,6 +3394,7 @@ final class TS3AppModel: ObservableObject {
         loadWhisperPresets()
         loadWhisperFilterPresets()
         loadSelfStatusProfiles()
+        loadIdentityProfiles()
         Task { @MainActor in
             await refreshIdentitySummary()
         }
@@ -9778,12 +9846,7 @@ final class TS3AppModel: ObservableObject {
                 nickname: nickname,
                 serverPassword: nil
             )).identitySnapshot()
-            identitySummary = TS3IdentitySummary(
-                uid: snapshot.uid,
-                securityLevel: snapshot.securityLevel,
-                keyOffset: snapshot.keyOffset,
-                exportString: snapshot.exportString
-            )
+            applyIdentitySnapshot(snapshot)
         } catch {
             lastError = error.localizedDescription
         }
@@ -9811,12 +9874,7 @@ final class TS3AppModel: ObservableObject {
                     serverPassword: nil
                 )).importIdentity(exportString: exportString)
                 await MainActor.run {
-                    self.identitySummary = TS3IdentitySummary(
-                        uid: snapshot.uid,
-                        securityLevel: snapshot.securityLevel,
-                        keyOffset: snapshot.keyOffset,
-                        exportString: snapshot.exportString
-                    )
+                    self.applyIdentitySnapshot(snapshot)
                     self.lastError = nil
                 }
             } catch {
@@ -9845,12 +9903,7 @@ final class TS3AppModel: ObservableObject {
                     serverPassword: nil
                 )).regenerateIdentity(securityLevel: securityLevel)
                 await MainActor.run {
-                    self.identitySummary = TS3IdentitySummary(
-                        uid: snapshot.uid,
-                        securityLevel: snapshot.securityLevel,
-                        keyOffset: snapshot.keyOffset,
-                        exportString: snapshot.exportString
-                    )
+                    self.applyIdentitySnapshot(snapshot)
                     self.lastError = nil
                 }
             } catch {
@@ -9859,6 +9912,144 @@ final class TS3AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func saveCurrentIdentityProfile(name: String) {
+        do {
+            guard !identitySummary.exportString.isEmpty else {
+                lastError = "Refresh identity before saving it as a profile."
+                return
+            }
+            let profile = try identityProfile(
+                name: name,
+                exportString: identitySummary.exportString,
+                replacing: identityProfiles.first { $0.uid == identitySummary.uid }
+            )
+            upsertIdentityProfile(profile)
+            activeIdentityProfileId = profile.id
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func importIdentityProfile(name: String, exportString: String) {
+        do {
+            let profile = try identityProfile(name: name, exportString: exportString)
+            upsertIdentityProfile(profile)
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func activateIdentityProfile(_ profile: TS3IdentityProfile) {
+        guard state == .disconnected else {
+            lastError = "Disconnect before switching identities."
+            return
+        }
+        Task {
+            do {
+                let snapshot = try await TS3Client(config: TS3ClientConfig(
+                    host: "localhost",
+                    port: 9987,
+                    nickname: nickname,
+                    serverPassword: nil
+                )).importIdentity(exportString: profile.exportString)
+                await MainActor.run {
+                    self.applyIdentitySnapshot(snapshot)
+                    self.activeIdentityProfileId = profile.id
+                    self.lastError = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    func renameIdentityProfile(_ profile: TS3IdentityProfile, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let index = identityProfiles.firstIndex(where: { $0.id == profile.id }), !trimmed.isEmpty else { return }
+        identityProfiles[index].name = trimmed
+        identityProfiles[index].updatedAt = Date()
+        saveIdentityProfiles()
+        lastError = nil
+    }
+
+    func deleteIdentityProfile(_ profile: TS3IdentityProfile) {
+        identityProfiles.removeAll { $0.id == profile.id }
+        if activeIdentityProfileId == profile.id {
+            activeIdentityProfileId = nil
+        }
+        saveIdentityProfiles()
+        lastError = nil
+    }
+
+    @discardableResult
+    func importIdentityProfiles(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3IdentityProfile].self, from: data)
+        for profile in try sanitizedIdentityProfiles(imported) {
+            upsertIdentityProfile(profile, shouldSave: false)
+        }
+        saveIdentityProfiles()
+        updateActiveIdentityProfile()
+        lastError = nil
+        return imported.count
+    }
+
+    private func applyIdentitySnapshot(_ snapshot: TS3IdentitySnapshot) {
+        identitySummary = TS3IdentitySummary(
+            uid: snapshot.uid,
+            securityLevel: snapshot.securityLevel,
+            keyOffset: snapshot.keyOffset,
+            exportString: snapshot.exportString
+        )
+        updateActiveIdentityProfile()
+    }
+
+    private func identityProfile(
+        name: String,
+        exportString: String,
+        replacing existingProfile: TS3IdentityProfile? = nil
+    ) throws -> TS3IdentityProfile {
+        let snapshot = try TS3Client.identitySnapshot(fromExportString: exportString)
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = Date()
+        return TS3IdentityProfile(
+            id: existingProfile?.id ?? UUID(),
+            name: trimmedName.isEmpty ? defaultIdentityProfileName(uid: snapshot.uid) : trimmedName,
+            uid: snapshot.uid,
+            securityLevel: snapshot.securityLevel,
+            keyOffset: snapshot.keyOffset,
+            exportString: snapshot.exportString,
+            createdAt: existingProfile?.createdAt ?? now,
+            updatedAt: now
+        )
+    }
+
+    private func upsertIdentityProfile(_ profile: TS3IdentityProfile, shouldSave: Bool = true) {
+        identityProfiles.removeAll { $0.id == profile.id || $0.uid == profile.uid }
+        identityProfiles.insert(profile, at: 0)
+        identityProfiles = (try? sanitizedIdentityProfiles(identityProfiles)) ?? identityProfiles
+        if shouldSave {
+            saveIdentityProfiles()
+        }
+        updateActiveIdentityProfile()
+    }
+
+    private func defaultIdentityProfileName(uid: String) -> String {
+        let suffix = uid.isEmpty ? "Unknown" : String(uid.prefix(8))
+        return "Identity \(suffix)"
+    }
+
+    private func updateActiveIdentityProfile() {
+        guard !identitySummary.uid.isEmpty else {
+            activeIdentityProfileId = nil
+            return
+        }
+        activeIdentityProfileId = identityProfiles.first { $0.uid == identitySummary.uid }?.id
     }
 
     private func runClientCommand(
@@ -9907,6 +10098,11 @@ final class TS3AppModel: ObservableObject {
     private var savedChannelPasswordsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-channel-passwords.json")
+    }
+
+    private var identityProfilesURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-identity-profiles.json")
     }
 
     private var contactsURL: URL {
@@ -10136,6 +10332,50 @@ final class TS3AppModel: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func loadIdentityProfiles() {
+        guard let data = try? Data(contentsOf: identityProfilesURL),
+              let decoded = try? JSONDecoder().decode([TS3IdentityProfile].self, from: data),
+              let sanitized = try? sanitizedIdentityProfiles(decoded) else {
+            identityProfiles = []
+            activeIdentityProfileId = nil
+            return
+        }
+        identityProfiles = sanitized
+        updateActiveIdentityProfile()
+    }
+
+    private func saveIdentityProfiles() {
+        do {
+            let directory = identityProfilesURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(identityProfiles)
+            try data.write(to: identityProfilesURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func sanitizedIdentityProfiles(_ profiles: [TS3IdentityProfile]) throws -> [TS3IdentityProfile] {
+        var seen: Set<String> = []
+        var sanitized: [TS3IdentityProfile] = []
+        for profile in profiles {
+            let snapshot = try TS3Client.identitySnapshot(fromExportString: profile.exportString)
+            guard seen.insert(snapshot.uid.lowercased()).inserted else { continue }
+            let name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            sanitized.append(TS3IdentityProfile(
+                id: profile.id,
+                name: name.isEmpty ? defaultIdentityProfileName(uid: snapshot.uid) : name,
+                uid: snapshot.uid,
+                securityLevel: snapshot.securityLevel,
+                keyOffset: snapshot.keyOffset,
+                exportString: snapshot.exportString,
+                createdAt: profile.createdAt,
+                updatedAt: profile.updatedAt
+            ))
+        }
+        return sanitized
     }
 
     @discardableResult
@@ -11743,6 +11983,7 @@ final class TS3AppModel: ObservableObject {
             recentConnections: recentConnections,
             connectionFilterPresets: connectionFilterPresets,
             savedChannelPasswords: savedChannelPasswords,
+            identityProfiles: identityProfiles,
             contacts: contacts,
             contactFilterPresets: contactFilterPresets,
             notificationSettings: notificationSettingsSnapshot,
@@ -11788,6 +12029,9 @@ final class TS3AppModel: ObservableObject {
             try importConnectionFilterPresets(from: encodedPackageSection(package.connectionFilterPresets))
             try importSavedChannelPasswords(from: encodedPackageSection(package.savedChannelPasswords))
             try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
+        }
+        if options.identities {
+            try importIdentityProfiles(from: encodedPackageSection(package.identityProfiles))
         }
         if options.contacts {
             try importContacts(from: encodedPackageSection(package.contacts))
@@ -11844,6 +12088,7 @@ final class TS3AppModel: ObservableObject {
             ("Bookmarks", package.bookmarks.count),
             ("Recent Connections", package.recentConnections.count),
             ("Saved Channel Passwords", package.savedChannelPasswords.count),
+            ("Identity Profiles", package.identityProfiles.count),
             ("Contacts", package.contacts.count),
             ("Server Log Presets", package.serverLogQueryPresets.count),
             ("Keyboard Shortcuts", package.keyboardShortcuts.count),
