@@ -1787,11 +1787,35 @@ struct TS3PermissionBackupRestoreOptions: Equatable {
     }
 }
 
+struct TS3PermissionBackupRestoreEntry: Equatable {
+    let name: String
+    let value: Int
+    let isNegated: Bool
+    let isSkipped: Bool
+
+    var clipboardSummary: String {
+        [
+            "name=\(name)",
+            "value=\(value)",
+            "negated=\(isNegated ? "true" : "false")",
+            "skip=\(isSkipped ? "true" : "false")"
+        ].joined(separator: " ")
+    }
+}
+
 struct TS3PermissionBackupRestorePlan {
-    let permissionNames: [String]
+    let entries: [TS3PermissionBackupRestoreEntry]
+
+    var permissionNames: [String] {
+        entries.map(\.name)
+    }
 
     var permissionCount: Int {
-        permissionNames.count
+        entries.count
+    }
+
+    var clipboardSummary: String {
+        entries.map(\.clipboardSummary).joined(separator: "\n")
     }
 }
 
@@ -5954,8 +5978,8 @@ final class TS3AppModel: ObservableObject {
             permissions,
             currentByName: currentByName,
             options: options
-        ).map(\.name)
-        return TS3PermissionBackupRestorePlan(permissionNames: plannedNames)
+        ).map(Self.permissionBackupRestoreEntry(from:))
+        return TS3PermissionBackupRestorePlan(entries: plannedNames)
     }
 
     func channelClientPermissionMembers() -> [TS3UserSummary] {
@@ -6223,6 +6247,17 @@ final class TS3AppModel: ObservableObject {
 
     private static func permissionBackupFlagDescription(_ value: Bool) -> String {
         value ? "on" : "off"
+    }
+
+    private static func permissionBackupRestoreEntry(
+        from permission: TS3PermissionBackupPermission
+    ) -> TS3PermissionBackupRestoreEntry {
+        TS3PermissionBackupRestoreEntry(
+            name: permission.name,
+            value: permission.value,
+            isNegated: permission.isNegated,
+            isSkipped: permission.isSkipped
+        )
     }
 
     private func permissionSummaries(from permissions: [TS3Permission]) -> [TS3PermissionSummary] {

@@ -16538,6 +16538,27 @@ private struct PermissionBackupImportSheet: View {
                     if let plan {
                         Text("Selected restore entries: \(plan.permissionCount)")
                             .font(.caption.weight(.semibold))
+                        if !plan.entries.isEmpty {
+                            Button("Copy Restore Plan") {
+                                TS3PlatformSupport.copyToPasteboard(plan.clipboardSummary)
+                            }
+                            ForEach(plan.entries.prefix(6), id: \.name) { entry in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.name)
+                                        .font(.caption.weight(.semibold))
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Text("Value \(entry.value) | Negated \(entry.isNegated ? "on" : "off") | Skip \(entry.isSkipped ? "on" : "off")")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            if plan.permissionCount > 6 {
+                                Text("+\(plan.permissionCount - 6) more")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
 

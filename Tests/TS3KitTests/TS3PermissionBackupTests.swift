@@ -157,6 +157,17 @@ final class TS3PermissionBackupTests: XCTestCase {
 
         XCTAssertEqual(plan.permissionNames, ["i_channel_join_power"])
         XCTAssertEqual(plan.permissionCount, 1)
+        XCTAssertEqual(
+            plan.entries,
+            [
+                TS3PermissionBackupRestoreEntry(
+                    name: "i_channel_join_power",
+                    value: 50,
+                    isNegated: false,
+                    isSkipped: false
+                )
+            ]
+        )
     }
 
     @MainActor
@@ -216,6 +227,39 @@ final class TS3PermissionBackupTests: XCTestCase {
 
         XCTAssertTrue(plan.permissionNames.isEmpty)
         XCTAssertEqual(plan.permissionCount, 0)
+    }
+
+    @MainActor
+    func testPermissionBackupRestorePlanIncludesAuditableClipboardSummary() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50),
+            makePermission("i_client_kick_power", value: 75, isNegated: true, isSkipped: true)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: .all
+        )
+
+        XCTAssertEqual(
+            plan.clipboardSummary,
+            """
+            name=i_channel_join_power value=50 negated=false skip=false
+            name=i_client_kick_power value=75 negated=true skip=true
+            """
+        )
     }
 
     private func makePermission(
