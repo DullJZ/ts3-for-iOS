@@ -7531,14 +7531,17 @@ struct EventsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingEventArchiveImport) { confirmation in
-                Alert(
-                    title: Text("Restore Event Archive?"),
-                    message: Text(eventArchivePreviewMessage(confirmation.preview)),
-                    primaryButton: .destructive(Text("Restore")) {
+            .sheet(item: $pendingEventArchiveImport) { confirmation in
+                EventArchiveImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: eventArchivePreviewMessage(confirmation.preview),
+                    restoreArchive: {
                         importEventArchive(from: confirmation.url)
+                        pendingEventArchiveImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingEventArchiveImport = nil
+                    }
                 )
             }
         }
@@ -7675,6 +7678,73 @@ struct EventsSheet: View {
             _ = try model.importEventFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct EventArchiveImportSheet: View {
+    let preview: TS3EventHistoryArchivePreview
+    let previewMessage: String
+    let restoreArchive: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasEvents {
+                        Button("Copy Event Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                    }
+                }
+
+                if !preview.activitySummaries.isEmpty {
+                    Section(header: Text("Activity")) {
+                        ForEach(Array(preview.activitySummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                if !preview.pokeSummaries.isEmpty {
+                    Section(header: Text("Pokes")) {
+                        ForEach(Array(preview.pokeSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Restore Behavior")) {
+                    Text("Restore replaces the local event archive for offline review and marks restored activity and pokes as read.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Restore Events")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Restore") {
+                        restoreArchive()
+                    }
+                    .disabled(!preview.hasEvents)
+                }
+            }
         }
     }
 }

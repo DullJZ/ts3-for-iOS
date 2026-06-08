@@ -401,6 +401,10 @@ struct TS3ActivitySummary: Identifiable, Codable {
 }
 
 extension TS3ServerActivityEvent.Kind: Codable {
+    fileprivate var encodedValueForSummary: String {
+        encodedValue
+    }
+
     private var encodedValue: String {
         switch self {
         case .clientEntered:
@@ -471,6 +475,8 @@ struct TS3EventHistoryArchivePreview {
     let pokeCount: Int
     let currentActivityCount: Int
     let currentPokeCount: Int
+    let activitySummaries: [String]
+    let pokeSummaries: [String]
 
     var totalCount: Int {
         activityCount + pokeCount
@@ -478,6 +484,14 @@ struct TS3EventHistoryArchivePreview {
 
     var currentTotalCount: Int {
         currentActivityCount + currentPokeCount
+    }
+
+    var hasEvents: Bool {
+        totalCount > 0
+    }
+
+    var clipboardSummary: String {
+        (activitySummaries + pokeSummaries).joined(separator: "\n")
     }
 }
 
@@ -8728,7 +8742,9 @@ final class TS3AppModel: ObservableObject {
             activityCount: archive.activityEvents.count,
             pokeCount: archive.pokeEvents.count,
             currentActivityCount: activityEvents.count,
-            currentPokeCount: pokeEvents.count
+            currentPokeCount: pokeEvents.count,
+            activitySummaries: archive.activityEvents.prefix(10).map(Self.eventArchiveActivitySummary),
+            pokeSummaries: archive.pokeEvents.prefix(10).map(Self.eventArchivePokeSummary)
         )
     }
 
@@ -13794,6 +13810,56 @@ final class TS3AppModel: ObservableObject {
         unreadPokeCount = 0
         unreadActivityCount = 0
         saveEventHistory()
+    }
+
+    private static func eventArchiveActivitySummary(_ event: TS3ActivitySummary) -> String {
+        var parts = [
+            "kind=\(event.kind.encodedValueForSummary)",
+            "client=\(event.clientName)",
+            "clientId=\(event.clientId)",
+            "timestamp=\(Int(event.timestamp.timeIntervalSince1970))",
+            "own=\(event.isOwnClient ? "true" : "false")"
+        ]
+        if let channelName = event.channelName, !channelName.isEmpty {
+            parts.append("channel=\(channelName)")
+        }
+        if let channelId = event.channelId {
+            parts.append("channelId=\(channelId)")
+        }
+        if let fromChannelId = event.fromChannelId {
+            parts.append("from=\(fromChannelId)")
+        }
+        if let toChannelId = event.toChannelId {
+            parts.append("to=\(toChannelId)")
+        }
+        if let invokerName = event.invokerName, !invokerName.isEmpty {
+            parts.append("invoker=\(invokerName)")
+        }
+        if let reasonId = event.reasonId {
+            parts.append("reasonId=\(reasonId)")
+        }
+        if let reasonMessage = event.reasonMessage, !reasonMessage.isEmpty {
+            parts.append("reason=\(reasonMessage)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func eventArchivePokeSummary(_ poke: TS3PokeSummary) -> String {
+        var parts = [
+            "direction=\(poke.isOwnPoke ? "out" : "in")",
+            "sender=\(poke.senderName)",
+            "timestamp=\(Int(poke.timestamp.timeIntervalSince1970))"
+        ]
+        if let senderId = poke.senderId {
+            parts.append("senderId=\(senderId)")
+        }
+        if let senderUniqueIdentifier = poke.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
+            parts.append("senderUid=\(senderUniqueIdentifier)")
+        }
+        if !poke.message.isEmpty {
+            parts.append("message=\(poke.message)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     func selfStatusBackupData() throws -> Data {
