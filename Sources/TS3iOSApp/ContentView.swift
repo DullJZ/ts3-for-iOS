@@ -18664,14 +18664,17 @@ struct BanListSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingBanBackupImport) { confirmation in
-                Alert(
-                    title: Text("Import Ban Backup?"),
-                    message: Text(banBackupPreviewMessage(confirmation.preview)),
-                    primaryButton: .destructive(Text("Import")) {
+            .sheet(item: $pendingBanBackupImport) { confirmation in
+                BanBackupImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: banBackupPreviewMessage(confirmation.preview),
+                    importBackup: {
                         importBanBackup(from: confirmation.url)
+                        pendingBanBackupImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingBanBackupImport = nil
+                    }
                 )
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
@@ -18849,6 +18852,57 @@ struct BanListSheet: View {
         }
         lines.append(preview.hasRules ? "Import adds these ban rules to the server." : "The backup has no usable ban rules.")
         return lines.joined(separator: "\n")
+    }
+}
+
+private struct BanBackupImportSheet: View {
+    let preview: TS3BanBackupPreview
+    let previewMessage: String
+    let importBackup: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasRules {
+                        Button("Copy Rule Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(Array(preview.ruleSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import adds the usable ban rules to the connected server. Empty and duplicate backup rules are skipped.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Ban Backup")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importBackup()
+                    }
+                    .disabled(!preview.hasRules)
+                }
+            }
+        }
     }
 }
 

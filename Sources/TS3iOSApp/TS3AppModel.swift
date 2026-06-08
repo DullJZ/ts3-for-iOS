@@ -674,6 +674,7 @@ struct TS3BanBackupPreview {
     let nameRuleCount: Int
     let uniqueIdentifierRuleCount: Int
     let lastNicknameRuleCount: Int
+    let ruleSummaries: [String]
     let firstIP: String?
     let firstName: String?
     let firstUniqueIdentifier: String?
@@ -683,6 +684,10 @@ struct TS3BanBackupPreview {
 
     var hasRules: Bool {
         ruleCount > 0
+    }
+
+    var clipboardSummary: String {
+        ruleSummaries.joined(separator: "\n")
     }
 }
 
@@ -9663,6 +9668,7 @@ final class TS3AppModel: ObservableObject {
             nameRuleCount: entries.filter { $0.name?.isEmpty == false }.count,
             uniqueIdentifierRuleCount: entries.filter { $0.uniqueIdentifier?.isEmpty == false }.count,
             lastNicknameRuleCount: entries.filter { $0.lastNickname?.isEmpty == false }.count,
+            ruleSummaries: entries.prefix(10).map(Self.banBackupRuleSummary),
             firstIP: first?.ip,
             firstName: first?.name,
             firstUniqueIdentifier: first?.uniqueIdentifier,
@@ -9717,6 +9723,29 @@ final class TS3AppModel: ObservableObject {
             return nil
         }
         return trimmed
+    }
+
+    private static func banBackupRuleSummary(_ entry: TS3BanBackupEntry) -> String {
+        var parts: [String] = []
+        if let ip = entry.ip, !ip.isEmpty {
+            parts.append("ip=\(ip)")
+        }
+        if let name = entry.name, !name.isEmpty {
+            parts.append("name=\(name)")
+        }
+        if let uniqueIdentifier = entry.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let lastNickname = entry.lastNickname, !lastNickname.isEmpty {
+            parts.append("lastNickname=\(lastNickname)")
+        }
+        if let durationSeconds = entry.durationSeconds {
+            parts.append("duration=\(durationSeconds == 0 ? "permanent" : "\(durationSeconds)s")")
+        }
+        if let reason = entry.reason, !reason.isEmpty {
+            parts.append("reason=\(reason)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     func deleteComplaint(_ entry: TS3ComplaintSummary) {

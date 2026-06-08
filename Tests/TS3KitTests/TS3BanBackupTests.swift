@@ -29,6 +29,15 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(preview.firstIP, "192.0.2.10")
         XCTAssertEqual(preview.firstDurationSeconds, 0)
         XCTAssertEqual(preview.firstReason, "spam")
+        XCTAssertEqual(
+            preview.ruleSummaries,
+            [
+                "ip=192.0.2.10 | duration=permanent | reason=spam",
+                "name=Bad Guest | lastNickname=Recent Guest | duration=600s",
+                "uid=abc/def"
+            ]
+        )
+        XCTAssertEqual(preview.clipboardSummary, preview.ruleSummaries.joined(separator: "\n"))
         XCTAssertTrue(preview.hasRules)
     }
 
@@ -48,6 +57,8 @@ final class TS3BanBackupTests: XCTestCase {
 
         XCTAssertEqual(preview.ruleCount, 0)
         XCTAssertEqual(preview.skippedRuleCount, 2)
+        XCTAssertTrue(preview.ruleSummaries.isEmpty)
+        XCTAssertEqual(preview.clipboardSummary, "")
         XCTAssertFalse(preview.hasRules)
     }
 }
