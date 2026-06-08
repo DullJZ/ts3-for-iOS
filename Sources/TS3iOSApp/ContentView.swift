@@ -20834,6 +20834,12 @@ enum ChannelEditorMode {
 }
 
 struct ChannelEditorSheet: View {
+    private struct ChannelDraftImportConfirmation: Identifiable {
+        let draft: ChannelDraft
+        let previewMessage: String
+        let id = UUID()
+    }
+
     private struct ChannelDraft: Codable {
         var name: String
         var phoneticName: String
@@ -20890,6 +20896,7 @@ struct ChannelEditorSheet: View {
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
     @State private var isExportingSnapshot = false
+    @State private var pendingDraftImport: ChannelDraftImportConfirmation?
     @State private var draftDocument = TS3TextFileDocument()
     @State private var snapshotDocument = TS3TextFileDocument()
 
@@ -21144,7 +21151,7 @@ struct ChannelEditorSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importDraft(from: url)
+                    prepareDraftImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -21168,6 +21175,16 @@ struct ChannelEditorSheet: View {
                 if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(item: $pendingDraftImport) { confirmation in
+                Alert(
+                    title: Text("Import Channel Draft?"),
+                    message: Text(confirmation.previewMessage),
+                    primaryButton: .default(Text("Import")) {
+                        applyDraft(confirmation.draft)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }
@@ -21282,7 +21299,7 @@ struct ChannelEditorSheet: View {
         }
     }
 
-    private func importDraft(from url: URL) {
+    private func prepareDraftImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -21291,10 +21308,93 @@ struct ChannelEditorSheet: View {
         }
         do {
             let draft = try JSONDecoder().decode(ChannelDraft.self, from: Data(contentsOf: url))
-            applyDraft(draft)
+            pendingDraftImport = ChannelDraftImportConfirmation(
+                draft: draft,
+                previewMessage: draftImportPreviewMessage(for: draft)
+            )
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func draftImportPreviewMessage(for draft: ChannelDraft) -> String {
+        let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let type = channelTypeTitle(draft.channelType)
+        let codec = codecTitle(for: draft.codec)
+        let quality = codecQualityTitle(for: draft.codecQuality)
+        let latency = draft.codecLatencyFactor?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let position = positionTitle(for: draft.order ?? "")
+        let maxClients = draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients
+        let maxFamilyClients = draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)
+        let validationMessages = draftValidationMessages(for: draft)
+        var lines = [
+            "Name: \(name.isEmpty ? "Missing" : name)",
+            "Type: \(type)",
+            "Position: \(position)",
+            "Max Clients: \(maxClients)",
+            "Max Family Clients: \(maxFamilyClients)"
+        ]
+        if !codec.isEmpty {
+            lines.append("Codec: \(codec)")
+        }
+        if !quality.isEmpty {
+            lines.append("Codec Quality: \(quality)")
+        }
+        if !latency.isEmpty {
+            lines.append("Codec Latency Factor: \(latency)")
+        }
+        if draft.isCodecUnencrypted == true {
+            lines.append("Voice Encryption: Disabled")
+        }
+        if draft.clearPassword {
+            lines.append("Password: Clear existing password")
+        } else if !draft.password.isEmpty {
+            lines.append("Password: New password set")
+        }
+        if validationMessages.isEmpty {
+            lines.append("Draft Valid: Yes")
+        } else {
+            lines.append("Draft Valid: No")
+            lines.append(contentsOf: validationMessages)
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func draftValidationMessages(for draft: ChannelDraft) -> [String] {
+        var messages: [String] = []
+        if draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Name is required before saving.")
+        }
+        if !isOptionalInt(draft.neededTalkPower) {
+            messages.append("Needed talk power must be numeric.")
+        }
+        if !isOptionalInt(draft.neededSubscribePower) {
+            messages.append("Needed subscribe power must be numeric.")
+        }
+        if !isOptionalInt(draft.neededDescriptionViewPower ?? "") {
+            messages.append("Needed description view power must be numeric.")
+        }
+        if !isOptionalInt(draft.codecQuality) ||
+            !TS3ChannelCodecConstraints.isValidQuality(parsedOptionalInt(draft.codecQuality)) {
+            messages.append("Codec quality must be between \(TS3ChannelCodecConstraints.qualityRange.lowerBound) and \(TS3ChannelCodecConstraints.qualityRange.upperBound).")
+        }
+        if !isOptionalInt(draft.codecLatencyFactor ?? "") ||
+            !TS3ChannelCodecConstraints.isValidLatencyFactor(parsedOptionalInt(draft.codecLatencyFactor ?? "")) {
+            messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
+        }
+        if !isOptionalInt(draft.deleteDelaySeconds) {
+            messages.append("Delete delay must be numeric.")
+        }
+        if !isOptionalInt(draft.iconId) {
+            messages.append("Icon ID must be numeric.")
+        }
+        if !draft.maxClientsUnlimited && !isRequiredInt(draft.maxClients) {
+            messages.append("Max clients is required when the client limit is not unlimited.")
+        }
+        if !draft.maxFamilyClientsInherited && !draft.maxFamilyClientsUnlimited && !isRequiredInt(draft.maxFamilyClients) {
+            messages.append("Max family clients is required when the family limit is not inherited or unlimited.")
+        }
+        return messages
     }
 
     private func applyDraft(_ draft: ChannelDraft) {
