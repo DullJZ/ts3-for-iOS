@@ -5314,6 +5314,10 @@ struct ContactsSheet: View {
                             exportContacts()
                         }
                         .disabled(model.contacts.isEmpty)
+                        Button("Export Visible Contacts Backup") {
+                            exportVisibleContacts()
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button("Import Contacts Backup") {
                             isImportingContacts = true
                         }
@@ -5501,6 +5505,15 @@ struct ContactsSheet: View {
     private func exportContacts() {
         do {
             contactsDocument = TS3TextFileDocument(data: try model.contactsExportData())
+            isExportingContacts = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func exportVisibleContacts() {
+        do {
+            contactsDocument = TS3TextFileDocument(data: try model.contactsExportData(visibleContacts))
             isExportingContacts = true
         } catch {
             model.lastError = error.localizedDescription

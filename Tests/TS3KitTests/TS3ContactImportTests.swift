@@ -52,6 +52,25 @@ final class TS3ContactImportTests: XCTestCase {
     }
 
     @MainActor
+    func testVisibleContactBackupExportSanitizesSelectedEntries() throws {
+        let model = TS3AppModel()
+        let exported = try model.contactsExportData([
+            makeContact(uniqueIdentifier: " uid-visible ", nickname: " Visible ", status: .friend, note: " note "),
+            makeContact(uniqueIdentifier: "", nickname: "Invalid", status: .blocked, note: ""),
+            makeContact(uniqueIdentifier: "uid-dup", nickname: "First", status: .ignored, note: ""),
+            makeContact(uniqueIdentifier: "uid-dup", nickname: "Second", status: .blocked, note: "latest")
+        ])
+
+        let decoded = try JSONDecoder().decode([TS3ContactEntry].self, from: exported)
+
+        XCTAssertEqual(decoded.map(\.uniqueIdentifier), ["uid-visible", "uid-dup"])
+        XCTAssertEqual(decoded.first?.nickname, "Visible")
+        XCTAssertEqual(decoded.first?.note, "note")
+        XCTAssertEqual(decoded.last?.nickname, "Second")
+        XCTAssertEqual(decoded.last?.status, .blocked)
+    }
+
+    @MainActor
     func testDeleteContactsRemovesOnlySelectedEntries() {
         let model = TS3AppModel()
         let keep = makeContact(uniqueIdentifier: "uid-keep", nickname: "Keep", status: .friend, note: "")

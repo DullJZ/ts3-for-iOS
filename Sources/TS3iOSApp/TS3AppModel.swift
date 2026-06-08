@@ -12997,9 +12997,13 @@ final class TS3AppModel: ObservableObject {
     }
 
     func contactsExportData() throws -> Data {
+        try contactsExportData(contacts)
+    }
+
+    func contactsExportData(_ entries: [TS3ContactEntry]) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(contacts)
+        return try encoder.encode(sanitizedImportedContacts(entries).contacts)
     }
 
     func saveContactFilterPreset(
