@@ -1135,6 +1135,23 @@ private struct TS3PrivilegeKeyBackup: Codable {
     var entries: [TS3PrivilegeKeyBackupEntry]
 }
 
+struct TS3PrivilegeKeyBackupPreview {
+    let keyCount: Int
+    let serverGroupCount: Int
+    let channelGroupCount: Int
+    let unknownTypeCount: Int
+    let firstKey: String?
+    let firstType: TS3PrivilegeKeyType?
+    let firstGroupId: Int?
+    let firstChannelId: Int?
+    let firstDescription: String?
+    let firstCustomSet: String?
+
+    var hasKeys: Bool {
+        keyCount > 0
+    }
+}
+
 enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
     case ownClient
     case databaseClient
@@ -9563,10 +9580,47 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(snapshot)
     }
 
+    func privilegeKeyBackupPreview(from data: Data) throws -> TS3PrivilegeKeyBackupPreview {
+        let decoded = try JSONDecoder().decode(TS3PrivilegeKeyBackup.self, from: data)
+        let entries = sanitizedPrivilegeKeyBackupEntries(decoded.entries)
+        let first = entries.first
+        return TS3PrivilegeKeyBackupPreview(
+            keyCount: entries.count,
+            serverGroupCount: entries.filter { TS3PrivilegeKeyType(rawValue: $0.type ?? -1) == .serverGroup }.count,
+            channelGroupCount: entries.filter { TS3PrivilegeKeyType(rawValue: $0.type ?? -1) == .channelGroup }.count,
+            unknownTypeCount: entries.filter { $0.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)) == nil }.count,
+            firstKey: first?.key,
+            firstType: first?.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)),
+            firstGroupId: first?.groupId,
+            firstChannelId: first?.channelId,
+            firstDescription: first?.description,
+            firstCustomSet: first?.customSet
+        )
+    }
+
     func importPrivilegeKeyBackup(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3PrivilegeKeyBackup.self, from: data)
-        generatedPrivilegeKey = decoded.entries.first?.key
+        generatedPrivilegeKey = sanitizedPrivilegeKeyBackupEntries(decoded.entries).first?.key
         lastError = nil
+    }
+
+    private func sanitizedPrivilegeKeyBackupEntries(
+        _ entries: [TS3PrivilegeKeyBackupEntry]
+    ) -> [TS3PrivilegeKeyBackupEntry] {
+        var seen: Set<String> = []
+        return entries.compactMap { entry in
+            let key = entry.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty, seen.insert(key).inserted else { return nil }
+            return TS3PrivilegeKeyBackupEntry(
+                key: key,
+                type: entry.type,
+                groupId: entry.groupId,
+                channelId: entry.channelId,
+                createdAt: entry.createdAt,
+                description: entry.description?.trimmingCharacters(in: .whitespacesAndNewlines),
+                customSet: entry.customSet?.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        }
     }
 
     private func privilegeKeySummaries(from keys: [TS3PrivilegeKeyEntry]) -> [TS3PrivilegeKeySummary] {

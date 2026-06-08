@@ -16879,6 +16879,7 @@ private extension TS3TemporaryServerPasswordSummary {
 struct PrivilegeKeysSheet: View {
     private struct KeyBackupImportConfirmation: Identifiable {
         let url: URL
+        let preview: TS3PrivilegeKeyBackupPreview
         let id = UUID()
     }
 
@@ -17226,7 +17227,7 @@ struct PrivilegeKeysSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    pendingKeyBackupImport = KeyBackupImportConfirmation(url: url)
+                    preparePrivilegeKeyBackupImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -17265,7 +17266,7 @@ struct PrivilegeKeysSheet: View {
             .alert(item: $pendingKeyBackupImport) { confirmation in
                 Alert(
                     title: Text("Import Privilege Key Backup?"),
-                    message: Text("This loads the first key from the selected backup into the generated key area for copying or use."),
+                    message: Text(privilegeKeyBackupPreviewMessage(confirmation.preview)),
                     primaryButton: .default(Text("Import")) {
                         importPrivilegeKeyBackup(from: confirmation.url)
                     },
@@ -17463,6 +17464,21 @@ struct PrivilegeKeysSheet: View {
         }
     }
 
+    private func preparePrivilegeKeyBackupImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.privilegeKeyBackupPreview(from: Data(contentsOf: url))
+            pendingKeyBackupImport = KeyBackupImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
     private func importPrivilegeKeyBackup(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
@@ -17474,6 +17490,48 @@ struct PrivilegeKeysSheet: View {
             try model.importPrivilegeKeyBackup(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+
+    private func privilegeKeyBackupPreviewMessage(_ preview: TS3PrivilegeKeyBackupPreview) -> String {
+        var lines = [
+            "Keys: \(preview.keyCount)",
+            "Server group keys: \(preview.serverGroupCount)",
+            "Channel group keys: \(preview.channelGroupCount)"
+        ]
+        if preview.unknownTypeCount > 0 {
+            lines.append("Unknown type keys: \(preview.unknownTypeCount)")
+        }
+        if let firstKey = preview.firstKey {
+            lines.append("First key: \(firstKey)")
+        }
+        if let firstType = preview.firstType {
+            lines.append("First target type: \(firstType.title)")
+        }
+        if let groupId = preview.firstGroupId {
+            lines.append("First group: \(selectedBackupGroupName(type: preview.firstType, groupId: groupId)) (\(groupId))")
+        }
+        if let channelId = preview.firstChannelId {
+            lines.append("First channel: \(channelName(channelId)) (\(channelId))")
+        }
+        if let description = preview.firstDescription, !description.isEmpty {
+            lines.append("First description: \(description)")
+        }
+        if let customSet = preview.firstCustomSet, !customSet.isEmpty {
+            lines.append("First custom set: \(customSet)")
+        }
+        lines.append(preview.hasKeys ? "Import loads the first key into the generated key area for copying or use." : "The backup has no usable keys.")
+        return lines.joined(separator: "\n")
+    }
+
+    private func selectedBackupGroupName(type: TS3PrivilegeKeyType?, groupId: Int) -> String {
+        switch type {
+        case .serverGroup:
+            return serverGroupName(groupId)
+        case .channelGroup:
+            return channelGroupName(groupId)
+        case nil:
+            return "Group \(groupId)"
         }
     }
 
