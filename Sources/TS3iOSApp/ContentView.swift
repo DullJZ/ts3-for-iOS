@@ -21087,22 +21087,38 @@ struct JoinChannelPasswordSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
     @Binding var password: String
+    @State private var rememberPassword = false
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
                     SecureField("Password", text: $password)
+                        .ts3PlainTextField()
+                    Toggle("Remember password for this channel", isOn: $rememberPassword)
+                    if model.hasSavedChannelPassword(for: channel) {
+                        Button("Forget Saved Password") {
+                            model.forgetSavedChannelPassword(for: channel)
+                            rememberPassword = false
+                            password = ""
+                        }
+                    }
                 }
                 Section {
                     Button("Join") {
-                        model.joinChannel(channel, password: password)
+                        model.joinChannel(channel, password: password, rememberPassword: rememberPassword)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
             .navigationTitle("Channel Password")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if let savedPassword = model.savedChannelPassword(for: channel) {
+                    password = savedPassword
+                    rememberPassword = true
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
@@ -21186,6 +21202,7 @@ struct DefaultChannelPasswordSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
     @Binding var password: String
+    @State private var rememberPassword = false
 
     var body: some View {
         NavigationView {
@@ -21193,14 +21210,28 @@ struct DefaultChannelPasswordSheet: View {
                 Section(header: Text(channel.name)) {
                     SecureField("Password", text: $password)
                         .ts3PlainTextField()
+                    Toggle("Remember password for this channel", isOn: $rememberPassword)
+                    if model.hasSavedChannelPassword(for: channel) {
+                        Button("Forget Saved Password") {
+                            model.forgetSavedChannelPassword(for: channel)
+                            rememberPassword = false
+                            password = ""
+                        }
+                    }
                     Button("Set Default Channel") {
-                        model.setDefaultChannel(channel, password: password)
+                        model.setDefaultChannel(channel, password: password, rememberPassword: rememberPassword)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
             .navigationTitle("Default Channel")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if let savedPassword = model.savedChannelPassword(for: channel) {
+                    password = savedPassword
+                    rememberPassword = true
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {
@@ -21218,22 +21249,38 @@ struct MoveUserPasswordSheet: View {
     let user: TS3UserSummary
     let channel: TS3ChannelSummary
     @Binding var password: String
+    @State private var rememberPassword = false
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
                     SecureField("Password", text: $password)
+                        .ts3PlainTextField()
+                    Toggle("Remember password for this channel", isOn: $rememberPassword)
+                    if model.hasSavedChannelPassword(for: channel) {
+                        Button("Forget Saved Password") {
+                            model.forgetSavedChannelPassword(for: channel)
+                            rememberPassword = false
+                            password = ""
+                        }
+                    }
                 }
                 Section {
                     Button("Move User") {
-                        model.moveUser(user, to: channel, password: password)
+                        model.moveUser(user, to: channel, password: password, rememberPassword: rememberPassword)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
             .navigationTitle("Channel Password")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if let savedPassword = model.savedChannelPassword(for: channel) {
+                    password = savedPassword
+                    rememberPassword = true
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Cancel") {

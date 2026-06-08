@@ -14,7 +14,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Server connection with password | Done | `ConnectView`, `TS3AppModel.connect()`, bookmark/recent connection state, connection diagnostics export, and reconnect policy controls | Expand real-server troubleshooting fields if additional protocol metrics are exposed. |
 | Channel tree and online clients | Done | Main channel/client list, refresh actions, channel switching, persisted channel tree expansion state | Improve very large server navigation if real-server scale testing shows issues. |
-| Channel join passwords | Done | Password prompts for protected channel join/move operations | Add saved per-channel password helpers if needed. |
+| Channel join passwords | Done | Password prompts for protected channel join/move operations, optional saved per-server/channel passwords, migration package backup/restore, and forget controls | Monitor real-server password retry behavior. |
 | Invite links | Done | Copy current invite and full invite links, bookmark invite copy, incoming `ts3server://`/`teamspeak://` URL handling, opaque host:port parsing, parameter-alias tests | Monitor additional invite variants found in real-world links. |
 | Recent connections | Done | Connection manager import/export, global entry, local notes, filter presets, and duplicate cleanup | Add richer real-server diagnostics if future connection history fields are exposed. |
 
@@ -78,7 +78,7 @@ Status legend:
 | Identity management | Done | Global identity sheet, import/export, snapshots, Catalyst entry | Add multi-identity switching if official-client parity requires it. |
 | Bookmarks | Done | Bookmark list/folders/import/export, connection manager, full bookmark editor for connection options, saved phonetic nickname, local notes, and duplicate cleanup | Audit official-client bookmark edge fields if future TS3 URL options are added. |
 | Contacts | Partial | Contact manager entry, online-user bulk contact import/status actions, complaint-source shortcuts, online and database-client friend/block/ignore/note shortcuts, visible batch actions, contact backup import preview, and local ignore suppression for private messages and pokes | Audit contact behavior against real server data and fill any official-client edge actions. |
-| Client migration | Done | Client package import/export covering local settings groups, channel layout state, schema metadata, notification/shortcut/audio preview details, import preview confirmation, and selectable per-section restore choices | Add richer per-item restore choices if package formats expand. |
+| Client migration | Done | Client package import/export covering local settings groups, saved channel passwords, channel layout state, schema metadata, notification/shortcut/audio preview details, import preview confirmation, and selectable per-section restore choices | Add richer per-item restore choices if package formats expand. |
 
 ## Notifications, Shortcuts, And Platform Integration
 

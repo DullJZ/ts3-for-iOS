@@ -176,6 +176,28 @@ struct TS3ChannelSummary: Identifiable {
     var isCurrent: Bool
 }
 
+struct TS3SavedChannelPassword: Identifiable, Codable, Equatable {
+    var id: UUID
+    var serverKey: String
+    var channelPath: String
+    var password: String
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        serverKey: String,
+        channelPath: String,
+        password: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.serverKey = serverKey
+        self.channelPath = channelPath
+        self.password = password
+        self.updatedAt = updatedAt
+    }
+}
+
 struct TS3UserSummary: Identifiable {
     let id: Int
     let channelId: Int
@@ -1910,6 +1932,7 @@ private struct TS3ClientMigrationPackage: Codable {
     var bookmarks: [TS3BookmarkSummary]
     var recentConnections: [TS3ConnectionSnapshot]
     var connectionFilterPresets: [TS3ConnectionFilterPreset]
+    var savedChannelPasswords: [TS3SavedChannelPassword]
     var contacts: [TS3ContactEntry]
     var contactFilterPresets: [TS3ContactFilterPreset]
     var notificationSettings: TS3NotificationSettings
@@ -1947,6 +1970,7 @@ private struct TS3ClientMigrationPackage: Codable {
         bookmarks: [TS3BookmarkSummary],
         recentConnections: [TS3ConnectionSnapshot],
         connectionFilterPresets: [TS3ConnectionFilterPreset],
+        savedChannelPasswords: [TS3SavedChannelPassword],
         contacts: [TS3ContactEntry],
         contactFilterPresets: [TS3ContactFilterPreset],
         notificationSettings: TS3NotificationSettings,
@@ -1983,6 +2007,7 @@ private struct TS3ClientMigrationPackage: Codable {
         self.bookmarks = bookmarks
         self.recentConnections = recentConnections
         self.connectionFilterPresets = connectionFilterPresets
+        self.savedChannelPasswords = savedChannelPasswords
         self.contacts = contacts
         self.contactFilterPresets = contactFilterPresets
         self.notificationSettings = notificationSettings
@@ -2021,6 +2046,7 @@ private struct TS3ClientMigrationPackage: Codable {
         case bookmarks
         case recentConnections
         case connectionFilterPresets
+        case savedChannelPasswords
         case contacts
         case contactFilterPresets
         case notificationSettings
@@ -2062,6 +2088,10 @@ private struct TS3ClientMigrationPackage: Codable {
         connectionFilterPresets = try container.decodeIfPresent(
             [TS3ConnectionFilterPreset].self,
             forKey: .connectionFilterPresets
+        ) ?? []
+        savedChannelPasswords = try container.decodeIfPresent(
+            [TS3SavedChannelPassword].self,
+            forKey: .savedChannelPasswords
         ) ?? []
         contacts = try container.decodeIfPresent([TS3ContactEntry].self, forKey: .contacts) ?? []
         contactFilterPresets = try container.decodeIfPresent(
@@ -3236,6 +3266,7 @@ final class TS3AppModel: ObservableObject {
     @Published private(set) var selfStatusProfiles: [TS3SelfStatusProfile] = []
     @Published private(set) var recentConnections: [TS3ConnectionSnapshot] = []
     @Published private(set) var connectionFilterPresets: [TS3ConnectionFilterPreset] = []
+    @Published private(set) var savedChannelPasswords: [TS3SavedChannelPassword] = []
     @Published private(set) var lastConnectionSnapshot: TS3ConnectionSnapshot?
     @Published private(set) var lastDisconnectMessage: String?
 
@@ -3262,6 +3293,7 @@ final class TS3AppModel: ObservableObject {
         loadBookmarks()
         loadRecentConnections()
         loadConnectionFilterPresets()
+        loadSavedChannelPasswords()
         loadServerLogResults()
         loadServerLogQueryPresets()
         loadChannelSubscriptionPresets()
@@ -3480,6 +3512,81 @@ final class TS3AppModel: ObservableObject {
     func setDefaultChannel(_ channel: TS3ChannelSummary, password: String = "") {
         defaultChannel = channelPath(for: channel)
         defaultChannelPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func setDefaultChannel(
+        _ channel: TS3ChannelSummary,
+        password: String,
+        rememberPassword: Bool
+    ) {
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        setDefaultChannel(channel, password: trimmedPassword)
+        if rememberPassword {
+            saveChannelPassword(trimmedPassword, for: channel)
+        }
+    }
+
+    func savedChannelPassword(for channel: TS3ChannelSummary) -> String? {
+        let key = savedChannelPasswordKey(for: channel)
+        return savedChannelPasswords.first {
+            $0.serverKey.caseInsensitiveCompare(key.serverKey) == .orderedSame
+                && $0.channelPath.caseInsensitiveCompare(key.channelPath) == .orderedSame
+        }?.password
+    }
+
+    func hasSavedChannelPassword(for channel: TS3ChannelSummary) -> Bool {
+        savedChannelPassword(for: channel) != nil
+    }
+
+    func saveChannelPassword(_ password: String, for channel: TS3ChannelSummary) {
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPassword.isEmpty else {
+            forgetSavedChannelPassword(for: channel)
+            return
+        }
+        let key = savedChannelPasswordKey(for: channel)
+        savedChannelPasswords.removeAll {
+            $0.serverKey.caseInsensitiveCompare(key.serverKey) == .orderedSame
+                && $0.channelPath.caseInsensitiveCompare(key.channelPath) == .orderedSame
+        }
+        savedChannelPasswords.insert(TS3SavedChannelPassword(
+            serverKey: key.serverKey,
+            channelPath: key.channelPath,
+            password: trimmedPassword
+        ), at: 0)
+        savedChannelPasswords = sanitizedSavedChannelPasswords(savedChannelPasswords)
+        saveSavedChannelPasswords()
+        lastError = nil
+    }
+
+    func forgetSavedChannelPassword(for channel: TS3ChannelSummary) {
+        let key = savedChannelPasswordKey(for: channel)
+        let originalCount = savedChannelPasswords.count
+        savedChannelPasswords.removeAll {
+            $0.serverKey.caseInsensitiveCompare(key.serverKey) == .orderedSame
+                && $0.channelPath.caseInsensitiveCompare(key.channelPath) == .orderedSame
+        }
+        if savedChannelPasswords.count != originalCount {
+            saveSavedChannelPasswords()
+        }
+        lastError = nil
+    }
+
+    private func savedChannelPasswordKey(for channel: TS3ChannelSummary) -> (serverKey: String, channelPath: String) {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let port = serverPort.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (
+            serverKey: "\(host):\(port.isEmpty ? "9987" : port)",
+            channelPath: channelPath(for: channel).trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
+    private func resolvedChannelPassword(for channel: TS3ChannelSummary, password: String?) -> String? {
+        if let password {
+            let trimmed = password.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        return savedChannelPassword(for: channel)
     }
 
     func contact(for user: TS3UserSummary) -> TS3ContactEntry? {
@@ -7371,10 +7478,18 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    func joinChannel(_ channel: TS3ChannelSummary, password: String? = nil) {
+    func joinChannel(
+        _ channel: TS3ChannelSummary,
+        password: String? = nil,
+        rememberPassword: Bool = false
+    ) {
+        let resolvedPassword = resolvedChannelPassword(for: channel, password: password)
+        if rememberPassword, let resolvedPassword {
+            saveChannelPassword(resolvedPassword, for: channel)
+        }
         Task {
             do {
-                try await client?.joinChannel(channelId: channel.id, password: password)
+                try await client?.joinChannel(channelId: channel.id, password: resolvedPassword)
                 setCurrentChannel(id: channel.id, name: channel.name, topic: channel.topic)
             } catch {
                 await MainActor.run {
@@ -8912,9 +9027,18 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
-    func moveUser(_ user: TS3UserSummary, to channel: TS3ChannelSummary, password: String? = nil) {
+    func moveUser(
+        _ user: TS3UserSummary,
+        to channel: TS3ChannelSummary,
+        password: String? = nil,
+        rememberPassword: Bool = false
+    ) {
+        let resolvedPassword = resolvedChannelPassword(for: channel, password: password)
+        if rememberPassword, let resolvedPassword {
+            saveChannelPassword(resolvedPassword, for: channel)
+        }
         runClientCommand { client in
-            try await client.moveClient(clientId: user.id, to: channel.id, password: password)
+            try await client.moveClient(clientId: user.id, to: channel.id, password: resolvedPassword)
         }
     }
 
@@ -9780,6 +9904,11 @@ final class TS3AppModel: ObservableObject {
         return baseURL.appendingPathComponent("ts3-connection-filter-presets.json")
     }
 
+    private var savedChannelPasswordsURL: URL {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseURL.appendingPathComponent("ts3-channel-passwords.json")
+    }
+
     private var contactsURL: URL {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent("ts3-contacts.json")
@@ -9987,6 +10116,70 @@ final class TS3AppModel: ObservableObject {
             return
         }
         applyAudioSettingsSnapshot(decoded)
+    }
+
+    private func loadSavedChannelPasswords() {
+        guard let data = try? Data(contentsOf: savedChannelPasswordsURL),
+              let decoded = try? JSONDecoder().decode([TS3SavedChannelPassword].self, from: data) else {
+            savedChannelPasswords = []
+            return
+        }
+        savedChannelPasswords = sanitizedSavedChannelPasswords(decoded)
+    }
+
+    private func saveSavedChannelPasswords() {
+        do {
+            let directory = savedChannelPasswordsURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(savedChannelPasswords)
+            try data.write(to: savedChannelPasswordsURL, options: .atomic)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    @discardableResult
+    func importSavedChannelPasswords(from data: Data) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3SavedChannelPassword].self, from: data)
+        var merged = savedChannelPasswords
+        for entry in sanitizedSavedChannelPasswords(imported) {
+            merged.removeAll {
+                $0.serverKey.caseInsensitiveCompare(entry.serverKey) == .orderedSame
+                    && $0.channelPath.caseInsensitiveCompare(entry.channelPath) == .orderedSame
+            }
+            merged.insert(entry, at: 0)
+        }
+        savedChannelPasswords = sanitizedSavedChannelPasswords(merged)
+        saveSavedChannelPasswords()
+        lastError = nil
+        return imported.count
+    }
+
+    private func sanitizedSavedChannelPasswords(
+        _ passwords: [TS3SavedChannelPassword]
+    ) -> [TS3SavedChannelPassword] {
+        var seen: Set<String> = []
+        return passwords.compactMap { entry in
+            let serverKey = entry.serverKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let channelPath = entry.channelPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            let password = entry.password.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !serverKey.isEmpty, !channelPath.isEmpty, !password.isEmpty else { return nil }
+            let key = "\(serverKey)\n\(channelPath.lowercased())"
+            guard seen.insert(key).inserted else { return nil }
+            return TS3SavedChannelPassword(
+                id: entry.id,
+                serverKey: serverKey,
+                channelPath: channelPath,
+                password: password,
+                updatedAt: entry.updatedAt
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.updatedAt == rhs.updatedAt {
+                return lhs.channelPath.localizedCaseInsensitiveCompare(rhs.channelPath) == .orderedAscending
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        }
     }
 
     private func saveAudioSettings() {
@@ -11549,6 +11742,7 @@ final class TS3AppModel: ObservableObject {
             bookmarks: bookmarks,
             recentConnections: recentConnections,
             connectionFilterPresets: connectionFilterPresets,
+            savedChannelPasswords: savedChannelPasswords,
             contacts: contacts,
             contactFilterPresets: contactFilterPresets,
             notificationSettings: notificationSettingsSnapshot,
@@ -11592,6 +11786,7 @@ final class TS3AppModel: ObservableObject {
             try importBookmarks(from: encodedPackageSection(package.bookmarks))
             try importRecentConnections(from: encodedPackageSection(package.recentConnections))
             try importConnectionFilterPresets(from: encodedPackageSection(package.connectionFilterPresets))
+            try importSavedChannelPasswords(from: encodedPackageSection(package.savedChannelPasswords))
             try importConnectionRecoverySettings(from: encodedPackageSection(package.connectionRecoverySettings))
         }
         if options.contacts {
@@ -11648,6 +11843,7 @@ final class TS3AppModel: ObservableObject {
         let itemCounts: [(String, Int)] = [
             ("Bookmarks", package.bookmarks.count),
             ("Recent Connections", package.recentConnections.count),
+            ("Saved Channel Passwords", package.savedChannelPasswords.count),
             ("Contacts", package.contacts.count),
             ("Server Log Presets", package.serverLogQueryPresets.count),
             ("Keyboard Shortcuts", package.keyboardShortcuts.count),

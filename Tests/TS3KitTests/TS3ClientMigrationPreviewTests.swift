@@ -123,6 +123,71 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertEqual(options.selectedSectionTitles, ["Connections", "Notifications", "Channel Layout", "Whisper"])
     }
 
+    @MainActor
+    func testSavedChannelPasswordsCanBeSavedUpdatedAndForgotten() {
+        let model = TS3AppModel()
+        model.serverHost = "voice-\(UUID().uuidString).example.test"
+        model.serverPort = "9988"
+        let channel = makeChannel(id: 31, name: "Raid Room", isPasswordProtected: true)
+        model.channels = [channel]
+
+        model.saveChannelPassword(" first-pass ", for: channel)
+
+        XCTAssertEqual(model.savedChannelPassword(for: channel), "first-pass")
+        XCTAssertTrue(model.hasSavedChannelPassword(for: channel))
+
+        model.saveChannelPassword("second-pass", for: channel)
+
+        XCTAssertEqual(model.savedChannelPassword(for: channel), "second-pass")
+        XCTAssertEqual(model.savedChannelPasswords.filter { $0.channelPath == "Raid Room" }.count, 1)
+
+        model.forgetSavedChannelPassword(for: channel)
+
+        XCTAssertNil(model.savedChannelPassword(for: channel))
+        XCTAssertFalse(model.hasSavedChannelPassword(for: channel))
+    }
+
+    @MainActor
+    func testClientMigrationImportCanRestoreOnlySavedChannelPasswordsWithConnections() throws {
+        let source = TS3AppModel()
+        source.serverHost = "voice-\(UUID().uuidString).example.test"
+        source.serverPort = "9989"
+        let channel = makeChannel(id: 41, name: "Locked Room", isPasswordProtected: true)
+        source.channels = [channel]
+        source.saveChannelPassword("room-pass", for: channel)
+        source.contacts = [
+            makeContact(uniqueIdentifier: "contact-1", nickname: "Avery", status: .friend, note: "squad")
+        ]
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        target.serverHost = source.serverHost
+        target.serverPort = source.serverPort
+        target.channels = [channel]
+        target.contacts = []
+
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: true,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertEqual(target.savedChannelPassword(for: channel), "room-pass")
+        XCTAssertTrue(target.contacts.isEmpty)
+        let preview = try target.clientMigrationPackagePreview(from: exported)
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Saved Channel Passwords" && $0.1 == 1 })
+    }
+
     private func makeContact(
         uniqueIdentifier: String,
         nickname: String,
@@ -135,6 +200,43 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             status: status,
             note: note,
             updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    private func makeChannel(
+        id: Int,
+        name: String,
+        isPasswordProtected: Bool
+    ) -> TS3ChannelSummary {
+        TS3ChannelSummary(
+            id: id,
+            parentId: nil,
+            order: nil,
+            name: name,
+            phoneticName: nil,
+            topic: nil,
+            description: nil,
+            isDefault: false,
+            isPasswordProtected: isPasswordProtected,
+            isPermanent: true,
+            isSemiPermanent: nil,
+            neededTalkPower: nil,
+            neededSubscribePower: nil,
+            neededDescriptionViewPower: nil,
+            codec: nil,
+            codecQuality: nil,
+            codecLatencyFactor: nil,
+            isCodecUnencrypted: nil,
+            deleteDelaySeconds: nil,
+            maxClients: nil,
+            maxFamilyClients: nil,
+            maxClientsUnlimited: nil,
+            maxFamilyClientsUnlimited: nil,
+            maxFamilyClientsInherited: nil,
+            iconId: nil,
+            iconURL: nil,
+            isSubscribed: nil,
+            isCurrent: false
         )
     }
 }
