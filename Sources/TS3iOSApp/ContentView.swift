@@ -9153,6 +9153,12 @@ struct ServerToolsSheet: View {
 }
 
 struct ServerLogsSheet: View {
+    private struct ServerLogArchiveImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3ServerLogArchivePreview
+        let id = UUID()
+    }
+
     private enum LogLevelFilter: String, CaseIterable, Identifiable {
         case all
         case info
@@ -9204,13 +9210,17 @@ struct ServerLogsSheet: View {
     @State private var newLogLevel: TS3LogLevel = .info
     @State private var newLogMessage = ""
     @State private var isExportingLogs = false
+    @State private var isExportingLogArchive = false
+    @State private var isImportingLogArchive = false
     @State private var logExportDocument = TS3TextFileDocument()
+    @State private var logArchiveDocument = TS3TextFileDocument()
     @State private var isExportingSnapshot = false
     @State private var snapshotDocument = TS3TextFileDocument()
     @State private var presetName = ""
     @State private var isImportingPresets = false
     @State private var isExportingPresets = false
     @State private var confirmation: LogConfirmation?
+    @State private var pendingLogArchiveImport: ServerLogArchiveImportConfirmation?
     @State private var presetDocument = TS3BookmarkFileDocument()
 
     var body: some View {
@@ -9268,6 +9278,13 @@ struct ServerLogsSheet: View {
                         isExportingSnapshot = true
                     }
                     .disabled(model.serverLogEntries.isEmpty)
+                    Button("Export Log Archive") {
+                        exportLogArchive()
+                    }
+                    .disabled(model.serverLogEntries.isEmpty)
+                    Button("Import Log Archive") {
+                        isImportingLogArchive = true
+                    }
                     Button("Clear Results") {
                         confirmation = .clearAllResults
                     }
@@ -9424,12 +9441,33 @@ struct ServerLogsSheet: View {
                 }
             }
             .fileExporter(
+                isPresented: $isExportingLogArchive,
+                document: logArchiveDocument,
+                contentType: .json,
+                defaultFilename: "ts3-server-log-archive"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
                 isPresented: $isExportingPresets,
                 document: presetDocument,
                 contentType: .json,
                 defaultFilename: "ts3-server-log-query-presets"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingLogArchive,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    prepareLogArchiveImport(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -9443,6 +9481,16 @@ struct ServerLogsSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(item: $pendingLogArchiveImport) { confirmation in
+                Alert(
+                    title: Text("Import Log Archive?"),
+                    message: Text(logArchivePreviewMessage(confirmation.preview)),
+                    primaryButton: .default(Text("Import")) {
+                        importLogArchive(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .alert(item: $confirmation) { confirmation in
                 switch confirmation {
@@ -9570,6 +9618,70 @@ struct ServerLogsSheet: View {
                 beginPosition: preset.beginPosition
             )
         }
+    }
+
+    private func exportLogArchive() {
+        do {
+            logArchiveDocument = TS3TextFileDocument(data: try model.serverLogArchiveData())
+            isExportingLogArchive = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareLogArchiveImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.serverLogArchivePreview(from: Data(contentsOf: url))
+            pendingLogArchiveImport = ServerLogArchiveImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importLogArchive(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importServerLogArchive(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func logArchivePreviewMessage(_ preview: TS3ServerLogArchivePreview) -> String {
+        var lines = [
+            "Entries: \(preview.entryCount)",
+            "With level: \(preview.levelCount)",
+            "With channel: \(preview.channelCount)",
+            "With timestamp: \(preview.timestampCount)"
+        ]
+        if preview.skippedEntryCount > 0 {
+            lines.append("Skipped invalid or duplicate entries: \(preview.skippedEntryCount)")
+        }
+        if let firstLevel = preview.firstLevel {
+            lines.append("First level: \(firstLevel)")
+        }
+        if let firstChannel = preview.firstChannel {
+            lines.append("First channel: \(firstChannel)")
+        }
+        if let firstMessage = preview.firstMessage {
+            lines.append("First message: \(firstMessage)")
+        }
+        if let firstTimestamp = preview.firstTimestamp {
+            lines.append("First date: \(ServerLogRow.dateText(firstTimestamp))")
+        }
+        lines.append(preview.hasEntries ? "Import replaces the local cached server log results; it does not change server logs." : "The archive has no usable server log entries.")
+        return lines.joined(separator: "\n")
     }
 
     private func exportPresets() {

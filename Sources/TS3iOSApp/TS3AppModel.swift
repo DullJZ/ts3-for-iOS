@@ -2917,6 +2917,22 @@ struct TS3ServerLogSummary: Identifiable, Codable {
     let message: String
     let rawLine: String
 
+    init(
+        id: Int,
+        timestamp: Date?,
+        level: String?,
+        channel: String?,
+        message: String,
+        rawLine: String
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.level = level
+        self.channel = channel
+        self.message = message
+        self.rawLine = rawLine
+    }
+
     init(entry: TS3ServerLogEntry) {
         self.id = entry.id
         self.timestamp = entry.timestamp
@@ -2924,6 +2940,26 @@ struct TS3ServerLogSummary: Identifiable, Codable {
         self.channel = entry.channel
         self.message = entry.message
         self.rawLine = entry.rawLine
+    }
+}
+
+private struct TS3ServerLogArchive: Codable {
+    var entries: [TS3ServerLogSummary]
+}
+
+struct TS3ServerLogArchivePreview {
+    let entryCount: Int
+    let skippedEntryCount: Int
+    let levelCount: Int
+    let channelCount: Int
+    let timestampCount: Int
+    let firstLevel: String?
+    let firstChannel: String?
+    let firstMessage: String?
+    let firstTimestamp: Date?
+
+    var hasEntries: Bool {
+        entryCount > 0
     }
 }
 
@@ -6307,6 +6343,37 @@ final class TS3AppModel: ObservableObject {
         guard !ids.isEmpty else { return }
         serverLogEntries.removeAll { ids.contains($0.id) }
         saveServerLogResults()
+    }
+
+    func serverLogArchiveData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TS3ServerLogArchive(entries: sanitizedServerLogArchiveEntries(serverLogEntries).entries))
+    }
+
+    func serverLogArchivePreview(from data: Data) throws -> TS3ServerLogArchivePreview {
+        let decoded = try JSONDecoder().decode(TS3ServerLogArchive.self, from: data)
+        let sanitized = sanitizedServerLogArchiveEntries(decoded.entries)
+        let entries = sanitized.entries
+        let first = entries.first
+        return TS3ServerLogArchivePreview(
+            entryCount: entries.count,
+            skippedEntryCount: sanitized.skippedCount,
+            levelCount: entries.filter { $0.level?.isEmpty == false }.count,
+            channelCount: entries.filter { $0.channel?.isEmpty == false }.count,
+            timestampCount: entries.filter { $0.timestamp != nil }.count,
+            firstLevel: first?.level,
+            firstChannel: first?.channel,
+            firstMessage: first?.message,
+            firstTimestamp: first?.timestamp
+        )
+    }
+
+    func importServerLogArchive(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3ServerLogArchive.self, from: data)
+        serverLogEntries = Array(sanitizedServerLogArchiveEntries(decoded.entries).entries.prefix(500))
+        saveServerLogResults()
+        lastError = nil
     }
 
     func saveServerLogQueryPreset(
@@ -11124,14 +11191,14 @@ final class TS3AppModel: ObservableObject {
             serverLogEntries = []
             return
         }
-        serverLogEntries = Array(decoded.prefix(500))
+        serverLogEntries = Array(sanitizedServerLogArchiveEntries(decoded).entries.prefix(500))
     }
 
     private func saveServerLogResults() {
         do {
             let directory = serverLogResultsURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(Array(serverLogEntries.prefix(500)))
+            let data = try JSONEncoder().encode(Array(sanitizedServerLogArchiveEntries(serverLogEntries).entries.prefix(500)))
             try data.write(to: serverLogResultsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
@@ -11177,6 +11244,49 @@ final class TS3AppModel: ObservableObject {
             searchText: String(preset.searchText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
             updatedAt: preset.updatedAt
         )
+    }
+
+    private func sanitizedServerLogArchiveEntries(
+        _ entries: [TS3ServerLogSummary]
+    ) -> (entries: [TS3ServerLogSummary], skippedCount: Int) {
+        var skippedCount = 0
+        var seen: Set<Int> = []
+        let sanitizedEntries = entries.compactMap { entry -> TS3ServerLogSummary? in
+            guard entry.id > 0, seen.insert(entry.id).inserted else {
+                skippedCount += 1
+                return nil
+            }
+            let message = entry.message.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !message.isEmpty else {
+                skippedCount += 1
+                return nil
+            }
+            let rawLine = entry.rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            return TS3ServerLogSummary(
+                id: entry.id,
+                timestamp: entry.timestamp,
+                level: trimmedArchiveValue(entry.level),
+                channel: trimmedArchiveValue(entry.channel),
+                message: String(message.prefix(1_000)),
+                rawLine: String((rawLine.isEmpty ? message : rawLine).prefix(2_000))
+            )
+        }
+        .sorted { lhsEntry, rhsEntry in
+            switch (lhsEntry.timestamp, rhsEntry.timestamp) {
+            case let (lhs?, rhs?):
+                if lhs == rhs {
+                    return lhsEntry.id > rhsEntry.id
+                }
+                return lhs > rhs
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return lhsEntry.id > rhsEntry.id
+            }
+        }
+        return (sanitizedEntries, skippedCount)
     }
 
     private func loadChannelSubscriptionPresets() {

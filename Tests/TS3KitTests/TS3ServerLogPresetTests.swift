@@ -47,4 +47,85 @@ final class TS3ServerLogPresetTests: XCTestCase {
 
         model.deleteAllServerLogQueryPresets()
     }
+
+    @MainActor
+    func testServerLogArchivePreviewSanitizesCountsAndFirstDetails() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "entries": [
+            {
+              "id": 3,
+              "timestamp": 1700000000,
+              "level": " warning ",
+              "channel": " Server ",
+              "message": " Auth failed ",
+              "rawLine": " raw auth "
+            },
+            {
+              "id": 3,
+              "level": "info",
+              "message": "Duplicate",
+              "rawLine": "duplicate"
+            },
+            {
+              "id": 2,
+              "level": "debug",
+              "message": "Debug entry",
+              "rawLine": ""
+            },
+            {
+              "id": 0,
+              "message": "Invalid",
+              "rawLine": "invalid"
+            },
+            {
+              "id": 4,
+              "message": "   ",
+              "rawLine": "blank"
+            }
+          ]
+        }
+        """
+
+        let preview = try model.serverLogArchivePreview(from: Data(archiveJSON.utf8))
+
+        XCTAssertEqual(preview.entryCount, 2)
+        XCTAssertEqual(preview.skippedEntryCount, 3)
+        XCTAssertEqual(preview.levelCount, 2)
+        XCTAssertEqual(preview.channelCount, 1)
+        XCTAssertEqual(preview.timestampCount, 1)
+        XCTAssertEqual(preview.firstLevel, "warning")
+        XCTAssertEqual(preview.firstChannel, "Server")
+        XCTAssertEqual(preview.firstMessage, "Auth failed")
+        XCTAssertTrue(preview.hasEntries)
+    }
+
+    @MainActor
+    func testServerLogArchiveImportReplacesLocalCachedResults() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "entries": [
+            {
+              "id": 9,
+              "level": " info ",
+              "channel": " VirtualSvrMgr ",
+              "message": " Server started ",
+              "rawLine": ""
+            }
+          ]
+        }
+        """
+
+        try model.importServerLogArchive(from: Data(archiveJSON.utf8))
+
+        XCTAssertEqual(model.serverLogEntries.count, 1)
+        XCTAssertEqual(model.serverLogEntries.first?.id, 9)
+        XCTAssertEqual(model.serverLogEntries.first?.level, "info")
+        XCTAssertEqual(model.serverLogEntries.first?.channel, "VirtualSvrMgr")
+        XCTAssertEqual(model.serverLogEntries.first?.message, "Server started")
+        XCTAssertEqual(model.serverLogEntries.first?.rawLine, "Server started")
+        XCTAssertEqual(model.lastError, nil)
+    }
 }
