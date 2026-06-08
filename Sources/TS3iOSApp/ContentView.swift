@@ -10166,6 +10166,12 @@ enum TS3GroupManagementTarget: String, CaseIterable, Identifiable {
 }
 
 struct GroupManagementSheet: View {
+    private struct GroupArchiveImportConfirmation: Identifiable {
+        let url: URL
+        let preview: TS3GroupArchivePreview
+        let id = UUID()
+    }
+
     private enum GroupTypeFilter: String, CaseIterable, Identifiable {
         case all
         case template
@@ -10228,11 +10234,15 @@ struct GroupManagementSheet: View {
     @State private var sortAscending = true
     @State private var presetName = ""
     @State private var isExportingGroups = false
+    @State private var isExportingGroupArchive = false
+    @State private var isImportingGroupArchive = false
     @State private var isExportingPresets = false
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
     @State private var groupsExportDocument = TS3TextFileDocument()
+    @State private var groupArchiveDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingGroupArchiveImport: GroupArchiveImportConfirmation?
 
     private var groups: [TS3GroupSummary] {
         switch target {
@@ -10367,6 +10377,13 @@ struct GroupManagementSheet: View {
                         isExportingGroups = true
                     }
                     .disabled(filteredGroups.isEmpty)
+                    Button("Export Group Archive") {
+                        exportGroupArchive()
+                    }
+                    .disabled(model.serverGroups.isEmpty && model.channelGroups.isEmpty)
+                    Button("Import Group Archive") {
+                        isImportingGroupArchive = true
+                    }
                 }
 
                 Section(header: Text(target.title)) {
@@ -10402,12 +10419,33 @@ struct GroupManagementSheet: View {
                 }
             }
             .fileExporter(
+                isPresented: $isExportingGroupArchive,
+                document: groupArchiveDocument,
+                contentType: .json,
+                defaultFilename: "ts3-permission-groups-archive"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileExporter(
                 isPresented: $isExportingPresets,
                 document: presetsDocument,
                 contentType: .json,
                 defaultFilename: "ts3-group-filter-presets"
             ) { result in
                 if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .fileImporter(
+                isPresented: $isImportingGroupArchive,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    prepareGroupArchiveImport(from: url)
+                } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
             }
@@ -10421,6 +10459,16 @@ struct GroupManagementSheet: View {
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .alert(item: $pendingGroupArchiveImport) { confirmation in
+                Alert(
+                    title: Text("Import Group Archive?"),
+                    message: Text(groupArchivePreviewMessage(confirmation.preview)),
+                    primaryButton: .default(Text("Import")) {
+                        importGroupArchive(from: confirmation.url)
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
@@ -10528,6 +10576,66 @@ struct GroupManagementSheet: View {
             parts.append("Search \(preset.searchText)")
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func exportGroupArchive() {
+        do {
+            groupArchiveDocument = TS3TextFileDocument(data: try model.groupArchiveData())
+            isExportingGroupArchive = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareGroupArchiveImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let preview = try model.groupArchivePreview(from: Data(contentsOf: url))
+            pendingGroupArchiveImport = GroupArchiveImportConfirmation(url: url, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importGroupArchive(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            try model.importGroupArchive(from: Data(contentsOf: url))
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func groupArchivePreviewMessage(_ preview: TS3GroupArchivePreview) -> String {
+        var lines = [
+            "Server groups: \(preview.serverGroupCount)",
+            "Channel groups: \(preview.channelGroupCount)",
+            "Template: \(preview.templateCount)",
+            "Regular: \(preview.regularCount)",
+            "Query: \(preview.queryCount)",
+            "Unknown type: \(preview.unknownTypeCount)"
+        ]
+        if preview.skippedGroupCount > 0 {
+            lines.append("Skipped invalid or duplicate groups: \(preview.skippedGroupCount)")
+        }
+        if let firstServerGroupName = preview.firstServerGroupName {
+            lines.append("First server group: \(firstServerGroupName)")
+        }
+        if let firstChannelGroupName = preview.firstChannelGroupName {
+            lines.append("First channel group: \(firstChannelGroupName)")
+        }
+        lines.append(preview.hasGroups ? "Import replaces the local cached group lists for offline review; it does not create, rename, or delete server groups." : "The archive has no usable groups.")
+        return lines.joined(separator: "\n")
     }
 
     private func exportPresets() {

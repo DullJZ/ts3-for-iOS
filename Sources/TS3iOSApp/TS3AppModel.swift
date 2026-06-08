@@ -953,6 +953,36 @@ struct TS3GroupSummary: Identifiable, Codable {
     }
 }
 
+private struct TS3GroupArchive: Codable {
+    var serverGroups: [TS3GroupSummary]
+    var channelGroups: [TS3GroupSummary]
+}
+
+struct TS3GroupArchivePreview {
+    let serverGroupCount: Int
+    let channelGroupCount: Int
+    let skippedServerGroupCount: Int
+    let skippedChannelGroupCount: Int
+    let templateCount: Int
+    let regularCount: Int
+    let queryCount: Int
+    let unknownTypeCount: Int
+    let firstServerGroupName: String?
+    let firstChannelGroupName: String?
+
+    var totalGroupCount: Int {
+        serverGroupCount + channelGroupCount
+    }
+
+    var skippedGroupCount: Int {
+        skippedServerGroupCount + skippedChannelGroupCount
+    }
+
+    var hasGroups: Bool {
+        totalGroupCount > 0
+    }
+}
+
 struct TS3GroupClientSummary: Identifiable {
     let id: String
     let clientDatabaseId: Int
@@ -9345,6 +9375,43 @@ final class TS3AppModel: ObservableObject {
         return imported.count
     }
 
+    func groupArchiveData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let sanitized = sanitizedGroupArchive(serverGroups: serverGroups, channelGroups: channelGroups)
+        return try encoder.encode(TS3GroupArchive(
+            serverGroups: sanitized.serverGroups,
+            channelGroups: sanitized.channelGroups
+        ))
+    }
+
+    func groupArchivePreview(from data: Data) throws -> TS3GroupArchivePreview {
+        let decoded = try JSONDecoder().decode(TS3GroupArchive.self, from: data)
+        let sanitized = sanitizedGroupArchive(serverGroups: decoded.serverGroups, channelGroups: decoded.channelGroups)
+        let allGroups = sanitized.serverGroups + sanitized.channelGroups
+        return TS3GroupArchivePreview(
+            serverGroupCount: sanitized.serverGroups.count,
+            channelGroupCount: sanitized.channelGroups.count,
+            skippedServerGroupCount: sanitized.skippedServerGroupCount,
+            skippedChannelGroupCount: sanitized.skippedChannelGroupCount,
+            templateCount: allGroups.filter { $0.type == .template }.count,
+            regularCount: allGroups.filter { $0.type == .regular }.count,
+            queryCount: allGroups.filter { $0.type == .query }.count,
+            unknownTypeCount: allGroups.filter { $0.type == nil }.count,
+            firstServerGroupName: sanitized.serverGroups.first?.name,
+            firstChannelGroupName: sanitized.channelGroups.first?.name
+        )
+    }
+
+    func importGroupArchive(from data: Data) throws {
+        let decoded = try JSONDecoder().decode(TS3GroupArchive.self, from: data)
+        let sanitized = sanitizedGroupArchive(serverGroups: decoded.serverGroups, channelGroups: decoded.channelGroups)
+        serverGroups = Array(sanitized.serverGroups.prefix(500))
+        channelGroups = Array(sanitized.channelGroups.prefix(500))
+        saveGroupResults()
+        lastError = nil
+    }
+
     func moveUser(
         _ user: TS3UserSummary,
         to channel: TS3ChannelSummary,
@@ -12209,22 +12276,75 @@ final class TS3AppModel: ObservableObject {
             channelGroups = []
             return
         }
-        serverGroups = Array(decoded.serverGroups.prefix(500))
-        channelGroups = Array(decoded.channelGroups.prefix(500))
+        let sanitized = sanitizedGroupArchive(serverGroups: decoded.serverGroups, channelGroups: decoded.channelGroups)
+        serverGroups = Array(sanitized.serverGroups.prefix(500))
+        channelGroups = Array(sanitized.channelGroups.prefix(500))
     }
 
     private func saveGroupResults() {
         do {
             let directory = groupResultsURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let sanitized = sanitizedGroupArchive(serverGroups: serverGroups, channelGroups: channelGroups)
             let data = try JSONEncoder().encode(TS3GroupResults(
-                serverGroups: Array(serverGroups.prefix(500)),
-                channelGroups: Array(channelGroups.prefix(500))
+                serverGroups: Array(sanitized.serverGroups.prefix(500)),
+                channelGroups: Array(sanitized.channelGroups.prefix(500))
             ))
             try data.write(to: groupResultsURL, options: .atomic)
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func sanitizedGroupArchive(
+        serverGroups: [TS3GroupSummary],
+        channelGroups: [TS3GroupSummary]
+    ) -> (
+        serverGroups: [TS3GroupSummary],
+        channelGroups: [TS3GroupSummary],
+        skippedServerGroupCount: Int,
+        skippedChannelGroupCount: Int
+    ) {
+        let sanitizedServerGroups = sanitizedGroupSummaries(serverGroups)
+        let sanitizedChannelGroups = sanitizedGroupSummaries(channelGroups)
+        return (
+            sanitizedServerGroups.groups,
+            sanitizedChannelGroups.groups,
+            sanitizedServerGroups.skippedCount,
+            sanitizedChannelGroups.skippedCount
+        )
+    }
+
+    private func sanitizedGroupSummaries(
+        _ groups: [TS3GroupSummary]
+    ) -> (groups: [TS3GroupSummary], skippedCount: Int) {
+        var skippedCount = 0
+        var seen: Set<Int> = []
+        let sanitizedGroups = groups.compactMap { group -> TS3GroupSummary? in
+            guard group.id > 0, seen.insert(group.id).inserted else {
+                skippedCount += 1
+                return nil
+            }
+            let name = group.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else {
+                skippedCount += 1
+                return nil
+            }
+            return TS3GroupSummary(
+                id: group.id,
+                name: String(name.prefix(120)),
+                type: group.type
+            )
+        }
+        .sorted {
+            if $0.id == $1.id {
+                return false
+            }
+            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedSame
+                ? $0.id < $1.id
+                : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+        return (sanitizedGroups, skippedCount)
     }
 
     private func saveGroupFilterPresets() {
