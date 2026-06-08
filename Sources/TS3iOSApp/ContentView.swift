@@ -17812,14 +17812,17 @@ struct PrivilegeKeysSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingKeyBackupImport) { confirmation in
-                Alert(
-                    title: Text("Import Privilege Key Backup?"),
-                    message: Text(privilegeKeyBackupPreviewMessage(confirmation.preview)),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingKeyBackupImport) { confirmation in
+                PrivilegeKeyBackupImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: privilegeKeyBackupPreviewMessage(confirmation.preview),
+                    importBackup: {
                         importPrivilegeKeyBackup(from: confirmation.url)
+                        pendingKeyBackupImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingKeyBackupImport = nil
+                    }
                 )
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
@@ -18169,6 +18172,57 @@ struct PrivilegeKeysSheet: View {
         model.channels.first { $0.id == id }?.name ?? "Channel \(id)"
     }
 
+}
+
+private struct PrivilegeKeyBackupImportSheet: View {
+    let preview: TS3PrivilegeKeyBackupPreview
+    let previewMessage: String
+    let importBackup: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasKeys {
+                        Button("Copy Key Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(Array(preview.keySummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import loads the first usable key into the generated key area for copying, using, saving, or exporting.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Key Backup")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importBackup()
+                    }
+                    .disabled(!preview.hasKeys)
+                }
+            }
+        }
+    }
 }
 
 struct PrivilegeKeyRow: View {

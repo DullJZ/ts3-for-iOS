@@ -1265,6 +1265,7 @@ struct TS3PrivilegeKeyBackupPreview {
     let serverGroupCount: Int
     let channelGroupCount: Int
     let unknownTypeCount: Int
+    let keySummaries: [String]
     let firstKey: String?
     let firstType: TS3PrivilegeKeyType?
     let firstGroupId: Int?
@@ -1274,6 +1275,10 @@ struct TS3PrivilegeKeyBackupPreview {
 
     var hasKeys: Bool {
         keyCount > 0
+    }
+
+    var clipboardSummary: String {
+        keySummaries.joined(separator: "\n")
     }
 }
 
@@ -9997,6 +10002,7 @@ final class TS3AppModel: ObservableObject {
             serverGroupCount: entries.filter { TS3PrivilegeKeyType(rawValue: $0.type ?? -1) == .serverGroup }.count,
             channelGroupCount: entries.filter { TS3PrivilegeKeyType(rawValue: $0.type ?? -1) == .channelGroup }.count,
             unknownTypeCount: entries.filter { $0.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)) == nil }.count,
+            keySummaries: entries.prefix(10).map(Self.privilegeKeyBackupSummary),
             firstKey: first?.key,
             firstType: first?.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)),
             firstGroupId: first?.groupId,
@@ -10029,6 +10035,25 @@ final class TS3AppModel: ObservableObject {
                 customSet: entry.customSet?.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }
+    }
+
+    private static func privilegeKeyBackupSummary(_ entry: TS3PrivilegeKeyBackupEntry) -> String {
+        let type = entry.type.flatMap(TS3PrivilegeKeyType.init(rawValue:))?.title ?? "Unknown"
+        var parts = [
+            "key=\(entry.key)",
+            "type=\(type)",
+            "group=\(entry.groupId)"
+        ]
+        if let channelId = entry.channelId {
+            parts.append("channel=\(channelId)")
+        }
+        if let description = entry.description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let customSet = entry.customSet, !customSet.isEmpty {
+            parts.append("customSet=\(customSet)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func privilegeKeySummaries(from keys: [TS3PrivilegeKeyEntry]) -> [TS3PrivilegeKeySummary] {

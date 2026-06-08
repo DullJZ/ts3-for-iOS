@@ -40,6 +40,15 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         XCTAssertEqual(preview.firstType, .serverGroup)
         XCTAssertEqual(preview.firstGroupId, 6)
         XCTAssertEqual(preview.firstDescription, "admins")
+        XCTAssertEqual(
+            preview.keySummaries,
+            [
+                "key=server-key | type=Server Group | group=6 | description=admins",
+                "key=channel-key | type=Channel Group | group=9 | channel=12 | customSet=token_custom",
+                "key=unknown-key | type=Unknown | group=99"
+            ]
+        )
+        XCTAssertEqual(preview.clipboardSummary, preview.keySummaries.joined(separator: "\n"))
     }
 
     @MainActor
@@ -61,6 +70,13 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         try model.importPrivilegeKeyBackup(from: data)
 
         XCTAssertEqual(preview.keyCount, 2)
+        XCTAssertEqual(
+            preview.keySummaries,
+            [
+                "key=first-key | type=Server Group | group=6",
+                "key=second-key | type=Channel Group | group=8"
+            ]
+        )
         XCTAssertEqual(model.generatedPrivilegeKey, "first-key")
     }
 
