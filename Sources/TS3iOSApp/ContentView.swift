@@ -13656,15 +13656,58 @@ struct ServerSettingsEditorSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingDraftImport) { confirmation in
-                Alert(
-                    title: Text("Import Server Settings Draft?"),
-                    message: Text(confirmation.previewMessage),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingDraftImport) { confirmation in
+                ServerSettingsDraftImportSheet(
+                    previewMessage: confirmation.previewMessage,
+                    importDraft: {
                         applyDraft(confirmation.draft)
+                        pendingDraftImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingDraftImport = nil
+                    }
                 )
+            }
+        }
+    }
+
+    private struct ServerSettingsDraftImportSheet: View {
+        let previewMessage: String
+        let importDraft: () -> Void
+        let cancel: () -> Void
+
+        var body: some View {
+            NavigationView {
+                Form {
+                    Section(header: Text("Preview")) {
+                        Text(previewMessage)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Copy Settings Summary") {
+                            TS3PlatformSupport.copyToPasteboard(previewMessage)
+                        }
+                    }
+
+                    Section(header: Text("Import Behavior")) {
+                        Text("Import fills the server settings editor with this draft. It does not save changes to the server until Save is tapped.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .navigationTitle("Import Settings")
+                .ts3InlineNavigationTitle()
+                .toolbar {
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                        Button("Cancel") {
+                            cancel()
+                        }
+                    }
+                    ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                        Button("Import") {
+                            importDraft()
+                        }
+                    }
+                }
             }
         }
     }
