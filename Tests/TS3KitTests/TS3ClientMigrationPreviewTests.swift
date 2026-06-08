@@ -107,6 +107,75 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertEqual(target.audioTransmitMode, .voiceActivation)
     }
 
+    @MainActor
+    func testClientMigrationImportRestoresNotificationsOnlyWhenSelected() throws {
+        let source = TS3AppModel()
+        source.resetNotificationSettings()
+        source.applyAllEventsNotificationPreset()
+        source.setNotificationSoundEnabled(false)
+        source.setNotificationQuietHoursEnabled(true)
+        source.setNotificationQuietHours(startMinute: 22 * 60, endMinute: 7 * 60)
+        source.setNotificationServerMuted(true, key: "voice.example.test")
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        target.resetNotificationSettings()
+        target.applyDirectNotificationPreset()
+        target.setNotificationSoundEnabled(true)
+        target.setNotificationQuietHoursEnabled(false)
+        target.setNotificationServerMuted(false, key: "voice.example.test")
+
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                identities: false,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertTrue(target.privateMessageNotificationsEnabled)
+        XCTAssertTrue(target.pokeNotificationsEnabled)
+        XCTAssertFalse(target.activityNotificationsEnabled)
+        XCTAssertTrue(target.notificationSoundEnabled)
+        XCTAssertFalse(target.notificationQuietHoursEnabled)
+        XCTAssertFalse(target.mutedNotificationServerKeys.contains("voice.example.test"))
+
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                identities: false,
+                contacts: false,
+                notifications: true,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertTrue(target.privateMessageNotificationsEnabled)
+        XCTAssertTrue(target.pokeNotificationsEnabled)
+        XCTAssertTrue(target.activityNotificationsEnabled)
+        XCTAssertFalse(target.notificationSoundEnabled)
+        XCTAssertTrue(target.notificationQuietHoursEnabled)
+        XCTAssertEqual(target.notificationQuietHoursStartMinute, 22 * 60)
+        XCTAssertEqual(target.notificationQuietHoursEndMinute, 7 * 60)
+        XCTAssertTrue(target.mutedNotificationServerKeys.contains("voice.example.test"))
+    }
+
     func testClientMigrationRestoreOptionsExposeSelectedSectionTitles() {
         let options = TS3ClientMigrationRestoreOptions(
             connections: true,
