@@ -53,6 +53,14 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(preview.firstTargetName, "Target")
         XCTAssertEqual(preview.firstSourceName, "Reporter")
         XCTAssertEqual(preview.firstMessage, "Abuse")
+        XCTAssertEqual(
+            preview.complaintSummaries,
+            [
+                "sourceDb=44 | targetDb=22 | sourceName=Reporter | targetName=Target | timestamp=2678307200 | message=Abuse",
+                "sourceDb=45 | targetDb=23"
+            ]
+        )
+        XCTAssertEqual(preview.clipboardSummary, preview.complaintSummaries.joined(separator: "\n"))
         XCTAssertTrue(preview.hasComplaints)
     }
 

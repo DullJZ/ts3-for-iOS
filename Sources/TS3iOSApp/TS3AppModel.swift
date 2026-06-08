@@ -755,6 +755,7 @@ struct TS3ComplaintArchivePreview {
     let namedSourceCount: Int
     let anonymousSourceCount: Int
     let messageCount: Int
+    let complaintSummaries: [String]
     let firstTargetName: String?
     let firstTargetDatabaseId: Int?
     let firstSourceName: String?
@@ -764,6 +765,10 @@ struct TS3ComplaintArchivePreview {
 
     var hasComplaints: Bool {
         complaintCount > 0
+    }
+
+    var clipboardSummary: String {
+        complaintSummaries.joined(separator: "\n")
     }
 }
 
@@ -9069,6 +9074,7 @@ final class TS3AppModel: ObservableObject {
             namedSourceCount: entries.filter { $0.sourceName?.isEmpty == false }.count,
             anonymousSourceCount: entries.filter { $0.sourceName?.isEmpty != false }.count,
             messageCount: entries.filter { $0.message?.isEmpty == false }.count,
+            complaintSummaries: entries.prefix(10).map(Self.complaintArchiveSummary),
             firstTargetName: first?.targetName,
             firstTargetDatabaseId: first?.targetClientDatabaseId,
             firstSourceName: first?.sourceName,
@@ -12069,6 +12075,26 @@ final class TS3AppModel: ObservableObject {
             return nil
         }
         return trimmed
+    }
+
+    private static func complaintArchiveSummary(_ entry: TS3ComplaintSummary) -> String {
+        var parts = [
+            "sourceDb=\(entry.sourceClientDatabaseId)",
+            "targetDb=\(entry.targetClientDatabaseId)"
+        ]
+        if let sourceName = entry.sourceName, !sourceName.isEmpty {
+            parts.append("sourceName=\(sourceName)")
+        }
+        if let targetName = entry.targetName, !targetName.isEmpty {
+            parts.append("targetName=\(targetName)")
+        }
+        if let timestamp = entry.timestamp {
+            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
+        }
+        if let message = entry.message, !message.isEmpty {
+            parts.append("message=\(message)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func loadTemporaryServerPasswordFilterPresets() {

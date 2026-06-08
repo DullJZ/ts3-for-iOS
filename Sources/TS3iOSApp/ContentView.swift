@@ -19245,14 +19245,17 @@ struct ComplaintListSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $pendingComplaintArchiveImport) { confirmation in
-                Alert(
-                    title: Text("Import Complaint Archive?"),
-                    message: Text(complaintArchivePreviewMessage(confirmation.preview)),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingComplaintArchiveImport) { confirmation in
+                ComplaintArchiveImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: complaintArchivePreviewMessage(confirmation.preview),
+                    importArchive: {
                         importComplaintArchive(from: confirmation.url)
+                        pendingComplaintArchiveImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingComplaintArchiveImport = nil
+                    }
                 )
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
@@ -19474,6 +19477,57 @@ struct ComplaintListSheet: View {
         }
         lines.append(preview.hasComplaints ? "Import replaces the local cached complaint list for offline review; it does not submit complaints to the server." : "The archive has no usable complaints.")
         return lines.joined(separator: "\n")
+    }
+}
+
+private struct ComplaintArchiveImportSheet: View {
+    let preview: TS3ComplaintArchivePreview
+    let previewMessage: String
+    let importArchive: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasComplaints {
+                        Button("Copy Complaint Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(Array(preview.complaintSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces the local cached complaint list for offline review and does not submit complaints to the server.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Complaints")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importArchive()
+                    }
+                    .disabled(!preview.hasComplaints)
+                }
+            }
+        }
     }
 }
 
