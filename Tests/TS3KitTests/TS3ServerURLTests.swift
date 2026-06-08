@@ -28,6 +28,39 @@ final class TS3ServerURLTests: XCTestCase {
         XCTAssertEqual(parsed.nickname, "Bob")
     }
 
+    func testParsesTeamspeakSchemeInvitationURL() throws {
+        let url = try XCTUnwrap(URL(string: "teamspeak://voice.example.com:9987?nickname=Cat&channel=Lobby"))
+
+        let parsed = try TS3ServerURL(url: url)
+
+        XCTAssertEqual(parsed.host, "voice.example.com")
+        XCTAssertEqual(parsed.port, 9987)
+        XCTAssertEqual(parsed.nickname, "Cat")
+        XCTAssertEqual(parsed.defaultChannel, "Lobby")
+    }
+
+    func testParsesOpaqueTeamSpeakURLWithPort() throws {
+        let url = try XCTUnwrap(URL(string: "ts3server:voice.example.com:10011?nickname=Opaque"))
+
+        let parsed = try TS3ServerURL(url: url)
+
+        XCTAssertEqual(parsed.host, "voice.example.com")
+        XCTAssertEqual(parsed.port, 10011)
+        XCTAssertEqual(parsed.nickname, "Opaque")
+    }
+
+    func testParsesInvitationParameterAliases() throws {
+        let url = try XCTUnwrap(URL(string: "ts3server://voice.example.com?serverpassword=secret&default_channel=Ops&channel_password=room&privilege_key=key&bookmark=Ops%20Server"))
+
+        let parsed = try TS3ServerURL(url: url)
+
+        XCTAssertEqual(parsed.serverPassword, "secret")
+        XCTAssertEqual(parsed.defaultChannel, "Ops")
+        XCTAssertEqual(parsed.defaultChannelPassword, "room")
+        XCTAssertEqual(parsed.privilegeKey, "key")
+        XCTAssertEqual(parsed.bookmarkName, "Ops Server")
+    }
+
     func testRejectsNonTeamSpeakURL() throws {
         let url = try XCTUnwrap(URL(string: "https://voice.example.com"))
 

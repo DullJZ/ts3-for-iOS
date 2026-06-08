@@ -15,7 +15,7 @@ Status legend:
 | Server connection with password | Done | `ConnectView`, `TS3AppModel.connect()`, bookmark/recent connection state, connection diagnostics export, and reconnect policy controls | Expand real-server troubleshooting fields if additional protocol metrics are exposed. |
 | Channel tree and online clients | Done | Main channel/client list, refresh actions, channel switching, persisted channel tree expansion state | Improve very large server navigation if real-server scale testing shows issues. |
 | Channel join passwords | Done | Password prompts for protected channel join/move operations | Add saved per-channel password helpers if needed. |
-| Invite links | Done | Copy current invite and full invite links, bookmark invite copy | Add incoming invite routing tests for more URL variants. |
+| Invite links | Done | Copy current invite and full invite links, bookmark invite copy, incoming `ts3server://`/`teamspeak://` URL handling, opaque host:port parsing, parameter-alias tests | Monitor additional invite variants found in real-world links. |
 | Recent connections | Done | Connection manager import/export, global entry, local notes, filter presets, and duplicate cleanup | Add richer real-server diagnostics if future connection history fields are exposed. |
 
 ## Voice And Audio
@@ -95,7 +95,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Debug logs | Done | Debug log page with level/search filtering, visible-log copy/export, clear, and diagnostic report export package | Add richer packaged attachments if platform sandbox requirements emerge. |
 | Build coverage | Done | README documents SwiftPM, iOS, Catalyst, CI artifact builds | Keep README feature list updated with current capabilities. |
-| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, URLs, byte buffer, icons, whisper, notification import previews, and client migration preview details | Add more tests for package import/export edge cases. |
+| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, and client migration preview details | Add more tests for package import/export edge cases. |
 
 ## Next Implementation Priorities
 

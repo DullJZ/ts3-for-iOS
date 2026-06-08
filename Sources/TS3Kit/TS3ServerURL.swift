@@ -1,6 +1,6 @@
 import Foundation
 
-/// A parsed `ts3server://` invitation or connection URL.
+/// A parsed TeamSpeak invitation or connection URL.
 public struct TS3ServerURL: Equatable {
     public let host: String
     public let port: Int?
@@ -35,16 +35,18 @@ public struct TS3ServerURL: Equatable {
         self.bookmarkName = bookmarkName
     }
 
-    /// Parses a TeamSpeak `ts3server://` URL.
+    /// Parses a TeamSpeak `ts3server://` or `teamspeak://` URL.
     public init(url: URL) throws {
-        guard url.scheme?.lowercased() == "ts3server" else {
+        guard let scheme = url.scheme?.lowercased(),
+              Self.supportedSchemes.contains(scheme) else {
             throw TS3Error.invalidCommand
         }
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             throw TS3Error.invalidCommand
         }
 
-        let host = Self.nonEmpty(url.host) ?? Self.hostFromOpaqueURL(url)
+        let parsedOpaqueHost = Self.hostAndPortFromOpaqueURL(url, scheme: scheme)
+        let host = Self.nonEmpty(url.host) ?? parsedOpaqueHost?.host
         guard let host, !host.isEmpty else {
             throw TS3Error.invalidCommand
         }
@@ -58,14 +60,14 @@ public struct TS3ServerURL: Equatable {
 
         self.init(
             host: host,
-            port: url.port ?? Self.intValue(query["port"]),
+            port: url.port ?? parsedOpaqueHost?.port ?? Self.intValue(query["port"]),
             nickname: query["nickname"],
-            serverPassword: query["password"],
-            defaultChannel: query["channel"],
-            defaultChannelPassword: query["channelpassword"],
-            privilegeKey: query["token"],
+            serverPassword: Self.firstValue(in: query, keys: ["password", "serverpassword", "server_password"]),
+            defaultChannel: Self.firstValue(in: query, keys: ["channel", "defaultchannel", "default_channel"]),
+            defaultChannelPassword: Self.firstValue(in: query, keys: ["channelpassword", "channel_password"]),
+            privilegeKey: Self.firstValue(in: query, keys: ["token", "privilegekey", "privilege_key"]),
             phoneticNickname: query["phoneticnickname"] ?? query["nickname_phonetic"],
-            bookmarkName: query["addbookmark"]
+            bookmarkName: query["addbookmark"] ?? query["bookmark"]
         )
     }
 
@@ -92,6 +94,8 @@ public struct TS3ServerURL: Equatable {
         return components.url
     }
 
+    private static let supportedSchemes = ["ts3server", "teamspeak"]
+
     private static func normalizedQueryItem(_ item: URLQueryItem) -> (String, String)? {
         let key = item.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !key.isEmpty else { return nil }
@@ -109,18 +113,31 @@ public struct TS3ServerURL: Equatable {
         return Int(value.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    private static func firstValue(in query: [String: String], keys: [String]) -> String? {
+        keys.lazy.compactMap { query[$0] }.first
+    }
+
     private func appendQueryItem(name: String, value: String?, to queryItems: inout [URLQueryItem]) {
         guard let value = Self.nonEmpty(value) else { return }
         queryItems.append(URLQueryItem(name: name, value: value))
     }
 
-    private static func hostFromOpaqueURL(_ url: URL) -> String? {
-        let prefix = "ts3server:"
+    private static func hostAndPortFromOpaqueURL(_ url: URL, scheme: String) -> (host: String, port: Int?)? {
+        let prefix = "\(scheme):"
         let raw = url.absoluteString
         guard raw.lowercased().hasPrefix(prefix) else { return nil }
         let rest = String(raw.dropFirst(prefix.count))
         let withoutSlashes = rest.hasPrefix("//") ? String(rest.dropFirst(2)) : rest
         let hostPart = withoutSlashes.split(separator: "?", maxSplits: 1).first.map(String.init)
-        return nonEmpty(hostPart)
+        guard let hostPart = nonEmpty(hostPart) else { return nil }
+        return splitHostAndPort(hostPart)
+    }
+
+    private static func splitHostAndPort(_ value: String) -> (host: String, port: Int?)? {
+        guard let components = URLComponents(string: "//\(value)"),
+              let host = nonEmpty(components.host) else {
+            return nonEmpty(value).map { ($0, nil) }
+        }
+        return (host, components.port)
     }
 }
