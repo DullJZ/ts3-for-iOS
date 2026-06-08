@@ -87,7 +87,7 @@ Status legend:
 | Local notifications | Done | Global notification settings, presets, import/export with overwrite preview, event types, per-server mute rules, per-contact mute rules, and quiet-hours scheduling | Add richer notification category-specific schedules if official-client parity requires them. |
 | Keyboard shortcuts | Partial | User-editable shortcut bindings, structured recorder, duplicate warnings, import/export/reset controls, validation hints, and Catalyst menu bindings for messaging, voice, server info/settings, admin tools, permissions, complaints, temporary passwords, and files | Add true key-event capture/global hotkey support if platform APIs allow it. |
 | Catalyst menus | Done | Native Catalyst/macOS command menus split into TeamSpeak, Connection, Messaging, Administration, and Voice workflows with shortcuts for major connected tools | Add new command groups as future workflows are added. |
-| iOS accessibility and compact layout | Partial | SwiftUI shared sheets/forms, compact voice status strip, and VoiceOver labels/values for global mic/output/transmit/whisper state | Continue auditing dynamic type and dense administration sheets. |
+| iOS accessibility and compact layout | Partial | SwiftUI shared sheets/forms, compact voice status strip, VoiceOver labels/values for global mic/output/transmit/whisper state, and readable row summaries/actions for dense permission, group, complaint, and ban administration lists | Continue auditing dynamic type and remaining dense administration sheets. |
 
 ## Release And Diagnostics
 

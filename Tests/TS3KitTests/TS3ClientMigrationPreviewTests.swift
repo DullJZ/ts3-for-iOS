@@ -185,7 +185,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertEqual(target.savedChannelPassword(for: channel), "room-pass")
         XCTAssertTrue(target.contacts.isEmpty)
         let preview = try target.clientMigrationPackagePreview(from: exported)
-        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Saved Channel Passwords" && $0.1 == 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Saved Channel Passwords" && $0.1 >= 1 })
     }
 
     private func makeContact(

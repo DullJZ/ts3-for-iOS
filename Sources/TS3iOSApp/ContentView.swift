@@ -10438,6 +10438,19 @@ struct GroupManagementRow: View {
                 )
             }
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(group.name)
+        .accessibilityValue("\(target.title) group. ID \(group.id). Type \(group.typeTitle).")
+        .accessibilityAction(named: "View Members") {
+            guard model.state == .connected else { return }
+            refreshMembers()
+            isShowingMembers = true
+        }
+        .accessibilityAction(named: "Edit Permissions") {
+            guard model.state == .connected else { return }
+            model.selectGroupPermissions(group, target: target)
+            isShowingPermissions = true
+        }
     }
 
     private func renameGroup(name: String) {
@@ -11151,6 +11164,15 @@ struct GroupClientRow: View {
                 }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(client.displayName)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Member Info") {
+            isShowingInfo = true
+        }
+        .accessibilityAction(named: "Load Database Details") {
+            model.loadDatabaseClientDetails(databaseRecord)
+        }
     }
 
     private var memberCanChangeChannelGroup: Bool {
@@ -11167,6 +11189,22 @@ struct GroupClientRow: View {
             target: target,
             channelName: client.channelId.flatMap { model.channelName(for: $0) }
         )
+    }
+
+    private var accessibilityValue: String {
+        var parts = [
+            "\(target.title) group \(group.name)",
+            "Database ID \(client.clientDatabaseId)"
+        ]
+        if let channelId = client.channelId {
+            parts.append("Channel \(model.channelName(for: channelId) ?? "Channel \(channelId)")")
+        } else {
+            parts.append("Offline or no channel")
+        }
+        if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("Unique ID \(uniqueIdentifier)")
+        }
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -16130,6 +16168,25 @@ struct PermissionRow: View {
             .disabled(!canDelete)
             .foregroundColor(.red)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(permission.name)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Edit Permission") {
+            edit()
+        }
+        .accessibilityAction(named: "Delete Permission") {
+            if canDelete {
+                isConfirmingDelete = true
+            }
+        }
+    }
+
+    private var accessibilityValue: String {
+        [
+            "Value \(permission.value)",
+            permission.statusLabels.joined(separator: ", "),
+            permission.inheritanceEffectDescription
+        ].joined(separator: ". ")
     }
 }
 
@@ -16172,6 +16229,17 @@ struct PermissionInfoRow: View {
                 copyId()
             }
         }
+        .accessibilityLabel(permission.name)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint("Selects this permission name for editing.")
+    }
+
+    private var accessibilityValue: String {
+        var parts = ["Permission ID \(permission.id)"]
+        if let description = permission.description, !description.isEmpty {
+            parts.append(description)
+        }
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -18591,6 +18659,32 @@ struct ComplaintEntryRow: View {
             .foregroundColor(.red)
             .disabled(model.state != .connected)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Complaint from \(sourceTitle)")
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Delete Complaint") {
+            if model.state == .connected {
+                isConfirmingDelete = true
+            }
+        }
+    }
+
+    private var sourceTitle: String {
+        entry.sourceName?.isEmpty == false ? entry.sourceName! : "Client DB \(entry.sourceClientDatabaseId)"
+    }
+
+    private var accessibilityValue: String {
+        var parts = [
+            "Source database ID \(entry.sourceClientDatabaseId)",
+            "Target database ID \(entry.targetClientDatabaseId)"
+        ]
+        if let timestamp = entry.timestamp {
+            parts.append("Created \(Self.dateText(timestamp))")
+        }
+        if let message = entry.message, !message.isEmpty {
+            parts.append(message)
+        }
+        return parts.joined(separator: ". ")
     }
 
     fileprivate static func dateText(_ date: Date) -> String {
@@ -18710,6 +18804,14 @@ struct BanEntryRow: View {
             .foregroundColor(.red)
             .disabled(model.state != .connected)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Delete Ban") {
+            if model.state == .connected {
+                isConfirmingDelete = true
+            }
+        }
     }
 
     private var title: String {
@@ -18732,6 +18834,32 @@ struct BanEntryRow: View {
                 return value
             }
             .joined(separator: " | ")
+    }
+
+    private var accessibilityValue: String {
+        var parts: [String] = []
+        if let ip = entry.ip, !ip.isEmpty {
+            parts.append("IP \(ip)")
+        }
+        if let uniqueIdentifier = entry.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("Unique ID \(uniqueIdentifier)")
+        }
+        if let createdAt = entry.createdAt {
+            parts.append("Created \(Self.dateText(createdAt))")
+        }
+        if let duration = entry.durationSeconds {
+            parts.append("Duration \(Self.durationText(duration))")
+        }
+        if let invoker = entry.invokerName, !invoker.isEmpty {
+            parts.append("Invoker \(invoker)")
+        }
+        if let enforcements = entry.enforcements {
+            parts.append("Enforcements \(enforcements)")
+        }
+        if let reason = entry.reason, !reason.isEmpty {
+            parts.append("Reason \(reason)")
+        }
+        return parts.isEmpty ? "No additional ban details" : parts.joined(separator: ". ")
     }
 
     fileprivate static func dateText(_ date: Date) -> String {
