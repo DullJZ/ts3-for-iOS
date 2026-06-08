@@ -10643,14 +10643,17 @@ struct GroupManagementSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .alert(item: $pendingGroupArchiveImport) { confirmation in
-                Alert(
-                    title: Text("Import Group Archive?"),
-                    message: Text(groupArchivePreviewMessage(confirmation.preview)),
-                    primaryButton: .default(Text("Import")) {
+            .sheet(item: $pendingGroupArchiveImport) { confirmation in
+                GroupArchiveImportSheet(
+                    preview: confirmation.preview,
+                    previewMessage: groupArchivePreviewMessage(confirmation.preview),
+                    importArchive: {
                         importGroupArchive(from: confirmation.url)
+                        pendingGroupArchiveImport = nil
                     },
-                    secondaryButton: .cancel()
+                    cancel: {
+                        pendingGroupArchiveImport = nil
+                    }
                 )
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
@@ -10841,6 +10844,73 @@ struct GroupManagementSheet: View {
             _ = try model.importGroupFilterPresets(from: Data(contentsOf: url))
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct GroupArchiveImportSheet: View {
+    let preview: TS3GroupArchivePreview
+    let previewMessage: String
+    let importArchive: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(previewMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasGroups {
+                        Button("Copy Group Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                    }
+                }
+
+                if !preview.serverGroupSummaries.isEmpty {
+                    Section(header: Text("Server Groups")) {
+                        ForEach(Array(preview.serverGroupSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                if !preview.channelGroupSummaries.isEmpty {
+                    Section(header: Text("Channel Groups")) {
+                        ForEach(Array(preview.channelGroupSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces the local cached group lists for offline review and does not create, rename, or delete server groups.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Groups")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importArchive()
+                    }
+                    .disabled(!preview.hasGroups)
+                }
+            }
         }
     }
 }

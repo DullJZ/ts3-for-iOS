@@ -1017,6 +1017,8 @@ struct TS3GroupArchivePreview {
     let regularCount: Int
     let queryCount: Int
     let unknownTypeCount: Int
+    let serverGroupSummaries: [String]
+    let channelGroupSummaries: [String]
     let firstServerGroupName: String?
     let firstChannelGroupName: String?
 
@@ -1030,6 +1032,10 @@ struct TS3GroupArchivePreview {
 
     var hasGroups: Bool {
         totalGroupCount > 0
+    }
+
+    var clipboardSummary: String {
+        (serverGroupSummaries + channelGroupSummaries).joined(separator: "\n")
     }
 }
 
@@ -9503,6 +9509,12 @@ final class TS3AppModel: ObservableObject {
             regularCount: allGroups.filter { $0.type == .regular }.count,
             queryCount: allGroups.filter { $0.type == .query }.count,
             unknownTypeCount: allGroups.filter { $0.type == nil }.count,
+            serverGroupSummaries: sanitized.serverGroups.prefix(10).map {
+                Self.groupArchiveSummary($0, target: .server)
+            },
+            channelGroupSummaries: sanitized.channelGroups.prefix(10).map {
+                Self.groupArchiveSummary($0, target: .channel)
+            },
             firstServerGroupName: sanitized.serverGroups.first?.name,
             firstChannelGroupName: sanitized.channelGroups.first?.name
         )
@@ -12593,6 +12605,15 @@ final class TS3AppModel: ObservableObject {
                 : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
         return (sanitizedGroups, skippedCount)
+    }
+
+    private static func groupArchiveSummary(_ group: TS3GroupSummary, target: TS3GroupManagementTarget) -> String {
+        [
+            "target=\(target.title)",
+            "groupId=\(group.id)",
+            "name=\(group.name)",
+            "type=\(group.typeTitle)"
+        ].joined(separator: " | ")
     }
 
     private func saveGroupFilterPresets() {
