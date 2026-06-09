@@ -13345,6 +13345,9 @@ struct DatabaseClientRow: View {
             Button("Copy Database ID") {
                 TS3PlatformSupport.copyToPasteboard("\(record.id)")
             }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
+            }
             if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
                 Button("Copy Unique ID") {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
@@ -13390,6 +13393,23 @@ struct DatabaseClientRow: View {
                         }
                     }
                 }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(record.nickname)
+        .accessibilityValue(record.accessibilityValue)
+        .accessibilityAction(named: "Open Details") {
+            model.loadDatabaseClientDetails(record)
+        }
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
+        }
+        .accessibilityAction(named: "Copy Database ID") {
+            TS3PlatformSupport.copyToPasteboard("\(record.id)")
+        }
+        .accessibilityAction(named: "Edit Contact Note") {
+            if record.uniqueIdentifier?.isEmpty == false {
+                databaseActionMode = .contactNote
             }
         }
         .sheet(item: $databaseActionMode) { mode in

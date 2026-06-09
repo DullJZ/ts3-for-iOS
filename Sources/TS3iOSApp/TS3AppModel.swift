@@ -1065,6 +1065,66 @@ struct TS3DatabaseClientSummary: Identifiable {
             connectedSeconds: nil
         )
     }
+
+    var backupSummary: String {
+        var parts = [
+            "db=\(id)",
+            "nickname=\(nickname)"
+        ]
+        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let totalConnections {
+            parts.append("connections=\(totalConnections)")
+        }
+        if let lastIP, !lastIP.isEmpty {
+            parts.append("lastIP=\(lastIP)")
+        }
+        if description?.isEmpty == false {
+            parts.append("description=true")
+        }
+        if let createdAt {
+            parts.append("created=\(Int(createdAt.timeIntervalSince1970))")
+        }
+        if let lastConnectedAt {
+            parts.append("lastConnected=\(Int(lastConnectedAt.timeIntervalSince1970))")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var clipboardSummary: String {
+        var parts = [backupSummary]
+        if let description, !description.isEmpty {
+            parts.append("descriptionText=\(description)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Database client \(id)",
+            "Nickname \(nickname)"
+        ]
+        if uniqueIdentifier?.isEmpty == false {
+            parts.append("Unique identifier available")
+        }
+        if let totalConnections {
+            parts.append("\(totalConnections) connections")
+        }
+        if lastIP?.isEmpty == false {
+            parts.append("Last IP available")
+        }
+        if description?.isEmpty == false {
+            parts.append("Description available")
+        }
+        if createdAt != nil {
+            parts.append("Created date available")
+        }
+        if lastConnectedAt != nil {
+            parts.append("Last connected date available")
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 struct TS3DatabaseClientBackupPreview {
@@ -7249,7 +7309,7 @@ final class TS3AppModel: ObservableObject {
             descriptionCount: clients.filter { $0.description?.isEmpty == false }.count,
             lastIPCount: clients.filter { $0.lastIP?.isEmpty == false }.count,
             connectionCount: clients.filter { $0.totalConnections != nil }.count,
-            clientSummaries: clients.prefix(10).map(Self.databaseClientBackupSummary),
+            clientSummaries: clients.prefix(10).map(\.backupSummary),
             firstNickname: first?.nickname,
             firstUniqueIdentifier: first?.uniqueIdentifier,
             firstDatabaseId: first?.id
@@ -10877,32 +10937,6 @@ final class TS3AppModel: ObservableObject {
             return comparison == .orderedAscending
         }
         return (clients, skippedCount)
-    }
-
-    private static func databaseClientBackupSummary(_ client: TS3DatabaseClientSummary) -> String {
-        var parts = [
-            "db=\(client.id)",
-            "nickname=\(client.nickname)"
-        ]
-        if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-            parts.append("uid=\(uniqueIdentifier)")
-        }
-        if let totalConnections = client.totalConnections {
-            parts.append("connections=\(totalConnections)")
-        }
-        if let lastIP = client.lastIP, !lastIP.isEmpty {
-            parts.append("lastIP=\(lastIP)")
-        }
-        if client.description?.isEmpty == false {
-            parts.append("description=true")
-        }
-        if let createdAt = client.createdAt {
-            parts.append("created=\(Int(createdAt.timeIntervalSince1970))")
-        }
-        if let lastConnectedAt = client.lastConnectedAt {
-            parts.append("lastConnected=\(Int(lastConnectedAt.timeIntervalSince1970))")
-        }
-        return parts.joined(separator: " | ")
     }
 
     private func copyUser(

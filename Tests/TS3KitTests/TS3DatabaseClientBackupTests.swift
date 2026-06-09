@@ -2,6 +2,32 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3DatabaseClientBackupTests: XCTestCase {
+    func testDatabaseClientSummaryCopyAndAccessibilityText() {
+        let client = TS3DatabaseClientSummary(
+            id: 7,
+            uniqueIdentifier: "uid-b",
+            nickname: "Beta",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            lastConnectedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            totalConnections: 5,
+            description: "Has note",
+            lastIP: "203.0.113.7"
+        )
+
+        XCTAssertEqual(
+            client.backupSummary,
+            "db=7 | nickname=Beta | uid=uid-b | connections=5 | lastIP=203.0.113.7 | description=true | created=1700000000 | lastConnected=1700000100"
+        )
+        XCTAssertEqual(
+            client.clipboardSummary,
+            "db=7 | nickname=Beta | uid=uid-b | connections=5 | lastIP=203.0.113.7 | description=true | created=1700000000 | lastConnected=1700000100 | descriptionText=Has note"
+        )
+        XCTAssertEqual(
+            client.accessibilityValue,
+            "Database client 7. Nickname Beta. Unique identifier available. 5 connections. Last IP available. Description available. Created date available. Last connected date available"
+        )
+    }
+
     @MainActor
     func testDatabaseClientBackupPreviewSanitizesCountsAndSummaries() throws {
         let model = TS3AppModel()
