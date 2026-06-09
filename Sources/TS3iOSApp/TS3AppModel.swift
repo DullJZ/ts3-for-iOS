@@ -1623,6 +1623,14 @@ struct TS3PermissionSummary: Identifiable {
         return parts.joined(separator: " ")
     }
 
+    var accessibilityValue: String {
+        [
+            "Value \(value)",
+            statusLabels.joined(separator: ", "),
+            inheritanceEffectDescription
+        ].joined(separator: ". ")
+    }
+
     init(permission: TS3Permission) {
         self.id = permission.id
         self.name = permission.name

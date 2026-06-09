@@ -3,6 +3,28 @@ import XCTest
 import TS3Kit
 
 final class TS3PermissionBackupTests: XCTestCase {
+    func testPermissionSummaryCopyAndAccessibilityText() {
+        let permission = makePermission("i_client_kick_power", value: 75, isNegated: true, isSkipped: true)
+
+        XCTAssertEqual(
+            permission.clipboardSummary,
+            "name=i_client_kick_power value=75 status=Negated+Skips inherited negated=true skip=true effect=Negates earlier grants and blocks lower inherited permissions."
+        )
+        XCTAssertEqual(
+            permission.accessibilityValue,
+            "Value 75. Negated, Skips inherited. Negates earlier grants and blocks lower inherited permissions."
+        )
+    }
+
+    func testPermissionSummaryDirectAccessibilityText() {
+        let permission = makePermission("i_channel_join_power", value: 50)
+
+        XCTAssertEqual(
+            permission.accessibilityValue,
+            "Value 50. Direct. Direct value; inherited permissions may still apply around this entry."
+        )
+    }
+
     @MainActor
     func testPermissionBackupPreviewListsOverwriteAndNewPermissionNames() throws {
         let source = TS3AppModel()

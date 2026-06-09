@@ -17349,7 +17349,10 @@ struct PermissionRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(permission.name)
-        .accessibilityValue(accessibilityValue)
+        .accessibilityValue(permission.accessibilityValue)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
+        }
         .accessibilityAction(named: "Edit Permission") {
             edit()
         }
@@ -17358,14 +17361,6 @@ struct PermissionRow: View {
                 isConfirmingDelete = true
             }
         }
-    }
-
-    private var accessibilityValue: String {
-        [
-            "Value \(permission.value)",
-            permission.statusLabels.joined(separator: ", "),
-            permission.inheritanceEffectDescription
-        ].joined(separator: ". ")
     }
 }
 
