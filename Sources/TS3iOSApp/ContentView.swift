@@ -15830,6 +15830,33 @@ struct FileEntryRow: View {
             .font(.caption)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.name)
+        .accessibilityValue(entry.accessibilityValue)
+        .accessibilityAction(named: entry.isDirectory ? "Open Directory" : "Download") {
+            if entry.isDirectory {
+                model.enterFileDirectory(entry)
+            } else {
+                model.downloadFileEntry(entry)
+            }
+        }
+        .accessibilityAction(named: isSelected ? "Deselect" : "Select") {
+            onSelectionToggle()
+        }
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+        }
+        .accessibilityAction(named: "Rename") {
+            newName = entry.name
+            isRenaming = true
+        }
+        .accessibilityAction(named: "Move") {
+            destinationDirectory = model.fileBrowserPath
+            isMoving = true
+        }
+        .accessibilityAction(named: "Delete") {
+            isConfirmingDelete = true
+        }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text("Delete File Entry?"),
@@ -15879,7 +15906,10 @@ struct FileEntryRow: View {
                 TS3PlatformSupport.copyToPasteboard(entry.parentPath)
             }
             Button("Copy Size") {
-                TS3PlatformSupport.copyToPasteboard(Self.sizeText(entry.size))
+                TS3PlatformSupport.copyToPasteboard(entry.sizeText)
+            }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
             Button("Info") {
                 isShowingInfo = true
@@ -15901,7 +15931,7 @@ struct FileEntryRow: View {
 
     private var detailText: String {
         var parts: [String] = []
-        parts.append(entry.isDirectory ? "Directory" : Self.sizeText(entry.size))
+        parts.append(entry.isDirectory ? "Directory" : entry.sizeText)
         if entry.isStillUploading {
             parts.append("Uploading")
         }
@@ -15909,21 +15939,6 @@ struct FileEntryRow: View {
             parts.append(Self.dateText(modifiedAt))
         }
         return parts.joined(separator: " | ")
-    }
-
-    private static func sizeText(_ bytes: Int64) -> String {
-        if bytes < 1_024 {
-            return "\(bytes) B"
-        }
-        let kb = Double(bytes) / 1_024
-        if kb < 1_024 {
-            return String(format: "%.1f KB", kb)
-        }
-        let mb = kb / 1_024
-        if mb < 1_024 {
-            return String(format: "%.1f MB", mb)
-        }
-        return String(format: "%.1f GB", mb / 1_024)
     }
 
     private static func dateText(_ date: Date) -> String {

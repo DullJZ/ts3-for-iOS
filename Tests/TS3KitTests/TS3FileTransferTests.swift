@@ -119,4 +119,49 @@ final class TS3FileTransferTests: XCTestCase {
             "Upload. Completed. Uploaded. Remote path /patches/patch.bin"
         )
     }
+
+    func testFileEntrySummaryCopyAndAccessibilityText() {
+        let entry = TS3FileEntrySummary(entry: TS3FileEntry(
+            channelId: 41,
+            path: "/mods/map.dat",
+            parentPath: "/mods/",
+            name: "map.dat",
+            size: 2_048,
+            modifiedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            type: 1,
+            incompleteSize: 512
+        ))
+
+        XCTAssertEqual(entry.sizeText, "2.0 KB")
+        XCTAssertEqual(
+            entry.clipboardSummary,
+            "name=map.dat | type=file | path=/mods/map.dat | parent=/mods/ | channelId=41 | size=2.0 KB | status=uploading | partial=512 B | modifiedAt=1700000000"
+        )
+        XCTAssertEqual(
+            entry.accessibilityValue,
+            "File. Remote path /mods/map.dat. Size 2.0 KB. Still uploading. Modified date available"
+        )
+    }
+
+    func testDirectoryFileEntrySummaryOmitsFileOnlyDetails() {
+        let entry = TS3FileEntrySummary(entry: TS3FileEntry(
+            channelId: 42,
+            path: "/recordings/",
+            parentPath: "/",
+            name: "recordings",
+            size: 0,
+            modifiedAt: nil,
+            type: 0,
+            incompleteSize: nil
+        ))
+
+        XCTAssertEqual(
+            entry.clipboardSummary,
+            "name=recordings | type=directory | path=/recordings/ | parent=/ | channelId=42"
+        )
+        XCTAssertEqual(
+            entry.accessibilityValue,
+            "Directory. Remote path /recordings/"
+        )
+    }
 }

@@ -1607,6 +1607,65 @@ struct TS3FileEntrySummary: Identifiable {
         self.isStillUploading = entry.isStillUploading
         self.incompleteSize = entry.incompleteSize
     }
+
+    var sizeText: String {
+        Self.sizeText(size)
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "type=\(isDirectory ? "directory" : "file")",
+            "path=\(path)",
+            "parent=\(parentPath)",
+            "channelId=\(channelId)"
+        ]
+        if !isDirectory {
+            parts.append("size=\(sizeText)")
+        }
+        if isStillUploading {
+            parts.append("status=uploading")
+            if let incompleteSize {
+                parts.append("partial=\(Self.sizeText(incompleteSize))")
+            }
+        }
+        if let modifiedAt {
+            parts.append("modifiedAt=\(Int(modifiedAt.timeIntervalSince1970))")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            isDirectory ? "Directory" : "File",
+            "Remote path \(path)"
+        ]
+        if !isDirectory {
+            parts.append("Size \(sizeText)")
+        }
+        if isStillUploading {
+            parts.append("Still uploading")
+        }
+        if modifiedAt != nil {
+            parts.append("Modified date available")
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    static func sizeText(_ bytes: Int64) -> String {
+        if bytes < 1_024 {
+            return "\(bytes) B"
+        }
+        let kb = Double(bytes) / 1_024
+        if kb < 1_024 {
+            return String(format: "%.1f KB", kb)
+        }
+        let mb = kb / 1_024
+        if mb < 1_024 {
+            return String(format: "%.1f MB", mb)
+        }
+        return String(format: "%.1f GB", mb / 1_024)
+    }
 }
 
 struct TS3FileBrowserBookmark: Identifiable, Codable {
