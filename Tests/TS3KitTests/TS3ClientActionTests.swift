@@ -116,6 +116,28 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(model.lastError, "Load the source database client before changing contact status.")
     }
 
+    @MainActor
+    func testGroupMemberContactNoteUsesDatabaseRecordIdentity() throws {
+        let model = TS3AppModel()
+        model.contacts = []
+        let member = TS3GroupClientSummary(client: TS3GroupClient(
+            clientDatabaseId: 99,
+            uniqueIdentifier: "group-member-uid",
+            nickname: "Group Member",
+            channelId: 12
+        ))
+        let record = TS3DatabaseClientSummary(groupClient: member)
+
+        model.setContactStatus(.friend, for: record)
+        model.setContactNote("trusted operator", for: record)
+
+        let contact = try XCTUnwrap(model.contacts.first { $0.uniqueIdentifier == "group-member-uid" })
+        XCTAssertEqual(contact.nickname, "Group Member")
+        XCTAssertEqual(contact.status, .friend)
+        XCTAssertEqual(contact.note, "trusted operator")
+        XCTAssertEqual(model.contactNote(for: record), "trusted operator")
+    }
+
     private func makeUser(
         id: Int = 12,
         databaseId: Int? = 44,

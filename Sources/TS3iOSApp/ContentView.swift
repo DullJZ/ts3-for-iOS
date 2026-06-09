@@ -11751,6 +11751,7 @@ struct GroupClientRow: View {
     let client: TS3GroupClientSummary
     @State private var isShowingInfo = false
     @State private var isConfirmingRemove = false
+    @State private var actionMode: DatabaseClientActionMode?
 
     var body: some View {
         HStack(alignment: .top) {
@@ -11808,6 +11809,9 @@ struct GroupClientRow: View {
                             model.setContactStatus(.neutral, for: databaseRecord)
                         }
                         .disabled(model.contactStatus(for: databaseRecord) == .neutral && model.contactNote(for: databaseRecord) == nil)
+                        Button("Edit Note") {
+                            actionMode = .contactNote
+                        }
                     }
                 }
                 Button("Load Database Details") {
@@ -11839,6 +11843,10 @@ struct GroupClientRow: View {
             GroupClientInfoSheet(group: group, target: target, client: client)
                 .environmentObject(model)
         }
+        .sheet(item: $actionMode) { mode in
+            DatabaseClientActionSheet(mode: mode, record: databaseRecord)
+                .environmentObject(model)
+        }
         .alert(isPresented: $isConfirmingRemove) {
             Alert(
                 title: Text("Remove Member?"),
@@ -11865,6 +11873,25 @@ struct GroupClientRow: View {
             if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
                 Button("Copy Unique ID") {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+                }
+                Button("Mark as Friend") {
+                    model.setContactStatus(.friend, for: databaseRecord)
+                }
+                .disabled(model.contactStatus(for: databaseRecord) == .friend)
+                Button("Block Contact") {
+                    model.setContactStatus(.blocked, for: databaseRecord)
+                }
+                .disabled(model.contactStatus(for: databaseRecord) == .blocked)
+                Button("Ignore Contact") {
+                    model.setContactStatus(.ignored, for: databaseRecord)
+                }
+                .disabled(model.contactStatus(for: databaseRecord) == .ignored)
+                Button("Set Neutral") {
+                    model.setContactStatus(.neutral, for: databaseRecord)
+                }
+                .disabled(model.contactStatus(for: databaseRecord) == .neutral && model.contactNote(for: databaseRecord) == nil)
+                Button("Edit Contact Note") {
+                    actionMode = .contactNote
                 }
             }
             Button("Load Database Details") {
