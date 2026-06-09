@@ -136,4 +136,95 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertEqual(model.serverLogEntries.first?.rawLine, "Server started")
         XCTAssertEqual(model.lastError, nil)
     }
+
+    @MainActor
+    func testServerLogArchiveExportSanitizesCachedResults() throws {
+        let model = TS3AppModel()
+        model.clearServerLogResults()
+        defer {
+            model.clearServerLogResults()
+        }
+
+        model.serverLogEntries = [
+            TS3ServerLogSummary(
+                id: 5,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                level: " warning ",
+                channel: " Server ",
+                message: " Auth failed ",
+                rawLine: " raw auth "
+            ),
+            TS3ServerLogSummary(
+                id: 5,
+                timestamp: nil,
+                level: "info",
+                channel: nil,
+                message: "Duplicate",
+                rawLine: "duplicate"
+            ),
+            TS3ServerLogSummary(
+                id: 4,
+                timestamp: nil,
+                level: " debug ",
+                channel: nil,
+                message: " Debug entry ",
+                rawLine: ""
+            ),
+            TS3ServerLogSummary(
+                id: 0,
+                timestamp: nil,
+                level: nil,
+                channel: nil,
+                message: "Invalid",
+                rawLine: "invalid"
+            ),
+            TS3ServerLogSummary(
+                id: 6,
+                timestamp: nil,
+                level: nil,
+                channel: nil,
+                message: "   ",
+                rawLine: "blank"
+            )
+        ]
+
+        let object = try JSONSerialization.jsonObject(with: model.serverLogArchiveData()) as? [String: Any]
+        let entries = try XCTUnwrap(object?["entries"] as? [[String: Any]])
+
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries[0]["id"] as? Int, 5)
+        XCTAssertEqual(entries[0]["level"] as? String, "warning")
+        XCTAssertEqual(entries[0]["channel"] as? String, "Server")
+        XCTAssertEqual(entries[0]["message"] as? String, "Auth failed")
+        XCTAssertEqual(entries[0]["rawLine"] as? String, "raw auth")
+        XCTAssertEqual(entries[1]["id"] as? Int, 4)
+        XCTAssertEqual(entries[1]["level"] as? String, "debug")
+        XCTAssertEqual(entries[1]["message"] as? String, "Debug entry")
+        XCTAssertEqual(entries[1]["rawLine"] as? String, "Debug entry")
+    }
+
+    @MainActor
+    func testClearSelectedServerLogResultsRemovesOnlyMatchingIdsAndPersists() throws {
+        let model = TS3AppModel()
+        model.clearServerLogResults()
+        defer {
+            model.clearServerLogResults()
+        }
+
+        model.serverLogEntries = [
+            TS3ServerLogSummary(id: 1, timestamp: nil, level: "info", channel: "Server", message: "Keep first", rawLine: "Keep first"),
+            TS3ServerLogSummary(id: 2, timestamp: nil, level: "warning", channel: "Server", message: "Remove", rawLine: "Remove"),
+            TS3ServerLogSummary(id: 3, timestamp: nil, level: "error", channel: "Query", message: "Keep second", rawLine: "Keep second")
+        ]
+
+        model.clearServerLogResults([
+            TS3ServerLogSummary(id: 2, timestamp: nil, level: nil, channel: nil, message: "Visible row", rawLine: "Visible row")
+        ])
+
+        XCTAssertEqual(model.serverLogEntries.map(\.id), [1, 3])
+
+        let reloadedModel = TS3AppModel()
+        XCTAssertEqual(Set(reloadedModel.serverLogEntries.map(\.id)), [1, 3])
+        XCTAssertFalse(reloadedModel.serverLogEntries.contains { $0.id == 2 })
+    }
 }
