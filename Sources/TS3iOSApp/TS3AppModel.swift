@@ -1505,17 +1505,122 @@ struct TS3TemporaryServerPasswordSummary: Identifiable, Codable {
     let durationSeconds: Int?
     let description: String?
 
+    init(
+        id: String,
+        password: String,
+        creatorUniqueIdentifier: String?,
+        creatorDatabaseId: Int?,
+        creatorName: String?,
+        targetChannelId: Int?,
+        targetChannelPassword: String?,
+        createdAt: Date?,
+        durationSeconds: Int?,
+        description: String?
+    ) {
+        self.id = id
+        self.password = password
+        self.creatorUniqueIdentifier = creatorUniqueIdentifier
+        self.creatorDatabaseId = creatorDatabaseId
+        self.creatorName = creatorName
+        self.targetChannelId = targetChannelId
+        self.targetChannelPassword = targetChannelPassword
+        self.createdAt = createdAt
+        self.durationSeconds = durationSeconds
+        self.description = description
+    }
+
     init(entry: TS3TemporaryServerPassword) {
-        self.id = entry.id
-        self.password = entry.password
-        self.creatorUniqueIdentifier = entry.creatorUniqueIdentifier
-        self.creatorDatabaseId = entry.creatorDatabaseId
-        self.creatorName = entry.creatorName
-        self.targetChannelId = entry.targetChannelId
-        self.targetChannelPassword = entry.targetChannelPassword
-        self.createdAt = entry.createdAt
-        self.durationSeconds = entry.durationSeconds
-        self.description = entry.description
+        self.init(
+            id: entry.id,
+            password: entry.password,
+            creatorUniqueIdentifier: entry.creatorUniqueIdentifier,
+            creatorDatabaseId: entry.creatorDatabaseId,
+            creatorName: entry.creatorName,
+            targetChannelId: entry.targetChannelId,
+            targetChannelPassword: entry.targetChannelPassword,
+            createdAt: entry.createdAt,
+            durationSeconds: entry.durationSeconds,
+            description: entry.description
+        )
+    }
+
+    func targetText(channels: [TS3ChannelSummary]) -> String {
+        guard let targetChannelId, targetChannelId > 0 else {
+            return "Server Default"
+        }
+        return channels.first { $0.id == targetChannelId }?.name ?? "Channel \(targetChannelId)"
+    }
+
+    var creatorText: String? {
+        if let creatorName, !creatorName.isEmpty {
+            return creatorName
+        }
+        if let creatorDatabaseId {
+            return "Database ID \(creatorDatabaseId)"
+        }
+        return nil
+    }
+
+    func clipboardSummary(channels: [TS3ChannelSummary]) -> String {
+        var parts = ["password=\(password)"]
+        if let durationSeconds {
+            parts.append("duration=\(Self.durationText(durationSeconds))")
+        }
+        if let createdAt {
+            parts.append("createdAt=\(Self.dateText(createdAt))")
+        }
+        if let description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let targetChannelId {
+            parts.append("target=\(targetText(channels: channels)) (\(targetChannelId))")
+        }
+        if let creatorName, !creatorName.isEmpty {
+            parts.append("creator=\(creatorName)")
+        } else if let creatorDatabaseId {
+            parts.append("creatorDb=\(creatorDatabaseId)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    func accessibilityValue(channels: [TS3ChannelSummary]) -> String {
+        var parts = [
+            "Temporary server password",
+            "Target \(targetText(channels: channels))"
+        ]
+        if let durationSeconds {
+            parts.append("Duration \(Self.durationText(durationSeconds))")
+        }
+        if createdAt != nil {
+            parts.append("Created date available")
+        }
+        if let description, !description.isEmpty {
+            parts.append("Description \(description)")
+        }
+        if let creatorText {
+            parts.append("Creator \(creatorText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    static func durationText(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        if minutes < 60 {
+            return "\(minutes)m"
+        }
+        let hours = minutes / 60
+        if hours < 24 {
+            return "\(hours)h"
+        }
+        let days = hours / 24
+        return "\(days)d"
     }
 }
 

@@ -2,6 +2,68 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3TemporaryPasswordPresetTests: XCTestCase {
+    func testTemporaryPasswordSummaryCopyAndAccessibilityText() {
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = TS3TemporaryServerPasswordSummary(
+            id: "join-123",
+            password: "join-123",
+            creatorUniqueIdentifier: "creator-uid",
+            creatorDatabaseId: 77,
+            creatorName: "Admin",
+            targetChannelId: 12,
+            targetChannelPassword: "secret",
+            createdAt: createdAt,
+            durationSeconds: 3_600,
+            description: "Guest access"
+        )
+        let channels = [
+            TS3ChannelSummary(
+                id: 12,
+                parentId: nil,
+                order: 0,
+                name: "Lobby",
+                isDefault: false,
+                isPasswordProtected: false,
+                isPermanent: true,
+                isCurrent: false
+            )
+        ]
+
+        XCTAssertEqual(entry.targetText(channels: channels), "Lobby")
+        XCTAssertEqual(entry.creatorText, "Admin")
+        XCTAssertEqual(
+            entry.clipboardSummary(channels: channels),
+            "password=join-123 | duration=1h | createdAt=\(TS3TemporaryServerPasswordSummary.dateText(createdAt)) | description=Guest access | target=Lobby (12) | creator=Admin"
+        )
+        XCTAssertEqual(
+            entry.accessibilityValue(channels: channels),
+            "Temporary server password. Target Lobby. Duration 1h. Created date available. Description Guest access. Creator Admin"
+        )
+    }
+
+    func testTemporaryPasswordSummaryFallsBackToServerDefaultAndCreatorDatabaseId() {
+        let entry = TS3TemporaryServerPasswordSummary(
+            id: "server-default",
+            password: "server-default",
+            creatorUniqueIdentifier: nil,
+            creatorDatabaseId: 91,
+            creatorName: nil,
+            targetChannelId: nil,
+            targetChannelPassword: nil,
+            createdAt: nil,
+            durationSeconds: nil,
+            description: nil
+        )
+
+        XCTAssertEqual(entry.targetText(channels: []), "Server Default")
+        XCTAssertEqual(entry.creatorText, "Database ID 91")
+        XCTAssertEqual(entry.clipboardSummary(channels: []), "password=server-default | creatorDb=91")
+        XCTAssertEqual(
+            entry.accessibilityValue(channels: []),
+            "Temporary server password. Target Server Default. Creator Database ID 91"
+        )
+    }
+
     @MainActor
     func testTemporaryPasswordPresetImportSanitizesInvalidFields() throws {
         let model = TS3AppModel()

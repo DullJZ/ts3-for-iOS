@@ -17906,6 +17906,20 @@ struct TemporaryServerPasswordRow: View {
             }
         }
         .padding(.vertical, 3)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.password)
+        .accessibilityValue(entry.accessibilityValue(channels: model.channels))
+        .accessibilityAction(named: "Copy Password") {
+            TS3PlatformSupport.copyToPasteboard(entry.password)
+        }
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary(channels: model.channels))
+        }
+        .accessibilityAction(named: "Delete Password") {
+            if model.state == .connected {
+                isConfirmingDelete = true
+            }
+        }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text("Delete Temporary Password?"),
@@ -17919,77 +17933,22 @@ struct TemporaryServerPasswordRow: View {
     }
 
     private var targetText: String {
-        guard let targetChannelId = entry.targetChannelId, targetChannelId > 0 else {
-            return "Target: Server Default"
-        }
-        let channel = model.channels.first { $0.id == targetChannelId }?.name ?? "Channel \(targetChannelId)"
-        return "Target: \(channel)"
+        "Target: \(entry.targetText(channels: model.channels))"
     }
 
     private var creatorText: String? {
-        if let creatorName = entry.creatorName, !creatorName.isEmpty {
-            return "Creator: \(creatorName)"
-        }
-        if let creatorDatabaseId = entry.creatorDatabaseId {
-            return "Creator DB: \(creatorDatabaseId)"
-        }
-        return nil
+        entry.creatorText.map { "Creator: \($0)" }
     }
 
     private var lifetimeText: String {
         var parts: [String] = []
         if let durationSeconds = entry.durationSeconds {
-            parts.append("Duration: \(Self.durationText(durationSeconds))")
+            parts.append("Duration: \(TS3TemporaryServerPasswordSummary.durationText(durationSeconds))")
         }
         if let createdAt = entry.createdAt {
-            parts.append("Created: \(Self.dateText(createdAt))")
+            parts.append("Created: \(TS3TemporaryServerPasswordSummary.dateText(createdAt))")
         }
         return parts.isEmpty ? "Lifetime: Unknown" : parts.joined(separator: " · ")
-    }
-
-    fileprivate static func dateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-
-    fileprivate static func durationText(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        if minutes < 60 {
-            return "\(minutes)m"
-        }
-        let hours = minutes / 60
-        if hours < 24 {
-            return "\(hours)h"
-        }
-        let days = hours / 24
-        return "\(days)d"
-    }
-}
-
-private extension TS3TemporaryServerPasswordSummary {
-    func clipboardSummary(channels: [TS3ChannelSummary]) -> String {
-        var parts = ["password=\(password)"]
-        if let durationSeconds {
-            parts.append("duration=\(TemporaryServerPasswordRow.durationText(durationSeconds))")
-        }
-        if let createdAt {
-            parts.append("createdAt=\(TemporaryServerPasswordRow.dateText(createdAt))")
-        }
-        if let description, !description.isEmpty {
-            parts.append("description=\(description)")
-        }
-        if let targetChannelId {
-            let channel = channels.first { $0.id == targetChannelId }?.name ?? "Channel \(targetChannelId)"
-            parts.append("target=\(channel) (\(targetChannelId))")
-        }
-        if let creatorName, !creatorName.isEmpty {
-            parts.append("creator=\(creatorName)")
-        } else if let creatorDatabaseId {
-            parts.append("creatorDb=\(creatorDatabaseId)")
-        }
-        return parts.joined(separator: " | ")
     }
 }
 
