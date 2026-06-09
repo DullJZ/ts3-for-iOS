@@ -126,6 +126,60 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeySummariesResolveTargetsForCopyAndAccessibility() {
+        let key = makeKey(
+            key: "channel-key",
+            type: .channelGroup,
+            groupId: 9,
+            channelId: 12,
+            description: "Channel admin",
+            customSet: "token_custom"
+        )
+        let serverGroups = [
+            TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        ]
+        let channelGroups = [
+            TS3GroupSummary(id: 9, name: "Channel Admin", type: .regular)
+        ]
+        let channels = [
+            TS3ChannelSummary(
+                id: 12,
+                parentId: nil,
+                order: 0,
+                name: "Lobby",
+                isDefault: false,
+                isPasswordProtected: false,
+                isPermanent: true,
+                isCurrent: false
+            )
+        ]
+
+        XCTAssertEqual(
+            key.targetSummary(
+                serverGroups: serverGroups,
+                channelGroups: channelGroups,
+                channels: channels
+            ),
+            "Channel Group: Channel Admin in Lobby"
+        )
+        XCTAssertEqual(
+            key.clipboardSummary(
+                serverGroups: serverGroups,
+                channelGroups: channelGroups,
+                channels: channels
+            ),
+            "key=channel-key | type=Channel Group (1) | group=Channel Admin (9) | channel=Lobby (12) | createdAt=\(Self.dateText(Date(timeIntervalSince1970: 1_700_000_000))) | description=Channel admin | customSet=token_custom"
+        )
+        XCTAssertEqual(
+            key.accessibilityValue(
+                serverGroups: serverGroups,
+                channelGroups: channelGroups,
+                channels: channels
+            ),
+            "Channel Group: Channel Admin in Lobby. Channel Lobby, ID 12. Created \(Self.dateText(Date(timeIntervalSince1970: 1_700_000_000))). Description Channel admin. Custom set token_custom"
+        )
+    }
+
     private func makeKey(
         key: String,
         type: TS3PrivilegeKeyType?,
@@ -143,5 +197,12 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
             description: description,
             customSet: customSet
         ))
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }

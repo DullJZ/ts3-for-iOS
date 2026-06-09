@@ -1276,6 +1276,93 @@ struct TS3PrivilegeKeySummary: Identifiable, Codable {
     }
 }
 
+extension TS3PrivilegeKeySummary {
+    func targetSummary(
+        serverGroups: [TS3GroupSummary],
+        channelGroups: [TS3GroupSummary],
+        channels: [TS3ChannelSummary]
+    ) -> String {
+        switch type {
+        case .serverGroup:
+            return "\(TS3PrivilegeKeyType.serverGroup.title): \(TS3GroupSummary.name(for: groupId, in: serverGroups))"
+        case .channelGroup:
+            let group = TS3GroupSummary.name(for: groupId, in: channelGroups)
+            let channel = channelId.flatMap { id in channels.first { $0.id == id }?.name } ?? "Any Channel"
+            return "\(TS3PrivilegeKeyType.channelGroup.title): \(group) in \(channel)"
+        case nil:
+            return "Unknown Type: Group \(groupId)"
+        }
+    }
+
+    func accessibilityValue(
+        serverGroups: [TS3GroupSummary],
+        channelGroups: [TS3GroupSummary],
+        channels: [TS3ChannelSummary]
+    ) -> String {
+        var parts = [
+            targetSummary(
+                serverGroups: serverGroups,
+                channelGroups: channelGroups,
+                channels: channels
+            )
+        ]
+        if let channelId {
+            let channel = channels.first { $0.id == channelId }?.name ?? "Channel \(channelId)"
+            parts.append("Channel \(channel), ID \(channelId)")
+        }
+        if let createdAt {
+            parts.append("Created \(Self.dateText(createdAt))")
+        }
+        if let description, !description.isEmpty {
+            parts.append("Description \(description)")
+        }
+        if let customSet, !customSet.isEmpty {
+            parts.append("Custom set \(customSet)")
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    func clipboardSummary(
+        serverGroups: [TS3GroupSummary],
+        channelGroups: [TS3GroupSummary],
+        channels: [TS3ChannelSummary]
+    ) -> String {
+        var parts = ["key=\(key)"]
+        if let type {
+            parts.append("type=\(type.title) (\(type.rawValue))")
+        }
+        switch type {
+        case .serverGroup:
+            parts.append("group=\(TS3GroupSummary.name(for: groupId, in: serverGroups)) (\(groupId))")
+        case .channelGroup:
+            parts.append("group=\(TS3GroupSummary.name(for: groupId, in: channelGroups)) (\(groupId))")
+        case nil:
+            parts.append("groupId=\(groupId)")
+        }
+        if let channelId {
+            let channel = channels.first { $0.id == channelId }?.name ?? "Channel \(channelId)"
+            parts.append("channel=\(channel) (\(channelId))")
+        }
+        if let createdAt {
+            parts.append("createdAt=\(Self.dateText(createdAt))")
+        }
+        if let description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let customSet, !customSet.isEmpty {
+            parts.append("customSet=\(customSet)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
 struct TS3TemporaryServerPasswordSummary: Identifiable, Codable {
     let id: String
     let password: String

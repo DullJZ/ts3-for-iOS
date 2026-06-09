@@ -18757,6 +18757,9 @@ struct PrivilegeKeyRow: View {
                     Button("Copy Key") {
                         TS3PlatformSupport.copyToPasteboard(key.key)
                     }
+                    Button("Copy Summary") {
+                        TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+                    }
                     Button("Delete Key") {
                         isConfirmingDelete = true
                     }
@@ -18782,61 +18785,67 @@ struct PrivilegeKeyRow: View {
                 secondaryButton: .cancel()
             )
         }
-    }
-
-    private var targetText: String {
-        switch key.type {
-        case .serverGroup:
-            return "\(TS3PrivilegeKeyType.serverGroup.title): \(TS3GroupSummary.name(for: key.groupId, in: model.serverGroups))"
-        case .channelGroup:
-            let group = TS3GroupSummary.name(for: key.groupId, in: model.channelGroups)
-            let channel = key.channelId.flatMap { id in model.channels.first { $0.id == id }?.name } ?? "Any Channel"
-            return "\(TS3PrivilegeKeyType.channelGroup.title): \(group) in \(channel)"
-        case nil:
-            return "Unknown Type: Group \(key.groupId)"
+        .contextMenu {
+            Button("Use Key") {
+                model.usePrivilegeKey(key.key)
+            }
+            .disabled(model.state != .connected)
+            Button("Copy Key") {
+                TS3PlatformSupport.copyToPasteboard(key.key)
+            }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+            }
+            Button("Delete Key") {
+                isConfirmingDelete = true
+            }
+            .foregroundColor(.red)
+            .disabled(model.state != .connected)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Privilege key")
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Use Key") {
+            if model.state == .connected {
+                model.usePrivilegeKey(key.key)
+            }
+        }
+        .accessibilityAction(named: "Delete Key") {
+            if model.state == .connected {
+                isConfirmingDelete = true
+            }
         }
     }
 
-    fileprivate static func dateText(_ date: Date) -> String {
+    private var targetText: String {
+        key.targetSummary(
+            serverGroups: model.serverGroups,
+            channelGroups: model.channelGroups,
+            channels: model.channels
+        )
+    }
+
+    private var accessibilityValue: String {
+        key.accessibilityValue(
+            serverGroups: model.serverGroups,
+            channelGroups: model.channelGroups,
+            channels: model.channels
+        )
+    }
+
+    private var clipboardSummary: String {
+        key.clipboardSummary(
+            serverGroups: model.serverGroups,
+            channelGroups: model.channelGroups,
+            channels: model.channels
+        )
+    }
+
+    private static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
-    }
-}
-
-private extension TS3PrivilegeKeySummary {
-    func clipboardSummary(
-        serverGroups: [TS3GroupSummary],
-        channelGroups: [TS3GroupSummary],
-        channels: [TS3ChannelSummary]
-    ) -> String {
-        var parts = ["key=\(key)"]
-        if let type {
-            parts.append("type=\(type.title) (\(type.rawValue))")
-        }
-        switch type {
-        case .serverGroup:
-            parts.append("group=\(TS3GroupSummary.name(for: groupId, in: serverGroups)) (\(groupId))")
-        case .channelGroup:
-            parts.append("group=\(TS3GroupSummary.name(for: groupId, in: channelGroups)) (\(groupId))")
-        case nil:
-            parts.append("groupId=\(groupId)")
-        }
-        if let channelId {
-            let channel = channels.first { $0.id == channelId }?.name ?? "Channel \(channelId)"
-            parts.append("channel=\(channel) (\(channelId))")
-        }
-        if let createdAt {
-            parts.append("createdAt=\(PrivilegeKeyRow.dateText(createdAt))")
-        }
-        if let description, !description.isEmpty {
-            parts.append("description=\(description)")
-        }
-        if let customSet, !customSet.isEmpty {
-            parts.append("customSet=\(customSet)")
-        }
-        return parts.joined(separator: " | ")
     }
 }
 
