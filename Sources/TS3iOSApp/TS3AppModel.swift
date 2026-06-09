@@ -527,6 +527,46 @@ struct TS3ContactEntry: Identifiable, Codable {
     var id: String { uniqueIdentifier }
 }
 
+extension TS3ContactEntry {
+    func clipboardSummary(onlineNickname: String? = nil) -> String {
+        var parts = [
+            "nickname=\(nickname)",
+            "uid=\(uniqueIdentifier)",
+            "status=\(status.title)"
+        ]
+        if let onlineNickname, !onlineNickname.isEmpty {
+            parts.append("onlineAs=\(onlineNickname)")
+        }
+        if !note.isEmpty {
+            parts.append("note=\(note)")
+        }
+        parts.append("updated=\(Self.dateText(updatedAt))")
+        return parts.joined(separator: " | ")
+    }
+
+    func accessibilityValue(onlineNickname: String? = nil) -> String {
+        var parts = [
+            "Status \(status.title)",
+            "Unique ID \(uniqueIdentifier)"
+        ]
+        if let onlineNickname, !onlineNickname.isEmpty {
+            parts.append("Online as \(onlineNickname)")
+        }
+        if !note.isEmpty {
+            parts.append("Note \(note)")
+        }
+        parts.append("Updated \(Self.dateText(updatedAt))")
+        return parts.joined(separator: ". ")
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
 struct TS3ContactImportPreview {
     let importedCount: Int
     let validCount: Int

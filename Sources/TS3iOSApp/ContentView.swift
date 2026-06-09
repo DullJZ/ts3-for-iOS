@@ -5790,6 +5790,9 @@ struct ContactRow: View {
                 Button("Copy Unique ID") {
                     TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
                 }
+                Button("Copy Summary") {
+                    TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+                }
                 ForEach(TS3ContactStatus.allCases) { status in
                     Button("Set \(status.title)") {
                         model.updateContact(contact, status: status, note: contact.note)
@@ -5841,10 +5844,33 @@ struct ContactRow: View {
             Button("Copy Unique ID") {
                 TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
             }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+            }
             Button("Edit Contact") {
                 isEditing = true
             }
+            Button("Delete Contact") {
+                model.deleteContact(contact)
+            }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(contact.nickname)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Edit Contact") {
+            isEditing = true
+        }
+        .accessibilityAction(named: "Delete Contact") {
+            model.deleteContact(contact)
+        }
+    }
+
+    private var clipboardSummary: String {
+        contact.clipboardSummary(onlineNickname: onlineUser?.nickname)
+    }
+
+    private var accessibilityValue: String {
+        contact.accessibilityValue(onlineNickname: onlineUser?.nickname)
     }
 }
 

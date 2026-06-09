@@ -132,6 +132,24 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertNil(model.lastError)
     }
 
+    func testContactSummariesIncludeOnlineNicknameNoteAndStatus() {
+        let contact = makeContact(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Contact",
+            status: .blocked,
+            note: "Avoid during moderation"
+        )
+
+        XCTAssertEqual(
+            contact.clipboardSummary(onlineNickname: "Online Contact"),
+            "nickname=Contact | uid=uid-contact | status=Blocked | onlineAs=Online Contact | note=Avoid during moderation | updated=\(Self.dateText(Date(timeIntervalSince1970: 1_700_000_000)))"
+        )
+        XCTAssertEqual(
+            contact.accessibilityValue(onlineNickname: "Online Contact"),
+            "Status Blocked. Unique ID uid-contact. Online as Online Contact. Note Avoid during moderation. Updated \(Self.dateText(Date(timeIntervalSince1970: 1_700_000_000)))"
+        )
+    }
+
     private func makeContact(
         uniqueIdentifier: String,
         nickname: String,
@@ -149,5 +167,12 @@ final class TS3ContactImportTests: XCTestCase {
 
     private func encodedContacts(_ contacts: [TS3ContactEntry]) throws -> Data {
         try JSONEncoder().encode(contacts)
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
