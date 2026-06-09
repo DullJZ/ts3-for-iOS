@@ -3,6 +3,34 @@ import XCTest
 import TS3Kit
 
 final class TS3PermissionBackupTests: XCTestCase {
+    func testPermissionInfoSummaryCopyAndAccessibilityText() {
+        let permission = TS3PermissionInfoSummary(info: TS3PermissionInfo(
+            id: 101,
+            name: "i_channel_join_power",
+            description: "Join power"
+        ))
+
+        XCTAssertEqual(
+            permission.clipboardSummary,
+            "permissionId=101 | name=i_channel_join_power | description=Join power"
+        )
+        XCTAssertEqual(
+            permission.accessibilityValue,
+            "Permission ID 101. Join power"
+        )
+    }
+
+    func testPermissionInfoSummaryOmitsEmptyDescription() {
+        let permission = TS3PermissionInfoSummary(info: TS3PermissionInfo(
+            id: 102,
+            name: "b_channel_join_permanent",
+            description: nil
+        ))
+
+        XCTAssertEqual(permission.clipboardSummary, "permissionId=102 | name=b_channel_join_permanent")
+        XCTAssertEqual(permission.accessibilityValue, "Permission ID 102")
+    }
+
     func testPermissionSummaryCopyAndAccessibilityText() {
         let permission = makePermission("i_client_kick_power", value: 75, isNegated: true, isSkipped: true)
 

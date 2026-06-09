@@ -1569,6 +1569,25 @@ struct TS3PermissionInfoSummary: Identifiable {
     let name: String
     let description: String?
 
+    var clipboardSummary: String {
+        var parts = [
+            "permissionId=\(id)",
+            "name=\(name)"
+        ]
+        if let description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = ["Permission ID \(id)"]
+        if let description, !description.isEmpty {
+            parts.append(description)
+        }
+        return parts.joined(separator: ". ")
+    }
+
     init(info: TS3PermissionInfo) {
         self.id = info.id
         self.name = info.name

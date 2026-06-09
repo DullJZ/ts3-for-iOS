@@ -17402,18 +17402,16 @@ struct PermissionInfoRow: View {
             Button("Copy ID") {
                 copyId()
             }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
+            }
         }
         .accessibilityLabel(permission.name)
-        .accessibilityValue(accessibilityValue)
+        .accessibilityValue(permission.accessibilityValue)
         .accessibilityHint("Selects this permission name for editing.")
-    }
-
-    private var accessibilityValue: String {
-        var parts = ["Permission ID \(permission.id)"]
-        if let description = permission.description, !description.isEmpty {
-            parts.append(description)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
         }
-        return parts.joined(separator: ". ")
     }
 }
 
