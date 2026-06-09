@@ -59,4 +59,48 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         XCTAssertEqual(preview.clipboardSummary, (preview.activitySummaries + preview.pokeSummaries).joined(separator: "\n"))
         XCTAssertTrue(preview.hasEvents)
     }
+
+    func testPokeSummaryCopyAndAccessibilityText() {
+        let poke = TS3PokeSummary(
+            timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+            senderId: 9,
+            senderName: "Morgan",
+            senderUniqueIdentifier: " uid-m ",
+            message: " Ping ",
+            isOwnPoke: false
+        )
+
+        XCTAssertEqual(poke.messageText, "Ping")
+        XCTAssertEqual(poke.displayTitle, "From Morgan")
+        XCTAssertEqual(
+            poke.clipboardSummary,
+            "direction=in | sender=Morgan | timestamp=1700000100 | senderId=9 | senderUid=uid-m | message=Ping"
+        )
+        XCTAssertEqual(
+            poke.accessibilityValue,
+            "Received from Morgan. Message Ping. Unique ID available"
+        )
+    }
+
+    func testPokeSummaryUsesDefaultMessageForBlankPokes() {
+        let poke = TS3PokeSummary(
+            timestamp: Date(timeIntervalSince1970: 1_700_000_200),
+            senderId: nil,
+            senderName: "Avery",
+            senderUniqueIdentifier: nil,
+            message: " ",
+            isOwnPoke: true
+        )
+
+        XCTAssertEqual(poke.messageText, "Poke")
+        XCTAssertEqual(poke.displayTitle, "Sent to Avery")
+        XCTAssertEqual(
+            poke.clipboardSummary,
+            "direction=out | sender=Avery | timestamp=1700000200 | message=Poke"
+        )
+        XCTAssertEqual(
+            poke.accessibilityValue,
+            "Sent to Avery. Message Poke"
+        )
+    }
 }

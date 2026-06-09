@@ -336,6 +336,48 @@ struct TS3PokeSummary: Identifiable, Codable {
         message = poke.message
         isOwnPoke = poke.isOwnPoke
     }
+
+    var messageText: String {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Poke" : trimmed
+    }
+
+    var directionTitle: String {
+        isOwnPoke ? "Sent to" : "Received from"
+    }
+
+    var displayTitle: String {
+        "\(isOwnPoke ? "Sent to" : "From") \(senderName)"
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "direction=\(isOwnPoke ? "out" : "in")",
+            "sender=\(senderName)",
+            "timestamp=\(Int(timestamp.timeIntervalSince1970))"
+        ]
+        if let senderId {
+            parts.append("senderId=\(senderId)")
+        }
+        if let senderUniqueIdentifier = senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !senderUniqueIdentifier.isEmpty {
+            parts.append("senderUid=\(senderUniqueIdentifier)")
+        }
+        parts.append("message=\(messageText)")
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "\(directionTitle) \(senderName)",
+            "Message \(messageText)"
+        ]
+        if let senderUniqueIdentifier = senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !senderUniqueIdentifier.isEmpty {
+            parts.append("Unique ID available")
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 struct TS3ActivitySummary: Identifiable, Codable {
@@ -14035,21 +14077,7 @@ final class TS3AppModel: ObservableObject {
     }
 
     private static func eventArchivePokeSummary(_ poke: TS3PokeSummary) -> String {
-        var parts = [
-            "direction=\(poke.isOwnPoke ? "out" : "in")",
-            "sender=\(poke.senderName)",
-            "timestamp=\(Int(poke.timestamp.timeIntervalSince1970))"
-        ]
-        if let senderId = poke.senderId {
-            parts.append("senderId=\(senderId)")
-        }
-        if let senderUniqueIdentifier = poke.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
-            parts.append("senderUid=\(senderUniqueIdentifier)")
-        }
-        if !poke.message.isEmpty {
-            parts.append("message=\(poke.message)")
-        }
-        return parts.joined(separator: " | ")
+        poke.clipboardSummary
     }
 
     func selfStatusBackupData() throws -> Data {

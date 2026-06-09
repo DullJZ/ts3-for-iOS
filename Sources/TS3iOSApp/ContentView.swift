@@ -7883,14 +7883,14 @@ struct PokeEventRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(pokeTitle)
+                Text(poke.displayTitle)
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(Self.dateText(poke.timestamp))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            Text(poke.message.isEmpty ? "Poke" : poke.message)
+            Text(poke.messageText)
                 .font(.body)
             if onlineSender != nil || poke.senderUniqueIdentifier?.isEmpty == false {
                 HStack(spacing: 12) {
@@ -7930,10 +7930,10 @@ struct PokeEventRow: View {
                 }
             }
             Button("Copy Poke") {
-                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+                TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
             }
             Button("Copy Message") {
-                TS3PlatformSupport.copyToPasteboard(poke.message.isEmpty ? "Poke" : poke.message)
+                TS3PlatformSupport.copyToPasteboard(poke.messageText)
             }
             Button("Copy User") {
                 TS3PlatformSupport.copyToPasteboard(poke.senderName)
@@ -7943,6 +7943,24 @@ struct PokeEventRow: View {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                 }
             }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(poke.displayTitle)
+        .accessibilityValue(poke.accessibilityValue)
+        .accessibilityAction(named: "Copy Poke") {
+            TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
+        }
+        .accessibilityAction(named: "Private Message") {
+            guard let onlineSender else { return }
+            replyTarget = onlineSender
+        }
+        .accessibilityAction(named: "Poke Back") {
+            guard let onlineSender else { return }
+            model.pokeUser(onlineSender, message: "Poke")
+        }
+        .accessibilityAction(named: "Offline Reply") {
+            guard poke.senderUniqueIdentifier?.isEmpty == false else { return }
+            isShowingOfflineReply = true
         }
         .sheet(item: $replyTarget) { user in
             ChatPrivateReplySheet(user: user)
@@ -7956,14 +7974,6 @@ struct PokeEventRow: View {
 
     private var onlineSender: TS3UserSummary? {
         model.onlineUser(for: poke)
-    }
-
-    private var pokeTitle: String {
-        "\(poke.isOwnPoke ? "Sent to" : "From") \(poke.senderName)"
-    }
-
-    private var clipboardSummary: String {
-        "\(Self.dateText(poke.timestamp)) \(poke.isOwnPoke ? "Sent to" : "Received from") \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)"
     }
 
     private static func dateText(_ date: Date) -> String {
