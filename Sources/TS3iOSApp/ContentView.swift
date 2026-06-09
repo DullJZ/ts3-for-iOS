@@ -11752,6 +11752,7 @@ struct GroupClientRow: View {
     @State private var isShowingInfo = false
     @State private var isConfirmingRemove = false
     @State private var actionMode: DatabaseClientActionMode?
+    @State private var onlineActionMode: UserActionMode?
 
     var body: some View {
         HStack(alignment: .top) {
@@ -11813,6 +11814,14 @@ struct GroupClientRow: View {
                             actionMode = .contactNote
                         }
                     }
+                    if onlineUser != nil {
+                        Button("Poke Online Client") {
+                            onlineActionMode = .poke
+                        }
+                        Button("Send Private Message") {
+                            onlineActionMode = .privateMessage
+                        }
+                    }
                 }
                 Button("Load Database Details") {
                     model.loadDatabaseClientDetails(databaseRecord)
@@ -11846,6 +11855,12 @@ struct GroupClientRow: View {
         .sheet(item: $actionMode) { mode in
             DatabaseClientActionSheet(mode: mode, record: databaseRecord)
                 .environmentObject(model)
+        }
+        .sheet(item: $onlineActionMode) { mode in
+            if let onlineUser {
+                UserActionSheet(mode: mode, user: onlineUser)
+                    .environmentObject(model)
+            }
         }
         .alert(isPresented: $isConfirmingRemove) {
             Alert(
@@ -11893,6 +11908,14 @@ struct GroupClientRow: View {
                 Button("Edit Contact Note") {
                     actionMode = .contactNote
                 }
+                if onlineUser != nil {
+                    Button("Poke Online Client") {
+                        onlineActionMode = .poke
+                    }
+                    Button("Send Private Message") {
+                        onlineActionMode = .privateMessage
+                    }
+                }
             }
             Button("Load Database Details") {
                 model.loadDatabaseClientDetails(databaseRecord)
@@ -11929,6 +11952,10 @@ struct GroupClientRow: View {
 
     private var databaseRecord: TS3DatabaseClientSummary {
         TS3DatabaseClientSummary(groupClient: client)
+    }
+
+    private var onlineUser: TS3UserSummary? {
+        model.onlineUser(for: databaseRecord)
     }
 
     private var clipboardSummary: String {

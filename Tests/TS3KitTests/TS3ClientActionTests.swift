@@ -138,6 +138,27 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(model.contactNote(for: record), "trusted operator")
     }
 
+    @MainActor
+    func testGroupMemberRecordResolvesOnlineUserForPokeAndPrivateMessageActions() throws {
+        let model = TS3AppModel()
+        model.clients = [
+            makeUser(id: 7, databaseId: 99, uniqueIdentifier: "group-member-uid", nickname: "Online Member"),
+            makeUser(id: 8, databaseId: 100, uniqueIdentifier: "other-uid", nickname: "Other")
+        ]
+        let member = TS3GroupClientSummary(client: TS3GroupClient(
+            clientDatabaseId: 99,
+            uniqueIdentifier: "group-member-uid",
+            nickname: "Group Member",
+            channelId: 12
+        ))
+        let record = TS3DatabaseClientSummary(groupClient: member)
+
+        let onlineUser = try XCTUnwrap(model.onlineUser(for: record))
+
+        XCTAssertEqual(onlineUser.id, 7)
+        XCTAssertEqual(onlineUser.nickname, "Online Member")
+    }
+
     private func makeUser(
         id: Int = 12,
         databaseId: Int? = 44,
