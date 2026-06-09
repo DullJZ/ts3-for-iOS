@@ -2,6 +2,44 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3ComplaintArchiveTests: XCTestCase {
+    func testComplaintSummaryCopyAndAccessibilityText() {
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 44,
+            sourceName: "Reporter",
+            message: "Abuse",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        XCTAssertEqual(complaint.sourceTitle, "Reporter")
+        XCTAssertEqual(
+            complaint.clipboardSummary,
+            "sourceDb=44 | targetDb=22 | sourceName=Reporter | targetName=Target | timestamp=1700000000 | message=Abuse"
+        )
+        XCTAssertEqual(
+            complaint.accessibilityValue,
+            "Source database ID 44. Target database ID 22. Target Target. Created date available. Abuse"
+        )
+    }
+
+    func testComplaintSummaryFallbackTextOmitsEmptyOptionalFields() {
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: nil,
+            sourceClientDatabaseId: 44,
+            sourceName: nil,
+            message: nil,
+            timestamp: nil
+        )
+
+        XCTAssertEqual(complaint.sourceTitle, "Client DB 44")
+        XCTAssertEqual(complaint.clipboardSummary, "sourceDb=44 | targetDb=22")
+        XCTAssertEqual(complaint.accessibilityValue, "Source database ID 44. Target database ID 22")
+    }
+
     @MainActor
     func testComplaintArchivePreviewSanitizesCountsAndFirstDetails() throws {
         let model = TS3AppModel()

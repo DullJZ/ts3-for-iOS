@@ -20121,7 +20121,7 @@ struct ComplaintEntryRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(entry.sourceName?.isEmpty == false ? entry.sourceName! : "Client DB \(entry.sourceClientDatabaseId)")
+                    Text(entry.sourceTitle)
                         .font(.subheadline.weight(.semibold))
                     Text("Source DB \(entry.sourceClientDatabaseId)")
                         .font(.caption)
@@ -20149,7 +20149,7 @@ struct ComplaintEntryRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text("Delete Complaint?"),
-                message: Text(entry.sourceName?.isEmpty == false ? entry.sourceName! : "Client DB \(entry.sourceClientDatabaseId)"),
+                message: Text(entry.sourceTitle),
                 primaryButton: .destructive(Text("Delete")) {
                     model.deleteComplaint(entry)
                 },
@@ -20194,8 +20194,11 @@ struct ComplaintEntryRow: View {
             .disabled(model.state != .connected)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Complaint from \(sourceTitle)")
-        .accessibilityValue(accessibilityValue)
+        .accessibilityLabel("Complaint from \(entry.sourceTitle)")
+        .accessibilityValue(entry.accessibilityValue)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+        }
         .accessibilityAction(named: "Delete Complaint") {
             if model.state == .connected {
                 isConfirmingDelete = true
@@ -20203,51 +20206,11 @@ struct ComplaintEntryRow: View {
         }
     }
 
-    private var sourceTitle: String {
-        entry.sourceName?.isEmpty == false ? entry.sourceName! : "Client DB \(entry.sourceClientDatabaseId)"
-    }
-
-    private var accessibilityValue: String {
-        var parts = [
-            "Source database ID \(entry.sourceClientDatabaseId)",
-            "Target database ID \(entry.targetClientDatabaseId)"
-        ]
-        if let timestamp = entry.timestamp {
-            parts.append("Created \(Self.dateText(timestamp))")
-        }
-        if let message = entry.message, !message.isEmpty {
-            parts.append(message)
-        }
-        return parts.joined(separator: ". ")
-    }
-
     fileprivate static func dateText(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
-    }
-}
-
-private extension TS3ComplaintSummary {
-    var clipboardSummary: String {
-        var parts = [
-            "sourceDb=\(sourceClientDatabaseId)",
-            "targetDb=\(targetClientDatabaseId)"
-        ]
-        if let sourceName, !sourceName.isEmpty {
-            parts.append("sourceName=\(sourceName)")
-        }
-        if let targetName, !targetName.isEmpty {
-            parts.append("targetName=\(targetName)")
-        }
-        if let timestamp {
-            parts.append("timestamp=\(ComplaintEntryRow.dateText(timestamp))")
-        }
-        if let message, !message.isEmpty {
-            parts.append("message=\(message)")
-        }
-        return parts.joined(separator: " | ")
     }
 }
 

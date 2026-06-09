@@ -1077,6 +1077,47 @@ struct TS3ComplaintSummary: Identifiable, Codable {
         self.message = message
         self.timestamp = timestamp
     }
+
+    var sourceTitle: String {
+        sourceName?.isEmpty == false ? sourceName! : "Client DB \(sourceClientDatabaseId)"
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "sourceDb=\(sourceClientDatabaseId)",
+            "targetDb=\(targetClientDatabaseId)"
+        ]
+        if let sourceName, !sourceName.isEmpty {
+            parts.append("sourceName=\(sourceName)")
+        }
+        if let targetName, !targetName.isEmpty {
+            parts.append("targetName=\(targetName)")
+        }
+        if let timestamp {
+            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
+        }
+        if let message, !message.isEmpty {
+            parts.append("message=\(message)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Source database ID \(sourceClientDatabaseId)",
+            "Target database ID \(targetClientDatabaseId)"
+        ]
+        if let targetName, !targetName.isEmpty {
+            parts.append("Target \(targetName)")
+        }
+        if timestamp != nil {
+            parts.append("Created date available")
+        }
+        if let message, !message.isEmpty {
+            parts.append(message)
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 private struct TS3ComplaintArchive: Codable {
@@ -9851,7 +9892,7 @@ final class TS3AppModel: ObservableObject {
             namedSourceCount: entries.filter { $0.sourceName?.isEmpty == false }.count,
             anonymousSourceCount: entries.filter { $0.sourceName?.isEmpty != false }.count,
             messageCount: entries.filter { $0.message?.isEmpty == false }.count,
-            complaintSummaries: entries.prefix(10).map(Self.complaintArchiveSummary),
+            complaintSummaries: entries.prefix(10).map(\.clipboardSummary),
             firstTargetName: first?.targetName,
             firstTargetDatabaseId: first?.targetClientDatabaseId,
             firstSourceName: first?.sourceName,
@@ -12892,26 +12933,6 @@ final class TS3AppModel: ObservableObject {
             return nil
         }
         return trimmed
-    }
-
-    private static func complaintArchiveSummary(_ entry: TS3ComplaintSummary) -> String {
-        var parts = [
-            "sourceDb=\(entry.sourceClientDatabaseId)",
-            "targetDb=\(entry.targetClientDatabaseId)"
-        ]
-        if let sourceName = entry.sourceName, !sourceName.isEmpty {
-            parts.append("sourceName=\(sourceName)")
-        }
-        if let targetName = entry.targetName, !targetName.isEmpty {
-            parts.append("targetName=\(targetName)")
-        }
-        if let timestamp = entry.timestamp {
-            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
-        }
-        if let message = entry.message, !message.isEmpty {
-            parts.append("message=\(message)")
-        }
-        return parts.joined(separator: " | ")
     }
 
     private func loadTemporaryServerPasswordFilterPresets() {
