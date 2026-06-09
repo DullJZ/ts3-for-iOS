@@ -2022,6 +2022,37 @@ struct TS3FileTransferSummary: Identifiable {
     var canRetry: Bool {
         state == .cancelled || state == .failed
     }
+
+    var clipboardSummary: String {
+        var parts = [
+            "\(direction.title) \(state.title)",
+            name,
+            remotePath,
+            detail
+        ]
+        if let progress {
+            parts.append("progress=\(Int((progress * 100).rounded()))%")
+        }
+        if let localPath, !localPath.isEmpty {
+            parts.append(localPath)
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "\(direction.title). \(state.title)",
+            detail,
+            "Remote path \(remotePath)"
+        ]
+        if let progress, state != .completed {
+            parts.append("Progress \(Int((progress * 100).rounded())) percent")
+        }
+        if let localPath, !localPath.isEmpty {
+            parts.append("Local path available")
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 private struct TS3PermissionBackupPermission: Codable {

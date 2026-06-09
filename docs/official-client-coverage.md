@@ -67,7 +67,7 @@ Status legend:
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
 | Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets, move/rename conflict previews | Add deeper cross-directory conflict previews if needed. |
-| Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export | Add folder upload/download if server protocol and platform sandbox allow it. |
+| Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export, row copy summaries, and VoiceOver queue actions | Add folder upload/download if server protocol and platform sandbox allow it. |
 | File operations | Done | Rename, move, delete, create directory, batch actions, rename plus single/batch move conflict previews, and upload overwrite/resume conflict details | Validate conflict behavior against real servers and add cross-directory previews if server listing is expanded. |
 | Local downloaded files | Done | Persistent recent download history, downloads folder open/copy/cleanup actions, export/open/copy/remove actions, queue row open local file | Add richer downloads folder organization if needed. |
 
@@ -87,7 +87,7 @@ Status legend:
 | Local notifications | Done | Global notification settings, presets, import/export with overwrite preview and copyable summary, event types, per-server mute rules, per-contact mute rules, and quiet-hours scheduling | Add richer notification category-specific schedules if official-client parity requires them. |
 | Keyboard shortcuts | Partial | User-editable shortcut bindings, structured recorder, duplicate warnings, import/export/reset controls, validation hints, and Catalyst menu bindings for global settings, connection actions, messaging, voice, server info/settings, admin tools, permissions, complaints, temporary passwords, and files | Add true key-event capture/global hotkey support if platform APIs allow it. |
 | Catalyst menus | Done | Native Catalyst/macOS command menus split into TeamSpeak, Connection, Messaging, Administration, and Voice workflows with shortcuts for major connected tools | Add new command groups as future workflows are added. |
-| iOS accessibility and compact layout | Partial | SwiftUI shared sheets/forms, compact voice status strip, VoiceOver labels/values for global mic/output/transmit/whisper state, and readable row summaries/actions for dense permission, group, complaint, ban, privilege-key, contact, poke, and offline-message administration lists | Continue auditing dynamic type and remaining dense administration sheets. |
+| iOS accessibility and compact layout | Partial | SwiftUI shared sheets/forms, compact voice status strip, VoiceOver labels/values for global mic/output/transmit/whisper state, and readable row summaries/actions for dense permission, group, complaint, ban, privilege-key, contact, poke, file-transfer, and offline-message administration lists | Continue auditing dynamic type and remaining dense administration sheets. |
 
 ## Release And Diagnostics
 

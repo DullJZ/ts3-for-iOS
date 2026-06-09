@@ -15647,6 +15647,28 @@ struct FileTransferRow: View {
             }
         }
         .padding(.vertical, 3)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(transfer.name)
+        .accessibilityValue(transfer.accessibilityValue)
+        .accessibilityAction(named: "Copy Status") {
+            TS3PlatformSupport.copyToPasteboard(transfer.clipboardSummary)
+        }
+        .accessibilityAction(named: "Cancel Transfer") {
+            guard transfer.canCancel else { return }
+            confirmation = .cancel
+        }
+        .accessibilityAction(named: "Retry Transfer") {
+            guard transfer.canRetry else { return }
+            model.retryFileTransfer(transfer)
+        }
+        .accessibilityAction(named: "Open Local File") {
+            guard transfer.canOpenLocalFile else { return }
+            transfer.openLocalFile()
+        }
+        .accessibilityAction(named: "Remove Transfer") {
+            guard !transfer.canCancel else { return }
+            confirmation = .remove
+        }
         .contextMenu {
             if transfer.canCancel {
                 Button("Cancel Transfer") {
@@ -15715,19 +15737,6 @@ private extension TS3FileTransferSummary {
     func openLocalFile() {
         guard let localPath, !localPath.isEmpty else { return }
         TS3PlatformSupport.openURL(URL(fileURLWithPath: localPath))
-    }
-
-    var clipboardSummary: String {
-        var parts = [
-            "\(direction.title) \(state.title)",
-            name,
-            remotePath,
-            detail
-        ]
-        if let localPath, !localPath.isEmpty {
-            parts.append(localPath)
-        }
-        return parts.joined(separator: " | ")
     }
 }
 

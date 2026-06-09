@@ -1,5 +1,6 @@
 import XCTest
 @testable import TS3Kit
+@testable import TS3iOSApp
 
 final class TS3FileTransferTests: XCTestCase {
     func testDownloadInitCommandBuildsSeekPositionAndChannelPassword() {
@@ -71,5 +72,51 @@ final class TS3FileTransferTests: XCTestCase {
         XCTAssertEqual(parameters?.port, 30034)
         XCTAssertNil(parameters?.size)
         XCTAssertEqual(parameters?.seekPosition, 0)
+    }
+
+    func testFileTransferSummaryCopyAndAccessibilityText() {
+        let transfer = TS3FileTransferSummary(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!,
+            direction: .download,
+            channelId: 31,
+            name: "raid-plan.txt",
+            remotePath: "/docs/raid-plan.txt",
+            localPath: "/tmp/raid-plan.txt",
+            progress: 0.625,
+            state: .transferring,
+            detail: "512 KiB of 819 KiB",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            completedAt: nil
+        )
+
+        XCTAssertEqual(
+            transfer.clipboardSummary,
+            "Download Transferring | raid-plan.txt | /docs/raid-plan.txt | 512 KiB of 819 KiB | progress=63% | /tmp/raid-plan.txt"
+        )
+        XCTAssertEqual(
+            transfer.accessibilityValue,
+            "Download. Transferring. 512 KiB of 819 KiB. Remote path /docs/raid-plan.txt. Progress 63 percent. Local path available"
+        )
+    }
+
+    func testCompletedFileTransferAccessibilityOmitsProgress() {
+        let transfer = TS3FileTransferSummary(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000102")!,
+            direction: .upload,
+            channelId: 32,
+            name: "patch.bin",
+            remotePath: "/patches/patch.bin",
+            localPath: nil,
+            progress: 1,
+            state: .completed,
+            detail: "Uploaded",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            completedAt: Date(timeIntervalSince1970: 1_700_000_200)
+        )
+
+        XCTAssertEqual(
+            transfer.accessibilityValue,
+            "Upload. Completed. Uploaded. Remote path /patches/patch.bin"
+        )
     }
 }
