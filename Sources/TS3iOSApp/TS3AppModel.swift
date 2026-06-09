@@ -5980,6 +5980,14 @@ final class TS3AppModel: ObservableObject {
     func permissionBackupData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let permissions = (permissionEditScope == .ownClient ? ownClientPermissions : scopedPermissions).map {
+            TS3PermissionBackupPermission(
+                name: $0.name,
+                value: $0.value,
+                isNegated: $0.isNegated,
+                isSkipped: $0.isSkipped
+            )
+        }
         let snapshot = TS3PermissionBackup(
             scope: permissionEditScope.rawValue,
             ownClientDatabaseId: ownClientDatabaseId,
@@ -5989,14 +5997,7 @@ final class TS3AppModel: ObservableObject {
             selectedChannelPermissionId: selectedChannelPermissionId,
             selectedChannelClientPermissionChannelId: selectedChannelClientPermissionChannelId,
             selectedChannelClientPermissionClientId: selectedChannelClientPermissionClientId,
-            permissions: (permissionEditScope == .ownClient ? ownClientPermissions : scopedPermissions).map {
-                TS3PermissionBackupPermission(
-                    name: $0.name,
-                    value: $0.value,
-                    isNegated: $0.isNegated,
-                    isSkipped: $0.isSkipped
-                )
-            }
+            permissions: sanitizedPermissionBackupPermissions(permissions)
         )
         return try encoder.encode(snapshot)
     }
@@ -6013,9 +6014,10 @@ final class TS3AppModel: ObservableObject {
     func permissionBackupPreview(from data: Data) throws -> TS3PermissionBackupPreview {
         let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
         let scope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
+        let permissions = sanitizedPermissionBackupPermissions(decoded.permissions)
         let currentPermissions = currentPermissionsForBackup(decoded, scope: scope)
         let currentByName = Dictionary((currentPermissions ?? []).map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
-        let backupByName = Dictionary(decoded.permissions.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
+        let backupByName = Dictionary(permissions.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
         let currentNames = Set(currentByName.keys)
         let backupNames = Set(backupByName.keys)
         let overwritePermissionNames = currentPermissions.map { _ in backupNames.intersection(currentNames).sorted() } ?? []
@@ -6041,7 +6043,7 @@ final class TS3AppModel: ObservableObject {
         return TS3PermissionBackupPreview(
             scope: scope,
             targetDescription: permissionBackupTargetDescription(decoded, scope: scope),
-            permissionCount: decoded.permissions.count,
+            permissionCount: permissions.count,
             currentPermissionCount: currentPermissions?.count,
             overwriteCount: currentPermissions.map { _ in overwritePermissionNames.count },
             changedCount: currentPermissions.map { _ in changedPermissionNames.count },
@@ -6237,16 +6239,20 @@ final class TS3AppModel: ObservableObject {
     private func sanitizedPermissionBackupPermissions(
         _ permissions: [TS3PermissionBackupPermission]
     ) -> [TS3PermissionBackupPermission] {
-        permissions
-            .map {
-                TS3PermissionBackupPermission(
-                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                    value: $0.value,
-                    isNegated: $0.isNegated,
-                    isSkipped: $0.isSkipped
+        var seen: Set<String> = []
+        return Array(permissions
+            .reversed()
+            .compactMap { permission -> TS3PermissionBackupPermission? in
+                let name = permission.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty, seen.insert(name).inserted else { return nil }
+                return TS3PermissionBackupPermission(
+                    name: name,
+                    value: permission.value,
+                    isNegated: permission.isNegated,
+                    isSkipped: permission.isSkipped
                 )
             }
-            .filter { !$0.name.isEmpty }
+            .reversed())
     }
 
     private func permissionsToRestore(

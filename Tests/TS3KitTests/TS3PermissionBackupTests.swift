@@ -262,6 +262,93 @@ final class TS3PermissionBackupTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testPermissionBackupExportSanitizesBlankAndDuplicatePermissionNames() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission(" i_channel_join_power ", value: 25),
+            makePermission("i_channel_join_power", value: 50, isNegated: true),
+            makePermission("   ", value: 99),
+            makePermission("i_client_kick_power", value: 75, isSkipped: true)
+        ]
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        let preview = try target.permissionBackupPreview(from: try source.permissionBackupData())
+
+        XCTAssertEqual(preview.permissionCount, 2)
+        XCTAssertEqual(preview.newPermissionNames, ["i_channel_join_power", "i_client_kick_power"])
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: try source.permissionBackupData(),
+            options: .all
+        )
+
+        XCTAssertEqual(
+            plan.entries,
+            [
+                TS3PermissionBackupRestoreEntry(
+                    name: "i_channel_join_power",
+                    value: 50,
+                    isNegated: true,
+                    isSkipped: false
+                ),
+                TS3PermissionBackupRestoreEntry(
+                    name: "i_client_kick_power",
+                    value: 75,
+                    isNegated: false,
+                    isSkipped: true
+                )
+            ]
+        )
+    }
+
+    @MainActor
+    func testPermissionBackupPreviewAndRestorePlanSanitizeLegacyDuplicatePermissions() throws {
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 10)
+        ]
+        let backupJSON = """
+        {
+          "scope": "serverGroup",
+          "selectedServerGroupPermissionId": 6,
+          "permissions": [
+            { "name": " i_channel_join_power ", "value": 25, "isNegated": false, "isSkipped": false },
+            { "name": "i_channel_join_power", "value": 50, "isNegated": true, "isSkipped": false },
+            { "name": "   ", "value": 99, "isNegated": false, "isSkipped": false },
+            { "name": "i_client_kick_power", "value": 75, "isNegated": false, "isSkipped": true }
+          ]
+        }
+        """
+        let data = Data(backupJSON.utf8)
+
+        let preview = try target.permissionBackupPreview(from: data)
+
+        XCTAssertEqual(preview.permissionCount, 2)
+        XCTAssertEqual(preview.changedPermissionNames, ["i_channel_join_power"])
+        XCTAssertEqual(
+            preview.changedPermissionDetails,
+            ["i_channel_join_power: value 10 -> 50, negated off -> on"]
+        )
+        XCTAssertEqual(preview.newPermissionNames, ["i_client_kick_power"])
+
+        let plan = try target.permissionBackupRestorePlan(from: data, options: .all)
+
+        XCTAssertEqual(
+            plan.clipboardSummary,
+            """
+            name=i_channel_join_power value=50 negated=true skip=false
+            name=i_client_kick_power value=75 negated=false skip=true
+            """
+        )
+    }
+
     private func makePermission(
         _ name: String,
         value: Int,
