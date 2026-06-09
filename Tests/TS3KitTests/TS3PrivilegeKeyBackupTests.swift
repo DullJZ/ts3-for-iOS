@@ -80,6 +80,52 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         XCTAssertEqual(model.generatedPrivilegeKey, "first-key")
     }
 
+    @MainActor
+    func testPrivilegeKeyBackupExportSanitizesCachedKeys() throws {
+        let model = TS3AppModel()
+        model.privilegeKeys = [
+            makeKey(
+                key: " first-key ",
+                type: .serverGroup,
+                groupId: 6,
+                channelId: nil,
+                description: " admins ",
+                customSet: " "
+            ),
+            makeKey(
+                key: "first-key",
+                type: .channelGroup,
+                groupId: 7,
+                channelId: 12
+            ),
+            makeKey(
+                key: " second-key ",
+                type: .channelGroup,
+                groupId: 8,
+                channelId: 13,
+                description: " ",
+                customSet: " token_custom "
+            ),
+            makeKey(
+                key: "   ",
+                type: .serverGroup,
+                groupId: 9,
+                channelId: nil
+            )
+        ]
+
+        let preview = try model.privilegeKeyBackupPreview(from: model.privilegeKeyBackupData())
+
+        XCTAssertEqual(preview.keyCount, 2)
+        XCTAssertEqual(
+            preview.keySummaries,
+            [
+                "key=first-key | type=Server Group | group=6 | description=admins",
+                "key=second-key | type=Channel Group | group=8 | channel=13 | customSet=token_custom"
+            ]
+        )
+    }
+
     private func makeKey(
         key: String,
         type: TS3PrivilegeKeyType?,

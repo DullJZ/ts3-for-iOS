@@ -9710,18 +9710,17 @@ final class TS3AppModel: ObservableObject {
     func banBackupData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let snapshot = TS3BanBackup(
-            entries: banEntries.map {
-                TS3BanBackupEntry(
-                    ip: $0.ip,
-                    name: $0.name,
-                    uniqueIdentifier: $0.uniqueIdentifier,
-                    lastNickname: $0.lastNickname,
-                    durationSeconds: $0.durationSeconds,
-                    reason: $0.reason
-                )
-            }
-        )
+        let rawEntries = banEntries.map {
+            TS3BanBackupEntry(
+                ip: $0.ip,
+                name: $0.name,
+                uniqueIdentifier: $0.uniqueIdentifier,
+                lastNickname: $0.lastNickname,
+                durationSeconds: $0.durationSeconds,
+                reason: $0.reason
+            )
+        }
+        let snapshot = TS3BanBackup(entries: sanitizedBanBackupEntries(rawEntries).entries)
         return try encoder.encode(snapshot)
     }
 
@@ -10091,19 +10090,18 @@ final class TS3AppModel: ObservableObject {
     func privilegeKeyBackupData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let snapshot = TS3PrivilegeKeyBackup(
-            entries: privilegeKeys.map {
-                TS3PrivilegeKeyBackupEntry(
-                    key: $0.key,
-                    type: $0.type?.rawValue,
-                    groupId: $0.groupId,
-                    channelId: $0.channelId,
-                    createdAt: $0.createdAt,
-                    description: $0.description,
-                    customSet: $0.customSet
-                )
-            }
-        )
+        let rawEntries = privilegeKeys.map {
+            TS3PrivilegeKeyBackupEntry(
+                key: $0.key,
+                type: $0.type?.rawValue,
+                groupId: $0.groupId,
+                channelId: $0.channelId,
+                createdAt: $0.createdAt,
+                description: $0.description,
+                customSet: $0.customSet
+            )
+        }
+        let snapshot = TS3PrivilegeKeyBackup(entries: sanitizedPrivilegeKeyBackupEntries(rawEntries))
         return try encoder.encode(snapshot)
     }
 
@@ -10145,8 +10143,8 @@ final class TS3AppModel: ObservableObject {
                 groupId: entry.groupId,
                 channelId: entry.channelId,
                 createdAt: entry.createdAt,
-                description: entry.description?.trimmingCharacters(in: .whitespacesAndNewlines),
-                customSet: entry.customSet?.trimmingCharacters(in: .whitespacesAndNewlines)
+                description: trimmedBackupValue(entry.description),
+                customSet: trimmedBackupValue(entry.customSet)
             )
         }
     }
