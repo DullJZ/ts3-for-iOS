@@ -92,4 +92,48 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         XCTAssertEqual(model.offlineMessages.first?.isRead, true)
         XCTAssertEqual(model.lastError, nil)
     }
+
+    func testOfflineMessageSummaryCopyAndAccessibilityText() {
+        let message = TS3OfflineMessageSummary(
+            id: 42,
+            senderUniqueIdentifier: "uid-offline",
+            senderName: " Sender ",
+            subject: "Hello",
+            message: "Cached body",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            isRead: false
+        )
+
+        XCTAssertEqual(message.senderDisplayName, "Sender")
+        XCTAssertEqual(
+            message.clipboardSummary,
+            "messageId=42 | read=false | subject=Hello | sender=Sender | senderUid=uid-offline | timestamp=1700000000 | body=Cached body"
+        )
+        XCTAssertEqual(
+            message.accessibilityValue,
+            "Unread. From Sender. Subject Hello. Message body available"
+        )
+    }
+
+    func testOfflineMessageSummaryFallsBackToSenderUniqueIdentifierAndBodyState() {
+        let message = TS3OfflineMessageSummary(
+            id: 9,
+            senderUniqueIdentifier: "uid-only",
+            senderName: " ",
+            subject: "Pending",
+            message: nil,
+            timestamp: nil,
+            isRead: true
+        )
+
+        XCTAssertEqual(message.senderDisplayName, "uid-only")
+        XCTAssertEqual(
+            message.clipboardSummary,
+            "messageId=9 | read=true | subject=Pending | sender=uid-only | body=not loaded"
+        )
+        XCTAssertEqual(
+            message.accessibilityValue,
+            "Read. From uid-only. Subject Pending. Message body not loaded"
+        )
+    }
 }

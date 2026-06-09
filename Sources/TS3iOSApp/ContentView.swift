@@ -8772,7 +8772,7 @@ struct OfflineMessageRow: View {
                                 .foregroundColor(.accentColor)
                         }
                     }
-                    Text(message.senderName ?? message.senderUniqueIdentifier ?? "Unknown sender")
+                    Text(message.senderDisplayName)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -8843,6 +8843,23 @@ struct OfflineMessageRow: View {
                     TS3PlatformSupport.copyToPasteboard(sender)
                 }
             }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(message.clipboardSummary)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(message.subject)
+        .accessibilityValue(message.accessibilityValue)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(message.clipboardSummary)
+        }
+        .accessibilityAction(named: message.isRead ? "Mark Unread" : "Mark Read") {
+            guard canUseServerActions else { return }
+            model.markOfflineMessage(message, read: !message.isRead)
+        }
+        .accessibilityAction(named: "Delete Message") {
+            guard canUseServerActions else { return }
+            model.deleteOfflineMessage(message)
         }
     }
 

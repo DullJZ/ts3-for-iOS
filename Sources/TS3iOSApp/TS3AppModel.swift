@@ -690,6 +690,54 @@ extension TS3OfflineMessageSummary {
         self.timestamp = message.timestamp
         self.isRead = isRead
     }
+
+    var senderDisplayName: String {
+        if let senderName = senderName?.trimmingCharacters(in: .whitespacesAndNewlines), !senderName.isEmpty {
+            return senderName
+        }
+        if let senderUniqueIdentifier = senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !senderUniqueIdentifier.isEmpty {
+            return senderUniqueIdentifier
+        }
+        return "Unknown sender"
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "messageId=\(id)",
+            "read=\(isRead)",
+            "subject=\(subject)"
+        ]
+        parts.append("sender=\(senderDisplayName)")
+        if let senderUniqueIdentifier = senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !senderUniqueIdentifier.isEmpty,
+           senderUniqueIdentifier != senderDisplayName {
+            parts.append("senderUid=\(senderUniqueIdentifier)")
+        }
+        if let timestamp {
+            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
+        }
+        if let message = message?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
+            parts.append("body=\(message)")
+        } else {
+            parts.append("body=not loaded")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            isRead ? "Read" : "Unread",
+            "From \(senderDisplayName)",
+            "Subject \(subject)"
+        ]
+        if let message = message?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
+            parts.append("Message body available")
+        } else {
+            parts.append("Message body not loaded")
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 struct TS3OfflineMessageDraft: Identifiable, Codable {
