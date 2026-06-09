@@ -936,6 +936,109 @@ extension TS3BanEntrySummary {
         self.reason = entry.reason
         self.enforcements = entry.enforcements
     }
+
+    var displayTitle: String {
+        if let name, !name.isEmpty {
+            return name
+        }
+        if let lastNickname, !lastNickname.isEmpty {
+            return lastNickname
+        }
+        if let ip, !ip.isEmpty {
+            return ip
+        }
+        return "Ban \(id)"
+    }
+
+    var subtitle: String {
+        [ip, uniqueIdentifier]
+            .compactMap { value in
+                guard let value, !value.isEmpty else { return nil }
+                return value
+            }
+            .joined(separator: " | ")
+    }
+
+    var clipboardSummary: String {
+        var parts = ["banId=\(id)"]
+        if let name, !name.isEmpty {
+            parts.append("name=\(name)")
+        }
+        if let lastNickname, !lastNickname.isEmpty {
+            parts.append("lastNickname=\(lastNickname)")
+        }
+        if let ip, !ip.isEmpty {
+            parts.append("ip=\(ip)")
+        }
+        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("uid=\(uniqueIdentifier)")
+        }
+        if let createdAt {
+            parts.append("createdAt=\(Self.dateText(createdAt))")
+        }
+        if let durationSeconds {
+            parts.append("duration=\(Self.durationText(durationSeconds))")
+        }
+        if let invokerName, !invokerName.isEmpty {
+            parts.append("invoker=\(invokerName)")
+        }
+        if let enforcements {
+            parts.append("enforcements=\(enforcements)")
+        }
+        if let reason, !reason.isEmpty {
+            parts.append("reason=\(reason)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts: [String] = []
+        if let ip, !ip.isEmpty {
+            parts.append("IP \(ip)")
+        }
+        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("Unique ID \(uniqueIdentifier)")
+        }
+        if let createdAt {
+            parts.append("Created \(Self.dateText(createdAt))")
+        }
+        if let durationSeconds {
+            parts.append("Duration \(Self.durationText(durationSeconds))")
+        }
+        if let invokerName, !invokerName.isEmpty {
+            parts.append("Invoker \(invokerName)")
+        }
+        if let enforcements {
+            parts.append("Enforcements \(enforcements)")
+        }
+        if let reason, !reason.isEmpty {
+            parts.append("Reason \(reason)")
+        }
+        return parts.isEmpty ? "No additional ban details" : parts.joined(separator: ". ")
+    }
+
+    static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    static func durationText(_ seconds: Int) -> String {
+        if seconds == 0 {
+            return "Permanent"
+        }
+        let days = seconds / 86_400
+        let hours = (seconds % 86_400) / 3_600
+        let minutes = (seconds % 3_600) / 60
+        if days > 0 {
+            return "\(days)d \(hours)h"
+        }
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m"
+    }
 }
 
 struct TS3ComplaintSummary: Identifiable, Codable {

@@ -3,6 +3,42 @@ import XCTest
 import TS3Kit
 
 final class TS3BanBackupTests: XCTestCase {
+    func testBanEntrySummaryCopyAndAccessibilityText() {
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = makeBan(
+            id: 17,
+            ip: "192.0.2.10",
+            name: "Bad Guest",
+            uniqueIdentifier: "uid-bad",
+            lastNickname: "Recent Guest",
+            createdAt: createdAt,
+            durationSeconds: 7_200,
+            invokerName: "Admin",
+            reason: "spam",
+            enforcements: 2
+        )
+
+        XCTAssertEqual(entry.displayTitle, "Bad Guest")
+        XCTAssertEqual(entry.subtitle, "192.0.2.10 | uid-bad")
+        XCTAssertEqual(
+            entry.clipboardSummary,
+            "banId=17 | name=Bad Guest | lastNickname=Recent Guest | ip=192.0.2.10 | uid=uid-bad | createdAt=\(TS3BanEntrySummary.dateText(createdAt)) | duration=2h 0m | invoker=Admin | enforcements=2 | reason=spam"
+        )
+        XCTAssertEqual(
+            entry.accessibilityValue,
+            "IP 192.0.2.10. Unique ID uid-bad. Created \(TS3BanEntrySummary.dateText(createdAt)). Duration 2h 0m. Invoker Admin. Enforcements 2. Reason spam"
+        )
+    }
+
+    func testBanEntrySummaryFallsBackToTargetAndPermanentDuration() {
+        let entry = makeBan(id: 18, ip: "203.0.113.9", durationSeconds: 0)
+
+        XCTAssertEqual(entry.displayTitle, "203.0.113.9")
+        XCTAssertEqual(entry.subtitle, "203.0.113.9")
+        XCTAssertEqual(entry.clipboardSummary, "banId=18 | ip=203.0.113.9 | duration=Permanent")
+        XCTAssertEqual(entry.accessibilityValue, "IP 203.0.113.9. Duration Permanent")
+    }
+
     @MainActor
     func testBanBackupPreviewCountsTargetsAndSkipsEmptyOrDuplicateRules() throws {
         let model = TS3AppModel()
@@ -92,8 +128,11 @@ final class TS3BanBackupTests: XCTestCase {
         name: String? = nil,
         uniqueIdentifier: String? = nil,
         lastNickname: String? = nil,
+        createdAt: Date? = nil,
         durationSeconds: Int? = nil,
-        reason: String? = nil
+        invokerName: String? = nil,
+        reason: String? = nil,
+        enforcements: Int? = nil
     ) -> TS3BanEntrySummary {
         TS3BanEntrySummary(entry: TS3BanEntry(
             id: id,
@@ -101,11 +140,11 @@ final class TS3BanBackupTests: XCTestCase {
             name: name,
             uniqueIdentifier: uniqueIdentifier,
             lastNickname: lastNickname,
-            createdAt: nil,
+            createdAt: createdAt,
             durationSeconds: durationSeconds,
-            invokerName: nil,
+            invokerName: invokerName,
             reason: reason,
-            enforcements: nil
+            enforcements: enforcements
         ))
     }
 }

@@ -20260,16 +20260,16 @@ struct BanEntryRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
+                    Text(entry.displayTitle)
                         .font(.subheadline.weight(.semibold))
-                    Text(subtitle)
+                    Text(entry.subtitle)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
                 Spacer()
                 if let createdAt = entry.createdAt {
-                    Text(Self.dateText(createdAt))
+                    Text(TS3BanEntrySummary.dateText(createdAt))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -20282,7 +20282,7 @@ struct BanEntryRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 if let duration = entry.durationSeconds {
-                    Text("Duration: \(Self.durationText(duration))")
+                    Text("Duration: \(TS3BanEntrySummary.durationText(duration))")
                 }
                 if let invoker = entry.invokerName, !invoker.isEmpty {
                     Text("Invoker: \(invoker)")
@@ -20306,7 +20306,7 @@ struct BanEntryRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text("Delete Ban?"),
-                message: Text(title),
+                message: Text(entry.displayTitle),
                 primaryButton: .destructive(Text("Delete")) {
                     model.deleteBan(entry)
                 },
@@ -20339,8 +20339,11 @@ struct BanEntryRow: View {
             .disabled(model.state != .connected)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue(accessibilityValue)
+        .accessibilityLabel(entry.displayTitle)
+        .accessibilityValue(entry.accessibilityValue)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+        }
         .accessibilityAction(named: "Delete Ban") {
             if model.state == .connected {
                 isConfirmingDelete = true
@@ -20348,110 +20351,6 @@ struct BanEntryRow: View {
         }
     }
 
-    private var title: String {
-        if let name = entry.name, !name.isEmpty {
-            return name
-        }
-        if let lastNickname = entry.lastNickname, !lastNickname.isEmpty {
-            return lastNickname
-        }
-        if let ip = entry.ip, !ip.isEmpty {
-            return ip
-        }
-        return "Ban \(entry.id)"
-    }
-
-    private var subtitle: String {
-        [entry.ip, entry.uniqueIdentifier]
-            .compactMap { value in
-                guard let value, !value.isEmpty else { return nil }
-                return value
-            }
-            .joined(separator: " | ")
-    }
-
-    private var accessibilityValue: String {
-        var parts: [String] = []
-        if let ip = entry.ip, !ip.isEmpty {
-            parts.append("IP \(ip)")
-        }
-        if let uniqueIdentifier = entry.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-            parts.append("Unique ID \(uniqueIdentifier)")
-        }
-        if let createdAt = entry.createdAt {
-            parts.append("Created \(Self.dateText(createdAt))")
-        }
-        if let duration = entry.durationSeconds {
-            parts.append("Duration \(Self.durationText(duration))")
-        }
-        if let invoker = entry.invokerName, !invoker.isEmpty {
-            parts.append("Invoker \(invoker)")
-        }
-        if let enforcements = entry.enforcements {
-            parts.append("Enforcements \(enforcements)")
-        }
-        if let reason = entry.reason, !reason.isEmpty {
-            parts.append("Reason \(reason)")
-        }
-        return parts.isEmpty ? "No additional ban details" : parts.joined(separator: ". ")
-    }
-
-    fileprivate static func dateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-
-    fileprivate static func durationText(_ seconds: Int) -> String {
-        if seconds == 0 {
-            return "Permanent"
-        }
-        let days = seconds / 86_400
-        let hours = (seconds % 86_400) / 3_600
-        let minutes = (seconds % 3_600) / 60
-        if days > 0 {
-            return "\(days)d \(hours)h"
-        }
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        }
-        return "\(minutes)m"
-    }
-}
-
-private extension TS3BanEntrySummary {
-    var clipboardSummary: String {
-        var parts = ["banId=\(id)"]
-        if let name, !name.isEmpty {
-            parts.append("name=\(name)")
-        }
-        if let lastNickname, !lastNickname.isEmpty {
-            parts.append("lastNickname=\(lastNickname)")
-        }
-        if let ip, !ip.isEmpty {
-            parts.append("ip=\(ip)")
-        }
-        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
-            parts.append("uid=\(uniqueIdentifier)")
-        }
-        if let createdAt {
-            parts.append("createdAt=\(BanEntryRow.dateText(createdAt))")
-        }
-        if let durationSeconds {
-            parts.append("duration=\(BanEntryRow.durationText(durationSeconds))")
-        }
-        if let invokerName, !invokerName.isEmpty {
-            parts.append("invoker=\(invokerName)")
-        }
-        if let enforcements {
-            parts.append("enforcements=\(enforcements)")
-        }
-        if let reason, !reason.isEmpty {
-            parts.append("reason=\(reason)")
-        }
-        return parts.joined(separator: " | ")
-    }
 }
 
 struct WhisperSheet: View {
