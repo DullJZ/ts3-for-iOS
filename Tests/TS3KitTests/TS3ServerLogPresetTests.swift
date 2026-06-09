@@ -109,6 +109,30 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertTrue(preview.hasEntries)
     }
 
+    func testServerLogSummaryCopyAndAccessibilityText() {
+        let entry = TS3ServerLogSummary(
+            id: 17,
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            level: "warning",
+            channel: "Server",
+            message: "Auth failed",
+            rawLine: "2023-11-14 warning Server Auth failed"
+        )
+
+        XCTAssertEqual(
+            entry.archiveSummary,
+            "id=17 | message=Auth failed | level=warning | channel=Server | timestamp=1700000000"
+        )
+        XCTAssertEqual(
+            entry.clipboardSummary,
+            "id=17 | message=Auth failed | level=warning | channel=Server | timestamp=1700000000 | raw=2023-11-14 warning Server Auth failed"
+        )
+        XCTAssertEqual(
+            entry.accessibilityValue,
+            "Log entry 17. Level warning. Channel Server. Timestamp available. Auth failed"
+        )
+    }
+
     @MainActor
     func testServerLogArchiveImportReplacesLocalCachedResults() throws {
         let model = TS3AppModel()

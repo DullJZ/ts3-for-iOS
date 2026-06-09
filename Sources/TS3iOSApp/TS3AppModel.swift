@@ -3377,6 +3377,46 @@ struct TS3ServerLogSummary: Identifiable, Codable {
         self.message = entry.message
         self.rawLine = entry.rawLine
     }
+
+    var archiveSummary: String {
+        var parts = [
+            "id=\(id)",
+            "message=\(message)"
+        ]
+        if let level, !level.isEmpty {
+            parts.append("level=\(level)")
+        }
+        if let channel, !channel.isEmpty {
+            parts.append("channel=\(channel)")
+        }
+        if let timestamp {
+            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var clipboardSummary: String {
+        var parts = [archiveSummary]
+        if !rawLine.isEmpty, rawLine != message {
+            parts.append("raw=\(rawLine)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = ["Log entry \(id)"]
+        if let level, !level.isEmpty {
+            parts.append("Level \(level)")
+        }
+        if let channel, !channel.isEmpty {
+            parts.append("Channel \(channel)")
+        }
+        if timestamp != nil {
+            parts.append("Timestamp available")
+        }
+        parts.append(message)
+        return parts.joined(separator: ". ")
+    }
 }
 
 private struct TS3ServerLogArchive: Codable {
@@ -6840,7 +6880,7 @@ final class TS3AppModel: ObservableObject {
             levelCount: entries.filter { $0.level?.isEmpty == false }.count,
             channelCount: entries.filter { $0.channel?.isEmpty == false }.count,
             timestampCount: entries.filter { $0.timestamp != nil }.count,
-            entrySummaries: entries.prefix(10).map(Self.serverLogArchiveSummary),
+            entrySummaries: entries.prefix(10).map(\.archiveSummary),
             firstLevel: first?.level,
             firstChannel: first?.channel,
             firstMessage: first?.message,
@@ -11924,23 +11964,6 @@ final class TS3AppModel: ObservableObject {
             }
         }
         return (sanitizedEntries, skippedCount)
-    }
-
-    private static func serverLogArchiveSummary(_ entry: TS3ServerLogSummary) -> String {
-        var parts = [
-            "id=\(entry.id)",
-            "message=\(entry.message)"
-        ]
-        if let level = entry.level, !level.isEmpty {
-            parts.append("level=\(level)")
-        }
-        if let channel = entry.channel, !channel.isEmpty {
-            parts.append("channel=\(channel)")
-        }
-        if let timestamp = entry.timestamp {
-            parts.append("timestamp=\(Int(timestamp.timeIntervalSince1970))")
-        }
-        return parts.joined(separator: " | ")
     }
 
     private func loadChannelSubscriptionPresets() {

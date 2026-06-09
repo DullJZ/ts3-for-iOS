@@ -10054,7 +10054,7 @@ struct ServerLogsSheet: View {
     }
 
     private static func transcript(from entries: [TS3ServerLogSummary]) -> String {
-        entries.map(\.clipboardText).joined(separator: "\n")
+        entries.map(\.clipboardSummary).joined(separator: "\n")
     }
 }
 
@@ -10144,8 +10144,20 @@ struct ServerLogRow: View {
                 TS3PlatformSupport.copyToPasteboard(entry.rawLine)
             }
             Button("Copy Entry") {
-                TS3PlatformSupport.copyToPasteboard(entry.clipboardText)
+                TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Server log")
+        .accessibilityValue(entry.accessibilityValue)
+        .accessibilityAction(named: "Copy Entry") {
+            TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+        }
+        .accessibilityAction(named: "Copy Message") {
+            TS3PlatformSupport.copyToPasteboard(entry.message)
+        }
+        .accessibilityAction(named: "Copy Raw Line") {
+            TS3PlatformSupport.copyToPasteboard(entry.rawLine)
         }
     }
 
@@ -10154,23 +10166,6 @@ struct ServerLogRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .medium
         return formatter.string(from: date)
-    }
-}
-
-private extension TS3ServerLogSummary {
-    var clipboardText: String {
-        var parts: [String] = []
-        if let timestamp {
-            parts.append(ServerLogRow.dateText(timestamp))
-        }
-        if let level, !level.isEmpty {
-            parts.append(level)
-        }
-        if let channel, !channel.isEmpty {
-            parts.append(channel)
-        }
-        parts.append(message)
-        return parts.joined(separator: " | ")
     }
 }
 
