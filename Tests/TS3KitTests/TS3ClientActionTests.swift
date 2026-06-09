@@ -159,6 +159,37 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(onlineUser.nickname, "Online Member")
     }
 
+    @MainActor
+    func testPokeEventResolvesOnlineSenderByClientIdThenUniqueIdentifier() throws {
+        let model = TS3AppModel()
+        model.clients = [
+            makeUser(id: 7, uniqueIdentifier: "sender-uid", nickname: "Runtime Sender"),
+            makeUser(id: 8, uniqueIdentifier: "fallback-uid", nickname: "Fallback Sender")
+        ]
+        let runtimePoke = TS3PokeSummary(
+            senderId: 7,
+            senderName: "Old Runtime Name",
+            senderUniqueIdentifier: "fallback-uid",
+            message: "ping",
+            isOwnPoke: false
+        )
+        let fallbackPoke = TS3PokeSummary(
+            senderId: nil,
+            senderName: "Old Fallback Name",
+            senderUniqueIdentifier: "fallback-uid",
+            message: "ping",
+            isOwnPoke: false
+        )
+
+        let runtimeSender = try XCTUnwrap(model.onlineUser(for: runtimePoke))
+        let fallbackSender = try XCTUnwrap(model.onlineUser(for: fallbackPoke))
+
+        XCTAssertEqual(runtimeSender.id, 7)
+        XCTAssertEqual(runtimeSender.nickname, "Runtime Sender")
+        XCTAssertEqual(fallbackSender.id, 8)
+        XCTAssertEqual(fallbackSender.nickname, "Fallback Sender")
+    }
+
     private func makeUser(
         id: Int = 12,
         databaseId: Int? = 44,

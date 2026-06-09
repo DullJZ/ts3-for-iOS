@@ -7890,6 +7890,19 @@ struct PokeEventRow: View {
         }
         .padding(.vertical, 4)
         .contextMenu {
+            if let onlineSender {
+                Button("Private Message") {
+                    replyTarget = onlineSender
+                }
+                Button("Poke Back") {
+                    model.pokeUser(onlineSender, message: "Poke")
+                }
+            }
+            if poke.senderUniqueIdentifier?.isEmpty == false {
+                Button("Offline Reply") {
+                    isShowingOfflineReply = true
+                }
+            }
             Button("Copy Poke") {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
@@ -7916,8 +7929,7 @@ struct PokeEventRow: View {
     }
 
     private var onlineSender: TS3UserSummary? {
-        guard let senderId = poke.senderId else { return nil }
-        return model.clients.first { $0.id == senderId }
+        model.onlineUser(for: poke)
     }
 
     private var pokeTitle: String {

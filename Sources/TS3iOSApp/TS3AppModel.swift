@@ -3979,6 +3979,17 @@ final class TS3AppModel: ObservableObject {
         return clients.first { $0.uniqueIdentifier == uniqueIdentifier }
     }
 
+    func onlineUser(for poke: TS3PokeSummary) -> TS3UserSummary? {
+        if let senderId = poke.senderId,
+           let user = clients.first(where: { $0.id == senderId }) {
+            return user
+        }
+        guard let uniqueIdentifier = poke.senderUniqueIdentifier, !uniqueIdentifier.isEmpty else {
+            return nil
+        }
+        return clients.first { $0.uniqueIdentifier == uniqueIdentifier }
+    }
+
     func setContactStatus(_ status: TS3ContactStatus, for record: TS3DatabaseClientSummary) {
         updateContact(for: record, status: status, note: contactNote(for: record) ?? "")
     }
