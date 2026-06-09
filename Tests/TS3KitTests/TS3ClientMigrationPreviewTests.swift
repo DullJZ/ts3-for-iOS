@@ -291,6 +291,244 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Identity Profiles" && $0.1 >= 1 })
     }
 
+    @MainActor
+    func testClientMigrationCanRestoreOnlyChannelLayout() throws {
+        let suffix = UUID().uuidString
+        let source = TS3AppModel()
+        source.channels = [
+            makeChannel(id: 41, name: "Ops", isPasswordProtected: false, isSubscribed: true),
+            makeChannel(id: 42, name: "Lobby", isPasswordProtected: false, isSubscribed: false)
+        ]
+        source.saveCurrentChannelSubscriptionPreset(name: "Migration Subs \(suffix)")
+        source.saveChannelTreeFilterPreset(
+            name: "Migration Tree \(suffix)",
+            treeFilter: "subscribed",
+            sortMode: "name",
+            sortAscending: false,
+            memberSortMode: "status",
+            memberSortAscending: true,
+            currentUserFirst: false,
+            searchText: "ops"
+        )
+        source.setChannelCollapsed(41, isCollapsed: true)
+        source.fileBrowserChannelId = 41
+        source.fileBrowserPath = "/ops/"
+        source.saveCurrentFileBrowserBookmark(name: "Migration File \(suffix)")
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        target.fileBrowserChannelId = 99
+        target.fileBrowserPath = "/local/"
+        target.saveCurrentFileBrowserBookmark(name: "Local File \(suffix)")
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                identities: false,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: true,
+                files: false,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertTrue(target.channelSubscriptionPresets.contains { $0.name == "Migration Subs \(suffix)" && $0.channelIds == [41] })
+        XCTAssertTrue(target.channelTreeFilterPresets.contains { $0.name == "Migration Tree \(suffix)" && $0.searchText == "ops" })
+        XCTAssertTrue(target.isChannelCollapsed(41))
+        XCTAssertTrue(target.fileBrowserBookmarks.contains { $0.name == "Local File \(suffix)" && $0.path == "/local/" })
+
+        let preview = try target.clientMigrationPackagePreview(from: exported)
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Channel Subscription Presets" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Channel Tree Filters" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Collapsed Channels" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "File Bookmarks" && $0.1 >= 1 })
+    }
+
+    @MainActor
+    func testClientMigrationCanRestoreOnlyFilesAndServerAdministrationPresets() throws {
+        let suffix = UUID().uuidString
+        let source = TS3AppModel()
+        source.channels = [makeChannel(id: 51, name: "Files", isPasswordProtected: false)]
+        source.fileBrowserChannelId = 51
+        source.fileBrowserPath = "/maps/"
+        source.saveCurrentFileBrowserBookmark(name: "Migration Bookmark \(suffix)")
+        source.saveFileBrowserFilterPreset(
+            name: "Migration File Filter \(suffix)",
+            sortMode: "size",
+            sortAscending: false,
+            searchText: ".bsp"
+        )
+        source.saveServerLogQueryPreset(
+            name: "Migration Logs \(suffix)",
+            limit: 250,
+            beginPosition: 5,
+            reverse: true,
+            instance: false,
+            levelFilter: "warning",
+            channelFilter: "51",
+            searchText: "permission"
+        )
+        source.saveBanFilterPreset(name: "Migration Bans \(suffix)", banFilter: "active", searchText: "spam")
+        source.saveComplaintFilterPreset(
+            name: "Migration Complaints \(suffix)",
+            complaintFilter: "open",
+            sortMode: "target",
+            sortAscending: true,
+            searchText: "abuse"
+        )
+        source.saveTemporaryServerPasswordFilterPreset(
+            name: "Migration Temp Passwords \(suffix)",
+            passwordFilter: "valid",
+            sortMode: "expires",
+            sortAscending: false,
+            searchText: "event"
+        )
+        source.saveDatabaseClientFilterPreset(
+            name: "Migration Database \(suffix)",
+            recordFilter: "named",
+            sortMode: "lastConnected",
+            sortAscending: false,
+            localFilterText: "avery",
+            batchSize: 75
+        )
+        source.savePrivilegeKeyFilterPreset(
+            name: "Migration Keys \(suffix)",
+            keyFilter: "unused",
+            sortMode: "created",
+            sortAscending: false,
+            searchText: "server"
+        )
+        source.savePermissionFilterPreset(
+            name: "Migration Permissions \(suffix)",
+            scope: "serverGroups",
+            assignedFilter: "granted",
+            assignedSortMode: "name",
+            assignedSortAscending: true,
+            assignedSearchText: "admin",
+            permissionSearchText: "modify"
+        )
+        source.saveGroupFilterPreset(
+            name: "Migration Groups \(suffix)",
+            target: "server",
+            groupTypeFilter: "normal",
+            sortMode: "name",
+            sortAscending: true,
+            searchText: "moderator"
+        )
+        source.saveGroupClientFilterPreset(
+            name: "Migration Members \(suffix)",
+            memberFilter: "online",
+            channelFilter: "selectedChannel",
+            channelId: 51,
+            sortMode: "nickname",
+            sortAscending: true,
+            searchText: "ops"
+        )
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                identities: false,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: true,
+                channelLayout: false,
+                files: true,
+                audio: false,
+                selfStatus: false,
+                whisper: false
+            )
+        )
+
+        XCTAssertTrue(target.fileBrowserBookmarks.contains { $0.name == "Migration Bookmark \(suffix)" && $0.path == "/maps/" })
+        XCTAssertTrue(target.fileBrowserFilterPresets.contains { $0.name == "Migration File Filter \(suffix)" && $0.searchText == ".bsp" })
+        XCTAssertTrue(target.serverLogQueryPresets.contains { $0.name == "Migration Logs \(suffix)" && $0.limit == 250 })
+        XCTAssertTrue(target.banFilterPresets.contains { $0.name == "Migration Bans \(suffix)" && $0.searchText == "spam" })
+        XCTAssertTrue(target.complaintFilterPresets.contains { $0.name == "Migration Complaints \(suffix)" && $0.searchText == "abuse" })
+        XCTAssertTrue(target.temporaryServerPasswordFilterPresets.contains { $0.name == "Migration Temp Passwords \(suffix)" && $0.searchText == "event" })
+        XCTAssertTrue(target.databaseClientFilterPresets.contains { $0.name == "Migration Database \(suffix)" && $0.batchSize == 75 })
+        XCTAssertTrue(target.privilegeKeyFilterPresets.contains { $0.name == "Migration Keys \(suffix)" && $0.searchText == "server" })
+        XCTAssertTrue(target.permissionFilterPresets.contains { $0.name == "Migration Permissions \(suffix)" && $0.permissionSearchText == "modify" })
+        XCTAssertTrue(target.groupFilterPresets.contains { $0.name == "Migration Groups \(suffix)" && $0.searchText == "moderator" })
+        XCTAssertTrue(target.groupClientFilterPresets.contains { $0.name == "Migration Members \(suffix)" && $0.channelId == 51 })
+
+        let preview = try target.clientMigrationPackagePreview(from: exported)
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "File Bookmarks" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "File Filters" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Server Log Presets" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Group Client Filters" && $0.1 >= 1 })
+    }
+
+    @MainActor
+    func testClientMigrationCanRestoreSelfStatusAndWhisperSeparately() throws {
+        let suffix = UUID().uuidString
+        let source = TS3AppModel()
+        source.nickname = "MigrationNick-\(suffix)"
+        source.awayMessage = "Reviewing migration"
+        source.isAway = true
+        source.isInputMuted = true
+        source.isOutputMuted = false
+        source.isChannelCommander = true
+        source.talkRequestMessage = "Need migration help"
+        source.saveCurrentSelfStatusProfile(name: "Migration Status \(suffix)")
+        source.saveWhisperPreset(name: "Migration Whisper \(suffix)", channelIds: [61, 62], clientIds: [7])
+        source.saveWhisperFilterPreset(
+            name: "Migration Whisper Filter \(suffix)",
+            presetFilter: "channels",
+            presetSort: "name",
+            searchText: "ops"
+        )
+        source.updateAudioTransmitMode(.voiceActivation)
+        let exported = try source.clientMigrationPackageExportData()
+
+        let target = TS3AppModel()
+        target.nickname = "TargetNick-\(suffix)"
+        target.isAway = false
+        target.updateAudioTransmitMode(.pushToTalk)
+
+        try target.importClientMigrationPackage(
+            from: exported,
+            options: TS3ClientMigrationRestoreOptions(
+                connections: false,
+                identities: false,
+                contacts: false,
+                notifications: false,
+                chat: false,
+                serverAdministration: false,
+                channelLayout: false,
+                files: false,
+                audio: false,
+                selfStatus: true,
+                whisper: true
+            )
+        )
+
+        XCTAssertEqual(target.nickname, "MigrationNick-\(suffix)")
+        XCTAssertTrue(target.isAway)
+        XCTAssertEqual(target.awayMessage, "Reviewing migration")
+        XCTAssertTrue(target.isInputMuted)
+        XCTAssertTrue(target.isChannelCommander)
+        XCTAssertEqual(target.talkRequestMessage, "Need migration help")
+        XCTAssertEqual(target.audioTransmitMode, .pushToTalk)
+        XCTAssertTrue(target.selfStatusProfiles.contains { $0.name == "Migration Status \(suffix)" && $0.status.isAway })
+        XCTAssertTrue(target.whisperPresets.contains { $0.name == "Migration Whisper \(suffix)" && $0.channelIds == [61, 62] && $0.clientIds == [7] })
+        XCTAssertTrue(target.whisperFilterPresets.contains { $0.name == "Migration Whisper Filter \(suffix)" && $0.searchText == "ops" })
+
+        let preview = try target.clientMigrationPackagePreview(from: exported)
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Self Status Profiles" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Whisper Presets" && $0.1 >= 1 })
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Whisper Filters" && $0.1 >= 1 })
+    }
+
     private func makeContact(
         uniqueIdentifier: String,
         nickname: String,
@@ -309,7 +547,8 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
     private func makeChannel(
         id: Int,
         name: String,
-        isPasswordProtected: Bool
+        isPasswordProtected: Bool,
+        isSubscribed: Bool? = nil
     ) -> TS3ChannelSummary {
         TS3ChannelSummary(
             id: id,
@@ -338,7 +577,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             maxFamilyClientsInherited: nil,
             iconId: nil,
             iconURL: nil,
-            isSubscribed: nil,
+            isSubscribed: isSubscribed,
             isCurrent: false
         )
     }
