@@ -7,6 +7,14 @@ final class TS3GroupSummaryTests: XCTestCase {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
 
         XCTAssertEqual(group.clipboardSummary, "groupId=6 | name=Admins | type=Regular")
+        XCTAssertEqual(
+            group.clipboardSummary(target: .server),
+            "target=Server Groups | groupId=6 | name=Admins | type=Regular"
+        )
+        XCTAssertEqual(
+            group.accessibilityValue(target: .server),
+            "Server Groups group. ID 6. Type Regular."
+        )
     }
 
     func testGroupClientClipboardSummaryIncludesGroupTargetAndChannel() {
@@ -22,6 +30,10 @@ final class TS3GroupSummaryTests: XCTestCase {
             client.clipboardSummary(group: group, target: .server, channelName: "Lobby"),
             "group=Admins (6) | target=Server Groups | clientDb=42 | nickname=Taylor | uid=client-uid | channel=Lobby (9)"
         )
+        XCTAssertEqual(
+            client.accessibilityValue(group: group, target: .server, channelName: "Lobby"),
+            "Server Groups group Admins. Database ID 42. Channel Lobby. Unique ID client-uid"
+        )
     }
 
     func testGroupClientClipboardSummaryFallsBackWhenNicknameAndChannelNameAreMissing() {
@@ -36,6 +48,10 @@ final class TS3GroupSummaryTests: XCTestCase {
         XCTAssertEqual(
             client.clipboardSummary(group: group, target: .channel, channelName: nil),
             "group=Guests (7) | target=Channel Groups | clientDb=43 | nickname=Client 43 | channel=Channel 10 (10)"
+        )
+        XCTAssertEqual(
+            client.accessibilityValue(group: group, target: .channel, channelName: nil),
+            "Channel Groups group Guests. Database ID 43. Channel Channel 10"
         )
     }
 

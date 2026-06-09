@@ -11161,6 +11161,9 @@ struct GroupManagementRow: View {
                     isShowingPrivilegeKeys = true
                 }
                 .disabled(model.state != .connected || (target == .channel && model.channels.isEmpty))
+                Button("Copy Summary") {
+                    TS3PlatformSupport.copyToPasteboard(group.clipboardSummary(target: target))
+                }
                 Button("Rename") {
                     isShowingRename = true
                 }
@@ -11246,7 +11249,10 @@ struct GroupManagementRow: View {
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(group.name)
-        .accessibilityValue("\(target.title) group. ID \(group.id). Type \(group.typeTitle).")
+        .accessibilityValue(group.accessibilityValue(target: target))
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(group.clipboardSummary(target: target))
+        }
         .accessibilityAction(named: "View Members") {
             guard model.state == .connected else { return }
             refreshMembers()
@@ -12023,6 +12029,9 @@ struct GroupClientRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(client.displayName)
         .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
         .accessibilityAction(named: "Member Info") {
             isShowingInfo = true
         }
@@ -12052,19 +12061,11 @@ struct GroupClientRow: View {
     }
 
     private var accessibilityValue: String {
-        var parts = [
-            "\(target.title) group \(group.name)",
-            "Database ID \(client.clientDatabaseId)"
-        ]
-        if let channelId = client.channelId {
-            parts.append("Channel \(model.channelName(for: channelId) ?? "Channel \(channelId)")")
-        } else {
-            parts.append("Offline or no channel")
-        }
-        if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-            parts.append("Unique ID \(uniqueIdentifier)")
-        }
-        return parts.joined(separator: ". ")
+        client.accessibilityValue(
+            group: group,
+            target: target,
+            channelName: client.channelId.flatMap { model.channelName(for: $0) }
+        )
     }
 }
 

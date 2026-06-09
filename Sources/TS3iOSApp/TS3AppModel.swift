@@ -1502,6 +1502,19 @@ extension TS3GroupSummary {
     var clipboardSummary: String {
         "groupId=\(id) | name=\(name) | type=\(typeTitle)"
     }
+
+    func clipboardSummary(target: TS3GroupManagementTarget) -> String {
+        [
+            "target=\(target.title)",
+            "groupId=\(id)",
+            "name=\(name)",
+            "type=\(typeTitle)"
+        ].joined(separator: " | ")
+    }
+
+    func accessibilityValue(target: TS3GroupManagementTarget) -> String {
+        "\(target.title) group. ID \(id). Type \(typeTitle)."
+    }
 }
 
 extension TS3GroupClientSummary {
@@ -1519,6 +1532,22 @@ extension TS3GroupClientSummary {
             parts.append("channel=\(channelName ?? "Channel \(channelId)") (\(channelId))")
         }
         return parts.joined(separator: " | ")
+    }
+
+    func accessibilityValue(group: TS3GroupSummary, target: TS3GroupManagementTarget, channelName: String?) -> String {
+        var parts = [
+            "\(target.title) group \(group.name)",
+            "Database ID \(clientDatabaseId)"
+        ]
+        if let channelId {
+            parts.append("Channel \(channelName ?? "Channel \(channelId)")")
+        } else {
+            parts.append("Offline or no channel")
+        }
+        if let uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            parts.append("Unique ID \(uniqueIdentifier)")
+        }
+        return parts.joined(separator: ". ")
     }
 }
 
@@ -10282,10 +10311,10 @@ final class TS3AppModel: ObservableObject {
             queryCount: allGroups.filter { $0.type == .query }.count,
             unknownTypeCount: allGroups.filter { $0.type == nil }.count,
             serverGroupSummaries: sanitized.serverGroups.prefix(10).map {
-                Self.groupArchiveSummary($0, target: .server)
+                $0.clipboardSummary(target: .server)
             },
             channelGroupSummaries: sanitized.channelGroups.prefix(10).map {
-                Self.groupArchiveSummary($0, target: .channel)
+                $0.clipboardSummary(target: .channel)
             },
             firstServerGroupName: sanitized.serverGroups.first?.name,
             firstChannelGroupName: sanitized.channelGroups.first?.name
@@ -13312,15 +13341,6 @@ final class TS3AppModel: ObservableObject {
                 : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
         return (sanitizedGroups, skippedCount)
-    }
-
-    private static func groupArchiveSummary(_ group: TS3GroupSummary, target: TS3GroupManagementTarget) -> String {
-        [
-            "target=\(target.title)",
-            "groupId=\(group.id)",
-            "name=\(group.name)",
-            "type=\(group.typeTitle)"
-        ].joined(separator: " | ")
     }
 
     private func saveGroupFilterPresets() {
