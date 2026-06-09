@@ -7798,6 +7798,23 @@ struct ActivityEventRow: View {
             }
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(event.clipboardSummary)
+            }
+            Button("Copy Message") {
+                TS3PlatformSupport.copyToPasteboard(messageText)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(titleText)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(event.clipboardSummary)
+        }
+        .accessibilityAction(named: "Copy Message") {
+            TS3PlatformSupport.copyToPasteboard(messageText)
+        }
     }
 
     private var messageText: String {
@@ -7821,6 +7838,14 @@ struct ActivityEventRow: View {
             return "by \(invoker)"
         }
         return nil
+    }
+
+    private var accessibilityValue: String {
+        var parts = [event.accessibilityValue, messageText]
+        if let detailText {
+            parts.append(detailText)
+        }
+        return parts.joined(separator: ". ")
     }
 
     private var isClientEvent: Bool {

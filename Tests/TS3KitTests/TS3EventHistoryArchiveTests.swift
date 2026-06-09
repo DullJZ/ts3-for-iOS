@@ -82,6 +82,32 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         )
     }
 
+    func testActivitySummaryCopyAndAccessibilityText() {
+        let activity = TS3ActivitySummary(
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            kind: .clientMoved,
+            clientId: 12,
+            clientName: "Taylor",
+            channelId: 4,
+            channelName: "Lobby",
+            fromChannelId: 2,
+            toChannelId: 4,
+            invokerName: "Admin",
+            reasonId: 5,
+            reasonMessage: "Requested",
+            isOwnClient: false
+        )
+
+        XCTAssertEqual(
+            activity.clipboardSummary,
+            "kind=clientMoved | client=Taylor | clientId=12 | timestamp=1700000000 | own=false | channel=Lobby | channelId=4 | from=2 | to=4 | invoker=Admin | reasonId=5 | reason=Requested"
+        )
+        XCTAssertEqual(
+            activity.accessibilityValue,
+            "Client moved. Client Taylor. Channel Lobby. From channel ID 2. To channel ID 4. Invoker Admin. Reason Requested"
+        )
+    }
+
     func testPokeSummaryUsesDefaultMessageForBlankPokes() {
         let poke = TS3PokeSummary(
             timestamp: Date(timeIntervalSince1970: 1_700_000_200),
