@@ -3874,6 +3874,28 @@ struct TS3KeyboardShortcutBinding: Identifiable, Codable {
 
     var id: String { actionId }
 
+    var stateTitle: String {
+        isEnabled ? "Enabled" : "Disabled"
+    }
+
+    var displaySummary: String {
+        "\(keys) · \(stateTitle)"
+    }
+
+    var clipboardSummary: String {
+        [
+            "group=\(group)",
+            "action=\(action)",
+            "keys=\(keys)",
+            "default=\(defaultKeys)",
+            "enabled=\(isEnabled ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        "\(group). Keys \(keys). \(stateTitle). Default \(defaultKeys)."
+    }
+
     init(
         actionId: String,
         group: String,

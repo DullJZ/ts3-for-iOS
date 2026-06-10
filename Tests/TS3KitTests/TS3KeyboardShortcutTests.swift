@@ -2,6 +2,28 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3KeyboardShortcutTests: XCTestCase {
+    func testKeyboardShortcutBindingSummariesAreCopyableAndAccessible() {
+        let shortcut = TS3KeyboardShortcutBinding(
+            actionId: "open-chat",
+            group: "Messaging",
+            action: "Open Chat",
+            defaultKeys: "Command-Shift-T",
+            keys: "Command-Option-T",
+            isEnabled: false
+        )
+
+        XCTAssertEqual(shortcut.stateTitle, "Disabled")
+        XCTAssertEqual(shortcut.displaySummary, "Command-Option-T · Disabled")
+        XCTAssertEqual(
+            shortcut.clipboardSummary,
+            "group=Messaging | action=Open Chat | keys=Command-Option-T | default=Command-Shift-T | enabled=false"
+        )
+        XCTAssertEqual(
+            shortcut.accessibilityValue,
+            "Messaging. Keys Command-Option-T. Disabled. Default Command-Shift-T."
+        )
+    }
+
     @MainActor
     func testDefaultKeyboardShortcutsAreUniqueAndParseable() {
         var seenActionIds: Set<String> = []

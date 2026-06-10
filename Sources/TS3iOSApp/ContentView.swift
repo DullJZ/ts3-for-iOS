@@ -269,6 +269,9 @@ struct KeyboardShortcutsSheet: View {
                                     Text(shortcut.group)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                    Text(currentShortcut(for: shortcut).displaySummary)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
                                 }
                                 Spacer()
                                 Toggle("", isOn: shortcutEnabledBinding(shortcut))
@@ -303,6 +306,16 @@ struct KeyboardShortcutsSheet: View {
                                     )
                                 }
                             }
+                            Button("Copy Shortcut Summary") {
+                                TS3PlatformSupport.copyToPasteboard(currentShortcut(for: shortcut).clipboardSummary)
+                            }
+                            .font(.caption)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(shortcut.action)
+                        .accessibilityValue(currentShortcut(for: shortcut).accessibilityValue)
+                        .accessibilityAction(named: "Copy Shortcut Summary") {
+                            TS3PlatformSupport.copyToPasteboard(currentShortcut(for: shortcut).clipboardSummary)
                         }
                     }
                 }
@@ -437,8 +450,7 @@ struct KeyboardShortcutsSheet: View {
 
     private var shortcutsSnapshot: String {
         model.keyboardShortcuts.map { shortcut in
-            let state = shortcut.isEnabled ? "enabled" : "disabled"
-            return "\(shortcut.group): \(shortcut.action) - \(shortcut.keys) [\(state)]"
+            shortcut.clipboardSummary
         }.joined(separator: "\n")
     }
 
