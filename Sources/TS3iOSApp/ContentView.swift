@@ -19066,6 +19066,17 @@ struct BanListSheet: View {
                             .ts3PlainTextField()
                             .ts3NumericKeyboard()
                     }
+                    Text(banDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Ban Rule Summary") {
+                        TS3PlatformSupport.copyToPasteboard(banDraftSummary)
+                    }
+                    ForEach(banDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                     Button("Add Ban Rule") {
                         model.addBan(
                             ip: ip,
@@ -19074,7 +19085,8 @@ struct BanListSheet: View {
                             myTeamSpeakId: myTeamSpeakId,
                             lastNickname: lastNickname,
                             durationSeconds: duration.seconds(customMinutes: customBanMinutes),
-                            reason: reason
+                            reason: reason,
+                            isCustomDuration: duration == .custom
                         )
                         clearForm()
                     }
@@ -19311,15 +19323,33 @@ struct BanListSheet: View {
     }
 
     private var isAddDisabled: Bool {
-        let hasTarget = !ip.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            !uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            !myTeamSpeakId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            !lastNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if duration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil {
-            return true
-        }
-        return !hasTarget
+        !banDraftValidationMessages.isEmpty
+    }
+
+    private var banDraftValidationMessages: [String] {
+        TS3BanDraftValidator.validationMessages(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname,
+            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+            isCustomDuration: duration == .custom,
+            reason: reason
+        )
+    }
+
+    private var banDraftSummary: String {
+        TS3BanDraftValidator.creationSummary(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname,
+            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+            isPermanent: duration == .permanent,
+            reason: reason
+        )
     }
 
     private func clearForm() {

@@ -1329,6 +1329,85 @@ extension TS3BanEntrySummary {
     }
 }
 
+enum TS3BanDraftValidator {
+    static func validationMessages(
+        ip: String,
+        name: String,
+        uniqueIdentifier: String,
+        myTeamSpeakId: String,
+        lastNickname: String,
+        durationSeconds: Int?,
+        isCustomDuration: Bool,
+        reason: String
+    ) -> [String] {
+        var messages: [String] = []
+        if targetParts(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname
+        ).isEmpty {
+            messages.append("Enter an IP address, name, unique id, myTeamSpeak id, or last nickname for the ban rule.")
+        }
+        if isCustomDuration && (durationSeconds ?? 0) <= 0 {
+            messages.append("Custom ban duration must be a positive number of seconds.")
+        }
+        if containsNewline(reason) {
+            messages.append("Ban reason must be a single line.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        ip: String,
+        name: String,
+        uniqueIdentifier: String,
+        myTeamSpeakId: String,
+        lastNickname: String,
+        durationSeconds: Int?,
+        isPermanent: Bool,
+        reason: String
+    ) -> String {
+        var parts = targetParts(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname
+        )
+        parts.append("duration=\(isPermanent ? "Permanent" : durationSeconds.map(TS3BanEntrySummary.durationText) ?? "Invalid")")
+        let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !reason.isEmpty {
+            parts.append("reason=\(reason)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func targetParts(
+        ip: String,
+        name: String,
+        uniqueIdentifier: String,
+        myTeamSpeakId: String,
+        lastNickname: String
+    ) -> [String] {
+        [
+            ("ip", ip),
+            ("name", name),
+            ("uid", uniqueIdentifier),
+            ("mytsid", myTeamSpeakId),
+            ("lastNickname", lastNickname)
+        ].compactMap { key, value -> String? in
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : "\(key)=\(trimmed)"
+        }
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
 struct TS3ComplaintSummary: Identifiable, Codable {
     let id: String
     let targetClientDatabaseId: Int
@@ -10935,18 +11014,29 @@ final class TS3AppModel: ObservableObject {
         myTeamSpeakId: String,
         lastNickname: String,
         durationSeconds: Int?,
-        reason: String
+        reason: String,
+        isCustomDuration: Bool = false
     ) {
+        let validationMessages = TS3BanDraftValidator.validationMessages(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname,
+            durationSeconds: durationSeconds,
+            isCustomDuration: isCustomDuration,
+            reason: reason
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let ip = ip.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let myTeamSpeakId = myTeamSpeakId.trimmingCharacters(in: .whitespacesAndNewlines)
         let lastNickname = lastNickname.trimmingCharacters(in: .whitespacesAndNewlines)
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !ip.isEmpty || !name.isEmpty || !uniqueIdentifier.isEmpty || !myTeamSpeakId.isEmpty || !lastNickname.isEmpty else {
-            lastError = "Enter an IP address, name, unique id, myTeamSpeak id, or last nickname for the ban rule."
-            return
-        }
         runClientCommand { client in
             try await client.addBan(
                 ip: ip.isEmpty ? nil : ip,

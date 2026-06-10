@@ -3,6 +3,70 @@ import XCTest
 import TS3Kit
 
 final class TS3BanBackupTests: XCTestCase {
+    func testBanDraftValidatorRejectsMissingTargetInvalidCustomDurationAndMultilineReason() {
+        XCTAssertEqual(
+            TS3BanDraftValidator.validationMessages(
+                ip: " ",
+                name: "",
+                uniqueIdentifier: "",
+                myTeamSpeakId: "",
+                lastNickname: "",
+                durationSeconds: nil,
+                isCustomDuration: true,
+                reason: "spam\nabuse"
+            ),
+            [
+                "Enter an IP address, name, unique id, myTeamSpeak id, or last nickname for the ban rule.",
+                "Custom ban duration must be a positive number of seconds.",
+                "Ban reason must be a single line."
+            ]
+        )
+    }
+
+    func testBanDraftValidatorBuildsAuditableSummary() {
+        let messages = TS3BanDraftValidator.validationMessages(
+            ip: " 192.0.2.10 ",
+            name: " Bad Guest ",
+            uniqueIdentifier: " uid-bad ",
+            myTeamSpeakId: " myts-id ",
+            lastNickname: " Recent Guest ",
+            durationSeconds: 7_200,
+            isCustomDuration: false,
+            reason: " spam "
+        )
+        let summary = TS3BanDraftValidator.creationSummary(
+            ip: " 192.0.2.10 ",
+            name: " Bad Guest ",
+            uniqueIdentifier: " uid-bad ",
+            myTeamSpeakId: " myts-id ",
+            lastNickname: " Recent Guest ",
+            durationSeconds: 7_200,
+            isPermanent: false,
+            reason: " spam "
+        )
+
+        XCTAssertTrue(messages.isEmpty)
+        XCTAssertEqual(
+            summary,
+            "ip=192.0.2.10 | name=Bad Guest | uid=uid-bad | mytsid=myts-id | lastNickname=Recent Guest | duration=2h 0m | reason=spam"
+        )
+    }
+
+    func testBanDraftValidatorSummarizesPermanentBan() {
+        let summary = TS3BanDraftValidator.creationSummary(
+            ip: "",
+            name: "",
+            uniqueIdentifier: "uid-bad",
+            myTeamSpeakId: "",
+            lastNickname: "",
+            durationSeconds: nil,
+            isPermanent: true,
+            reason: ""
+        )
+
+        XCTAssertEqual(summary, "uid=uid-bad | duration=Permanent")
+    }
+
     func testBanEntrySummaryCopyAndAccessibilityText() {
         let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = makeBan(
