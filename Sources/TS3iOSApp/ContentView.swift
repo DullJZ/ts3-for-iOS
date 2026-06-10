@@ -21578,7 +21578,10 @@ private struct IdentityProfileRow: View {
         .padding(.vertical, 3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(profile.name)
-        .accessibilityValue(accessibilityValue)
+        .accessibilityValue(profile.accessibilityValue(isActive: isActive, canSwitch: model.state == .disconnected))
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+        }
         .accessibilityAction(named: "Use Identity") {
             model.activateIdentityProfile(profile)
         }
@@ -21589,6 +21592,9 @@ private struct IdentityProfileRow: View {
             .disabled(model.state != .disconnected || isActive)
             Button("Copy Backup") {
                 TS3PlatformSupport.copyToPasteboard(profile.exportString)
+            }
+            Button("Copy Summary") {
+                TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
             }
             Button("Copy UID") {
                 TS3PlatformSupport.copyToPasteboard(profile.uid)
@@ -21636,19 +21642,6 @@ private struct IdentityProfileRow: View {
                 secondaryButton: .cancel()
             )
         }
-    }
-
-    private var accessibilityValue: String {
-        var parts = [
-            isActive ? "Active" : "Saved",
-            "Security level \(profile.securityLevel)",
-            "Key offset \(profile.keyOffset)",
-            "UID \(profile.uid)"
-        ]
-        if model.state != .disconnected {
-            parts.append("Disconnect before switching identities")
-        }
-        return parts.joined(separator: ". ")
     }
 }
 

@@ -3,6 +3,29 @@ import XCTest
 import TS3Kit
 
 final class TS3ClientMigrationPreviewTests: XCTestCase {
+    func testIdentityProfileSummaryAndAccessibilityText() {
+        let profile = TS3IdentityProfile(
+            name: "Main Identity",
+            uid: "identity-uid",
+            securityLevel: 24,
+            keyOffset: 7,
+            exportString: "identity-backup"
+        )
+
+        XCTAssertEqual(
+            profile.clipboardSummary,
+            "name=Main Identity | uid=identity-uid | security=24 | keyOffset=7 | backupLength=15"
+        )
+        XCTAssertEqual(
+            profile.accessibilityValue(isActive: true, canSwitch: true),
+            "Active. Security level 24. Key offset 7. UID identity-uid"
+        )
+        XCTAssertEqual(
+            profile.accessibilityValue(isActive: false, canSwitch: false),
+            "Saved. Security level 24. Key offset 7. UID identity-uid. Disconnect before switching identities"
+        )
+    }
+
     @MainActor
     func testClientMigrationPreviewIncludesSettingsDetails() throws {
         let model = TS3AppModel()

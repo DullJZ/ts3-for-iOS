@@ -3508,6 +3508,29 @@ struct TS3IdentityProfile: Identifiable, Codable, Equatable {
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
+
+    var clipboardSummary: String {
+        [
+            "name=\(name)",
+            "uid=\(uid)",
+            "security=\(securityLevel)",
+            "keyOffset=\(keyOffset)",
+            "backupLength=\(exportString.count)"
+        ].joined(separator: " | ")
+    }
+
+    func accessibilityValue(isActive: Bool, canSwitch: Bool) -> String {
+        var parts = [
+            isActive ? "Active" : "Saved",
+            "Security level \(securityLevel)",
+            "Key offset \(keyOffset)",
+            "UID \(uid)"
+        ]
+        if !canSwitch {
+            parts.append("Disconnect before switching identities")
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 struct TS3ServerInfoSummary {
