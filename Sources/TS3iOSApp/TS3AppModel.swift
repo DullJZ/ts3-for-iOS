@@ -1161,6 +1161,61 @@ struct TS3OfflineMessageDraft: Identifiable, Codable {
     var updatedAt: Date
 }
 
+enum TS3OfflineMessageDraftValidator {
+    static func validationMessages(
+        recipientName: String?,
+        recipientUniqueIdentifier: String?,
+        subject: String,
+        message: String,
+        allowsRecipientLookup: Bool = false
+    ) -> [String] {
+        var messages: [String] = []
+        let recipientName = recipientName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let recipientUniqueIdentifier = recipientUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if recipientUniqueIdentifier?.isEmpty != false && !allowsRecipientLookup {
+            messages.append("Recipient unique id is required before sending an offline message.")
+        }
+        if recipientName?.isEmpty != false && recipientUniqueIdentifier?.isEmpty != false && !allowsRecipientLookup {
+            messages.append("Select a recipient before sending an offline message.")
+        }
+        if subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Subject is required before sending an offline message.")
+        }
+        if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Message is required before sending an offline message.")
+        }
+        if subject.rangeOfCharacter(from: .newlines) != nil {
+            messages.append("Subject must be a single line.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        recipientName: String?,
+        recipientUniqueIdentifier: String?,
+        subject: String,
+        message: String,
+        allowsRecipientLookup: Bool = false
+    ) -> String {
+        var parts: [String] = []
+        if let recipientName = recipientName?.trimmingCharacters(in: .whitespacesAndNewlines), !recipientName.isEmpty {
+            parts.append("recipient=\(recipientName)")
+        }
+        if let recipientUniqueIdentifier = recipientUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines), !recipientUniqueIdentifier.isEmpty {
+            parts.append("recipientUid=\(recipientUniqueIdentifier)")
+        } else if allowsRecipientLookup {
+            parts.append("recipientUid=lookup")
+        } else {
+            parts.append("recipientUid=Missing")
+        }
+        let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        parts.append("subject=\(subject.isEmpty ? "Missing" : subject)")
+        parts.append("body=\(message.isEmpty ? "Missing" : "\(message.count) chars")")
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3BanEntrySummary: Identifiable, Codable {
     let id: Int
     let ip: String?
@@ -8465,9 +8520,18 @@ final class TS3AppModel: ObservableObject {
     }
 
     func sendOfflineMessage(to record: TS3DatabaseClientSummary, subject: String, message: String, onSent: (() -> Void)? = nil) {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: record.nickname,
+            recipientUniqueIdentifier: record.uniqueIdentifier,
+            subject: subject,
+            message: message
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !subject.isEmpty, !message.isEmpty else { return }
         guard let uniqueIdentifier = record.uniqueIdentifier else {
             lastError = "Selected database client has no unique id."
             return
@@ -9738,9 +9802,19 @@ final class TS3AppModel: ObservableObject {
     }
 
     func sendOfflineMessage(to user: TS3UserSummary, subject: String, message: String, onSent: (() -> Void)? = nil) {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: user.nickname,
+            recipientUniqueIdentifier: user.uniqueIdentifier,
+            subject: subject,
+            message: message,
+            allowsRecipientLookup: true
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !subject.isEmpty, !message.isEmpty else { return }
         runClientCommand { client in
             let details = try await client.refreshClientDetails(clientId: user.id)
             guard let uniqueIdentifier = details?.uniqueIdentifier ?? user.uniqueIdentifier else {
@@ -9754,10 +9828,19 @@ final class TS3AppModel: ObservableObject {
     }
 
     func sendOfflineMessage(toUniqueIdentifier uniqueIdentifier: String, subject: String, message: String, onSent: (() -> Void)? = nil) {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: nil,
+            recipientUniqueIdentifier: uniqueIdentifier,
+            subject: subject,
+            message: message
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let uniqueIdentifier = uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let subject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !uniqueIdentifier.isEmpty, !subject.isEmpty, !message.isEmpty else { return }
         runClientCommand { client in
             try await client.sendOfflineMessage(toUniqueIdentifier: uniqueIdentifier, subject: subject, message: message)
             await MainActor.run {

@@ -2,6 +2,54 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3OfflineMessageArchiveTests: XCTestCase {
+    func testOfflineMessageDraftValidatorRejectsMissingRecipientSubjectBodyAndMultilineSubject() {
+        XCTAssertEqual(
+            TS3OfflineMessageDraftValidator.validationMessages(
+                recipientName: " ",
+                recipientUniqueIdentifier: nil,
+                subject: "Hello\nagain",
+                message: " "
+            ),
+            [
+                "Recipient unique id is required before sending an offline message.",
+                "Select a recipient before sending an offline message.",
+                "Message is required before sending an offline message.",
+                "Subject must be a single line."
+            ]
+        )
+    }
+
+    func testOfflineMessageDraftValidatorAllowsRuntimeRecipientLookupForOnlineUsers() {
+        let messages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true
+        )
+        let summary = TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true
+        )
+
+        XCTAssertTrue(messages.isEmpty)
+        XCTAssertEqual(summary, "recipient=Online User | recipientUid=lookup | subject=Hello | body=15 chars")
+    }
+
+    func testOfflineMessageDraftValidatorBuildsAuditableSummaryForKnownRecipient() {
+        let summary = TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: "Saved User",
+            recipientUniqueIdentifier: "uid-saved",
+            subject: " Status ",
+            message: " Ping me "
+        )
+
+        XCTAssertEqual(summary, "recipient=Saved User | recipientUid=uid-saved | subject=Status | body=7 chars")
+    }
+
     @MainActor
     func testOfflineMessageArchivePreviewSanitizesCountsAndFirstDetails() throws {
         let model = TS3AppModel()

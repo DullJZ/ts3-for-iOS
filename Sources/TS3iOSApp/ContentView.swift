@@ -4812,6 +4812,19 @@ struct UserActionSheet: View {
                         }
                         TextField(fieldTitle, text: $text)
                             .ts3PlainTextField()
+                        if mode == .offlineMessage {
+                            Text(offlineMessageDraftSummary)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button("Copy Offline Message Summary") {
+                                TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
+                            }
+                            ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
+                                Text(message)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
                     }
                     if mode == .ban {
                         Section(header: Text("Duration")) {
@@ -4916,7 +4929,7 @@ struct UserActionSheet: View {
         case .poke:
             return false
         case .offlineMessage:
-            return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return !offlineMessageDraftValidationMessages.isEmpty
         case .editDescription, .contactNote, .kickChannel, .kickServer:
             return false
         case .ban:
@@ -4947,6 +4960,26 @@ struct UserActionSheet: View {
             recipientName: user.nickname,
             subject: subject,
             message: text
+        )
+    }
+
+    private var offlineMessageDraftValidationMessages: [String] {
+        TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: user.nickname,
+            recipientUniqueIdentifier: user.uniqueIdentifier,
+            subject: subject,
+            message: text,
+            allowsRecipientLookup: true
+        )
+    }
+
+    private var offlineMessageDraftSummary: String {
+        TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: user.nickname,
+            recipientUniqueIdentifier: user.uniqueIdentifier,
+            subject: subject,
+            message: text,
+            allowsRecipientLookup: true
         )
     }
 
@@ -8069,6 +8102,17 @@ struct PokeOfflineReplySheet: View {
                         .ts3PlainTextField()
                     TextField("Message", text: $message)
                         .ts3PlainTextField()
+                    Text(offlineMessageDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Offline Reply Summary") {
+                        TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
+                    }
+                    ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                 }
             }
             .navigationTitle("Offline Reply")
@@ -8133,9 +8177,25 @@ struct PokeOfflineReplySheet: View {
     }
 
     private var isSendDisabled: Bool {
-        poke.senderUniqueIdentifier?.isEmpty != false
-            || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !offlineMessageDraftValidationMessages.isEmpty
+    }
+
+    private var offlineMessageDraftValidationMessages: [String] {
+        TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: poke.senderName,
+            recipientUniqueIdentifier: poke.senderUniqueIdentifier,
+            subject: subject,
+            message: message
+        )
+    }
+
+    private var offlineMessageDraftSummary: String {
+        TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: poke.senderName,
+            recipientUniqueIdentifier: poke.senderUniqueIdentifier,
+            subject: subject,
+            message: message
+        )
     }
 }
 
@@ -8983,6 +9043,17 @@ struct OfflineMessageReplySheet: View {
                         .ts3PlainTextField()
                     TextField("Message", text: $replyText)
                         .ts3PlainTextField()
+                    Text(offlineMessageDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Offline Reply Summary") {
+                        TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
+                    }
+                    ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                 }
             }
             .navigationTitle("Reply")
@@ -9044,9 +9115,25 @@ struct OfflineMessageReplySheet: View {
     }
 
     private var isSendDisabled: Bool {
-        message.senderUniqueIdentifier?.isEmpty != false
-            || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !offlineMessageDraftValidationMessages.isEmpty
+    }
+
+    private var offlineMessageDraftValidationMessages: [String] {
+        TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: message.senderName,
+            recipientUniqueIdentifier: message.senderUniqueIdentifier,
+            subject: subject,
+            message: replyText
+        )
+    }
+
+    private var offlineMessageDraftSummary: String {
+        TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: message.senderName,
+            recipientUniqueIdentifier: message.senderUniqueIdentifier,
+            subject: subject,
+            message: replyText
+        )
     }
 
     private static func replySubject(for subject: String) -> String {
@@ -13360,6 +13447,19 @@ struct DatabaseClientActionSheet: View {
                     }
                     TextField(fieldTitle, text: $text)
                         .ts3PlainTextField()
+                    if mode == .offlineMessage {
+                        Text(offlineMessageDraftSummary)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Copy Offline Message Summary") {
+                            TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
+                        }
+                        ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
                     if mode == .ban {
                         Picker("Duration", selection: $duration) {
                             ForEach(TS3BanDuration.allCases) { duration in
@@ -13450,7 +13550,7 @@ struct DatabaseClientActionSheet: View {
         let textIsEmpty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         switch mode {
         case .offlineMessage:
-            return textIsEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return !offlineMessageDraftValidationMessages.isEmpty
         case .contactNote:
             return false
         case .complain:
@@ -13497,6 +13597,24 @@ struct DatabaseClientActionSheet: View {
         model.saveOfflineMessageDraft(
             id: offlineDraftId,
             recipientName: record.nickname,
+            subject: subject,
+            message: text
+        )
+    }
+
+    private var offlineMessageDraftValidationMessages: [String] {
+        TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: record.nickname,
+            recipientUniqueIdentifier: record.uniqueIdentifier,
+            subject: subject,
+            message: text
+        )
+    }
+
+    private var offlineMessageDraftSummary: String {
+        TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: record.nickname,
+            recipientUniqueIdentifier: record.uniqueIdentifier,
             subject: subject,
             message: text
         )
