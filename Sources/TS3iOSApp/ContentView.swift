@@ -12023,7 +12023,11 @@ struct GroupClientRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(client.displayName)
-        .accessibilityValue(accessibilityValue)
+        .accessibilityValue(client.accessibilityValue(
+            group: group,
+            target: target,
+            channelName: client.channelId.flatMap { model.channelName(for: $0) }
+        ))
         .accessibilityAction(named: "Copy Summary") {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
         }
@@ -12049,14 +12053,6 @@ struct GroupClientRow: View {
 
     private var clipboardSummary: String {
         client.clipboardSummary(
-            group: group,
-            target: target,
-            channelName: client.channelId.flatMap { model.channelName(for: $0) }
-        )
-    }
-
-    private var accessibilityValue: String {
-        client.accessibilityValue(
             group: group,
             target: target,
             channelName: client.channelId.flatMap { model.channelName(for: $0) }
