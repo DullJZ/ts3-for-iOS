@@ -3,6 +3,31 @@ import XCTest
 import TS3Kit
 
 final class TS3AudioProfileTests: XCTestCase {
+    func testAudioProfileSummariesUseAuditableValues() {
+        let profile = TS3AudioProfile(
+            id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
+            name: "Raid Voice",
+            playbackVolume: 1.25,
+            inputGain: 0.8,
+            transmitMode: TS3AudioTransmitMode.voiceActivation.rawValue,
+            voiceActivationThreshold: 0.045,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_030)
+        )
+
+        XCTAssertEqual(
+            profile.displaySummary,
+            "Voice Activation, input 80%, playback 125%, threshold 0.045"
+        )
+        XCTAssertEqual(
+            profile.clipboardSummary,
+            "name=Raid Voice | mode=Voice Activation | input=80% | playback=125% | threshold=0.045"
+        )
+        XCTAssertEqual(
+            profile.accessibilityValue,
+            "Voice Activation. Input gain 80%. Playback volume 125%. Voice activation threshold 0.045"
+        )
+    }
+
     @MainActor
     func testAudioProfileImportMergesByNameAndSanitizesValues() throws {
         let model = TS3AppModel()

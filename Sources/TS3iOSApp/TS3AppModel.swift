@@ -2747,6 +2747,32 @@ struct TS3AudioProfile: Identifiable, Codable {
         self.voiceActivationThreshold = voiceActivationThreshold
         self.updatedAt = updatedAt
     }
+
+    var displaySummary: String {
+        let mode = TS3AudioTransmitMode.title(for: transmitMode)
+        let input = Self.percentText(inputGain)
+        let playback = Self.percentText(playbackVolume)
+        let threshold = String(format: "%.3f", voiceActivationThreshold)
+        return "\(mode), input \(input), playback \(playback), threshold \(threshold)"
+    }
+
+    var clipboardSummary: String {
+        [
+            "name=\(name)",
+            "mode=\(TS3AudioTransmitMode.title(for: transmitMode))",
+            "input=\(Self.percentText(inputGain))",
+            "playback=\(Self.percentText(playbackVolume))",
+            "threshold=\(String(format: "%.3f", voiceActivationThreshold))"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        "\(TS3AudioTransmitMode.title(for: transmitMode)). Input gain \(Self.percentText(inputGain)). Playback volume \(Self.percentText(playbackVolume)). Voice activation threshold \(String(format: "%.3f", voiceActivationThreshold))"
+    }
+
+    private static func percentText(_ value: Double) -> String {
+        "\(Int((value * 100).rounded()))%"
+    }
 }
 
 struct TS3KeyboardShortcutBinding: Identifiable, Codable {

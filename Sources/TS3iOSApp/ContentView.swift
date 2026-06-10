@@ -23947,7 +23947,7 @@ struct AudioSettingsSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(profile.name)
                                         .font(.subheadline.weight(.semibold))
-                                    Text(profileSummary(profile))
+                                    Text(profile.displaySummary)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -23959,11 +23959,37 @@ struct AudioSettingsSheet: View {
                                     Button("Rename From Profile") {
                                         audioProfileName = profile.name
                                     }
+                                    Button("Copy Summary") {
+                                        TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+                                    }
                                     Button("Delete Profile") {
                                         model.deleteAudioProfile(profile)
                                     }
                                 } label: {
                                     Image(systemName: "ellipsis.circle")
+                                }
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(profile.name)
+                            .accessibilityValue(profile.accessibilityValue)
+                            .accessibilityAction(named: "Apply Profile") {
+                                model.applyAudioProfile(profile)
+                            }
+                            .accessibilityAction(named: "Copy Summary") {
+                                TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+                            }
+                            .contextMenu {
+                                Button("Apply Profile") {
+                                    model.applyAudioProfile(profile)
+                                }
+                                Button("Rename From Profile") {
+                                    audioProfileName = profile.name
+                                }
+                                Button("Copy Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+                                }
+                                Button("Delete Profile") {
+                                    model.deleteAudioProfile(profile)
                                 }
                             }
                         }
@@ -24462,14 +24488,6 @@ struct AudioSettingsSheet: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.trailing)
         }
-    }
-
-    private func profileSummary(_ profile: TS3AudioProfile) -> String {
-        let mode = TS3AudioTransmitMode.title(for: profile.transmitMode)
-        let input = Self.percentText(profile.inputGain)
-        let playback = Self.percentText(profile.playbackVolume)
-        let threshold = String(format: "%.3f", profile.voiceActivationThreshold)
-        return "\(mode), input \(input), playback \(playback), threshold \(threshold)"
     }
 
     private static func percentText(_ value: Double) -> String {
