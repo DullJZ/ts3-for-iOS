@@ -1985,6 +1985,76 @@ extension TS3GroupSummary {
     }
 }
 
+enum TS3GroupDraftValidator {
+    enum Operation: String {
+        case create = "Create"
+        case copy = "Copy"
+        case rename = "Rename"
+    }
+
+    static func validationMessages(
+        operation: Operation,
+        name: String,
+        target: TS3GroupManagementTarget,
+        type: TS3PermissionGroupDatabaseType,
+        sourceGroup: TS3GroupSummary?,
+        existingGroups: [TS3GroupSummary]
+    ) -> [String] {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var messages: [String] = []
+        if trimmedName.isEmpty {
+            messages.append("Group name is required before \(operation.rawValue.lowercased()).")
+        }
+        if containsNewline(name) {
+            messages.append("Group name must be a single line.")
+        }
+        if operation != .create && sourceGroup == nil {
+            messages.append("Select a source group before \(operation.rawValue.lowercased()).")
+        }
+        if operation == .rename,
+           let sourceGroup,
+           trimmedName.caseInsensitiveCompare(sourceGroup.name) == .orderedSame {
+            messages.append("Enter a different group name before renaming.")
+        }
+        if !trimmedName.isEmpty && containsGroup(named: trimmedName, in: existingGroups, excluding: operation == .rename ? sourceGroup?.id : nil) {
+            messages.append("\(target.singularTitle) named \(trimmedName) already exists.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        operation: Operation,
+        name: String,
+        target: TS3GroupManagementTarget,
+        type: TS3PermissionGroupDatabaseType,
+        sourceGroup: TS3GroupSummary?
+    ) -> String {
+        var parts = [
+            "operation=\(operation.rawValue)",
+            "target=\(target.title)"
+        ]
+        if let sourceGroup {
+            parts.append("source=\(sourceGroup.name) (\(sourceGroup.id))")
+        }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        parts.append("\(operation == .rename ? "newName" : "name")=\(name.isEmpty ? "Missing" : name)")
+        if operation != .rename {
+            parts.append("type=\(type.title)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func containsGroup(named name: String, in groups: [TS3GroupSummary], excluding excludedId: Int?) -> Bool {
+        groups.contains { group in
+            group.id != excludedId && group.name.caseInsensitiveCompare(name) == .orderedSame
+        }
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
 extension TS3GroupClientSummary {
     func clipboardSummary(group: TS3GroupSummary, target: TS3GroupManagementTarget, channelName: String?) -> String {
         var parts = [
@@ -6909,24 +6979,57 @@ final class TS3AppModel: ObservableObject {
     }
 
     func createServerGroup(name: String, type: TS3PermissionGroupDatabaseType) {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .create,
+            name: name,
+            target: .server,
+            type: type,
+            sourceGroup: nil,
+            existingGroups: serverGroups
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
         runClientCommand { client in
             _ = try await client.createServerGroup(name: name, type: type)
         }
     }
 
     func copyServerGroup(_ group: TS3GroupSummary, name: String, type: TS3PermissionGroupDatabaseType) {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .copy,
+            name: name,
+            target: .server,
+            type: type,
+            sourceGroup: group,
+            existingGroups: serverGroups
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
         runClientCommand { client in
             _ = try await client.copyServerGroup(sourceGroupId: group.id, name: name, type: type)
         }
     }
 
     func renameServerGroup(_ group: TS3GroupSummary, name: String) {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .rename,
+            name: name,
+            target: .server,
+            type: group.type ?? .regular,
+            sourceGroup: group,
+            existingGroups: serverGroups
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, name != group.name else { return }
         runClientCommand { client in
             try await client.renameServerGroup(groupId: group.id, name: name)
         }
@@ -6952,24 +7055,57 @@ final class TS3AppModel: ObservableObject {
     }
 
     func createChannelGroup(name: String, type: TS3PermissionGroupDatabaseType) {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .create,
+            name: name,
+            target: .channel,
+            type: type,
+            sourceGroup: nil,
+            existingGroups: channelGroups
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
         runClientCommand { client in
             _ = try await client.createChannelGroup(name: name, type: type)
         }
     }
 
     func copyChannelGroup(_ group: TS3GroupSummary, name: String, type: TS3PermissionGroupDatabaseType) {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .copy,
+            name: name,
+            target: .channel,
+            type: type,
+            sourceGroup: group,
+            existingGroups: channelGroups
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
         runClientCommand { client in
             _ = try await client.copyChannelGroup(sourceGroupId: group.id, name: name, type: type)
         }
     }
 
     func renameChannelGroup(_ group: TS3GroupSummary, name: String) {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .rename,
+            name: name,
+            target: .channel,
+            type: group.type ?? .regular,
+            sourceGroup: group,
+            existingGroups: channelGroups
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, name != group.name else { return }
         runClientCommand { client in
             try await client.renameChannelGroup(groupId: group.id, name: name)
         }

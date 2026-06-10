@@ -10595,6 +10595,15 @@ enum TS3GroupManagementTarget: String, CaseIterable, Identifiable {
             return "Channel Groups"
         }
     }
+
+    var singularTitle: String {
+        switch self {
+        case .server:
+            return "Server group"
+        case .channel:
+            return "Channel group"
+        }
+    }
 }
 
 struct GroupManagementSheet: View {
@@ -10701,6 +10710,27 @@ struct GroupManagementSheet: View {
         filteredGroups.map(\.clipboardSummary).joined(separator: "\n")
     }
 
+    private var newGroupDraftValidationMessages: [String] {
+        TS3GroupDraftValidator.validationMessages(
+            operation: .create,
+            name: newGroupName,
+            target: target,
+            type: newGroupType,
+            sourceGroup: nil,
+            existingGroups: groups
+        )
+    }
+
+    private var newGroupDraftSummary: String {
+        TS3GroupDraftValidator.creationSummary(
+            operation: .create,
+            name: newGroupName,
+            target: target,
+            type: newGroupType,
+            sourceGroup: nil
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -10721,10 +10751,21 @@ struct GroupManagementSheet: View {
                             Text(type.title).tag(type)
                         }
                     }
+                    Text(newGroupDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Group Summary") {
+                        TS3PlatformSupport.copyToPasteboard(newGroupDraftSummary)
+                    }
+                    ForEach(newGroupDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                     Button("Create Group") {
                         createGroup()
                     }
-                    .disabled(model.state != .connected || newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(model.state != .connected || !newGroupDraftValidationMessages.isEmpty)
                 }
 
                 Section(header: Text("Filters")) {
@@ -11254,7 +11295,11 @@ struct GroupManagementRow: View {
                 actionTitle: "Rename",
                 initialName: group.name,
                 allowsTypeSelection: false,
-                initialType: group.type ?? .regular
+                initialType: group.type ?? .regular,
+                operation: .rename,
+                target: target,
+                sourceGroup: group,
+                existingGroups: existingGroups
             ) { name, _ in
                 renameGroup(name: name)
             }
@@ -11265,7 +11310,11 @@ struct GroupManagementRow: View {
                 actionTitle: "Copy",
                 initialName: "\(group.name) Copy",
                 allowsTypeSelection: true,
-                initialType: group.type ?? .regular
+                initialType: group.type ?? .regular,
+                operation: .copy,
+                target: target,
+                sourceGroup: group,
+                existingGroups: existingGroups
             ) { name, type in
                 copyGroup(name: name, type: type)
             }
@@ -11352,6 +11401,15 @@ struct GroupManagementRow: View {
             return .serverGroup
         case .channel:
             return .channelGroup
+        }
+    }
+
+    private var existingGroups: [TS3GroupSummary] {
+        switch target {
+        case .server:
+            return model.serverGroups
+        case .channel:
+            return model.channelGroups
         }
     }
 }
@@ -12187,6 +12245,10 @@ struct GroupNameSheet: View {
     let title: String
     let actionTitle: String
     let allowsTypeSelection: Bool
+    let operation: TS3GroupDraftValidator.Operation
+    let target: TS3GroupManagementTarget
+    let sourceGroup: TS3GroupSummary?
+    let existingGroups: [TS3GroupSummary]
     let submit: (String, TS3PermissionGroupDatabaseType) -> Void
     @State private var name: String
     @State private var type: TS3PermissionGroupDatabaseType
@@ -12197,11 +12259,19 @@ struct GroupNameSheet: View {
         initialName: String,
         allowsTypeSelection: Bool,
         initialType: TS3PermissionGroupDatabaseType,
+        operation: TS3GroupDraftValidator.Operation,
+        target: TS3GroupManagementTarget,
+        sourceGroup: TS3GroupSummary?,
+        existingGroups: [TS3GroupSummary],
         submit: @escaping (String, TS3PermissionGroupDatabaseType) -> Void
     ) {
         self.title = title
         self.actionTitle = actionTitle
         self.allowsTypeSelection = allowsTypeSelection
+        self.operation = operation
+        self.target = target
+        self.sourceGroup = sourceGroup
+        self.existingGroups = existingGroups
         self.submit = submit
         _name = State(initialValue: initialName)
         _type = State(initialValue: initialType)
@@ -12220,6 +12290,17 @@ struct GroupNameSheet: View {
                             }
                         }
                     }
+                    Text(groupDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Group Summary") {
+                        TS3PlatformSupport.copyToPasteboard(groupDraftSummary)
+                    }
+                    ForEach(groupDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                 }
             }
             .navigationTitle(title)
@@ -12235,10 +12316,31 @@ struct GroupNameSheet: View {
                         submit(name, type)
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!groupDraftValidationMessages.isEmpty)
                 }
             }
         }
+    }
+
+    private var groupDraftValidationMessages: [String] {
+        TS3GroupDraftValidator.validationMessages(
+            operation: operation,
+            name: name,
+            target: target,
+            type: type,
+            sourceGroup: sourceGroup,
+            existingGroups: existingGroups
+        )
+    }
+
+    private var groupDraftSummary: String {
+        TS3GroupDraftValidator.creationSummary(
+            operation: operation,
+            name: name,
+            target: target,
+            type: type,
+            sourceGroup: sourceGroup
+        )
     }
 }
 

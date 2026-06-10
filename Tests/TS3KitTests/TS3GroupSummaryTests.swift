@@ -3,6 +3,77 @@ import XCTest
 import TS3Kit
 
 final class TS3GroupSummaryTests: XCTestCase {
+    func testGroupDraftValidatorRejectsMissingDuplicateMultilineAndNoopRename() {
+        let existing = [
+            TS3GroupSummary(id: 6, name: "Admins", type: .regular),
+            TS3GroupSummary(id: 7, name: "Guests", type: .regular)
+        ]
+
+        XCTAssertEqual(
+            TS3GroupDraftValidator.validationMessages(
+                operation: .rename,
+                name: "Admins\n",
+                target: .server,
+                type: .regular,
+                sourceGroup: existing[0],
+                existingGroups: existing
+            ),
+            [
+                "Group name must be a single line.",
+                "Enter a different group name before renaming."
+            ]
+        )
+        XCTAssertEqual(
+            TS3GroupDraftValidator.validationMessages(
+                operation: .copy,
+                name: " guests ",
+                target: .server,
+                type: .regular,
+                sourceGroup: existing[0],
+                existingGroups: existing
+            ),
+            ["Server group named guests already exists."]
+        )
+        XCTAssertEqual(
+            TS3GroupDraftValidator.validationMessages(
+                operation: .create,
+                name: " ",
+                target: .channel,
+                type: .regular,
+                sourceGroup: nil,
+                existingGroups: []
+            ),
+            ["Group name is required before create."]
+        )
+    }
+
+    func testGroupDraftValidatorBuildsAuditableSummaries() {
+        let source = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let copySummary = TS3GroupDraftValidator.creationSummary(
+            operation: .copy,
+            name: " Admin Copy ",
+            target: .server,
+            type: .query,
+            sourceGroup: source
+        )
+        let renameSummary = TS3GroupDraftValidator.creationSummary(
+            operation: .rename,
+            name: " Operators ",
+            target: .channel,
+            type: .regular,
+            sourceGroup: source
+        )
+
+        XCTAssertEqual(
+            copySummary,
+            "operation=Copy | target=Server Groups | source=Admins (6) | name=Admin Copy | type=Query"
+        )
+        XCTAssertEqual(
+            renameSummary,
+            "operation=Rename | target=Channel Groups | source=Admins (6) | newName=Operators"
+        )
+    }
+
     func testGroupClipboardSummaryIncludesIdNameAndType() {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
 
