@@ -67,6 +67,19 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(summary, "uid=uid-bad | duration=Permanent")
     }
 
+    func testBanDurationDraftSelectionMapsOfficialDurationsAndCustomSeconds() {
+        XCTAssertEqual(TS3BanDuration.draftSelection(for: nil).duration, .permanent)
+        XCTAssertEqual(TS3BanDuration.draftSelection(for: 0).duration, .permanent)
+        XCTAssertEqual(TS3BanDuration.draftSelection(for: 10 * 60).duration, .tenMinutes)
+        XCTAssertEqual(TS3BanDuration.draftSelection(for: 60 * 60).duration, .oneHour)
+        XCTAssertEqual(TS3BanDuration.draftSelection(for: 24 * 60 * 60).duration, .oneDay)
+        XCTAssertEqual(TS3BanDuration.draftSelection(for: 7 * 24 * 60 * 60).duration, .oneWeek)
+
+        let custom = TS3BanDuration.draftSelection(for: 95)
+        XCTAssertEqual(custom.duration, .custom)
+        XCTAssertEqual(custom.customMinutes, "2")
+    }
+
     func testBanEntrySummaryCopyAndAccessibilityText() {
         let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = makeBan(

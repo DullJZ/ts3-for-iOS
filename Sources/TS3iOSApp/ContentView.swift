@@ -6213,6 +6213,25 @@ enum TS3BanDuration: String, CaseIterable, Identifiable {
         }
         return minutes * 60
     }
+
+    static func draftSelection(for durationSeconds: Int?) -> (duration: TS3BanDuration, customMinutes: String) {
+        guard let durationSeconds, durationSeconds > 0 else {
+            return (.permanent, "60")
+        }
+        switch durationSeconds {
+        case 10 * 60:
+            return (.tenMinutes, "10")
+        case 60 * 60:
+            return (.oneHour, "60")
+        case 24 * 60 * 60:
+            return (.oneDay, "1440")
+        case 7 * 24 * 60 * 60:
+            return (.oneWeek, "10080")
+        default:
+            let minutes = max(1, Int((Double(durationSeconds) / 60.0).rounded(.up)))
+            return (.custom, String(minutes))
+        }
+    }
 }
 
 enum TS3TemporaryPasswordDuration: String, CaseIterable, Identifiable {
@@ -19549,7 +19568,9 @@ struct BanListSheet: View {
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredBanEntries) { entry in
-                            BanEntryRow(entry: entry)
+                            BanEntryRow(entry: entry) {
+                                applyBanDraft(from: entry)
+                            }
                                 .environmentObject(model)
                         }
                     }
@@ -19719,6 +19740,18 @@ struct BanListSheet: View {
         reason = ""
         duration = .permanent
         customBanMinutes = "60"
+    }
+
+    private func applyBanDraft(from entry: TS3BanEntrySummary) {
+        ip = entry.ip ?? ""
+        name = entry.name ?? ""
+        uniqueIdentifier = entry.uniqueIdentifier ?? ""
+        myTeamSpeakId = ""
+        lastNickname = entry.lastNickname ?? ""
+        reason = entry.reason ?? ""
+        let selection = TS3BanDuration.draftSelection(for: entry.durationSeconds)
+        duration = selection.duration
+        customBanMinutes = selection.customMinutes
     }
 
     private var normalizedSearchText: String {
@@ -20673,6 +20706,7 @@ struct ComplaintEntryRow: View {
 struct BanEntryRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let entry: TS3BanEntrySummary
+    let useAsDraft: () -> Void
     @State private var isConfirmingDelete = false
 
     var body: some View {
@@ -20733,6 +20767,9 @@ struct BanEntryRow: View {
             )
         }
         .contextMenu {
+            Button("Use as Ban Draft") {
+                useAsDraft()
+            }
             Button("Copy Summary") {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
@@ -20762,6 +20799,9 @@ struct BanEntryRow: View {
         .accessibilityValue(entry.accessibilityValue)
         .accessibilityAction(named: "Copy Summary") {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
+        }
+        .accessibilityAction(named: "Use as Ban Draft") {
+            useAsDraft()
         }
         .accessibilityAction(named: "Delete Ban") {
             if model.state == .connected {
