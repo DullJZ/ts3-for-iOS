@@ -3,6 +3,66 @@ import XCTest
 import TS3Kit
 
 final class TS3PrivilegeKeyBackupTests: XCTestCase {
+    func testPrivilegeKeyDraftValidatorRejectsMissingTargetsAndMultilineFields() {
+        XCTAssertEqual(
+            TS3PrivilegeKeyDraftValidator.validationMessages(
+                targetType: .channelGroup,
+                groupId: 0,
+                channelId: nil,
+                description: "Line one\nLine two",
+                customSet: "token=one\ntoken=two"
+            ),
+            [
+                "Channel group is required before creating a privilege key.",
+                "Channel is required before creating a channel-group privilege key.",
+                "Description must be a single line.",
+                "Custom set must be a single line."
+            ]
+        )
+    }
+
+    func testPrivilegeKeyDraftValidatorAcceptsValidServerGroupDraftAndBuildsSummary() {
+        let messages = TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: .serverGroup,
+            groupId: 6,
+            channelId: nil,
+            description: "  One time admin  ",
+            customSet: "  ident=ios  "
+        )
+        let summary = TS3PrivilegeKeyDraftValidator.creationSummary(
+            targetType: .serverGroup,
+            groupId: 6,
+            groupName: "Admins",
+            channelId: nil,
+            channelName: nil,
+            description: "  One time admin  ",
+            customSet: "  ident=ios  "
+        )
+
+        XCTAssertTrue(messages.isEmpty)
+        XCTAssertEqual(
+            summary,
+            "type=Server Group | group=Admins (6) | description=One time admin | customSet=ident=ios"
+        )
+    }
+
+    func testPrivilegeKeyDraftValidatorIncludesChannelGroupTargetInSummary() {
+        let summary = TS3PrivilegeKeyDraftValidator.creationSummary(
+            targetType: .channelGroup,
+            groupId: 9,
+            groupName: "Channel Admin",
+            channelId: 12,
+            channelName: "Lobby",
+            description: "",
+            customSet: ""
+        )
+
+        XCTAssertEqual(
+            summary,
+            "type=Channel Group | group=Channel Admin (9) | channel=Lobby (12)"
+        )
+    }
+
     @MainActor
     func testPrivilegeKeyBackupPreviewCountsTypesAndFirstKeyDetails() throws {
         let model = TS3AppModel()

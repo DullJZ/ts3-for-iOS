@@ -2021,6 +2021,68 @@ enum TS3PrivilegeKeyTargetType: String, CaseIterable, Identifiable {
     }
 }
 
+enum TS3PrivilegeKeyDraftValidator {
+    static func validationMessages(
+        targetType: TS3PrivilegeKeyTargetType,
+        groupId: Int,
+        channelId: Int?,
+        description: String,
+        customSet: String
+    ) -> [String] {
+        var messages: [String] = []
+        if groupId <= 0 {
+            switch targetType {
+            case .serverGroup:
+                messages.append("Server group is required before creating a privilege key.")
+            case .channelGroup:
+                messages.append("Channel group is required before creating a privilege key.")
+            }
+        }
+        if targetType == .channelGroup && (channelId ?? 0) <= 0 {
+            messages.append("Channel is required before creating a channel-group privilege key.")
+        }
+        if containsNewline(description) {
+            messages.append("Description must be a single line.")
+        }
+        if containsNewline(customSet) {
+            messages.append("Custom set must be a single line.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        targetType: TS3PrivilegeKeyTargetType,
+        groupId: Int,
+        groupName: String,
+        channelId: Int?,
+        channelName: String?,
+        description: String,
+        customSet: String
+    ) -> String {
+        var parts = [
+            "type=\(targetType.title)",
+            "group=\(groupName) (\(groupId))"
+        ]
+        if targetType == .channelGroup {
+            let resolvedChannelId = channelId ?? 0
+            parts.append("channel=\(channelName ?? "Channel \(resolvedChannelId)") (\(resolvedChannelId))")
+        }
+        let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        let customSet = customSet.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !customSet.isEmpty {
+            parts.append("customSet=\(customSet)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
 extension TS3PrivilegeKeyType {
     var title: String {
         switch self {
@@ -11227,6 +11289,17 @@ final class TS3AppModel: ObservableObject {
         description: String,
         customSet: String
     ) {
+        let validationMessages = TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: targetType,
+            groupId: groupId,
+            channelId: channelId,
+            description: description,
+            customSet: customSet
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
         let customSet = customSet.trimmingCharacters(in: .whitespacesAndNewlines)
         let channelId = targetType == .channelGroup ? channelId : nil

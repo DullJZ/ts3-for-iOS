@@ -18116,6 +18116,17 @@ struct PrivilegeKeysSheet: View {
                         .ts3PlainTextField()
                     TextField("Custom Set", text: $customSet)
                         .ts3PlainTextField()
+                    Text(privilegeKeyDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Creation Summary") {
+                        TS3PlatformSupport.copyToPasteboard(privilegeKeyDraftSummary)
+                    }
+                    ForEach(privilegeKeyDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                     Button("Create Privilege Key") {
                         model.createPrivilegeKey(
                             targetType: targetType,
@@ -18379,12 +18390,29 @@ struct PrivilegeKeysSheet: View {
     }
 
     private var canCreate: Bool {
-        switch targetType {
-        case .serverGroup:
-            return selectedServerGroupId != 0
-        case .channelGroup:
-            return selectedChannelGroupId != 0 && selectedChannelId != 0
-        }
+        privilegeKeyDraftValidationMessages.isEmpty
+    }
+
+    private var privilegeKeyDraftValidationMessages: [String] {
+        TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: targetType,
+            groupId: selectedGroupId,
+            channelId: selectedChannelId == 0 ? nil : selectedChannelId,
+            description: description,
+            customSet: customSet
+        )
+    }
+
+    private var privilegeKeyDraftSummary: String {
+        TS3PrivilegeKeyDraftValidator.creationSummary(
+            targetType: targetType,
+            groupId: selectedGroupId,
+            groupName: selectedGroupName,
+            channelId: selectedChannelId == 0 ? nil : selectedChannelId,
+            channelName: selectedChannelId == 0 ? nil : channelName(selectedChannelId),
+            description: description,
+            customSet: customSet
+        )
     }
 
     private var normalizedSearchText: String {
