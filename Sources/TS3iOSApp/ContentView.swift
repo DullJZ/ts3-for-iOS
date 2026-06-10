@@ -19671,11 +19671,22 @@ struct ComplaintListSheet: View {
                     Section(header: Text("New Complaint")) {
                         TextField("Complaint", text: $newComplaintMessage)
                             .ts3PlainTextField()
+                        Text(complaintDraftSummary(for: target))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Copy Complaint Summary") {
+                            TS3PlatformSupport.copyToPasteboard(complaintDraftSummary(for: target))
+                        }
+                        ForEach(complaintDraftValidationMessages(for: target), id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
                         Button("Submit Complaint") {
                             model.complainAboutUser(target, message: newComplaintMessage)
                             newComplaintMessage = ""
                         }
-                        .disabled(model.state != .connected || newComplaintMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(model.state != .connected || !complaintDraftValidationMessages(for: target).isEmpty)
                     }
                 }
 
@@ -20013,6 +20024,24 @@ struct ComplaintListSheet: View {
             return sourceName
         }
         return "Client DB \(entry.sourceClientDatabaseId)"
+    }
+
+    private func complaintDraftValidationMessages(for target: TS3UserSummary) -> [String] {
+        TS3ComplaintDraftValidator.validationMessages(
+            targetName: target.nickname,
+            targetClientId: target.id,
+            targetDatabaseId: target.databaseId,
+            message: newComplaintMessage
+        )
+    }
+
+    private func complaintDraftSummary(for target: TS3UserSummary) -> String {
+        TS3ComplaintDraftValidator.creationSummary(
+            targetName: target.nickname,
+            targetClientId: target.id,
+            targetDatabaseId: target.databaseId,
+            message: newComplaintMessage
+        )
     }
 
     private func applyPreset(_ preset: TS3ComplaintFilterPreset) {

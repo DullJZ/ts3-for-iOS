@@ -2,6 +2,51 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3ComplaintArchiveTests: XCTestCase {
+    func testComplaintDraftValidatorRejectsMissingTargetEmptyAndMultilineMessage() {
+        XCTAssertEqual(
+            TS3ComplaintDraftValidator.validationMessages(
+                targetName: " ",
+                targetClientId: nil,
+                targetDatabaseId: nil,
+                message: " \n "
+            ),
+            [
+                "Select a target user before submitting a complaint.",
+                "Complaint message is required before submitting.",
+                "Complaint message must be a single line."
+            ]
+        )
+    }
+
+    func testComplaintDraftValidatorBuildsAuditableSummary() {
+        let messages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse "
+        )
+        let summary = TS3ComplaintDraftValidator.creationSummary(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse "
+        )
+
+        XCTAssertTrue(messages.isEmpty)
+        XCTAssertEqual(summary, "target=Target | clientId=12 | databaseId=22 | message=Abuse")
+    }
+
+    func testComplaintDraftValidatorSummarizesMissingMessage() {
+        let summary = TS3ComplaintDraftValidator.creationSummary(
+            targetName: "Target",
+            targetClientId: 12,
+            targetDatabaseId: nil,
+            message: " "
+        )
+
+        XCTAssertEqual(summary, "target=Target | clientId=12 | message=Missing")
+    }
+
     func testComplaintSummaryCopyAndAccessibilityText() {
         let complaint = TS3ComplaintSummary(
             id: "complaint",

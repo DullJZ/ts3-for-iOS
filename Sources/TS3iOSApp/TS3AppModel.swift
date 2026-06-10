@@ -1487,6 +1487,54 @@ struct TS3ComplaintSummary: Identifiable, Codable {
     }
 }
 
+enum TS3ComplaintDraftValidator {
+    static func validationMessages(
+        targetName: String?,
+        targetClientId: Int?,
+        targetDatabaseId: Int?,
+        message: String
+    ) -> [String] {
+        var messages: [String] = []
+        if targetName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false &&
+            targetClientId == nil &&
+            targetDatabaseId == nil {
+            messages.append("Select a target user before submitting a complaint.")
+        }
+        if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Complaint message is required before submitting.")
+        }
+        if containsNewline(message) {
+            messages.append("Complaint message must be a single line.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        targetName: String?,
+        targetClientId: Int?,
+        targetDatabaseId: Int?,
+        message: String
+    ) -> String {
+        var parts: [String] = []
+        if let targetName = targetName?.trimmingCharacters(in: .whitespacesAndNewlines), !targetName.isEmpty {
+            parts.append("target=\(targetName)")
+        }
+        if let targetClientId {
+            parts.append("clientId=\(targetClientId)")
+        }
+        if let targetDatabaseId {
+            parts.append("databaseId=\(targetDatabaseId)")
+        }
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        parts.append("message=\(message.isEmpty ? "Missing" : message)")
+        return parts.joined(separator: " | ")
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
 private struct TS3ComplaintArchive: Codable {
     var entries: [TS3ComplaintSummary]
 }
@@ -8234,8 +8282,17 @@ final class TS3AppModel: ObservableObject {
     }
 
     func complainAboutDatabaseClient(_ record: TS3DatabaseClientSummary, message: String) {
+        let validationMessages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: record.nickname,
+            targetClientId: nil,
+            targetDatabaseId: record.id,
+            message: message
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return }
         runClientCommand { client in
             try await client.addComplaint(clientDatabaseId: record.id, message: message)
             let entries = try await client.refreshComplaints(clientDatabaseId: record.id)
@@ -11104,8 +11161,17 @@ final class TS3AppModel: ObservableObject {
     }
 
     func complainAboutUser(_ user: TS3UserSummary, message: String) {
+        let validationMessages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: user.nickname,
+            targetClientId: user.id,
+            targetDatabaseId: user.databaseId,
+            message: message
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return }
         runClientCommand { client in
             let databaseId = try await self.databaseId(for: user, using: client)
             try await client.addComplaint(clientDatabaseId: databaseId, message: message)
