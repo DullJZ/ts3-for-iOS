@@ -133,4 +133,47 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             "Sent to Avery. Message Poke"
         )
     }
+
+    func testPokeDraftValidatorRejectsMissingTargetAndMultilineMessage() {
+        XCTAssertEqual(
+            TS3PokeDraftValidator.validationMessages(
+                targetName: " ",
+                targetClientId: nil,
+                message: "Wake\nup"
+            ),
+            [
+                "Select a client before sending a poke.",
+                "Poke message must be a single line."
+            ]
+        )
+        XCTAssertEqual(
+            TS3PokeDraftValidator.validationMessages(
+                targetName: "Taylor",
+                targetClientId: 0,
+                message: "Wake up"
+            ),
+            [
+                "Target client id must be positive before sending a poke."
+            ]
+        )
+    }
+
+    func testPokeDraftValidatorSummariesUseDefaultAndCustomMessage() {
+        XCTAssertEqual(
+            TS3PokeDraftValidator.creationSummary(
+                targetName: " Taylor ",
+                targetClientId: 12,
+                message: " "
+            ),
+            "target=Taylor | clientId=12 | message=Poke"
+        )
+        XCTAssertEqual(
+            TS3PokeDraftValidator.creationSummary(
+                targetName: "Taylor",
+                targetClientId: 12,
+                message: "Wake up"
+            ),
+            "target=Taylor | clientId=12 | message=Wake up"
+        )
+    }
 }

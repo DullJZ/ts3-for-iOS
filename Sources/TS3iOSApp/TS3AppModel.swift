@@ -634,6 +634,48 @@ struct TS3PokeSummary: Identifiable, Codable {
     }
 }
 
+enum TS3PokeDraftValidator {
+    static func validationMessages(
+        targetName: String?,
+        targetClientId: Int?,
+        message: String
+    ) -> [String] {
+        var messages: [String] = []
+        let targetName = targetName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if targetName?.isEmpty != false && targetClientId == nil {
+            messages.append("Select a client before sending a poke.")
+        }
+        if let targetClientId, targetClientId <= 0 {
+            messages.append("Target client id must be positive before sending a poke.")
+        }
+        if message.rangeOfCharacter(from: .newlines) != nil {
+            messages.append("Poke message must be a single line.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        targetName: String?,
+        targetClientId: Int?,
+        message: String
+    ) -> String {
+        var parts: [String] = []
+        if let targetName = targetName?.trimmingCharacters(in: .whitespacesAndNewlines), !targetName.isEmpty {
+            parts.append("target=\(targetName)")
+        } else {
+            parts.append("target=Missing")
+        }
+        if let targetClientId {
+            parts.append("clientId=\(targetClientId)")
+        } else {
+            parts.append("clientId=Missing")
+        }
+        let message = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        parts.append("message=\(message.isEmpty ? "Poke" : message)")
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3ActivitySummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date
@@ -11758,6 +11800,15 @@ final class TS3AppModel: ObservableObject {
     }
 
     func pokeUser(_ user: TS3UserSummary, message: String) {
+        let validationMessages = TS3PokeDraftValidator.validationMessages(
+            targetName: user.nickname,
+            targetClientId: user.id,
+            message: message
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let pokeMessage = message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Poke" : message
         runClientCommand { client in
             try await client.pokeClient(clientId: user.id, message: pokeMessage)

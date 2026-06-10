@@ -4825,6 +4825,19 @@ struct UserActionSheet: View {
                                     .foregroundColor(.red)
                             }
                         }
+                        if mode == .poke {
+                            Text(pokeDraftSummary)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button("Copy Poke Summary") {
+                                TS3PlatformSupport.copyToPasteboard(pokeDraftSummary)
+                            }
+                            ForEach(pokeDraftValidationMessages, id: \.self) { message in
+                                Text(message)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
                     }
                     if mode == .ban {
                         Section(header: Text("Duration")) {
@@ -4927,7 +4940,7 @@ struct UserActionSheet: View {
         case .privateMessage, .complain:
             return textIsEmpty
         case .poke:
-            return false
+            return !pokeDraftValidationMessages.isEmpty
         case .offlineMessage:
             return !offlineMessageDraftValidationMessages.isEmpty
         case .editDescription, .contactNote, .kickChannel, .kickServer:
@@ -4980,6 +4993,22 @@ struct UserActionSheet: View {
             subject: subject,
             message: text,
             allowsRecipientLookup: true
+        )
+    }
+
+    private var pokeDraftValidationMessages: [String] {
+        TS3PokeDraftValidator.validationMessages(
+            targetName: user.nickname,
+            targetClientId: user.id,
+            message: text
+        )
+    }
+
+    private var pokeDraftSummary: String {
+        TS3PokeDraftValidator.creationSummary(
+            targetName: user.nickname,
+            targetClientId: user.id,
+            message: text
         )
     }
 
