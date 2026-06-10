@@ -7840,11 +7840,7 @@ struct ActivityEventRow: View {
     }
 
     private var accessibilityValue: String {
-        var parts = [event.accessibilityValue, messageText]
-        if let detailText {
-            parts.append(detailText)
-        }
-        return parts.joined(separator: ". ")
+        event.rowAccessibilityValue(messageText: messageText, detailText: detailText)
     }
 
     private var isClientEvent: Bool {

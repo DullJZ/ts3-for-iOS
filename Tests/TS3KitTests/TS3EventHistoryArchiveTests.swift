@@ -106,6 +106,10 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             activity.accessibilityValue,
             "Client moved. Client Taylor. Channel Lobby. From channel ID 2. To channel ID 4. Invoker Admin. Reason Requested"
         )
+        XCTAssertEqual(
+            activity.rowAccessibilityValue(messageText: "moved from Lobby to Support", detailText: "by Admin"),
+            "Client moved. Client Taylor. Channel Lobby. From channel ID 2. To channel ID 4. Invoker Admin. Reason Requested. moved from Lobby to Support. by Admin"
+        )
     }
 
     func testPokeSummaryUsesDefaultMessageForBlankPokes() {

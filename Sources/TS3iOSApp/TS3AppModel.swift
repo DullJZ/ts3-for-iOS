@@ -500,6 +500,14 @@ struct TS3ActivitySummary: Identifiable, Codable {
         }
         return parts.joined(separator: ". ")
     }
+
+    func rowAccessibilityValue(messageText: String, detailText: String?) -> String {
+        var parts = [accessibilityValue, messageText]
+        if let detailText, !detailText.isEmpty {
+            parts.append(detailText)
+        }
+        return parts.joined(separator: ". ")
+    }
 }
 
 extension TS3ServerActivityEvent.Kind: Codable {
