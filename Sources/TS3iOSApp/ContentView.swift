@@ -24584,6 +24584,11 @@ struct AudioSettingsSheet: View {
                         }
                     }
                     .disabled(model.audioInputDevices.isEmpty)
+                    if !model.audioInputDevices.isEmpty {
+                        ForEach(model.audioInputDevices) { device in
+                            audioInputDeviceRow(device)
+                        }
+                    }
                     Button("Refresh Audio Routes") {
                         model.refreshAudioRoutes()
                     }
@@ -25067,6 +25072,32 @@ struct AudioSettingsSheet: View {
             Text(value)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private func audioInputDeviceRow(_ device: TS3AudioRouteDeviceSummary) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.name)
+                Text(device.displaySummary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Text(device.isSelected ? "Selected" : "Available")
+                .font(.caption)
+                .foregroundColor(device.isSelected ? .accentColor : .secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(device.name)
+        .accessibilityValue(device.accessibilityValue)
+        .accessibilityAction(named: "Copy Device Summary") {
+            TS3PlatformSupport.copyToPasteboard(device.clipboardSummary)
+        }
+        .contextMenu {
+            Button("Copy Device Summary") {
+                TS3PlatformSupport.copyToPasteboard(device.clipboardSummary)
+            }
         }
     }
 

@@ -3,6 +3,43 @@ import XCTest
 import TS3Kit
 
 final class TS3AudioProfileTests: XCTestCase {
+    func testAudioRouteDeviceSummariesAreCopyableAndAccessible() {
+        let selectedDevice = TS3AudioRouteDeviceSummary(
+            id: "built-in-mic",
+            name: "iPhone Microphone",
+            type: "MicrophoneBuiltIn",
+            isSelected: true
+        )
+        let availableDevice = TS3AudioRouteDeviceSummary(
+            id: "usb-headset",
+            name: "USB Headset",
+            type: "",
+            isSelected: false
+        )
+
+        XCTAssertEqual(selectedDevice.displayName, "iPhone Microphone (MicrophoneBuiltIn)")
+        XCTAssertEqual(selectedDevice.displaySummary, "iPhone Microphone (MicrophoneBuiltIn), selected")
+        XCTAssertEqual(
+            selectedDevice.clipboardSummary,
+            "name=iPhone Microphone | type=MicrophoneBuiltIn | id=built-in-mic | state=selected"
+        )
+        XCTAssertEqual(
+            selectedDevice.accessibilityValue,
+            "selected. Type MicrophoneBuiltIn. Identifier built-in-mic"
+        )
+
+        XCTAssertEqual(availableDevice.displayName, "USB Headset")
+        XCTAssertEqual(availableDevice.displaySummary, "USB Headset, available")
+        XCTAssertEqual(
+            availableDevice.clipboardSummary,
+            "name=USB Headset | type=Unknown | id=usb-headset | state=available"
+        )
+        XCTAssertEqual(
+            availableDevice.accessibilityValue,
+            "available. Type Unknown. Identifier usb-headset"
+        )
+    }
+
     func testUserPlaybackPreferenceSummariesUseAuditableValues() {
         let preference = TS3UserPlaybackPreferenceSummary(
             key: "client-uid",

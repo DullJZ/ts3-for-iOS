@@ -3808,6 +3808,27 @@ struct TS3AudioRouteDeviceSummary: Identifiable, Equatable {
     var displayName: String {
         type.isEmpty ? name : "\(name) (\(type))"
     }
+
+    var displaySummary: String {
+        "\(displayName), \(stateTitle)"
+    }
+
+    var clipboardSummary: String {
+        [
+            "name=\(name)",
+            "type=\(type.isEmpty ? "Unknown" : type)",
+            "id=\(id)",
+            "state=\(isSelected ? "selected" : "available")"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        "\(stateTitle). Type \(type.isEmpty ? "Unknown" : type). Identifier \(id)"
+    }
+
+    private var stateTitle: String {
+        isSelected ? "selected" : "available"
+    }
 }
 
 struct TS3AudioProfile: Identifiable, Codable {

@@ -27,7 +27,7 @@ Status legend:
 | Continuous transmission | Done | Audio settings transmit mode presets, persistence, live input meter, self-status profile row copy summaries with VoiceOver actions, and calibration diagnostics | Verify long-running capture behavior on iOS hardware and Catalyst. |
 | Voice activation | Partial | Mode and threshold settings, presets, persisted profiles, diagnostics snapshot, live input meter, and threshold calibration action exist | Verify end-to-end behavior on iOS hardware and Catalyst. |
 | Input/output mute | Done | Main UI, compact global voice status strip, VoiceOver-readable mic/sound state, and Catalyst menu actions | Monitor compact layout feedback on real devices. |
-| Audio devices and profiles | Partial | Audio routes, route availability notes, profile import/export with merge/sanitize tests, profile and per-user playback row copy summaries with VoiceOver actions, user playback backup | Validate route switching behavior on real iOS and Mac Catalyst devices. |
+| Audio devices and profiles | Partial | Audio routes, route availability notes, input device row copy summaries with VoiceOver actions, profile import/export with merge/sanitize tests, profile and per-user playback row copy summaries with VoiceOver actions, user playback backup | Validate route switching behavior on real iOS and Mac Catalyst devices. |
 
 ## Messaging
 
