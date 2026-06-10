@@ -3409,6 +3409,120 @@ struct TS3GroupClientFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3GroupFilterPreset {
+    var clipboardSummary: String {
+        summaryLines.joined(separator: "\n")
+    }
+
+    var inlineSummary: String {
+        summaryLines.joined(separator: " · ")
+    }
+
+    var accessibilityValue: String {
+        "\(name). \(summaryLines.joined(separator: ". "))"
+    }
+
+    private var summaryLines: [String] {
+        var lines = [
+            "Target: \(targetTitle)",
+            "Type filter: \(groupTypeFilterTitle)",
+            "Sort: \(sortModeTitle) \(sortAscending ? "Ascending" : "Descending")"
+        ]
+        let search = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !search.isEmpty {
+            lines.append("Search: \(search)")
+        }
+        return lines
+    }
+
+    private var targetTitle: String {
+        switch target {
+        case "channel": return "Channel Groups"
+        default: return "Server Groups"
+        }
+    }
+
+    private var groupTypeFilterTitle: String {
+        switch groupTypeFilter {
+        case "template": return "Template"
+        case "regular": return "Regular"
+        case "query": return "Query"
+        case "unknown": return "Unknown"
+        default: return "All Types"
+        }
+    }
+
+    private var sortModeTitle: String {
+        switch sortMode {
+        case "id": return "ID"
+        case "type": return "Type"
+        default: return "Name"
+        }
+    }
+}
+
+extension TS3GroupClientFilterPreset {
+    func clipboardSummary(channelName: String? = nil) -> String {
+        summaryLines(channelName: channelName).joined(separator: "\n")
+    }
+
+    func inlineSummary(channelName: String? = nil) -> String {
+        summaryLines(channelName: channelName).joined(separator: " · ")
+    }
+
+    func accessibilityValue(channelName: String? = nil) -> String {
+        "\(name). \(summaryLines(channelName: channelName).joined(separator: ". "))"
+    }
+
+    private func summaryLines(channelName: String?) -> [String] {
+        var lines = [
+            "Status filter: \(memberFilterTitle)",
+            "Channel filter: \(channelFilterTitle(channelName: channelName))",
+            "Sort: \(sortModeTitle) \(sortAscending ? "Ascending" : "Descending")"
+        ]
+        let search = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !search.isEmpty {
+            lines.append("Search: \(search)")
+        }
+        return lines
+    }
+
+    private var memberFilterTitle: String {
+        switch memberFilter {
+        case "online": return "Online"
+        case "offline": return "Offline"
+        case "withUniqueId": return "With Unique ID"
+        case "withoutUniqueId": return "Without Unique ID"
+        default: return "All Members"
+        }
+    }
+
+    private func channelFilterTitle(channelName: String?) -> String {
+        switch channelFilter {
+        case "currentChannel":
+            return "Current Channel"
+        case "selectedChannel":
+            if let channelId {
+                return "\(channelName ?? "Channel \(channelId)") (\(channelId))"
+            }
+            return "Selected Channel"
+        case "withoutChannel":
+            return "No Channel"
+        default:
+            return "All Channels"
+        }
+    }
+
+    private var sortModeTitle: String {
+        switch sortMode {
+        case "databaseId": return "Database ID"
+        case "channel": return "Channel"
+        case "uniqueId": return "Unique ID"
+        default: return "Nickname"
+        }
+    }
+}
+
 struct TS3DownloadedFileSummary: Identifiable, Codable {
     let id: UUID
     let name: String

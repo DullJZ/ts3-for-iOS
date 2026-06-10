@@ -10976,6 +10976,9 @@ struct GroupManagementSheet: View {
                                     Button("Use Name") {
                                         presetName = preset.name
                                     }
+                                    Button("Copy Preset Summary") {
+                                        TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
+                                    }
                                     Button("Delete Preset") {
                                         model.deleteGroupFilterPreset(preset)
                                     }
@@ -10984,6 +10987,12 @@ struct GroupManagementSheet: View {
                                         Text(preset.name)
                                         Text(presetSummary(preset))
                                     }
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("Group filter preset")
+                                .accessibilityValue(preset.accessibilityValue)
+                                .accessibilityAction(named: "Copy Preset Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
                                 }
                             }
                         }
@@ -11209,18 +11218,7 @@ struct GroupManagementSheet: View {
     }
 
     private func presetSummary(_ preset: TS3GroupFilterPreset) -> String {
-        var parts = [
-            (TS3GroupManagementTarget(rawValue: preset.target) ?? .server).title,
-            (GroupTypeFilter(rawValue: preset.groupTypeFilter) ?? .all).title,
-            "Sort \((GroupSortMode(rawValue: preset.sortMode) ?? .name).title)"
-        ]
-        if !preset.sortAscending {
-            parts.append("Descending")
-        }
-        if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
-        }
-        return parts.joined(separator: " · ")
+        preset.inlineSummary
     }
 
     private func exportGroupArchive() {
@@ -11813,6 +11811,9 @@ struct GroupClientListSheet: View {
                                     Button("Use Name") {
                                         presetName = preset.name
                                     }
+                                    Button("Copy Preset Summary") {
+                                        TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary(channelName: channelPresetName(preset)))
+                                    }
                                     Button("Delete Preset") {
                                         model.deleteGroupClientFilterPreset(preset)
                                     }
@@ -11821,6 +11822,12 @@ struct GroupClientListSheet: View {
                                         Text(preset.name)
                                         Text(presetSummary(preset))
                                     }
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("Group member filter preset")
+                                .accessibilityValue(preset.accessibilityValue(channelName: channelPresetName(preset)))
+                                .accessibilityAction(named: "Copy Preset Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary(channelName: channelPresetName(preset)))
                                 }
                             }
                         }
@@ -12105,18 +12112,7 @@ struct GroupClientListSheet: View {
     }
 
     private func presetSummary(_ preset: TS3GroupClientFilterPreset) -> String {
-        var parts = [
-            (MemberFilter(rawValue: preset.memberFilter) ?? .all).title,
-            channelPresetSummary(preset),
-            "Sort \((MemberSortMode(rawValue: preset.sortMode) ?? .nickname).title)"
-        ]
-        if !preset.sortAscending {
-            parts.append("Descending")
-        }
-        if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
-        }
-        return parts.joined(separator: " · ")
+        preset.inlineSummary(channelName: channelPresetName(preset))
     }
 
     private func channelPresetSummary(_ preset: TS3GroupClientFilterPreset) -> String {
@@ -12128,6 +12124,11 @@ struct GroupClientListSheet: View {
             guard let channelId = preset.channelId else { return "Selected Channel" }
             return "\(model.channelName(for: channelId) ?? "Channel \(channelId)") (\(channelId))"
         }
+    }
+
+    private func channelPresetName(_ preset: TS3GroupClientFilterPreset) -> String? {
+        guard let channelId = preset.channelId else { return nil }
+        return model.channelName(for: channelId)
     }
 
     private func exportPresets() {

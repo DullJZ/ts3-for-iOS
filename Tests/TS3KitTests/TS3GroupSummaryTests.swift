@@ -196,6 +196,79 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupFilterPresetSummariesAreCopyableAndAccessible() {
+        let preset = TS3GroupFilterPreset(
+            name: "Server operators",
+            target: "server",
+            groupTypeFilter: "regular",
+            sortMode: "id",
+            sortAscending: false,
+            searchText: " admin "
+        )
+
+        XCTAssertEqual(
+            preset.inlineSummary,
+            "Target: Server Groups · Type filter: Regular · Sort: ID Descending · Search: admin"
+        )
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            """
+            Target: Server Groups
+            Type filter: Regular
+            Sort: ID Descending
+            Search: admin
+            """
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Server operators. Target: Server Groups. Type filter: Regular. Sort: ID Descending. Search: admin"
+        )
+    }
+
+    func testGroupClientFilterPresetSummariesIncludeSelectedChannelName() {
+        let preset = TS3GroupClientFilterPreset(
+            name: "Lobby online",
+            memberFilter: "online",
+            channelFilter: "selectedChannel",
+            channelId: 9,
+            sortMode: "databaseId",
+            sortAscending: true,
+            searchText: " Taylor "
+        )
+
+        XCTAssertEqual(
+            preset.inlineSummary(channelName: "Lobby"),
+            "Status filter: Online · Channel filter: Lobby (9) · Sort: Database ID Ascending · Search: Taylor"
+        )
+        XCTAssertEqual(
+            preset.clipboardSummary(channelName: "Lobby"),
+            """
+            Status filter: Online
+            Channel filter: Lobby (9)
+            Sort: Database ID Ascending
+            Search: Taylor
+            """
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue(channelName: "Lobby"),
+            "Lobby online. Status filter: Online. Channel filter: Lobby (9). Sort: Database ID Ascending. Search: Taylor"
+        )
+
+        let fallback = TS3GroupClientFilterPreset(
+            name: "Missing channel",
+            memberFilter: "withoutUniqueId",
+            channelFilter: "selectedChannel",
+            channelId: 10,
+            sortMode: "uniqueId",
+            sortAscending: false,
+            searchText: ""
+        )
+        XCTAssertEqual(
+            fallback.inlineSummary(),
+            "Status filter: Without Unique ID · Channel filter: Channel 10 (10) · Sort: Unique ID Descending"
+        )
+    }
+
     @MainActor
     func testGroupArchivePreviewSanitizesCountsAndFirstDetails() throws {
         let model = TS3AppModel()
