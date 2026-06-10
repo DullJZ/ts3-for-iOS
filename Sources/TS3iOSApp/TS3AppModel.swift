@@ -247,6 +247,189 @@ enum TS3ChannelDraftValidator {
     }
 }
 
+enum TS3ServerSettingsDraftValidator {
+    static func validationMessages(
+        name: String,
+        port: String,
+        autostart: String?,
+        maxClients: String,
+        reservedSlots: String,
+        hostMessageMode: String,
+        hostBannerMode: String,
+        hostBannerGraphicsInterval: String,
+        iconId: String,
+        downloadQuota: String,
+        uploadQuota: String,
+        maxDownloadTotalBandwidth: String,
+        maxUploadTotalBandwidth: String,
+        complainAutoBanCount: String,
+        complainAutoBanTime: String,
+        complainRemoveTime: String,
+        minClientsInChannelBeforeForcedSilence: String,
+        prioritySpeakerDimmModificator: String,
+        antiFloodPointsTickReduce: String,
+        antiFloodPointsNeededCommandBlock: String,
+        antiFloodPointsNeededIPBlock: String,
+        logClient: String?,
+        logQuery: String?,
+        logChannel: String?,
+        logPermissions: String?,
+        logServer: String?,
+        logFileTransfer: String?,
+        weblistEnabled: String?,
+        codecEncryptionMode: String,
+        defaultServerGroupId: String,
+        defaultChannelGroupId: String,
+        defaultChannelAdminGroupId: String,
+        neededIdentitySecurityLevel: String,
+        minClientVersion: String,
+        minAndroidVersion: String,
+        minIOSVersion: String
+    ) -> [String] {
+        var messages: [String] = []
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Server name is required before saving.")
+        }
+        if !isOptionalInt(maxClients) {
+            messages.append("Max clients must be numeric.")
+        }
+        if !isOptionalInt(port) {
+            messages.append("Server port must be numeric.")
+        }
+        if !isOptionalInt(reservedSlots) {
+            messages.append("Reserved slots must be numeric.")
+        }
+        if !isOptionalBoolDraft(autostart) {
+            messages.append("Autostart must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalInt(hostMessageMode) {
+            messages.append("Host message mode must be numeric.")
+        }
+        if !isOptionalInt(hostBannerMode) {
+            messages.append("Host banner mode must be numeric.")
+        }
+        if !isOptionalInt(hostBannerGraphicsInterval) {
+            messages.append("Banner refresh seconds must be numeric.")
+        }
+        if !isOptionalInt(iconId) {
+            messages.append("Icon ID must be numeric.")
+        }
+        if !isOptionalInt64(downloadQuota) {
+            messages.append("Download quota must be numeric.")
+        }
+        if !isOptionalInt64(uploadQuota) {
+            messages.append("Upload quota must be numeric.")
+        }
+        if !isOptionalInt64(maxDownloadTotalBandwidth) {
+            messages.append("Max download bandwidth must be numeric.")
+        }
+        if !isOptionalInt64(maxUploadTotalBandwidth) {
+            messages.append("Max upload bandwidth must be numeric.")
+        }
+        if !isOptionalInt(neededIdentitySecurityLevel) {
+            messages.append("Needed identity security level must be numeric.")
+        }
+        if !isOptionalInt(minClientVersion) {
+            messages.append("Minimum client version must be numeric.")
+        }
+        if !isOptionalInt(minAndroidVersion) {
+            messages.append("Minimum Android version must be numeric.")
+        }
+        if !isOptionalInt(minIOSVersion) {
+            messages.append("Minimum iOS version must be numeric.")
+        }
+        if !isOptionalInt(complainAutoBanCount) {
+            messages.append("Auto-ban complaint count must be numeric.")
+        }
+        if !isOptionalInt(complainAutoBanTime) {
+            messages.append("Auto-ban seconds must be numeric.")
+        }
+        if !isOptionalInt(complainRemoveTime) {
+            messages.append("Complaint remove seconds must be numeric.")
+        }
+        if !isOptionalInt(minClientsInChannelBeforeForcedSilence) {
+            messages.append("Forced silence client count must be numeric.")
+        }
+        if !isOptionalDouble(prioritySpeakerDimmModificator) {
+            messages.append("Priority speaker dimming must be numeric.")
+        }
+        if !isOptionalInt(antiFloodPointsTickReduce) {
+            messages.append("Anti-flood tick reduce must be numeric.")
+        }
+        if !isOptionalInt(antiFloodPointsNeededCommandBlock) {
+            messages.append("Anti-flood command block must be numeric.")
+        }
+        if !isOptionalInt(antiFloodPointsNeededIPBlock) {
+            messages.append("Anti-flood IP block must be numeric.")
+        }
+        if !isOptionalBoolDraft(logClient) {
+            messages.append("Client log must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(logQuery) {
+            messages.append("Query log must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(logChannel) {
+            messages.append("Channel log must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(logPermissions) {
+            messages.append("Permission log must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(logServer) {
+            messages.append("Server log must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(logFileTransfer) {
+            messages.append("File transfer log must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(weblistEnabled) {
+            messages.append("Server list must be listed, hidden, true, false, 1, or 0.")
+        }
+        if !isOptionalInt(codecEncryptionMode) {
+            messages.append("Codec encryption mode must be numeric.")
+        }
+        if !isOptionalInt(defaultServerGroupId) {
+            messages.append("Default server group ID must be numeric.")
+        }
+        if !isOptionalInt(defaultChannelGroupId) {
+            messages.append("Default channel group ID must be numeric.")
+        }
+        if !isOptionalInt(defaultChannelAdminGroupId) {
+            messages.append("Default channel admin group ID must be numeric.")
+        }
+        return messages
+    }
+
+    static func boolDraftValue(_ value: String?) -> Bool? {
+        switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "1", "true", "yes", "listed", "enabled":
+            return true
+        case "0", "false", "no", "hidden", "disabled":
+            return false
+        default:
+            return nil
+        }
+    }
+
+    static func isOptionalBoolDraft(_ value: String?) -> Bool {
+        guard let value else { return true }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || boolDraftValue(value) != nil
+    }
+
+    private static func isOptionalInt(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Int(trimmed) != nil
+    }
+
+    private static func isOptionalInt64(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Int64(trimmed) != nil
+    }
+
+    private static func isOptionalDouble(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Double(trimmed) != nil
+    }
+}
+
 struct TS3SavedChannelPassword: Identifiable, Codable, Equatable {
     var id: UUID
     var serverKey: String

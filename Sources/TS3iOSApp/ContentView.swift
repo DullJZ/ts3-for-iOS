@@ -14151,32 +14151,48 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private var isDraftValid: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && isOptionalInt(maxClients)
-            && isOptionalInt(port)
-            && isOptionalInt(reservedSlots)
-            && isOptionalInt(hostMessageMode)
-            && isOptionalInt(hostBannerGraphicsInterval)
-            && isOptionalInt(iconId)
-            && isOptionalInt64(downloadQuota)
-            && isOptionalInt64(uploadQuota)
-            && isOptionalInt64(maxDownloadTotalBandwidth)
-            && isOptionalInt64(maxUploadTotalBandwidth)
-            && isOptionalInt(neededIdentitySecurityLevel)
-            && isOptionalInt(minClientVersion)
-            && isOptionalInt(minAndroidVersion)
-            && isOptionalInt(minIOSVersion)
-            && isOptionalInt(complainAutoBanCount)
-            && isOptionalInt(complainAutoBanTime)
-            && isOptionalInt(complainRemoveTime)
-            && isOptionalInt(minClientsInChannelBeforeForcedSilence)
-            && isOptionalDouble(prioritySpeakerDimmModificator)
-            && isOptionalInt(antiFloodPointsTickReduce)
-            && isOptionalInt(antiFloodPointsNeededCommandBlock)
-            && isOptionalInt(antiFloodPointsNeededIPBlock)
-            && isOptionalInt(defaultServerGroupId)
-            && isOptionalInt(defaultChannelGroupId)
-            && isOptionalInt(defaultChannelAdminGroupId)
+        currentValidationMessages.isEmpty
+    }
+
+    private var currentValidationMessages: [String] {
+        TS3ServerSettingsDraftValidator.validationMessages(
+            name: name,
+            port: port,
+            autostart: boolDraftText(autostart),
+            maxClients: maxClients,
+            reservedSlots: reservedSlots,
+            hostMessageMode: hostMessageMode,
+            hostBannerMode: hostBannerMode.map(String.init) ?? "",
+            hostBannerGraphicsInterval: hostBannerGraphicsInterval,
+            iconId: iconId,
+            downloadQuota: downloadQuota,
+            uploadQuota: uploadQuota,
+            maxDownloadTotalBandwidth: maxDownloadTotalBandwidth,
+            maxUploadTotalBandwidth: maxUploadTotalBandwidth,
+            complainAutoBanCount: complainAutoBanCount,
+            complainAutoBanTime: complainAutoBanTime,
+            complainRemoveTime: complainRemoveTime,
+            minClientsInChannelBeforeForcedSilence: minClientsInChannelBeforeForcedSilence,
+            prioritySpeakerDimmModificator: prioritySpeakerDimmModificator,
+            antiFloodPointsTickReduce: antiFloodPointsTickReduce,
+            antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
+            antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            logClient: boolDraftText(logClient),
+            logQuery: boolDraftText(logQuery),
+            logChannel: boolDraftText(logChannel),
+            logPermissions: boolDraftText(logPermissions),
+            logServer: boolDraftText(logServer),
+            logFileTransfer: boolDraftText(logFileTransfer),
+            weblistEnabled: boolDraftText(weblistEnabled),
+            codecEncryptionMode: codecEncryptionMode.map(String.init) ?? "",
+            defaultServerGroupId: defaultServerGroupId,
+            defaultChannelGroupId: defaultChannelGroupId,
+            defaultChannelAdminGroupId: defaultChannelAdminGroupId,
+            neededIdentitySecurityLevel: neededIdentitySecurityLevel,
+            minClientVersion: minClientVersion,
+            minAndroidVersion: minAndroidVersion,
+            minIOSVersion: minIOSVersion
+        )
     }
 
     private func save() {
@@ -14263,92 +14279,44 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private func serverDraftValidationMessages(for draft: ServerSettingsDraft) -> [String] {
-        var messages: [String] = []
-        if draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            messages.append("Server name is required before saving.")
-        }
-        if !isOptionalInt(draft.maxClients) {
-            messages.append("Max clients must be numeric.")
-        }
-        if !isOptionalInt(draft.port ?? "") {
-            messages.append("Server port must be numeric.")
-        }
-        if !isOptionalInt(draft.reservedSlots) {
-            messages.append("Reserved slots must be numeric.")
-        }
-        if !isOptionalInt(draft.hostMessageMode) {
-            messages.append("Host message mode must be numeric.")
-        }
-        if !isOptionalInt(draft.hostBannerMode ?? "") {
-            messages.append("Host banner mode must be numeric.")
-        }
-        if !isOptionalInt(draft.hostBannerGraphicsInterval ?? "") {
-            messages.append("Banner refresh seconds must be numeric.")
-        }
-        if !isOptionalInt(draft.iconId) {
-            messages.append("Icon ID must be numeric.")
-        }
-        if !isOptionalInt64(draft.downloadQuota) {
-            messages.append("Download quota must be numeric.")
-        }
-        if !isOptionalInt64(draft.uploadQuota) {
-            messages.append("Upload quota must be numeric.")
-        }
-        if !isOptionalInt64(draft.maxDownloadTotalBandwidth ?? "") {
-            messages.append("Max download bandwidth must be numeric.")
-        }
-        if !isOptionalInt64(draft.maxUploadTotalBandwidth ?? "") {
-            messages.append("Max upload bandwidth must be numeric.")
-        }
-        if !isOptionalInt(draft.neededIdentitySecurityLevel ?? "") {
-            messages.append("Needed identity security level must be numeric.")
-        }
-        if !isOptionalInt(draft.minClientVersion ?? "") {
-            messages.append("Minimum client version must be numeric.")
-        }
-        if !isOptionalInt(draft.minAndroidVersion ?? "") {
-            messages.append("Minimum Android version must be numeric.")
-        }
-        if !isOptionalInt(draft.minIOSVersion ?? "") {
-            messages.append("Minimum iOS version must be numeric.")
-        }
-        if !isOptionalInt(draft.complainAutoBanCount) {
-            messages.append("Auto-ban complaint count must be numeric.")
-        }
-        if !isOptionalInt(draft.complainAutoBanTime) {
-            messages.append("Auto-ban seconds must be numeric.")
-        }
-        if !isOptionalInt(draft.complainRemoveTime) {
-            messages.append("Complaint remove seconds must be numeric.")
-        }
-        if !isOptionalInt(draft.minClientsInChannelBeforeForcedSilence) {
-            messages.append("Forced silence client count must be numeric.")
-        }
-        if !isOptionalDouble(draft.prioritySpeakerDimmModificator) {
-            messages.append("Priority speaker dimming must be numeric.")
-        }
-        if !isOptionalInt(draft.antiFloodPointsTickReduce ?? "") {
-            messages.append("Anti-flood tick reduce must be numeric.")
-        }
-        if !isOptionalInt(draft.antiFloodPointsNeededCommandBlock ?? "") {
-            messages.append("Anti-flood command block must be numeric.")
-        }
-        if !isOptionalInt(draft.antiFloodPointsNeededIPBlock ?? "") {
-            messages.append("Anti-flood IP block must be numeric.")
-        }
-        if !isOptionalInt(draft.codecEncryptionMode) {
-            messages.append("Codec encryption mode must be numeric.")
-        }
-        if !isOptionalInt(draft.defaultServerGroupId ?? "") {
-            messages.append("Default server group ID must be numeric.")
-        }
-        if !isOptionalInt(draft.defaultChannelGroupId ?? "") {
-            messages.append("Default channel group ID must be numeric.")
-        }
-        if !isOptionalInt(draft.defaultChannelAdminGroupId ?? "") {
-            messages.append("Default channel admin group ID must be numeric.")
-        }
-        return messages
+        TS3ServerSettingsDraftValidator.validationMessages(
+            name: draft.name,
+            port: draft.port ?? "",
+            autostart: draft.autostart,
+            maxClients: draft.maxClients,
+            reservedSlots: draft.reservedSlots,
+            hostMessageMode: draft.hostMessageMode,
+            hostBannerMode: draft.hostBannerMode ?? "",
+            hostBannerGraphicsInterval: draft.hostBannerGraphicsInterval ?? "",
+            iconId: draft.iconId,
+            downloadQuota: draft.downloadQuota,
+            uploadQuota: draft.uploadQuota,
+            maxDownloadTotalBandwidth: draft.maxDownloadTotalBandwidth ?? "",
+            maxUploadTotalBandwidth: draft.maxUploadTotalBandwidth ?? "",
+            complainAutoBanCount: draft.complainAutoBanCount,
+            complainAutoBanTime: draft.complainAutoBanTime,
+            complainRemoveTime: draft.complainRemoveTime,
+            minClientsInChannelBeforeForcedSilence: draft.minClientsInChannelBeforeForcedSilence,
+            prioritySpeakerDimmModificator: draft.prioritySpeakerDimmModificator,
+            antiFloodPointsTickReduce: draft.antiFloodPointsTickReduce ?? "",
+            antiFloodPointsNeededCommandBlock: draft.antiFloodPointsNeededCommandBlock ?? "",
+            antiFloodPointsNeededIPBlock: draft.antiFloodPointsNeededIPBlock ?? "",
+            logClient: draft.logClient,
+            logQuery: draft.logQuery,
+            logChannel: draft.logChannel,
+            logPermissions: draft.logPermissions,
+            logServer: draft.logServer,
+            logFileTransfer: draft.logFileTransfer,
+            weblistEnabled: draft.weblistEnabled,
+            codecEncryptionMode: draft.codecEncryptionMode,
+            defaultServerGroupId: draft.defaultServerGroupId ?? "",
+            defaultChannelGroupId: draft.defaultChannelGroupId ?? "",
+            defaultChannelAdminGroupId: draft.defaultChannelAdminGroupId ?? "",
+            neededIdentitySecurityLevel: draft.neededIdentitySecurityLevel ?? "",
+            minClientVersion: draft.minClientVersion ?? "",
+            minAndroidVersion: draft.minAndroidVersion ?? "",
+            minIOSVersion: draft.minIOSVersion ?? ""
+        )
     }
 
     private func applyDraft(_ draft: ServerSettingsDraft) {
@@ -14455,29 +14423,7 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private static func boolDraftValue(_ value: String?) -> Bool? {
-        switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "1", "true", "yes", "listed", "enabled":
-            return true
-        case "0", "false", "no", "hidden", "disabled":
-            return false
-        default:
-            return nil
-        }
-    }
-
-    private func isOptionalInt(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty || Int(trimmed) != nil
-    }
-
-    private func isOptionalInt64(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty || Int64(trimmed) != nil
-    }
-
-    private func isOptionalDouble(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty || Double(trimmed) != nil
+        TS3ServerSettingsDraftValidator.boolDraftValue(value)
     }
 
     private static func decimalText(_ value: Double) -> String {
