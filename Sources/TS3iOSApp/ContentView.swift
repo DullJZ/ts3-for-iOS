@@ -5856,7 +5856,10 @@ struct ContactRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(contact.nickname)
-        .accessibilityValue(accessibilityValue)
+        .accessibilityValue(contact.accessibilityValue(onlineNickname: onlineUser?.nickname))
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
         .accessibilityAction(named: "Edit Contact") {
             isEditing = true
         }
@@ -5867,10 +5870,6 @@ struct ContactRow: View {
 
     private var clipboardSummary: String {
         contact.clipboardSummary(onlineNickname: onlineUser?.nickname)
-    }
-
-    private var accessibilityValue: String {
-        contact.accessibilityValue(onlineNickname: onlineUser?.nickname)
     }
 }
 
