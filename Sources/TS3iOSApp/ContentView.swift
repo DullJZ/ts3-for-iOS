@@ -23378,7 +23378,7 @@ struct SelfStatusSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(profile.name)
                                         .font(.subheadline.weight(.semibold))
-                                    Text(statusProfileSummary(profile))
+                                    Text(profile.displaySummary)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -23391,11 +23391,39 @@ struct SelfStatusSheet: View {
                                     Button("Rename From Profile") {
                                         statusProfileName = profile.name
                                     }
+                                    Button("Copy Summary") {
+                                        TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+                                    }
                                     Button("Delete Profile") {
                                         model.deleteSelfStatusProfile(profile)
                                     }
                                 } label: {
                                     Image(systemName: "ellipsis.circle")
+                                }
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(profile.name)
+                            .accessibilityValue(profile.accessibilityValue)
+                            .accessibilityAction(named: "Apply Profile") {
+                                model.applySelfStatusProfile(profile)
+                                refreshDraft()
+                            }
+                            .accessibilityAction(named: "Copy Summary") {
+                                TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+                            }
+                            .contextMenu {
+                                Button("Apply Profile") {
+                                    model.applySelfStatusProfile(profile)
+                                    refreshDraft()
+                                }
+                                Button("Rename From Profile") {
+                                    statusProfileName = profile.name
+                                }
+                                Button("Copy Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
+                                }
+                                Button("Delete Profile") {
+                                    model.deleteSelfStatusProfile(profile)
                                 }
                             }
                         }
@@ -23773,27 +23801,6 @@ struct SelfStatusSheet: View {
             model.setTalker(false, for: currentUser)
         }
         refreshDraft()
-    }
-
-    private func statusProfileSummary(_ profile: TS3SelfStatusProfile) -> String {
-        var parts: [String] = []
-        if !profile.status.nickname.isEmpty {
-            parts.append(profile.status.nickname)
-        }
-        parts.append(profile.status.isAway ? "away" : "available")
-        if profile.status.isInputMuted {
-            parts.append("mic muted")
-        }
-        if profile.status.isOutputMuted {
-            parts.append("sound muted")
-        }
-        if profile.status.isChannelCommander {
-            parts.append("commander")
-        }
-        if !profile.status.talkRequestMessage.isEmpty {
-            parts.append("talk request")
-        }
-        return parts.joined(separator: ", ")
     }
 
     private var currentUser: TS3UserSummary? {

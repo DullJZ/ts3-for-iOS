@@ -1211,6 +1211,59 @@ struct TS3SelfStatusProfile: Identifiable, Codable {
         self.status = status
         self.updatedAt = updatedAt
     }
+
+    var displaySummary: String {
+        statusSummaryParts.joined(separator: ", ")
+    }
+
+    var clipboardSummary: String {
+        [
+            "name=\(name)",
+            "nickname=\(status.nickname.isEmpty ? "unchanged" : status.nickname)",
+            "presence=\(status.isAway ? "away" : "available")",
+            "micMuted=\(status.isInputMuted ? "true" : "false")",
+            "soundMuted=\(status.isOutputMuted ? "true" : "false")",
+            "commander=\(status.isChannelCommander ? "true" : "false")",
+            "talkRequest=\(status.talkRequestMessage.isEmpty ? "false" : "true")"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            status.isAway ? "Away" : "Available",
+            status.nickname.isEmpty ? "Nickname unchanged" : "Nickname \(status.nickname)",
+            status.isInputMuted ? "Microphone muted" : "Microphone active",
+            status.isOutputMuted ? "Sound muted" : "Sound active"
+        ]
+        if status.isChannelCommander {
+            parts.append("Channel commander")
+        }
+        if !status.talkRequestMessage.isEmpty {
+            parts.append("Talk request enabled")
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    private var statusSummaryParts: [String] {
+        var parts: [String] = []
+        if !status.nickname.isEmpty {
+            parts.append(status.nickname)
+        }
+        parts.append(status.isAway ? "away" : "available")
+        if status.isInputMuted {
+            parts.append("mic muted")
+        }
+        if status.isOutputMuted {
+            parts.append("sound muted")
+        }
+        if status.isChannelCommander {
+            parts.append("commander")
+        }
+        if !status.talkRequestMessage.isEmpty {
+            parts.append("talk request")
+        }
+        return parts
+    }
 }
 
 struct TS3DatabaseClientSummary: Identifiable {
