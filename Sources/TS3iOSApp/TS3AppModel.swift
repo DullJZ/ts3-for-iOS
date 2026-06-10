@@ -176,6 +176,77 @@ struct TS3ChannelSummary: Identifiable {
     var isCurrent: Bool
 }
 
+enum TS3ChannelDraftValidator {
+    static func validationMessages(
+        name: String,
+        neededTalkPower: String,
+        neededSubscribePower: String,
+        neededDescriptionViewPower: String,
+        codecQuality: String,
+        codecLatencyFactor: String,
+        order: String,
+        deleteDelaySeconds: String,
+        iconId: String,
+        maxClients: String,
+        maxClientsUnlimited: Bool,
+        maxFamilyClients: String,
+        maxFamilyClientsUnlimited: Bool,
+        maxFamilyClientsInherited: Bool
+    ) -> [String] {
+        var messages: [String] = []
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Name is required before saving.")
+        }
+        if !isOptionalInt(neededTalkPower) {
+            messages.append("Needed talk power must be numeric.")
+        }
+        if !isOptionalInt(neededSubscribePower) {
+            messages.append("Needed subscribe power must be numeric.")
+        }
+        if !isOptionalInt(neededDescriptionViewPower) {
+            messages.append("Needed description view power must be numeric.")
+        }
+        if !isOptionalInt(codecQuality) ||
+            !TS3ChannelCodecConstraints.isValidQuality(parsedOptionalInt(codecQuality)) {
+            messages.append("Codec quality must be between \(TS3ChannelCodecConstraints.qualityRange.lowerBound) and \(TS3ChannelCodecConstraints.qualityRange.upperBound).")
+        }
+        if !isOptionalInt(codecLatencyFactor) ||
+            !TS3ChannelCodecConstraints.isValidLatencyFactor(parsedOptionalInt(codecLatencyFactor)) {
+            messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
+        }
+        if !isOptionalInt(order) {
+            messages.append("Position must be numeric.")
+        }
+        if !isOptionalInt(deleteDelaySeconds) {
+            messages.append("Delete delay must be numeric.")
+        }
+        if !isOptionalInt(iconId) {
+            messages.append("Icon ID must be numeric.")
+        }
+        if !maxClientsUnlimited && !isRequiredInt(maxClients) {
+            messages.append("Max clients is required when the client limit is not unlimited.")
+        }
+        if !maxFamilyClientsInherited && !maxFamilyClientsUnlimited && !isRequiredInt(maxFamilyClients) {
+            messages.append("Max family clients is required when the family limit is not inherited or unlimited.")
+        }
+        return messages
+    }
+
+    static func parsedOptionalInt(_ text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : Int(trimmed)
+    }
+
+    static func isOptionalInt(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || Int(trimmed) != nil
+    }
+
+    static func isRequiredInt(_ text: String) -> Bool {
+        Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+    }
+}
+
 struct TS3SavedChannelPassword: Identifiable, Codable, Equatable {
     var id: UUID
     var serverKey: String

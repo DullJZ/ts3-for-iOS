@@ -22703,40 +22703,22 @@ struct ChannelEditorSheet: View {
     }
 
     private func draftValidationMessages(for draft: ChannelDraft) -> [String] {
-        var messages: [String] = []
-        if draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            messages.append("Name is required before saving.")
-        }
-        if !isOptionalInt(draft.neededTalkPower) {
-            messages.append("Needed talk power must be numeric.")
-        }
-        if !isOptionalInt(draft.neededSubscribePower) {
-            messages.append("Needed subscribe power must be numeric.")
-        }
-        if !isOptionalInt(draft.neededDescriptionViewPower ?? "") {
-            messages.append("Needed description view power must be numeric.")
-        }
-        if !isOptionalInt(draft.codecQuality) ||
-            !TS3ChannelCodecConstraints.isValidQuality(parsedOptionalInt(draft.codecQuality)) {
-            messages.append("Codec quality must be between \(TS3ChannelCodecConstraints.qualityRange.lowerBound) and \(TS3ChannelCodecConstraints.qualityRange.upperBound).")
-        }
-        if !isOptionalInt(draft.codecLatencyFactor ?? "") ||
-            !TS3ChannelCodecConstraints.isValidLatencyFactor(parsedOptionalInt(draft.codecLatencyFactor ?? "")) {
-            messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
-        }
-        if !isOptionalInt(draft.deleteDelaySeconds) {
-            messages.append("Delete delay must be numeric.")
-        }
-        if !isOptionalInt(draft.iconId) {
-            messages.append("Icon ID must be numeric.")
-        }
-        if !draft.maxClientsUnlimited && !isRequiredInt(draft.maxClients) {
-            messages.append("Max clients is required when the client limit is not unlimited.")
-        }
-        if !draft.maxFamilyClientsInherited && !draft.maxFamilyClientsUnlimited && !isRequiredInt(draft.maxFamilyClients) {
-            messages.append("Max family clients is required when the family limit is not inherited or unlimited.")
-        }
-        return messages
+        TS3ChannelDraftValidator.validationMessages(
+            name: draft.name,
+            neededTalkPower: draft.neededTalkPower,
+            neededSubscribePower: draft.neededSubscribePower,
+            neededDescriptionViewPower: draft.neededDescriptionViewPower ?? "",
+            codecQuality: draft.codecQuality,
+            codecLatencyFactor: draft.codecLatencyFactor ?? "",
+            order: draft.order ?? "",
+            deleteDelaySeconds: draft.deleteDelaySeconds,
+            iconId: draft.iconId,
+            maxClients: draft.maxClients,
+            maxClientsUnlimited: draft.maxClientsUnlimited,
+            maxFamilyClients: draft.maxFamilyClients,
+            maxFamilyClientsUnlimited: draft.maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: draft.maxFamilyClientsInherited
+        )
     }
 
     private func applyDraft(_ draft: ChannelDraft) {
