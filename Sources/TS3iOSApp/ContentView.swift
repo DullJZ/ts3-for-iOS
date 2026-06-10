@@ -17516,6 +17516,17 @@ struct TemporaryServerPasswordsSheet: View {
                         }
                     }
                     SecureField("Target Channel Password", text: $targetChannelPassword)
+                    Text(temporaryPasswordDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Creation Summary") {
+                        TS3PlatformSupport.copyToPasteboard(temporaryPasswordDraftSummary)
+                    }
+                    ForEach(temporaryPasswordDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                     Button("Create Temporary Password") {
                         model.addTemporaryServerPassword(
                             password: password,
@@ -17709,8 +17720,28 @@ struct TemporaryServerPasswordsSheet: View {
     }
 
     private var isCreateDisabled: Bool {
-        password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || duration.seconds(customMinutes: customMinutes) == nil
+        !temporaryPasswordDraftValidationMessages.isEmpty
+    }
+
+    private var temporaryPasswordDraftValidationMessages: [String] {
+        TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: password,
+            durationSeconds: duration.seconds(customMinutes: customMinutes),
+            description: description,
+            targetChannelId: targetChannelId == 0 ? nil : targetChannelId,
+            targetChannelPassword: targetChannelPassword
+        )
+    }
+
+    private var temporaryPasswordDraftSummary: String {
+        TS3TemporaryServerPasswordDraftValidator.creationSummary(
+            password: password,
+            durationSeconds: duration.seconds(customMinutes: customMinutes),
+            description: description,
+            targetChannelId: targetChannelId == 0 ? nil : targetChannelId,
+            targetChannelName: targetChannelId == 0 ? nil : channelName(targetChannelId),
+            targetChannelPassword: targetChannelPassword
+        )
     }
 
     private var normalizedSearchText: String {

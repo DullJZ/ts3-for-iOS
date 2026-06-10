@@ -2,6 +2,62 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3TemporaryPasswordPresetTests: XCTestCase {
+    func testTemporaryPasswordDraftValidatorRejectsInvalidDrafts() {
+        XCTAssertEqual(
+            TS3TemporaryServerPasswordDraftValidator.validationMessages(
+                password: "  ",
+                durationSeconds: nil,
+                description: "Guest\naccess",
+                targetChannelId: nil,
+                targetChannelPassword: "secret\nagain"
+            ),
+            [
+                "Temporary password is required before creating.",
+                "Duration must be a positive number of seconds.",
+                "Description must be a single line.",
+                "Target channel password must be a single line.",
+                "Select a target channel before setting a target channel password."
+            ]
+        )
+    }
+
+    func testTemporaryPasswordDraftValidatorBuildsAuditableCreationSummary() {
+        let messages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: " guest-pass ",
+            durationSeconds: 3_600,
+            description: " Guest access ",
+            targetChannelId: 12,
+            targetChannelPassword: " secret "
+        )
+        let summary = TS3TemporaryServerPasswordDraftValidator.creationSummary(
+            password: " guest-pass ",
+            durationSeconds: 3_600,
+            description: " Guest access ",
+            targetChannelId: 12,
+            targetChannelName: "Lobby",
+            targetChannelPassword: " secret "
+        )
+
+        XCTAssertTrue(messages.isEmpty)
+        XCTAssertEqual(
+            summary,
+            "password=guest-pass | duration=1h | target=Lobby (12) | description=Guest access | targetChannelPassword=set"
+        )
+    }
+
+    func testTemporaryPasswordDraftValidatorSummarizesServerDefaultTarget() {
+        let summary = TS3TemporaryServerPasswordDraftValidator.creationSummary(
+            password: "server-pass",
+            durationSeconds: 600,
+            description: "",
+            targetChannelId: nil,
+            targetChannelName: nil,
+            targetChannelPassword: ""
+        )
+
+        XCTAssertEqual(summary, "password=server-pass | duration=10m | target=Server Default")
+    }
+
     func testTemporaryPasswordSummaryCopyAndAccessibilityText() {
         let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = TS3TemporaryServerPasswordSummary(

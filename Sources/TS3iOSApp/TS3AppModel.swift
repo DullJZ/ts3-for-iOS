@@ -2650,6 +2650,66 @@ struct TS3ComplaintFilterPreset: Identifiable, Codable {
     }
 }
 
+enum TS3TemporaryServerPasswordDraftValidator {
+    static func validationMessages(
+        password: String,
+        durationSeconds: Int?,
+        description: String,
+        targetChannelId: Int?,
+        targetChannelPassword: String
+    ) -> [String] {
+        var messages: [String] = []
+        if password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Temporary password is required before creating.")
+        }
+        if (durationSeconds ?? 0) <= 0 {
+            messages.append("Duration must be a positive number of seconds.")
+        }
+        if containsNewline(description) {
+            messages.append("Description must be a single line.")
+        }
+        if containsNewline(targetChannelPassword) {
+            messages.append("Target channel password must be a single line.")
+        }
+        if (targetChannelId ?? 0) <= 0 && !targetChannelPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Select a target channel before setting a target channel password.")
+        }
+        return messages
+    }
+
+    static func creationSummary(
+        password: String,
+        durationSeconds: Int?,
+        description: String,
+        targetChannelId: Int?,
+        targetChannelName: String?,
+        targetChannelPassword: String
+    ) -> String {
+        var parts = [
+            "password=\(password.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "duration=\(durationSeconds.map(TS3TemporaryServerPasswordSummary.durationText) ?? "Invalid")"
+        ]
+        let targetChannelId = targetChannelId ?? 0
+        if targetChannelId > 0 {
+            parts.append("target=\(targetChannelName ?? "Channel \(targetChannelId)") (\(targetChannelId))")
+        } else {
+            parts.append("target=Server Default")
+        }
+        let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if !targetChannelPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("targetChannelPassword=set")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
 struct TS3TemporaryServerPasswordFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -11190,17 +11250,21 @@ final class TS3AppModel: ObservableObject {
         targetChannelId: Int?,
         targetChannelPassword: String
     ) {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: password,
+            durationSeconds: durationSeconds,
+            description: description,
+            targetChannelId: targetChannelId,
+            targetChannelPassword: targetChannelPassword
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         let password = password.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
         let targetChannelPassword = targetChannelPassword.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !password.isEmpty else {
-            lastError = "Enter a temporary server password."
-            return
-        }
-        guard let durationSeconds, durationSeconds > 0 else {
-            lastError = "Enter a positive duration for the temporary password."
-            return
-        }
+        guard let durationSeconds else { return }
         runClientCommand { client in
             try await client.addTemporaryServerPassword(
                 password: password,
