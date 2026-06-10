@@ -19247,6 +19247,12 @@ struct PrivilegeKeyRow: View {
                         model.usePrivilegeKey(key.key)
                     }
                     .disabled(model.state != .connected)
+                    Button("Copy Full Invite Link With Key") {
+                        model.copyCurrentFullInviteLink(privilegeKey: key.key)
+                    }
+                    Button("Save as Connection Privilege Key") {
+                        model.saveCurrentConnectionPrivilegeKey(key.key)
+                    }
                     Button("Copy Key") {
                         TS3PlatformSupport.copyToPasteboard(key.key)
                     }
@@ -19283,6 +19289,12 @@ struct PrivilegeKeyRow: View {
                 model.usePrivilegeKey(key.key)
             }
             .disabled(model.state != .connected)
+            Button("Copy Full Invite Link With Key") {
+                model.copyCurrentFullInviteLink(privilegeKey: key.key)
+            }
+            Button("Save as Connection Privilege Key") {
+                model.saveCurrentConnectionPrivilegeKey(key.key)
+            }
             Button("Copy Key") {
                 TS3PlatformSupport.copyToPasteboard(key.key)
             }
@@ -19309,6 +19321,9 @@ struct PrivilegeKeyRow: View {
             if model.state == .connected {
                 model.usePrivilegeKey(key.key)
             }
+        }
+        .accessibilityAction(named: "Save as Connection Privilege Key") {
+            model.saveCurrentConnectionPrivilegeKey(key.key)
         }
         .accessibilityAction(named: "Delete Key") {
             if model.state == .connected {

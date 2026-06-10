@@ -240,6 +240,21 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testSaveCurrentConnectionPrivilegeKeyTrimsAndIgnoresEmptyValues() {
+        let model = TS3AppModel()
+        model.privilegeKey = "existing-key"
+
+        model.saveCurrentConnectionPrivilegeKey("  saved-key  ")
+
+        XCTAssertEqual(model.privilegeKey, "saved-key")
+        XCTAssertNil(model.lastError)
+
+        model.saveCurrentConnectionPrivilegeKey("   ")
+
+        XCTAssertEqual(model.privilegeKey, "saved-key")
+    }
+
     private func makeKey(
         key: String,
         type: TS3PrivilegeKeyType?,
