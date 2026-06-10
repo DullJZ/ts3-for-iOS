@@ -439,6 +439,23 @@ enum TS3ServerSettingsDraftValidator {
     }
 }
 
+enum TS3PermissionDraftValidator {
+    static func validationMessages(
+        scope: TS3PermissionEditScope,
+        name: String,
+        value: String
+    ) -> [String] {
+        var messages: [String] = []
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Permission name is required before saving.")
+        }
+        if Int(value.trimmingCharacters(in: .whitespacesAndNewlines)) == nil {
+            messages.append("Permission value must be numeric.")
+        }
+        return messages
+    }
+}
+
 struct TS3SavedChannelPassword: Identifiable, Codable, Equatable {
     var id: UUID
     var serverKey: String
@@ -2321,6 +2338,10 @@ struct TS3PermissionSummary: Identifiable {
     }
 
     var inheritanceEffectDescription: String {
+        Self.inheritanceEffectDescription(isNegated: isNegated, isSkipped: isSkipped)
+    }
+
+    static func inheritanceEffectDescription(isNegated: Bool, isSkipped: Bool) -> String {
         switch (isNegated, isSkipped) {
         case (true, true):
             return "Negates earlier grants and blocks lower inherited permissions."
@@ -2797,6 +2818,57 @@ enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
         case .channelClient:
             return "Channel Client"
         }
+    }
+}
+
+struct TS3PermissionEditDraft {
+    let scope: TS3PermissionEditScope
+    let target: String
+    let name: String
+    let value: String
+    let negated: Bool
+    let skip: Bool
+
+    var parsedValue: Int? {
+        Int(value.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    var effectiveNegated: Bool {
+        switch scope {
+        case .serverGroup, .channelGroup:
+            return negated
+        case .ownClient, .databaseClient, .channel, .channelClient:
+            return false
+        }
+    }
+
+    var effectiveSkip: Bool {
+        scope == .channel ? false : skip
+    }
+
+    var validationMessages: [String] {
+        TS3PermissionDraftValidator.validationMessages(scope: scope, name: name, value: value)
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "scope=\(scope.title)",
+            "target=\(target)",
+            "name=\(name.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "value=\(value.trimmingCharacters(in: .whitespacesAndNewlines))"
+        ]
+        if effectiveNegated {
+            parts.append("negated=true")
+        }
+        if effectiveSkip {
+            parts.append("skip=true")
+        }
+        parts.append("effect=\(inheritanceEffectDescription)")
+        return parts.joined(separator: " | ")
+    }
+
+    var inheritanceEffectDescription: String {
+        TS3PermissionSummary.inheritanceEffectDescription(isNegated: effectiveNegated, isSkipped: effectiveSkip)
     }
 }
 
@@ -7450,6 +7522,48 @@ final class TS3AppModel: ObservableObject {
         refreshSelectedPermissions()
     }
 
+    func permissionEditTargetSummary(for scope: TS3PermissionEditScope? = nil) -> String {
+        let scope = scope ?? permissionEditScope
+        switch scope {
+        case .ownClient:
+            if let databaseId = ownClientDatabaseId {
+                return "Current Client #\(databaseId)"
+            }
+            return clients.first(where: { $0.isCurrentUser }).map { "\($0.nickname) (#\($0.id))" } ?? "Current Client"
+        case .databaseClient:
+            guard let databaseId = selectedDatabaseClientPermissionId ?? selectedDatabaseClient?.id else {
+                return "Database Client"
+            }
+            let nickname = databaseClients.first(where: { $0.id == databaseId })?.nickname
+            return nickname.map { "\($0) (#\(databaseId))" } ?? "Database Client #\(databaseId)"
+        case .serverGroup:
+            guard let groupId = selectedServerGroupPermissionId ?? serverGroups.first?.id else {
+                return "Server Group"
+            }
+            let name = serverGroups.first(where: { $0.id == groupId })?.name
+            return name.map { "\($0) (#\(groupId))" } ?? "Server Group #\(groupId)"
+        case .channelGroup:
+            guard let groupId = selectedChannelGroupPermissionId ?? channelGroups.first?.id else {
+                return "Channel Group"
+            }
+            let name = channelGroups.first(where: { $0.id == groupId })?.name
+            return name.map { "\($0) (#\(groupId))" } ?? "Channel Group #\(groupId)"
+        case .channel:
+            guard let channelId = selectedChannelPermissionId ?? currentChannel?.id ?? channels.first?.id else {
+                return "Channel"
+            }
+            let name = channels.first(where: { $0.id == channelId })?.name
+            return name.map { "\($0) (#\(channelId))" } ?? "Channel #\(channelId)"
+        case .channelClient:
+            guard let selection = selectedChannelClientPermissionTarget() else {
+                return "Channel Client"
+            }
+            let channelName = channels.first(where: { $0.id == selection.channelId })?.name ?? "Channel \(selection.channelId)"
+            let clientName = clients.first(where: { $0.id == selection.clientId })?.nickname ?? "Client \(selection.clientId)"
+            return "\(clientName) (#\(selection.databaseId)) in \(channelName)"
+        }
+    }
+
     func addOwnClientPermission(name: String, value: Int, skip: Bool) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
@@ -7471,8 +7585,27 @@ final class TS3AppModel: ObservableObject {
     }
 
     func addSelectedPermission(name: String, value: Int, negated: Bool, skip: Bool) {
-        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
+        let draft = TS3PermissionEditDraft(
+            scope: permissionEditScope,
+            target: permissionEditTargetSummary(),
+            name: name,
+            value: String(value),
+            negated: negated,
+            skip: skip
+        )
+        addSelectedPermission(draft)
+    }
+
+    func addSelectedPermission(_ draft: TS3PermissionEditDraft) {
+        let validationMessages = draft.validationMessages
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
+        let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = draft.parsedValue else { return }
+        let negated = draft.effectiveNegated
+        let skip = draft.effectiveSkip
         switch permissionEditScope {
         case .ownClient:
             addOwnClientPermission(name: name, value: value, skip: skip)

@@ -16909,6 +16909,21 @@ struct PermissionsSheet: View {
         filteredDisplayedPermissions.map(\.clipboardSummary).joined(separator: "\n")
     }
 
+    var permissionDraft: TS3PermissionEditDraft {
+        TS3PermissionEditDraft(
+            scope: model.permissionEditScope,
+            target: model.permissionEditTargetSummary(),
+            name: permissionName,
+            value: permissionValue,
+            negated: permissionNegated,
+            skip: permissionSkip
+        )
+    }
+
+    var permissionDraftValidationMessages: [String] {
+        permissionDraft.validationMessages
+    }
+
     var exportFilename: String {
         switch model.permissionEditScope {
         case .ownClient:
@@ -17150,6 +17165,9 @@ struct PermissionsSheet: View {
                 }
 
                 Section(header: Text("Add Permission")) {
+                    Text("Target: \(permissionDraft.target)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     TextField("Permission Name", text: $permissionName)
                         .ts3PlainTextField()
                     TextField("Value", text: $permissionValue)
@@ -17159,15 +17177,26 @@ struct PermissionsSheet: View {
                         .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .databaseClient || model.permissionEditScope == .channel || model.permissionEditScope == .channelClient)
                     Toggle("Skip", isOn: $permissionSkip)
                         .disabled(model.permissionEditScope == .channel)
-                    Button("Add or Update Permission") {
-                        model.addSelectedPermission(
-                            name: permissionName,
-                            value: Int(permissionValue.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
-                            negated: permissionNegated,
-                            skip: permissionSkip
-                        )
+                    Text(permissionDraft.inheritanceEffectDescription)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if !permissionDraftValidationMessages.isEmpty {
+                        ForEach(permissionDraftValidationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
                     }
-                    .disabled(model.state != .connected || permissionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Text(permissionDraft.clipboardSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Permission Draft") {
+                        TS3PlatformSupport.copyToPasteboard(permissionDraft.clipboardSummary)
+                    }
+                    Button("Add or Update Permission") {
+                        model.addSelectedPermission(permissionDraft)
+                    }
+                    .disabled(model.state != .connected || !permissionDraftValidationMessages.isEmpty)
                 }
 
                 Section(header: Text("Permission Directory")) {
