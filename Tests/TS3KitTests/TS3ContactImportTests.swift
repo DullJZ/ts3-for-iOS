@@ -160,6 +160,43 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(model.lastError, "Enter a note to apply to the selected contacts.")
     }
 
+    func testContactNoteDraftBuildsAuditableSummaryAndDeduplicatesTargets() {
+        let first = makeContact(uniqueIdentifier: "uid-first", nickname: "First", status: .friend, note: "existing")
+        let second = makeContact(uniqueIdentifier: "uid-second", nickname: "Second", status: .blocked, note: "")
+        let draft = TS3ContactNoteDraft(contacts: [first, second, first], note: " follow up ")
+
+        XCTAssertTrue(draft.validationMessages.isEmpty)
+        XCTAssertEqual(draft.uniqueContacts.map(\.uniqueIdentifier), ["uid-first", "uid-second"])
+        XCTAssertEqual(
+            draft.clipboardSummary,
+            "contacts=2 | targets=First, Second | note=follow up | appendToExisting=1"
+        )
+    }
+
+    func testContactNoteDraftRejectsEmptyTargetsAndNote() {
+        let draft = TS3ContactNoteDraft(contacts: [], note: "   ")
+
+        XCTAssertEqual(draft.validationMessages, [
+            "Select contacts before applying a note.",
+            "Enter a note to apply to the selected contacts."
+        ])
+        XCTAssertEqual(draft.clipboardSummary, "contacts=0 | targets=None | note=Missing")
+    }
+
+    @MainActor
+    func testAppendNoteDraftAppliesDeduplicatedVisibleContacts() {
+        let model = TS3AppModel()
+        let selected = makeContact(uniqueIdentifier: "uid-selected", nickname: "Selected", status: .friend, note: "existing")
+        let unselected = makeContact(uniqueIdentifier: "uid-unselected", nickname: "Unselected", status: .ignored, note: "keep")
+        model.contacts = [selected, unselected]
+
+        model.appendNote(TS3ContactNoteDraft(contacts: [selected, selected], note: " audited "))
+
+        XCTAssertEqual(model.contacts.first { $0.uniqueIdentifier == "uid-selected" }?.note, "existing\naudited")
+        XCTAssertEqual(model.contacts.first { $0.uniqueIdentifier == "uid-unselected" }?.note, "keep")
+        XCTAssertNil(model.lastError)
+    }
+
     func testContactSummariesIncludeOnlineNicknameNoteAndStatus() {
         let contact = makeContact(
             uniqueIdentifier: "uid-contact",

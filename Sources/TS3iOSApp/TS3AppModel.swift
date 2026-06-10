@@ -1049,6 +1049,56 @@ struct TS3ContactImportOptions: Equatable {
     }
 }
 
+struct TS3ContactNoteDraft {
+    let contacts: [TS3ContactEntry]
+    let note: String
+
+    var uniqueContacts: [TS3ContactEntry] {
+        var seen = Set<String>()
+        return contacts.filter { contact in
+            seen.insert(contact.uniqueIdentifier).inserted
+        }
+    }
+
+    var trimmedNote: String {
+        note.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var validationMessages: [String] {
+        var messages: [String] = []
+        if uniqueContacts.isEmpty {
+            messages.append("Select contacts before applying a note.")
+        }
+        if trimmedNote.isEmpty {
+            messages.append("Enter a note to apply to the selected contacts.")
+        }
+        return messages
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "contacts=\(uniqueContacts.count)",
+            "targets=\(targetSummary)",
+            "note=\(trimmedNote.isEmpty ? "Missing" : trimmedNote)"
+        ]
+        let existingNoteCount = uniqueContacts.filter { !$0.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+        if existingNoteCount > 0 {
+            parts.append("appendToExisting=\(existingNoteCount)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private var targetSummary: String {
+        let names = uniqueContacts.map(\.nickname)
+        let visible = names.prefix(6).joined(separator: ", ")
+        let remainingCount = names.count - min(names.count, 6)
+        guard remainingCount > 0 else {
+            return visible.isEmpty ? "None" : visible
+        }
+        return "\(visible), +\(remainingCount) more"
+    }
+}
+
 struct TS3ContactFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -5857,12 +5907,17 @@ final class TS3AppModel: ObservableObject {
     }
 
     func appendNote(_ note: String, toContacts entries: [TS3ContactEntry]) {
-        let note = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !note.isEmpty else {
-            lastError = "Enter a note to apply to the selected contacts."
+        appendNote(TS3ContactNoteDraft(contacts: entries, note: note))
+    }
+
+    func appendNote(_ draft: TS3ContactNoteDraft) {
+        let validationMessages = draft.validationMessages
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
             return
         }
-        let uniqueIdentifiers = Set(entries.map(\.uniqueIdentifier))
+        let note = draft.trimmedNote
+        let uniqueIdentifiers = Set(draft.uniqueContacts.map(\.uniqueIdentifier))
         guard !uniqueIdentifiers.isEmpty else { return }
         let now = Date()
         contacts = contacts.map { contact in

@@ -5529,9 +5529,9 @@ struct ContactsSheet: View {
             }
             .sheet(isPresented: $isShowingVisibleNoteSheet) {
                 ContactBatchNoteSheet(
-                    contactCount: visibleContacts.count,
-                    submit: { note in
-                        model.appendNote(note, toContacts: visibleContacts)
+                    contacts: visibleContacts,
+                    submit: { draft in
+                        model.appendNote(draft)
                     }
                 )
             }
@@ -6015,26 +6015,43 @@ struct ContactEditorSheet: View {
 
 private struct ContactBatchNoteSheet: View {
     @Environment(\.presentationMode) private var presentationMode
-    let contactCount: Int
-    let submit: (String) -> Void
+    let contacts: [TS3ContactEntry]
+    let submit: (TS3ContactNoteDraft) -> Void
     @State private var note = ""
+
+    private var draft: TS3ContactNoteDraft {
+        TS3ContactNoteDraft(contacts: contacts, note: note)
+    }
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Visible Contacts")) {
-                    Text("Contacts: \(contactCount)")
+                    Text("Contacts: \(draft.uniqueContacts.count)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextField("Note", text: $note)
                         .ts3PlainTextField()
+                    if !draft.validationMessages.isEmpty {
+                        ForEach(draft.validationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    Text(draft.clipboardSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Note Draft") {
+                        TS3PlatformSupport.copyToPasteboard(draft.clipboardSummary)
+                    }
                 }
                 Section {
                     Button("Append Note") {
-                        submit(note)
+                        submit(draft)
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || contactCount == 0)
+                    .disabled(!draft.validationMessages.isEmpty)
                 }
             }
             .navigationTitle("Append Contact Note")
