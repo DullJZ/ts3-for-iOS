@@ -649,6 +649,8 @@ public struct TS3Channel: Identifiable {
     /// Whether the channel is semi-permanent.
     public let isSemiPermanent: Bool?
     public let neededTalkPower: Int?
+    /// The permission power required to join the channel.
+    public let neededJoinPower: Int?
     /// The subscribe power required to receive channel updates.
     public let neededSubscribePower: Int?
     /// The permission power required to view the channel description.
@@ -691,6 +693,7 @@ public struct TS3Channel: Identifiable {
         isPermanent: Bool = false,
         isSemiPermanent: Bool? = nil,
         neededTalkPower: Int? = nil,
+        neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
@@ -718,6 +721,7 @@ public struct TS3Channel: Identifiable {
         self.isPermanent = isPermanent
         self.isSemiPermanent = isSemiPermanent
         self.neededTalkPower = neededTalkPower
+        self.neededJoinPower = neededJoinPower
         self.neededSubscribePower = neededSubscribePower
         self.neededDescriptionViewPower = neededDescriptionViewPower
         self.codec = codec

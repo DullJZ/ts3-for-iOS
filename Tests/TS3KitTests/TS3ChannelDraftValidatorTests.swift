@@ -6,6 +6,7 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",
             neededTalkPower: "20",
+            neededJoinPower: "25",
             neededSubscribePower: "10",
             neededDescriptionViewPower: "5",
             codecQuality: "10",
@@ -23,10 +24,33 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         XCTAssertEqual(messages, ["Position must be numeric."])
     }
 
+    func testChannelDraftValidatorRejectsNonNumericJoinPower() {
+        let messages = TS3ChannelDraftValidator.validationMessages(
+            name: "Raid Room",
+            neededTalkPower: "",
+            neededJoinPower: "join",
+            neededSubscribePower: "",
+            neededDescriptionViewPower: "",
+            codecQuality: "",
+            codecLatencyFactor: "",
+            order: "",
+            deleteDelaySeconds: "",
+            iconId: "",
+            maxClients: "",
+            maxClientsUnlimited: true,
+            maxFamilyClients: "",
+            maxFamilyClientsUnlimited: true,
+            maxFamilyClientsInherited: false
+        )
+
+        XCTAssertEqual(messages, ["Needed join power must be numeric."])
+    }
+
     func testChannelDraftValidatorAcceptsOfficialEditableRanges() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",
             neededTalkPower: "",
+            neededJoinPower: "",
             neededSubscribePower: "",
             neededDescriptionViewPower: "",
             codecQuality: "0",

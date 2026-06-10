@@ -506,6 +506,7 @@ public final class TS3Client {
         codecLatencyFactor: Int? = nil,
         isCodecUnencrypted: Bool? = nil,
         neededTalkPower: Int? = nil,
+        neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         order: Int? = nil,
@@ -531,6 +532,7 @@ public final class TS3Client {
             codecLatencyFactor: codecLatencyFactor,
             isCodecUnencrypted: isCodecUnencrypted,
             neededTalkPower: neededTalkPower,
+            neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             order: order,
@@ -560,6 +562,7 @@ public final class TS3Client {
         isPermanent: Bool? = nil,
         isSemiPermanent: Bool? = nil,
         neededTalkPower: Int? = nil,
+        neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
@@ -586,6 +589,7 @@ public final class TS3Client {
             isPermanent: isPermanent,
             isSemiPermanent: isSemiPermanent,
             neededTalkPower: neededTalkPower,
+            neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec,
@@ -2430,6 +2434,7 @@ private extension TS3Client {
             isPermanent: command.get("channel_flag_permanent")?.value == "1",
             isSemiPermanent: optionalBoolValue(command, "channel_flag_semi_permanent"),
             neededTalkPower: intValue(command, "channel_needed_talk_power"),
+            neededJoinPower: intValue(command, "channel_needed_join_power"),
             neededSubscribePower: intValue(command, "channel_needed_subscribe_power"),
             neededDescriptionViewPower: intValue(command, "channel_needed_description_view_power"),
             codec: intValue(command, "channel_codec"),
@@ -2475,6 +2480,7 @@ private extension TS3Client {
             isPermanent: channel.isPermanent,
             isSemiPermanent: channel.isSemiPermanent,
             neededTalkPower: channel.neededTalkPower,
+            neededJoinPower: channel.neededJoinPower,
             neededSubscribePower: channel.neededSubscribePower,
             neededDescriptionViewPower: channel.neededDescriptionViewPower,
             codec: channel.codec,
@@ -2834,6 +2840,7 @@ extension TS3Client {
         codecLatencyFactor: Int?,
         isCodecUnencrypted: Bool?,
         neededTalkPower: Int?,
+        neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
@@ -2858,6 +2865,7 @@ extension TS3Client {
             description: description,
             password: password?.isEmpty == false ? password : nil,
             neededTalkPower: neededTalkPower,
+            neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             order: order,
@@ -2892,6 +2900,7 @@ extension TS3Client {
         isPermanent: Bool?,
         isSemiPermanent: Bool?,
         neededTalkPower: Int?,
+        neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
         codec: Int?,
@@ -2918,6 +2927,7 @@ extension TS3Client {
             description: description,
             password: password,
             neededTalkPower: neededTalkPower,
+            neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             order: order,
@@ -3009,6 +3019,7 @@ extension TS3Client {
         description: String?,
         password: String?,
         neededTalkPower: Int?,
+        neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
@@ -3030,6 +3041,9 @@ extension TS3Client {
         if let password { params.append(TS3CommandSingleParameter(name: "channel_password", value: password)) }
         if let neededTalkPower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))
+        }
+        if let neededJoinPower {
+            params.append(TS3CommandSingleParameter(name: "channel_needed_join_power", value: String(neededJoinPower)))
         }
         if let neededSubscribePower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_subscribe_power", value: String(neededSubscribePower)))

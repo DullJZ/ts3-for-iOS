@@ -586,6 +586,7 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             isPermanent: true,
             isSemiPermanent: nil,
             neededTalkPower: nil,
+            neededJoinPower: nil,
             neededSubscribePower: nil,
             neededDescriptionViewPower: nil,
             codec: nil,

@@ -158,6 +158,7 @@ struct TS3ChannelSummary: Identifiable {
     var isPermanent: Bool
     var isSemiPermanent: Bool?
     var neededTalkPower: Int?
+    var neededJoinPower: Int?
     var neededSubscribePower: Int?
     var neededDescriptionViewPower: Int?
     var codec: Int?
@@ -180,6 +181,7 @@ enum TS3ChannelDraftValidator {
     static func validationMessages(
         name: String,
         neededTalkPower: String,
+        neededJoinPower: String,
         neededSubscribePower: String,
         neededDescriptionViewPower: String,
         codecQuality: String,
@@ -199,6 +201,9 @@ enum TS3ChannelDraftValidator {
         }
         if !isOptionalInt(neededTalkPower) {
             messages.append("Needed talk power must be numeric.")
+        }
+        if !isOptionalInt(neededJoinPower) {
+            messages.append("Needed join power must be numeric.")
         }
         if !isOptionalInt(neededSubscribePower) {
             messages.append("Needed subscribe power must be numeric.")
@@ -5974,6 +5979,7 @@ final class TS3AppModel: ObservableObject {
                 isPermanent: false,
                 isSemiPermanent: nil,
                 neededTalkPower: nil,
+                neededJoinPower: nil,
                 neededSubscribePower: nil,
                 neededDescriptionViewPower: nil,
                 codec: nil,
@@ -10166,6 +10172,7 @@ final class TS3AppModel: ObservableObject {
         topic: String,
         description: String,
         neededTalkPower: Int?,
+        neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
@@ -10198,6 +10205,7 @@ final class TS3AppModel: ObservableObject {
                 codecLatencyFactor: codecLatencyFactor,
                 isCodecUnencrypted: isCodecUnencrypted,
                 neededTalkPower: neededTalkPower,
+                neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
                 neededDescriptionViewPower: neededDescriptionViewPower,
                 order: order,
@@ -10222,6 +10230,7 @@ final class TS3AppModel: ObservableObject {
         isDefault: Bool,
         channelType: TS3ChannelType,
         neededTalkPower: Int?,
+        neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
@@ -10249,6 +10258,7 @@ final class TS3AppModel: ObservableObject {
                 isPermanent: channelType == .permanent,
                 isSemiPermanent: channelType == .semiPermanent,
                 neededTalkPower: neededTalkPower,
+                neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
                 neededDescriptionViewPower: neededDescriptionViewPower,
                 codec: codec,
@@ -16581,6 +16591,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     isPermanent: channel.isPermanent,
                     isSemiPermanent: channel.isSemiPermanent,
                     neededTalkPower: channel.neededTalkPower,
+                    neededJoinPower: channel.neededJoinPower,
                     neededSubscribePower: channel.neededSubscribePower,
                     neededDescriptionViewPower: channel.neededDescriptionViewPower,
                     codec: channel.codec,

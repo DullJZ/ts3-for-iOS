@@ -4192,6 +4192,7 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: "Codec Latency Factor", value: channel.codecLatencyFactor.map(String.init))
                     ServerInfoDetailRow(label: "Unencrypted Voice", value: channel.isCodecUnencrypted.map(yesNo))
                     ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
+                    ServerInfoDetailRow(label: "Needed Join Power", value: channel.neededJoinPower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
                     ServerInfoDetailRow(label: "Needed Description View Power", value: channel.neededDescriptionViewPower.map(String.init))
                 }
@@ -4285,6 +4286,7 @@ struct ChannelInformationSheet: View {
             ("Codec Latency Factor", channel.codecLatencyFactor.map(String.init)),
             ("Unencrypted Voice", channel.isCodecUnencrypted.map(yesNo)),
             ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
+            ("Needed Join Power", channel.neededJoinPower.map(String.init)),
             ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
             ("Needed Description View Power", channel.neededDescriptionViewPower.map(String.init)),
             ("Max Clients", maxClientsText),
@@ -22573,6 +22575,7 @@ struct ChannelEditorSheet: View {
         var channelType: String
         var isDefault: Bool
         var neededTalkPower: String
+        var neededJoinPower: String?
         var neededSubscribePower: String
         var neededDescriptionViewPower: String?
         var codec: String
@@ -22601,6 +22604,7 @@ struct ChannelEditorSheet: View {
     @State private var channelType: TS3ChannelType = .permanent
     @State private var isDefault = false
     @State private var neededTalkPower = ""
+    @State private var neededJoinPower = ""
     @State private var neededSubscribePower = ""
     @State private var neededDescriptionViewPower = ""
     @State private var codec: Int?
@@ -22732,6 +22736,8 @@ struct ChannelEditorSheet: View {
                     }
                     TextField("Needed Talk Power", text: $neededTalkPower)
                         .ts3NumericKeyboard()
+                    TextField("Needed Join Power", text: $neededJoinPower)
+                        .ts3NumericKeyboard()
                     TextField("Needed Subscribe Power", text: $neededSubscribePower)
                         .ts3NumericKeyboard()
                     TextField("Needed Description View Power", text: $neededDescriptionViewPower)
@@ -22768,6 +22774,7 @@ struct ChannelEditorSheet: View {
                                 topic: topic,
                                 description: description,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
+                                neededJoinPower: parsedOptionalInt(neededJoinPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
                                 order: selectedOrderId,
@@ -22794,6 +22801,7 @@ struct ChannelEditorSheet: View {
                                 isDefault: isDefault,
                                 channelType: channelType,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
+                                neededJoinPower: parsedOptionalInt(neededJoinPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
                                 order: selectedOrderId,
@@ -22827,6 +22835,7 @@ struct ChannelEditorSheet: View {
                     channelType = channelType(for: channel)
                     isDefault = channel.isDefault
                     neededTalkPower = channel.neededTalkPower.map(String.init) ?? ""
+                    neededJoinPower = channel.neededJoinPower.map(String.init) ?? ""
                     neededSubscribePower = channel.neededSubscribePower.map(String.init) ?? ""
                     neededDescriptionViewPower = channel.neededDescriptionViewPower.map(String.init) ?? ""
                     codec = channel.codec
@@ -22966,6 +22975,7 @@ struct ChannelEditorSheet: View {
             channelType: channelType.rawValue,
             isDefault: isDefault,
             neededTalkPower: neededTalkPower,
+            neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec.map(String.init) ?? "",
@@ -22995,6 +23005,7 @@ struct ChannelEditorSheet: View {
             ("Type", channelTypeTitle(draft.channelType)),
             ("Default", draft.isDefault ? "Yes" : "No"),
             ("Needed Talk Power", draft.neededTalkPower),
+            ("Needed Join Power", draft.neededJoinPower ?? ""),
             ("Needed Subscribe Power", draft.neededSubscribePower),
             ("Needed Description View Power", draft.neededDescriptionViewPower ?? ""),
             ("Codec", codecTitle(for: draft.codec)),
@@ -23021,6 +23032,7 @@ struct ChannelEditorSheet: View {
     private var canSubmit: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(neededTalkPower)
+            && isOptionalInt(neededJoinPower)
             && isOptionalInt(neededSubscribePower)
             && isOptionalInt(neededDescriptionViewPower)
             && isCodecQualityValid
@@ -23130,6 +23142,7 @@ struct ChannelEditorSheet: View {
         TS3ChannelDraftValidator.validationMessages(
             name: draft.name,
             neededTalkPower: draft.neededTalkPower,
+            neededJoinPower: draft.neededJoinPower ?? "",
             neededSubscribePower: draft.neededSubscribePower,
             neededDescriptionViewPower: draft.neededDescriptionViewPower ?? "",
             codecQuality: draft.codecQuality,
@@ -23155,6 +23168,7 @@ struct ChannelEditorSheet: View {
         channelType = TS3ChannelType(rawValue: draft.channelType) ?? .permanent
         isDefault = draft.isDefault
         neededTalkPower = draft.neededTalkPower
+        neededJoinPower = draft.neededJoinPower ?? ""
         neededSubscribePower = draft.neededSubscribePower
         neededDescriptionViewPower = draft.neededDescriptionViewPower ?? ""
         codec = parsedOptionalInt(draft.codec)

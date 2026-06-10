@@ -20,6 +20,7 @@ final class TS3ChatTranscriptTests: XCTestCase {
                 isPermanent: true,
                 isSemiPermanent: nil,
                 neededTalkPower: nil,
+                neededJoinPower: nil,
                 neededSubscribePower: nil,
                 neededDescriptionViewPower: nil,
                 codec: nil,
