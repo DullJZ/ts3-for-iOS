@@ -270,6 +270,7 @@ enum TS3ServerSettingsDraftValidator {
         antiFloodPointsTickReduce: String,
         antiFloodPointsNeededCommandBlock: String,
         antiFloodPointsNeededIPBlock: String,
+        antiFloodPointsNeededPluginBlock: String,
         logClient: String?,
         logQuery: String?,
         logChannel: String?,
@@ -361,6 +362,9 @@ enum TS3ServerSettingsDraftValidator {
         }
         if !isOptionalInt(antiFloodPointsNeededIPBlock) {
             messages.append("Anti-flood IP block must be numeric.")
+        }
+        if !isOptionalInt(antiFloodPointsNeededPluginBlock) {
+            messages.append("Anti-flood plugin block must be numeric.")
         }
         if !isOptionalBoolDraft(logClient) {
             messages.append("Client log must be enabled, disabled, true, false, 1, or 0.")
@@ -4405,6 +4409,7 @@ struct TS3ServerInfoSummary {
     var antiFloodPointsTickReduce: Int?
     var antiFloodPointsNeededCommandBlock: Int?
     var antiFloodPointsNeededIPBlock: Int?
+    var antiFloodPointsNeededPluginBlock: Int?
     var isClientLoggingEnabled: Bool?
     var isQueryLoggingEnabled: Bool?
     var isChannelLoggingEnabled: Bool?
@@ -4476,6 +4481,7 @@ struct TS3ServerInfoSummary {
         antiFloodPointsTickReduce: nil,
         antiFloodPointsNeededCommandBlock: nil,
         antiFloodPointsNeededIPBlock: nil,
+        antiFloodPointsNeededPluginBlock: nil,
         isClientLoggingEnabled: nil,
         isQueryLoggingEnabled: nil,
         isChannelLoggingEnabled: nil,
@@ -8670,6 +8676,7 @@ final class TS3AppModel: ObservableObject {
         antiFloodPointsTickReduce: Int?,
         antiFloodPointsNeededCommandBlock: Int?,
         antiFloodPointsNeededIPBlock: Int?,
+        antiFloodPointsNeededPluginBlock: Int?,
         isClientLoggingEnabled: Bool?,
         isQueryLoggingEnabled: Bool?,
         isChannelLoggingEnabled: Bool?,
@@ -8718,6 +8725,7 @@ final class TS3AppModel: ObservableObject {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            antiFloodPointsNeededPluginBlock: antiFloodPointsNeededPluginBlock,
             isClientLoggingEnabled: isClientLoggingEnabled,
             isQueryLoggingEnabled: isQueryLoggingEnabled,
             isChannelLoggingEnabled: isChannelLoggingEnabled,
@@ -16631,6 +16639,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 antiFloodPointsTickReduce: info.antiFloodPointsTickReduce,
                 antiFloodPointsNeededCommandBlock: info.antiFloodPointsNeededCommandBlock,
                 antiFloodPointsNeededIPBlock: info.antiFloodPointsNeededIPBlock,
+                antiFloodPointsNeededPluginBlock: info.antiFloodPointsNeededPluginBlock,
                 isClientLoggingEnabled: info.isClientLoggingEnabled,
                 isQueryLoggingEnabled: info.isQueryLoggingEnabled,
                 isChannelLoggingEnabled: info.isChannelLoggingEnabled,

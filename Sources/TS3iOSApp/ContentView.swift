@@ -10440,6 +10440,7 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: "Anti-Flood Tick Reduce", value: model.serverInfo.antiFloodPointsTickReduce.map(String.init))
                     ServerInfoDetailRow(label: "Anti-Flood Command Block", value: model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init))
                     ServerInfoDetailRow(label: "Anti-Flood IP Block", value: model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init))
+                    ServerInfoDetailRow(label: "Anti-Flood Plugin Block", value: model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init))
                 }
 
                 Section(header: Text("Server Log Options")) {
@@ -10571,6 +10572,7 @@ struct ServerInformationSheet: View {
         rows.append(("Anti-Flood Tick Reduce", model.serverInfo.antiFloodPointsTickReduce.map(String.init)))
         rows.append(("Anti-Flood Command Block", model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init)))
         rows.append(("Anti-Flood IP Block", model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init)))
+        rows.append(("Anti-Flood Plugin Block", model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init)))
         rows.append(("Client Log", boolText(model.serverInfo.isClientLoggingEnabled)))
         rows.append(("Query Log", boolText(model.serverInfo.isQueryLoggingEnabled)))
         rows.append(("Channel Log", boolText(model.serverInfo.isChannelLoggingEnabled)))
@@ -13896,6 +13898,7 @@ struct ServerSettingsEditorSheet: View {
         var antiFloodPointsTickReduce: String?
         var antiFloodPointsNeededCommandBlock: String?
         var antiFloodPointsNeededIPBlock: String?
+        var antiFloodPointsNeededPluginBlock: String?
         var logClient: String?
         var logQuery: String?
         var logChannel: String?
@@ -13947,6 +13950,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var antiFloodPointsTickReduce = ""
     @State private var antiFloodPointsNeededCommandBlock = ""
     @State private var antiFloodPointsNeededIPBlock = ""
+    @State private var antiFloodPointsNeededPluginBlock = ""
     @State private var logClient: Bool?
     @State private var logQuery: Bool?
     @State private var logChannel: Bool?
@@ -14173,6 +14177,9 @@ struct ServerSettingsEditorSheet: View {
                     TextField("Anti-Flood IP Block", text: $antiFloodPointsNeededIPBlock)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
+                    TextField("Anti-Flood Plugin Block", text: $antiFloodPointsNeededPluginBlock)
+                        .ts3NumericKeyboard()
+                        .ts3PlainTextField()
                 }
 
                 Section(header: Text("Server Log Options")) {
@@ -14362,6 +14369,7 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            antiFloodPointsNeededPluginBlock: antiFloodPointsNeededPluginBlock,
             logClient: boolDraftText(logClient),
             logQuery: boolDraftText(logQuery),
             logChannel: boolDraftText(logChannel),
@@ -14429,6 +14437,7 @@ struct ServerSettingsEditorSheet: View {
             ("Anti-Flood Tick Reduce", draft.antiFloodPointsTickReduce ?? ""),
             ("Anti-Flood Command Block", draft.antiFloodPointsNeededCommandBlock ?? ""),
             ("Anti-Flood IP Block", draft.antiFloodPointsNeededIPBlock ?? ""),
+            ("Anti-Flood Plugin Block", draft.antiFloodPointsNeededPluginBlock ?? ""),
             ("Client Log", boolTitle(draft.logClient)),
             ("Query Log", boolTitle(draft.logQuery)),
             ("Channel Log", boolTitle(draft.logChannel)),
@@ -14483,6 +14492,7 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsTickReduce = model.serverInfo.antiFloodPointsTickReduce.map(String.init) ?? ""
         antiFloodPointsNeededCommandBlock = model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init) ?? ""
         antiFloodPointsNeededIPBlock = model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init) ?? ""
+        antiFloodPointsNeededPluginBlock = model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init) ?? ""
         logClient = model.serverInfo.isClientLoggingEnabled
         logQuery = model.serverInfo.isQueryLoggingEnabled
         logChannel = model.serverInfo.isChannelLoggingEnabled
@@ -14523,6 +14533,7 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            antiFloodPointsNeededPluginBlock: antiFloodPointsNeededPluginBlock,
             logClient: boolDraftText(logClient),
             logQuery: boolDraftText(logQuery),
             logChannel: boolDraftText(logChannel),
@@ -14574,6 +14585,7 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: Int(antiFloodPointsTickReduce.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededCommandBlock: Int(antiFloodPointsNeededCommandBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             antiFloodPointsNeededIPBlock: Int(antiFloodPointsNeededIPBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
+            antiFloodPointsNeededPluginBlock: Int(antiFloodPointsNeededPluginBlock.trimmingCharacters(in: .whitespacesAndNewlines)),
             isClientLoggingEnabled: logClient,
             isQueryLoggingEnabled: logQuery,
             isChannelLoggingEnabled: logChannel,
@@ -14647,6 +14659,7 @@ struct ServerSettingsEditorSheet: View {
             antiFloodPointsTickReduce: draft.antiFloodPointsTickReduce ?? "",
             antiFloodPointsNeededCommandBlock: draft.antiFloodPointsNeededCommandBlock ?? "",
             antiFloodPointsNeededIPBlock: draft.antiFloodPointsNeededIPBlock ?? "",
+            antiFloodPointsNeededPluginBlock: draft.antiFloodPointsNeededPluginBlock ?? "",
             logClient: draft.logClient,
             logQuery: draft.logQuery,
             logChannel: draft.logChannel,
@@ -14698,6 +14711,7 @@ struct ServerSettingsEditorSheet: View {
         antiFloodPointsTickReduce = draft.antiFloodPointsTickReduce ?? ""
         antiFloodPointsNeededCommandBlock = draft.antiFloodPointsNeededCommandBlock ?? ""
         antiFloodPointsNeededIPBlock = draft.antiFloodPointsNeededIPBlock ?? ""
+        antiFloodPointsNeededPluginBlock = draft.antiFloodPointsNeededPluginBlock ?? ""
         logClient = Self.boolDraftValue(draft.logClient)
         logQuery = Self.boolDraftValue(draft.logQuery)
         logChannel = Self.boolDraftValue(draft.logChannel)

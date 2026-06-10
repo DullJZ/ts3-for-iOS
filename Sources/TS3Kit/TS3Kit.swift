@@ -113,6 +113,8 @@ public struct TS3ServerInfo {
     public let antiFloodPointsNeededCommandBlock: Int?
     /// Anti-flood points required before IP blocking starts.
     public let antiFloodPointsNeededIPBlock: Int?
+    /// Anti-flood points required before plugin command blocking starts.
+    public let antiFloodPointsNeededPluginBlock: Int?
     /// Whether regular client actions are written to the server log.
     public let isClientLoggingEnabled: Bool?
     /// Whether ServerQuery actions are written to the server log.
@@ -212,6 +214,7 @@ public struct TS3ServerInfo {
         antiFloodPointsTickReduce: Int? = nil,
         antiFloodPointsNeededCommandBlock: Int? = nil,
         antiFloodPointsNeededIPBlock: Int? = nil,
+        antiFloodPointsNeededPluginBlock: Int? = nil,
         isClientLoggingEnabled: Bool? = nil,
         isQueryLoggingEnabled: Bool? = nil,
         isChannelLoggingEnabled: Bool? = nil,
@@ -281,6 +284,7 @@ public struct TS3ServerInfo {
         self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
         self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
         self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
+        self.antiFloodPointsNeededPluginBlock = antiFloodPointsNeededPluginBlock
         self.isClientLoggingEnabled = isClientLoggingEnabled
         self.isQueryLoggingEnabled = isQueryLoggingEnabled
         self.isChannelLoggingEnabled = isChannelLoggingEnabled
@@ -431,6 +435,7 @@ public struct TS3ServerEdit {
     public var antiFloodPointsTickReduce: Int?
     public var antiFloodPointsNeededCommandBlock: Int?
     public var antiFloodPointsNeededIPBlock: Int?
+    public var antiFloodPointsNeededPluginBlock: Int?
     public var isClientLoggingEnabled: Bool?
     public var isQueryLoggingEnabled: Bool?
     public var isChannelLoggingEnabled: Bool?
@@ -480,6 +485,7 @@ public struct TS3ServerEdit {
         antiFloodPointsTickReduce: Int? = nil,
         antiFloodPointsNeededCommandBlock: Int? = nil,
         antiFloodPointsNeededIPBlock: Int? = nil,
+        antiFloodPointsNeededPluginBlock: Int? = nil,
         isClientLoggingEnabled: Bool? = nil,
         isQueryLoggingEnabled: Bool? = nil,
         isChannelLoggingEnabled: Bool? = nil,
@@ -527,6 +533,7 @@ public struct TS3ServerEdit {
         self.antiFloodPointsTickReduce = antiFloodPointsTickReduce
         self.antiFloodPointsNeededCommandBlock = antiFloodPointsNeededCommandBlock
         self.antiFloodPointsNeededIPBlock = antiFloodPointsNeededIPBlock
+        self.antiFloodPointsNeededPluginBlock = antiFloodPointsNeededPluginBlock
         self.isClientLoggingEnabled = isClientLoggingEnabled
         self.isQueryLoggingEnabled = isQueryLoggingEnabled
         self.isChannelLoggingEnabled = isChannelLoggingEnabled

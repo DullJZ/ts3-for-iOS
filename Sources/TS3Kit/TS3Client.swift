@@ -2983,6 +2983,7 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_antiflood_points_tick_reduce", value: edit.antiFloodPointsTickReduce.map(String.init))
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_command_block", value: edit.antiFloodPointsNeededCommandBlock.map(String.init))
         appendParameter(&params, name: "virtualserver_antiflood_points_needed_ip_block", value: edit.antiFloodPointsNeededIPBlock.map(String.init))
+        appendParameter(&params, name: "virtualserver_antiflood_points_needed_plugin_block", value: edit.antiFloodPointsNeededPluginBlock.map(String.init))
         appendParameter(&params, name: "virtualserver_log_client", value: edit.isClientLoggingEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_log_query", value: edit.isQueryLoggingEnabled.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_log_channel", value: edit.isChannelLoggingEnabled.map { $0 ? "1" : "0" })
@@ -3403,6 +3404,7 @@ private extension TS3Client {
             antiFloodPointsTickReduce: intValue(command, "virtualserver_antiflood_points_tick_reduce"),
             antiFloodPointsNeededCommandBlock: intValue(command, "virtualserver_antiflood_points_needed_command_block"),
             antiFloodPointsNeededIPBlock: intValue(command, "virtualserver_antiflood_points_needed_ip_block"),
+            antiFloodPointsNeededPluginBlock: intValue(command, "virtualserver_antiflood_points_needed_plugin_block"),
             isClientLoggingEnabled: optionalBoolValue(command, "virtualserver_log_client"),
             isQueryLoggingEnabled: optionalBoolValue(command, "virtualserver_log_query"),
             isChannelLoggingEnabled: optionalBoolValue(command, "virtualserver_log_channel"),

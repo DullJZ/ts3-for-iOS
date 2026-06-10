@@ -59,6 +59,12 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         XCTAssertEqual(messages, ["Server port must be numeric."])
     }
 
+    func testServerSettingsDraftValidatorRejectsInvalidPluginBlock() {
+        let messages = validationMessages(antiFloodPointsNeededPluginBlock: "plugins")
+
+        XCTAssertEqual(messages, ["Anti-flood plugin block must be numeric."])
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",
@@ -81,6 +87,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         antiFloodPointsTickReduce: String = "",
         antiFloodPointsNeededCommandBlock: String = "",
         antiFloodPointsNeededIPBlock: String = "",
+        antiFloodPointsNeededPluginBlock: String = "",
         logClient: String? = nil,
         logQuery: String? = nil,
         logChannel: String? = nil,
@@ -119,6 +126,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             antiFloodPointsTickReduce: antiFloodPointsTickReduce,
             antiFloodPointsNeededCommandBlock: antiFloodPointsNeededCommandBlock,
             antiFloodPointsNeededIPBlock: antiFloodPointsNeededIPBlock,
+            antiFloodPointsNeededPluginBlock: antiFloodPointsNeededPluginBlock,
             logClient: logClient,
             logQuery: logQuery,
             logChannel: logChannel,
