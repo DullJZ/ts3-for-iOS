@@ -18874,7 +18874,14 @@ struct PrivilegeKeyRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Privilege key")
-        .accessibilityValue(accessibilityValue)
+        .accessibilityValue(key.accessibilityValue(
+            serverGroups: model.serverGroups,
+            channelGroups: model.channelGroups,
+            channels: model.channels
+        ))
+        .accessibilityAction(named: "Copy Summary") {
+            TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
         .accessibilityAction(named: "Use Key") {
             if model.state == .connected {
                 model.usePrivilegeKey(key.key)
@@ -18889,14 +18896,6 @@ struct PrivilegeKeyRow: View {
 
     private var targetText: String {
         key.targetSummary(
-            serverGroups: model.serverGroups,
-            channelGroups: model.channelGroups,
-            channels: model.channels
-        )
-    }
-
-    private var accessibilityValue: String {
-        key.accessibilityValue(
             serverGroups: model.serverGroups,
             channelGroups: model.channelGroups,
             channels: model.channels
