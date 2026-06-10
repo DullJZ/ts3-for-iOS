@@ -765,6 +765,32 @@ struct TS3UserPlaybackPreferenceSummary: Identifiable {
     let isOnline: Bool
 
     var id: String { key }
+
+    var displayName: String {
+        nickname ?? key
+    }
+
+    var displaySummary: String {
+        "\(Self.percentText(volume)), \(isMuted ? "muted" : "unmuted"), key \(key)"
+    }
+
+    var clipboardSummary: String {
+        [
+            "name=\(displayName)",
+            "key=\(key)",
+            "volume=\(Self.percentText(volume))",
+            "muted=\(isMuted ? "true" : "false")",
+            "state=\(isOnline ? "online" : "saved")"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        "\(isOnline ? "Online" : "Saved"). Playback volume \(Self.percentText(volume)). \(isMuted ? "Muted" : "Unmuted"). Key \(key)"
+    }
+
+    private static func percentText(_ value: Double) -> String {
+        "\(Int((value * 100).rounded()))%"
+    }
 }
 
 struct TS3OfflineMessageSummary: Identifiable, Codable {

@@ -3,6 +3,27 @@ import XCTest
 import TS3Kit
 
 final class TS3AudioProfileTests: XCTestCase {
+    func testUserPlaybackPreferenceSummariesUseAuditableValues() {
+        let preference = TS3UserPlaybackPreferenceSummary(
+            key: "client-uid",
+            nickname: "Morgan",
+            volume: 0.65,
+            isMuted: true,
+            isOnline: false
+        )
+
+        XCTAssertEqual(preference.displayName, "Morgan")
+        XCTAssertEqual(preference.displaySummary, "65%, muted, key client-uid")
+        XCTAssertEqual(
+            preference.clipboardSummary,
+            "name=Morgan | key=client-uid | volume=65% | muted=true | state=saved"
+        )
+        XCTAssertEqual(
+            preference.accessibilityValue,
+            "Saved. Playback volume 65%. Muted. Key client-uid"
+        )
+    }
+
     func testAudioProfileSummariesUseAuditableValues() {
         let profile = TS3AudioProfile(
             id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,

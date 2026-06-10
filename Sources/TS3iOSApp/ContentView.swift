@@ -24197,18 +24197,29 @@ struct AudioSettingsSheet: View {
                         ForEach(model.userPlaybackPreferenceSummaries) { preference in
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack {
-                                    Text(preference.nickname ?? preference.key)
+                                    Text(preference.displayName)
                                         .font(.subheadline.weight(.semibold))
                                     Spacer()
                                     Text(preference.isOnline ? "Online" : "Saved")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
-                                Text(userPlaybackSummary(preference))
+                                Text(preference.displaySummary)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(preference.displayName)
+                            .accessibilityValue(preference.accessibilityValue)
+                            .accessibilityAction(named: "Copy Summary") {
+                                TS3PlatformSupport.copyToPasteboard(preference.clipboardSummary)
+                            }
+                            .contextMenu {
+                                Button("Copy Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(preference.clipboardSummary)
+                                }
                             }
                         }
                     }
@@ -24474,8 +24485,7 @@ struct AudioSettingsSheet: View {
 
     private var userPlaybackSnapshot: String {
         model.userPlaybackPreferenceSummaries.map { preference in
-            let name = preference.nickname ?? preference.key
-            return "\(name): \(userPlaybackSummary(preference))"
+            "\(preference.displayName): \(preference.displaySummary)"
         }
         .joined(separator: "\n")
     }
@@ -24514,12 +24524,6 @@ struct AudioSettingsSheet: View {
             return "\(Int(amount)) \(units[unitIndex])"
         }
         return "\(String(format: "%.1f", amount)) \(units[unitIndex])"
-    }
-
-    private func userPlaybackSummary(_ preference: TS3UserPlaybackPreferenceSummary) -> String {
-        let volume = Self.percentText(preference.volume)
-        let muted = preference.isMuted ? "muted" : "unmuted"
-        return "\(volume), \(muted), key \(preference.key)"
     }
 }
 
