@@ -132,6 +132,34 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertNil(model.lastError)
     }
 
+    @MainActor
+    func testAppendNoteToContactsPreservesExistingNotesAndUpdatesOnlySelectedEntries() {
+        let model = TS3AppModel()
+        let selectedWithNote = makeContact(uniqueIdentifier: "uid-selected-note", nickname: "Selected Note", status: .friend, note: "existing")
+        let selectedWithoutNote = makeContact(uniqueIdentifier: "uid-selected-empty", nickname: "Selected Empty", status: .blocked, note: "")
+        let unselected = makeContact(uniqueIdentifier: "uid-unselected", nickname: "Unselected", status: .ignored, note: "keep")
+        model.contacts = [selectedWithNote, selectedWithoutNote, unselected]
+
+        model.appendNote(" visible audit ", toContacts: [selectedWithNote, selectedWithoutNote, selectedWithNote])
+
+        XCTAssertEqual(model.contacts.first { $0.uniqueIdentifier == "uid-selected-note" }?.note, "existing\nvisible audit")
+        XCTAssertEqual(model.contacts.first { $0.uniqueIdentifier == "uid-selected-empty" }?.note, "visible audit")
+        XCTAssertEqual(model.contacts.first { $0.uniqueIdentifier == "uid-unselected" }?.note, "keep")
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testAppendNoteToContactsRejectsEmptyNote() {
+        let model = TS3AppModel()
+        let contact = makeContact(uniqueIdentifier: "uid-contact", nickname: "Contact", status: .friend, note: "keep")
+        model.contacts = [contact]
+
+        model.appendNote("   ", toContacts: [contact])
+
+        XCTAssertEqual(model.contacts.first?.note, "keep")
+        XCTAssertEqual(model.lastError, "Enter a note to apply to the selected contacts.")
+    }
+
     func testContactSummariesIncludeOnlineNicknameNoteAndStatus() {
         let contact = makeContact(
             uniqueIdentifier: "uid-contact",

@@ -5159,6 +5159,7 @@ struct ContactsSheet: View {
     @State private var isImportingPresets = false
     @State private var isConfirmingDeletePresets = false
     @State private var isConfirmingDeleteVisibleContacts = false
+    @State private var isShowingVisibleNoteSheet = false
     @State private var pendingContactImport: ContactImportConfirmation?
     @State private var contactsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -5351,6 +5352,10 @@ struct ContactsSheet: View {
                             model.updateContacts(visibleContacts, status: .neutral)
                         }
                         .disabled(!canSetVisibleNeutral)
+                        Button("Append Note to Visible Contacts") {
+                            isShowingVisibleNoteSheet = true
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button("Delete Visible Contacts") {
                             isConfirmingDeleteVisibleContacts = true
                         }
@@ -5457,6 +5462,14 @@ struct ContactsSheet: View {
                     }
                 )
                 .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingVisibleNoteSheet) {
+                ContactBatchNoteSheet(
+                    contactCount: visibleContacts.count,
+                    submit: { note in
+                        model.appendNote(note, toContacts: visibleContacts)
+                    }
+                )
             }
         }
     }
@@ -5924,6 +5937,43 @@ struct ContactEditorSheet: View {
                 }
             }
             .navigationTitle(uniqueIdentifier.isEmpty ? "New Contact" : "Edit Contact")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ContactBatchNoteSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    let contactCount: Int
+    let submit: (String) -> Void
+    @State private var note = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Visible Contacts")) {
+                    Text("Contacts: \(contactCount)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    TextField("Note", text: $note)
+                        .ts3PlainTextField()
+                }
+                Section {
+                    Button("Append Note") {
+                        submit(note)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || contactCount == 0)
+                }
+            }
+            .navigationTitle("Append Contact Note")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {

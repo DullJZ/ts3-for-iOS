@@ -5356,6 +5356,27 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func appendNote(_ note: String, toContacts entries: [TS3ContactEntry]) {
+        let note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !note.isEmpty else {
+            lastError = "Enter a note to apply to the selected contacts."
+            return
+        }
+        let uniqueIdentifiers = Set(entries.map(\.uniqueIdentifier))
+        guard !uniqueIdentifiers.isEmpty else { return }
+        let now = Date()
+        contacts = contacts.map { contact in
+            guard uniqueIdentifiers.contains(contact.uniqueIdentifier) else { return contact }
+            var updated = contact
+            let currentNote = updated.note.trimmingCharacters(in: .whitespacesAndNewlines)
+            updated.note = currentNote.isEmpty ? note : "\(currentNote)\n\(note)"
+            updated.updatedAt = now
+            return updated
+        }
+        saveContacts()
+        lastError = nil
+    }
+
     var onlineContactCandidates: [TS3ContactEntry] {
         clients
             .filter { !$0.isCurrentUser }
