@@ -9781,12 +9781,25 @@ struct ServerLogsSheet: View {
                         .ts3PlainTextField()
                     TextField("Search logs", text: $searchText)
                         .ts3PlainTextField()
+                    Text(currentQueryDraft.inlineSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .accessibilityLabel("Current log query")
+                        .accessibilityValue(currentQueryDraft.accessibilityValue)
+                    ForEach(queryValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                     if hasLocalFilters {
                         Button("Clear Filters") {
                             levelFilter = .all
                             channelFilter = ""
                             searchText = ""
                         }
+                    }
+                    Button("Copy Query Summary") {
+                        TS3PlatformSupport.copyToPasteboard(currentQueryDraft.clipboardSummary)
                     }
                     Button("Refresh") {
                         model.refreshServerLogs(
@@ -9796,7 +9809,7 @@ struct ServerLogsSheet: View {
                             beginPosition: parsedBeginPosition
                         )
                     }
-                    .disabled(model.state != .connected)
+                    .disabled(model.state != .connected || !canRunQuery)
                     Button("Copy Visible Logs") {
                         TS3PlatformSupport.copyToPasteboard(filteredTranscript)
                     }
@@ -9848,7 +9861,7 @@ struct ServerLogsSheet: View {
                         )
                         presetName = ""
                     }
-                    .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canRunQuery)
                     Button("Export Query Presets") {
                         exportPresets()
                     }
@@ -9882,6 +9895,9 @@ struct ServerLogsSheet: View {
                                         Button("Apply Only") {
                                             applyPreset(preset, refresh: false)
                                         }
+                                        Button("Copy Query Summary") {
+                                            TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
+                                        }
                                         Button("Delete Preset") {
                                             model.deleteServerLogQueryPreset(preset)
                                         }
@@ -9889,6 +9905,12 @@ struct ServerLogsSheet: View {
                                         Image(systemName: "ellipsis.circle")
                                     }
                                 }
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Server log query preset")
+                            .accessibilityValue(preset.accessibilityValue)
+                            .accessibilityAction(named: "Copy Query Summary") {
+                                TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
                             }
                         }
                     }
@@ -9913,7 +9935,7 @@ struct ServerLogsSheet: View {
                         )
                         newLogMessage = ""
                     }
-                    .disabled(model.state != .connected || newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(model.state != .connected || newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canRunQuery)
                 }
 
                 Section(header: Text("Server Log")) {
@@ -9939,7 +9961,7 @@ struct ServerLogsSheet: View {
                             beginPosition: parsedBeginPosition
                         )
                     }
-                    .disabled(model.state != .connected)
+                    .disabled(model.state != .connected || !canRunQuery)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Done") {
@@ -10067,11 +10089,31 @@ struct ServerLogsSheet: View {
     }
 
     private var parsedLineLimit: Int {
-        Int(lineLimit.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 100
+        currentQueryDraft.limit ?? 100
     }
 
     private var parsedBeginPosition: Int {
-        max(0, Int(beginPosition.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0)
+        currentQueryDraft.beginPosition ?? 0
+    }
+
+    private var currentQueryDraft: TS3ServerLogQueryDraft {
+        TS3ServerLogQueryDraft(
+            limitText: lineLimit,
+            beginPositionText: beginPosition,
+            reverse: reverseOrder,
+            instance: instanceLogs,
+            levelFilter: levelFilter.rawValue,
+            channelFilter: channelFilter,
+            searchText: searchText
+        )
+    }
+
+    private var queryValidationMessages: [String] {
+        currentQueryDraft.validationMessages
+    }
+
+    private var canRunQuery: Bool {
+        queryValidationMessages.isEmpty
     }
 
     private var normalizedSearchText: String {
@@ -10105,21 +10147,7 @@ struct ServerLogsSheet: View {
     }
 
     private var snapshot: String {
-        var lines = [
-            "Limit: \(parsedLineLimit)",
-            "Begin Position: \(parsedBeginPosition)",
-            "Reverse: \(reverseOrder ? "Yes" : "No")",
-            "Instance: \(instanceLogs ? "Yes" : "No")"
-        ]
-        if levelFilter != .all {
-            lines.append("Level Filter: \(levelFilter.title)")
-        }
-        if !normalizedChannelFilter.isEmpty {
-            lines.append("Channel Filter: \(channelFilter.trimmingCharacters(in: .whitespacesAndNewlines))")
-        }
-        if isSearching {
-            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
-        }
+        var lines = currentQueryDraft.clipboardSummary.components(separatedBy: "\n")
         if !filteredEntries.isEmpty {
             lines.append("")
             lines.append(filteredTranscript)
@@ -10248,22 +10276,7 @@ struct ServerLogsSheet: View {
     }
 
     private func presetSummary(_ preset: TS3ServerLogQueryPreset) -> String {
-        var parts = [
-            "Limit \(preset.limit)",
-            "Begin \(preset.beginPosition)",
-            preset.reverse ? "Reverse" : "Forward",
-            preset.instance ? "Instance" : "Server"
-        ]
-        if preset.levelFilter != LogLevelFilter.all.rawValue {
-            parts.append((LogLevelFilter(rawValue: preset.levelFilter) ?? .all).title)
-        }
-        if !preset.channelFilter.isEmpty {
-            parts.append("Channel \(preset.channelFilter)")
-        }
-        if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
-        }
-        return parts.joined(separator: " · ")
+        preset.queryDraft.inlineSummary
     }
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]

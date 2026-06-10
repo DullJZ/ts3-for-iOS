@@ -2,6 +2,68 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3ServerLogPresetTests: XCTestCase {
+    func testServerLogQueryDraftSummariesAndValidation() {
+        let draft = TS3ServerLogQueryDraft(
+            limitText: " 250 ",
+            beginPositionText: " 42 ",
+            reverse: false,
+            instance: true,
+            levelFilter: "warning",
+            channelFilter: " Server ",
+            searchText: " auth failed "
+        )
+
+        XCTAssertEqual(draft.limit, 250)
+        XCTAssertEqual(draft.beginPosition, 42)
+        XCTAssertEqual(draft.validationMessages, [])
+        XCTAssertEqual(
+            draft.inlineSummary,
+            "Scope: Instance logs · Lines: 250 · Begin position: 42 · Order: Forward · Level filter: Warning · Channel filter: Server · Search: auth failed"
+        )
+        XCTAssertEqual(
+            draft.clipboardSummary,
+            """
+            Scope: Instance logs
+            Lines: 250
+            Begin position: 42
+            Order: Forward
+            Level filter: Warning
+            Channel filter: Server
+            Search: auth failed
+            """
+        )
+
+        let invalidDraft = TS3ServerLogQueryDraft(
+            limitText: "1001",
+            beginPositionText: "-1",
+            reverse: true,
+            instance: false,
+            levelFilter: "nope",
+            channelFilter: "",
+            searchText: ""
+        )
+
+        XCTAssertNil(invalidDraft.limit)
+        XCTAssertNil(invalidDraft.beginPosition)
+        XCTAssertEqual(
+            invalidDraft.validationMessages,
+            [
+                "Lines must be between 1 and 1000.",
+                "Begin position must be between 0 and 1000000."
+            ]
+        )
+        XCTAssertEqual(
+            invalidDraft.clipboardSummary,
+            """
+            Scope: Server logs
+            Lines: 1001
+            Begin position: -1
+            Order: Reverse
+            Level filter: All Levels
+            """
+        )
+    }
+
     @MainActor
     func testServerLogQueryPresetsPersistChannelFilterAndImportLegacyDefaults() throws {
         let model = TS3AppModel()
@@ -27,6 +89,12 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertEqual(saved.channelFilter.count, 80)
         XCTAssertTrue(saved.channelFilter.hasPrefix("server"))
         XCTAssertEqual(saved.searchText.count, 120)
+        XCTAssertEqual(
+            saved.queryDraft.inlineSummary,
+            "Scope: Instance logs · Lines: 1000 · Begin position: 0 · Order: Forward · Level filter: Warning · Channel filter: \(saved.channelFilter) · Search: \(saved.searchText)"
+        )
+        XCTAssertTrue(saved.clipboardSummary.contains("Scope: Instance logs"))
+        XCTAssertTrue(saved.accessibilityValue.hasPrefix("Auth warnings. Scope: Instance logs"))
 
         let legacyJSON = """
         [{

@@ -4958,6 +4958,111 @@ struct TS3ServerLogQueryPreset: Identifiable, Codable {
     }
 }
 
+struct TS3ServerLogQueryDraft {
+    var limitText: String
+    var beginPositionText: String
+    var reverse: Bool
+    var instance: Bool
+    var levelFilter: String
+    var channelFilter: String
+    var searchText: String
+
+    var limit: Int? {
+        Self.parseBoundedInteger(limitText, range: 1...1_000)
+    }
+
+    var beginPosition: Int? {
+        Self.parseBoundedInteger(beginPositionText, range: 0...1_000_000)
+    }
+
+    var validationMessages: [String] {
+        var messages: [String] = []
+        if limit == nil {
+            messages.append("Lines must be between 1 and 1000.")
+        }
+        if beginPosition == nil {
+            messages.append("Begin position must be between 0 and 1000000.")
+        }
+        return messages
+    }
+
+    var clipboardSummary: String {
+        querySummaryLines(includeFilters: true).joined(separator: "\n")
+    }
+
+    var inlineSummary: String {
+        querySummaryLines(includeFilters: false).joined(separator: " · ")
+    }
+
+    var accessibilityValue: String {
+        querySummaryLines(includeFilters: true).joined(separator: ". ")
+    }
+
+    private var normalizedLevelFilter: String {
+        let level = levelFilter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["all", "info", "warning", "error", "debug"].contains(level) ? level : "all"
+    }
+
+    private var levelTitle: String {
+        switch normalizedLevelFilter {
+        case "info": return "Info"
+        case "warning": return "Warning"
+        case "error": return "Error"
+        case "debug": return "Debug"
+        default: return "All Levels"
+        }
+    }
+
+    private func querySummaryLines(includeFilters: Bool) -> [String] {
+        var lines = [
+            "Scope: \(instance ? "Instance" : "Server") logs",
+            "Lines: \(limit.map(String.init) ?? limitText.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "Begin position: \(beginPosition.map(String.init) ?? beginPositionText.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "Order: \(reverse ? "Reverse" : "Forward")"
+        ]
+        if includeFilters || normalizedLevelFilter != "all" {
+            lines.append("Level filter: \(levelTitle)")
+        }
+        let channel = channelFilter.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !channel.isEmpty {
+            lines.append("Channel filter: \(channel)")
+        }
+        let search = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !search.isEmpty {
+            lines.append("Search: \(search)")
+        }
+        return lines
+    }
+
+    private static func parseBoundedInteger(_ value: String, range: ClosedRange<Int>) -> Int? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = Int(trimmed), range.contains(parsed) else { return nil }
+        return parsed
+    }
+}
+
+extension TS3ServerLogQueryPreset {
+    var queryDraft: TS3ServerLogQueryDraft {
+        TS3ServerLogQueryDraft(
+            limitText: String(limit),
+            beginPositionText: String(beginPosition),
+            reverse: reverse,
+            instance: instance,
+            levelFilter: levelFilter,
+            channelFilter: channelFilter,
+            searchText: searchText
+        )
+    }
+
+    var clipboardSummary: String {
+        queryDraft.clipboardSummary
+    }
+
+    var accessibilityValue: String {
+        "\(name). \(queryDraft.accessibilityValue)"
+    }
+}
+
 struct TS3ChannelSubscriptionPreset: Identifiable, Codable {
     let id: UUID
     var name: String
