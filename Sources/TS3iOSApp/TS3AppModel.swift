@@ -2055,6 +2055,69 @@ enum TS3GroupDraftValidator {
     }
 }
 
+enum TS3GroupMemberDraftValidator {
+    enum Operation: String {
+        case addServerMember = "Add Member"
+        case setChannelGroup = "Set Channel Group"
+    }
+
+    static func validationMessages(
+        operation: Operation,
+        target: TS3GroupManagementTarget,
+        group: TS3GroupSummary,
+        clientDatabaseId: String,
+        channelId: Int?
+    ) -> [String] {
+        var messages: [String] = []
+        let trimmedDatabaseId = clientDatabaseId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedDatabaseId.isEmpty {
+            messages.append("Client database ID is required before \(operation == .addServerMember ? "adding a group member" : "setting a channel group").")
+        } else if Int(trimmedDatabaseId).map({ $0 > 0 }) != true {
+            messages.append("Client database ID must be a positive number.")
+        }
+        if operation == .addServerMember && target != .server {
+            messages.append("Select Server Groups before adding a server group member.")
+        }
+        if operation == .setChannelGroup {
+            if target != .channel {
+                messages.append("Select Channel Groups before setting a channel group.")
+            }
+            if channelId == nil {
+                messages.append("Select a channel before setting a channel group.")
+            }
+        }
+        if group.id <= 0 {
+            messages.append("Select a valid group before changing membership.")
+        }
+        return messages
+    }
+
+    static func changeSummary(
+        operation: Operation,
+        target: TS3GroupManagementTarget,
+        group: TS3GroupSummary,
+        clientDatabaseId: String,
+        channelId: Int?,
+        channelName: String?
+    ) -> String {
+        var parts = [
+            "operation=\(operation.rawValue)",
+            "target=\(target.title)",
+            "group=\(group.name) (\(group.id))"
+        ]
+        let databaseId = clientDatabaseId.trimmingCharacters(in: .whitespacesAndNewlines)
+        parts.append("clientDb=\(databaseId.isEmpty ? "Missing" : databaseId)")
+        if operation == .setChannelGroup {
+            if let channelId {
+                parts.append("channel=\(channelName ?? "Channel \(channelId)") (\(channelId))")
+            } else {
+                parts.append("channel=Missing")
+            }
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 extension TS3GroupClientSummary {
     func clipboardSummary(group: TS3GroupSummary, target: TS3GroupManagementTarget, channelName: String?) -> String {
         var parts = [
@@ -11844,7 +11907,17 @@ final class TS3AppModel: ObservableObject {
     }
 
     func addServerGroup(_ group: TS3GroupSummary, toClientDatabaseId databaseId: Int) {
-        guard databaseId > 0 else { return }
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .addServerMember,
+            target: .server,
+            group: group,
+            clientDatabaseId: String(databaseId),
+            channelId: nil
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         runClientCommand { client in
             try await client.addServerGroup(groupId: group.id, toClientDatabaseId: databaseId)
             let clients = try await client.refreshServerGroupClients(groupId: group.id)
@@ -11928,7 +12001,17 @@ final class TS3AppModel: ObservableObject {
     }
 
     func setChannelGroup(_ group: TS3GroupSummary, channelId: Int, clientDatabaseId: Int) {
-        guard channelId > 0, clientDatabaseId > 0 else { return }
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: group,
+            clientDatabaseId: String(clientDatabaseId),
+            channelId: channelId > 0 ? channelId : nil
+        )
+        guard validationMessages.isEmpty else {
+            lastError = validationMessages.joined(separator: "\n")
+            return
+        }
         runClientCommand { client in
             try await client.setChannelGroup(groupId: group.id, channelId: channelId, clientDatabaseId: clientDatabaseId)
             let clients = try await client.refreshChannelGroupClients(groupId: group.id)

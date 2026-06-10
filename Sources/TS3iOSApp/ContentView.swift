@@ -11563,6 +11563,31 @@ struct GroupClientListSheet: View {
         return lines.joined(separator: "\n")
     }
 
+    private var memberDraftOperation: TS3GroupMemberDraftValidator.Operation {
+        target == .server ? .addServerMember : .setChannelGroup
+    }
+
+    private var memberDraftValidationMessages: [String] {
+        TS3GroupMemberDraftValidator.validationMessages(
+            operation: memberDraftOperation,
+            target: target,
+            group: group,
+            clientDatabaseId: newMemberDatabaseId,
+            channelId: target == .channel ? selectedNewMemberChannelId : nil
+        )
+    }
+
+    private var memberDraftSummary: String {
+        TS3GroupMemberDraftValidator.changeSummary(
+            operation: memberDraftOperation,
+            target: target,
+            group: group,
+            clientDatabaseId: newMemberDatabaseId,
+            channelId: target == .channel ? selectedNewMemberChannelId : nil,
+            channelName: selectedNewMemberChannelId.flatMap { model.channelName(for: $0) }
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -11667,10 +11692,21 @@ struct GroupClientListSheet: View {
                     if target == .server {
                         TextField("Client Database ID", text: $newMemberDatabaseId)
                             .ts3NumericKeyboard()
+                        Text(memberDraftSummary)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Copy Member Change Summary") {
+                            TS3PlatformSupport.copyToPasteboard(memberDraftSummary)
+                        }
+                        ForEach(memberDraftValidationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
                         Button("Add Member by Database ID") {
                             addMemberByDatabaseId()
                         }
-                        .disabled(model.state != .connected || parsedNewMemberDatabaseId == nil)
+                        .disabled(model.state != .connected || !memberDraftValidationMessages.isEmpty)
                         Button("Remove Visible Members") {
                             isConfirmingRemoveVisible = true
                         }
@@ -11685,10 +11721,21 @@ struct GroupClientListSheet: View {
                         }
                         TextField("Client Database ID", text: $newMemberDatabaseId)
                             .ts3NumericKeyboard()
+                        Text(memberDraftSummary)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("Copy Member Change Summary") {
+                            TS3PlatformSupport.copyToPasteboard(memberDraftSummary)
+                        }
+                        ForEach(memberDraftValidationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
                         Button("Set Channel Group by Database ID") {
                             setChannelGroupByDatabaseId()
                         }
-                        .disabled(model.state != .connected || parsedNewMemberDatabaseId == nil || selectedNewMemberChannelId == nil)
+                        .disabled(model.state != .connected || !memberDraftValidationMessages.isEmpty)
                     }
                 }
 

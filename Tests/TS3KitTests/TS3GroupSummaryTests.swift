@@ -74,6 +74,76 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupMemberDraftValidatorRejectsInvalidMemberChanges() {
+        let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+
+        XCTAssertEqual(
+            TS3GroupMemberDraftValidator.validationMessages(
+                operation: .addServerMember,
+                target: .server,
+                group: group,
+                clientDatabaseId: " ",
+                channelId: nil
+            ),
+            ["Client database ID is required before adding a group member."]
+        )
+        XCTAssertEqual(
+            TS3GroupMemberDraftValidator.validationMessages(
+                operation: .setChannelGroup,
+                target: .channel,
+                group: group,
+                clientDatabaseId: "abc",
+                channelId: nil
+            ),
+            [
+                "Client database ID must be a positive number.",
+                "Select a channel before setting a channel group."
+            ]
+        )
+        XCTAssertEqual(
+            TS3GroupMemberDraftValidator.validationMessages(
+                operation: .addServerMember,
+                target: .channel,
+                group: TS3GroupSummary(id: 0, name: "Broken", type: nil),
+                clientDatabaseId: "42",
+                channelId: nil
+            ),
+            [
+                "Select Server Groups before adding a server group member.",
+                "Select a valid group before changing membership."
+            ]
+        )
+    }
+
+    func testGroupMemberDraftValidatorBuildsAuditableSummaries() {
+        let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let addSummary = TS3GroupMemberDraftValidator.changeSummary(
+            operation: .addServerMember,
+            target: .server,
+            group: group,
+            clientDatabaseId: " 42 ",
+            channelId: nil,
+            channelName: nil
+        )
+        let setSummary = TS3GroupMemberDraftValidator.changeSummary(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: group,
+            clientDatabaseId: "43",
+            channelId: 9,
+            channelName: "Lobby"
+        )
+
+        XCTAssertEqual(
+            addSummary,
+            "operation=Add Member | target=Server Groups | group=Admins (6) | clientDb=42"
+        )
+        XCTAssertEqual(
+            setSummary,
+            "operation=Set Channel Group | target=Channel Groups | group=Admins (6) | clientDb=43 | channel=Lobby (9)"
+        )
+    }
+
     func testGroupClipboardSummaryIncludesIdNameAndType() {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
 
