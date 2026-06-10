@@ -17570,6 +17570,8 @@ private struct PermissionBackupImportSheet: View {
 
     @EnvironmentObject private var model: TS3AppModel
     @State private var options = TS3PermissionBackupRestoreOptions.all
+    @State private var isExportingRestorePlan = false
+    @State private var restorePlanDocument = TS3TextFileDocument()
 
     private var plan: TS3PermissionBackupRestorePlan? {
         try? model.permissionBackupRestorePlan(from: confirmation.data, options: options)
@@ -17594,7 +17596,11 @@ private struct PermissionBackupImportSheet: View {
                             .font(.caption.weight(.semibold))
                         if !plan.entries.isEmpty {
                             Button("Copy Restore Plan") {
-                                TS3PlatformSupport.copyToPasteboard(plan.clipboardSummary)
+                                TS3PlatformSupport.copyToPasteboard(plan.auditSummary)
+                            }
+                            Button("Export Restore Plan") {
+                                restorePlanDocument = TS3TextFileDocument(data: Data(plan.auditSummary.utf8))
+                                isExportingRestorePlan = true
                             }
                             ForEach(plan.entries.prefix(6), id: \.name) { entry in
                                 VStack(alignment: .leading, spacing: 2) {
@@ -17638,6 +17644,16 @@ private struct PermissionBackupImportSheet: View {
             }
             .navigationTitle("Restore Permissions")
             .ts3InlineNavigationTitle()
+            .fileExporter(
+                isPresented: $isExportingRestorePlan,
+                document: restorePlanDocument,
+                contentType: .plainText,
+                defaultFilename: "ts3-permission-restore-plan"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {

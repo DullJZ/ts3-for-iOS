@@ -3700,6 +3700,13 @@ struct TS3PermissionBackupRestoreEntry: Equatable {
 
 struct TS3PermissionBackupRestorePlan {
     let entries: [TS3PermissionBackupRestoreEntry]
+    let targetDescription: String
+    let scope: TS3PermissionEditScope
+    let targetMatchesCurrentSelection: Bool
+    let options: TS3PermissionBackupRestoreOptions
+    let changedCount: Int?
+    let newPermissionCount: Int?
+    let unchangedCount: Int?
 
     var permissionNames: [String] {
         entries.map(\.name)
@@ -3710,7 +3717,32 @@ struct TS3PermissionBackupRestorePlan {
     }
 
     var clipboardSummary: String {
-        entries.map(\.clipboardSummary).joined(separator: "\n")
+        auditSummary
+    }
+
+    var auditSummary: String {
+        var lines = [
+            "Target: \(scope.title) - \(targetDescription)",
+            "Target comparison: \(targetMatchesCurrentSelection ? "Matched current selection" : "Not comparable with current selection")",
+            "Restore changed existing: \(options.changedExisting ? "Yes" : "No")",
+            "Restore new permissions: \(options.newPermissions ? "Yes" : "No")",
+            "Restore without comparison: \(options.restoreWhenTargetCannotBeCompared ? "Yes" : "No")",
+            "Selected restore entries: \(permissionCount)"
+        ]
+        if let changedCount {
+            lines.append("Changed existing available: \(changedCount)")
+        }
+        if let newPermissionCount {
+            lines.append("New permissions available: \(newPermissionCount)")
+        }
+        if let unchangedCount {
+            lines.append("Unchanged skipped: \(unchangedCount)")
+        }
+        if !entries.isEmpty {
+            lines.append("")
+            lines.append(contentsOf: entries.map(\.clipboardSummary))
+        }
+        return lines.joined(separator: "\n")
     }
 }
 
@@ -8234,15 +8266,40 @@ final class TS3AppModel: ObservableObject {
         let decoded = try JSONDecoder().decode(TS3PermissionBackup.self, from: data)
         let scope = TS3PermissionEditScope(rawValue: decoded.scope) ?? .ownClient
         let permissions = sanitizedPermissionBackupPermissions(decoded.permissions)
-        let currentByName = currentPermissionsForBackup(decoded, scope: scope).map {
+        let currentPermissions = currentPermissionsForBackup(decoded, scope: scope)
+        let currentByName = currentPermissions.map {
             Dictionary($0.map { ($0.name, $0) }, uniquingKeysWith: { _, latest in latest })
+        }
+        let changedCount = currentByName.map { currentByName in
+            permissions.filter { permission in
+                guard let current = currentByName[permission.name] else { return false }
+                return !Self.permissionBackupPermission(permission, matches: current)
+            }.count
+        }
+        let newPermissionCount = currentByName.map { currentByName in
+            permissions.filter { currentByName[$0.name] == nil }.count
+        }
+        let unchangedCount = currentByName.map { currentByName in
+            permissions.filter { permission in
+                guard let current = currentByName[permission.name] else { return false }
+                return Self.permissionBackupPermission(permission, matches: current)
+            }.count
         }
         let plannedNames = permissionsToRestore(
             permissions,
             currentByName: currentByName,
             options: options
         ).map(Self.permissionBackupRestoreEntry(from:))
-        return TS3PermissionBackupRestorePlan(entries: plannedNames)
+        return TS3PermissionBackupRestorePlan(
+            entries: plannedNames,
+            targetDescription: permissionBackupTargetDescription(decoded, scope: scope),
+            scope: scope,
+            targetMatchesCurrentSelection: currentPermissions != nil,
+            options: options,
+            changedCount: changedCount,
+            newPermissionCount: newPermissionCount,
+            unchangedCount: unchangedCount
+        )
     }
 
     func channelClientPermissionMembers() -> [TS3UserSummary] {

@@ -306,10 +306,21 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertEqual(
             plan.clipboardSummary,
             """
+            Target: Server Group - Group 6
+            Target comparison: Matched current selection
+            Restore changed existing: Yes
+            Restore new permissions: Yes
+            Restore without comparison: Yes
+            Selected restore entries: 2
+            Changed existing available: 1
+            New permissions available: 1
+            Unchanged skipped: 0
+
             name=i_channel_join_power value=50 negated=false skip=false
             name=i_client_kick_power value=75 negated=true skip=true
             """
         )
+        XCTAssertEqual(plan.auditSummary, plan.clipboardSummary)
     }
 
     @MainActor
@@ -393,6 +404,16 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertEqual(
             plan.clipboardSummary,
             """
+            Target: Server Group - Group 6
+            Target comparison: Matched current selection
+            Restore changed existing: Yes
+            Restore new permissions: Yes
+            Restore without comparison: Yes
+            Selected restore entries: 2
+            Changed existing available: 1
+            New permissions available: 1
+            Unchanged skipped: 0
+
             name=i_channel_join_power value=50 negated=true skip=false
             name=i_client_kick_power value=75 negated=false skip=true
             """
