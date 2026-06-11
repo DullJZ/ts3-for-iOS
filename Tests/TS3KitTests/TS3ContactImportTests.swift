@@ -27,6 +27,11 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(preview.newCount, 2)
         XCTAssertEqual(preview.updatedCount, 1)
         XCTAssertEqual(preview.unchangedCount, 1)
+        XCTAssertEqual(preview.statusSummaries, [
+            "status=Blocked count=2",
+            "status=Friend count=1",
+            "status=Ignored count=1"
+        ])
         XCTAssertEqual(preview.newContactNames, ["Duplicate New", "New"])
         XCTAssertEqual(preview.updatedContactNames, ["Existing New"])
         XCTAssertEqual(preview.unchangedContactNames, ["Same"])

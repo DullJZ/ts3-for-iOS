@@ -1030,6 +1030,7 @@ struct TS3ContactImportPreview {
     let newCount: Int
     let updatedCount: Int
     let unchangedCount: Int
+    let statusSummaries: [String]
     let newContactNames: [String]
     let updatedContactNames: [String]
     let unchangedContactNames: [String]
@@ -15840,10 +15841,28 @@ final class TS3AppModel: ObservableObject {
             newCount: newContactNames.count,
             updatedCount: updatedContactNames.count,
             unchangedCount: unchangedContactNames.count,
+            statusSummaries: contactStatusDistributionSummaries(sanitized.contacts),
             newContactNames: newContactNames.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending },
             updatedContactNames: updatedContactNames.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending },
             unchangedContactNames: unchangedContactNames.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
         )
+    }
+
+    private func contactStatusDistributionSummaries(_ contacts: [TS3ContactEntry]) -> [String] {
+        let grouped = Dictionary(grouping: contacts, by: \.status)
+        return grouped
+            .map { status, contacts in
+                (status: status, count: contacts.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.status.title.localizedCaseInsensitiveCompare(rhs.status.title) == .orderedAscending
+            }
+            .map { item in
+                "status=\(item.status.title) count=\(item.count)"
+            }
     }
 
     private func sanitizedImportedContacts(_ imported: [TS3ContactEntry]) -> (contacts: [TS3ContactEntry], invalidCount: Int, duplicateCount: Int) {

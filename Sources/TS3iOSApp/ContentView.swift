@@ -5686,6 +5686,9 @@ struct ContactsSheet: View {
             lines.append("Duplicate unique IDs: \(preview.duplicateCount) last value wins")
         }
         lines.append("Will add \(preview.newCount), update \(preview.updatedCount), and leave \(preview.unchangedCount) unchanged.")
+        if !preview.statusSummaries.isEmpty {
+            lines.append("Statuses: \(preview.statusSummaries.joined(separator: " | "))")
+        }
         if !preview.newContactNames.isEmpty {
             lines.append("Adding: \(contactNameSummary(preview.newContactNames))")
         }
@@ -5819,6 +5822,11 @@ private struct ContactImportSheet: View {
                         .foregroundColor(.secondary)
                     Text("Selected import entries: \(selectedCount)")
                         .font(.caption.weight(.semibold))
+                    ForEach(preview.statusSummaries, id: \.self) { summary in
+                        Text(summary)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 Section(header: Text("Import Entries")) {
