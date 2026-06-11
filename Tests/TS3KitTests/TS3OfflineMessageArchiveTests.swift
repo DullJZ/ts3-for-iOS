@@ -117,6 +117,16 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "id=3 | read=false | subject=Hello | sender=Sender A | senderUid=uid-a | timestamp=2678307200 | body=true",
+                "id=2 | read=true | subject=No sender"
+            ]
+        )
+        XCTAssertEqual(preview.candidates.map(\.id), [3, 2])
+        XCTAssertTrue(preview.containsMessage(id: 2))
+        XCTAssertFalse(preview.containsMessage(id: 99))
+        XCTAssertEqual(
             preview.clipboardSummary,
             (preview.readStateSummaries + preview.senderSummaries + preview.messageSummaries).joined(separator: "\n")
         )
@@ -150,6 +160,43 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         XCTAssertEqual(model.offlineMessages.first?.message, "Cached")
         XCTAssertEqual(model.offlineMessages.first?.isRead, true)
         XCTAssertEqual(model.lastError, nil)
+    }
+
+    @MainActor
+    func testOfflineMessageArchiveImportCanRestoreSelectedMessages() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "messages": [
+            {
+              "id": 7,
+              "senderUniqueIdentifier": "uid-b",
+              "senderName": " Sender B ",
+              "subject": " Saved ",
+              "message": " Cached ",
+              "isRead": true
+            },
+            {
+              "id": 8,
+              "senderUniqueIdentifier": "uid-c",
+              "senderName": " Sender C ",
+              "subject": " Keep ",
+              "message": " Selected ",
+              "isRead": false
+            }
+          ]
+        }
+        """
+        let data = Data(archiveJSON.utf8)
+
+        try model.importOfflineMessageArchive(from: data, selectedMessageIds: [8])
+
+        XCTAssertEqual(model.offlineMessages.count, 1)
+        XCTAssertEqual(model.offlineMessages.first?.id, 8)
+        XCTAssertEqual(model.offlineMessages.first?.senderName, "Sender C")
+        XCTAssertEqual(model.offlineMessages.first?.subject, "Keep")
+        XCTAssertEqual(model.offlineMessages.first?.message, "Selected")
+        XCTAssertEqual(model.offlineMessages.first?.isRead, false)
     }
 
     func testOfflineMessageSummaryCopyAndAccessibilityText() {

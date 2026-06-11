@@ -8429,7 +8429,7 @@ struct PokeOfflineReplySheet: View {
 
 struct OfflineMessagesSheet: View {
     private struct OfflineMessageArchiveImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3OfflineMessageArchivePreview
         let id = UUID()
     }
@@ -8835,8 +8835,8 @@ struct OfflineMessagesSheet: View {
                 OfflineMessageArchiveImportSheet(
                     preview: confirmation.preview,
                     previewMessage: inboxArchivePreviewMessage(confirmation.preview),
-                    importArchive: {
-                        importInboxArchive(from: confirmation.url)
+                    importArchive: { selectedMessageIds in
+                        importInboxArchive(data: confirmation.data, selectedMessageIds: selectedMessageIds)
                         pendingInboxArchiveImport = nil
                     },
                     cancel: {
@@ -9023,22 +9023,17 @@ struct OfflineMessagesSheet: View {
             }
         }
         do {
-            let preview = try model.offlineMessageArchivePreview(from: Data(contentsOf: url))
-            pendingInboxArchiveImport = OfflineMessageArchiveImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.offlineMessageArchivePreview(from: data)
+            pendingInboxArchiveImport = OfflineMessageArchiveImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importInboxArchive(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importInboxArchive(data: Data, selectedMessageIds: Set<Int>) {
         do {
-            try model.importOfflineMessageArchive(from: Data(contentsOf: url))
+            try model.importOfflineMessageArchive(from: data, selectedMessageIds: selectedMessageIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -9080,8 +9075,13 @@ struct OfflineMessagesSheet: View {
 private struct OfflineMessageArchiveImportSheet: View {
     let preview: TS3OfflineMessageArchivePreview
     let previewMessage: String
-    let importArchive: () -> Void
+    let importArchive: (Set<Int>) -> Void
     let cancel: () -> Void
+    @State private var selectedMessageIds: Set<Int> = []
+
+    private var validSelectedMessageIds: Set<Int> {
+        Set(selectedMessageIds.filter(preview.containsMessage))
+    }
 
     var body: some View {
         NavigationView {
@@ -9093,6 +9093,15 @@ private struct OfflineMessageArchiveImportSheet: View {
                     if preview.hasMessages {
                         Button("Copy Message Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedMessageIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedMessageIds = []
+                            }
+                            .disabled(selectedMessageIds.isEmpty)
                         }
                         ForEach(preview.readStateSummaries, id: \.self) { summary in
                             Text(summary)
@@ -9110,17 +9119,39 @@ private struct OfflineMessageArchiveImportSheet: View {
                                 .lineLimit(2)
                                 .truncationMode(.middle)
                         }
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedMessageIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedMessageIds.insert(candidate.id)
+                                    } else {
+                                        selectedMessageIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached inbox for offline review and does not mark, send, or delete server messages.")
+                    Text("Import replaces the local cached inbox with the selected messages for offline review and does not mark, send, or delete server messages.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Inbox")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedMessageIds.isEmpty {
+                    selectedMessageIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -9129,9 +9160,9 @@ private struct OfflineMessageArchiveImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importArchive()
+                        importArchive(validSelectedMessageIds)
                     }
-                    .disabled(!preview.hasMessages)
+                    .disabled(!preview.hasMessages || validSelectedMessageIds.isEmpty)
                 }
             }
         }

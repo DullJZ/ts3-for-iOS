@@ -1336,6 +1336,11 @@ private struct TS3OfflineMessageArchive: Codable {
 }
 
 struct TS3OfflineMessageArchivePreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: Int
+        let summary: String
+    }
+
     let messageCount: Int
     let skippedMessageCount: Int
     let unreadCount: Int
@@ -1345,6 +1350,7 @@ struct TS3OfflineMessageArchivePreview {
     let readStateSummaries: [String]
     let senderSummaries: [String]
     let messageSummaries: [String]
+    let candidates: [Candidate]
     let firstSenderName: String?
     let firstSenderUniqueIdentifier: String?
     let firstSubject: String?
@@ -1356,6 +1362,10 @@ struct TS3OfflineMessageArchivePreview {
 
     var clipboardSummary: String {
         (readStateSummaries + senderSummaries + messageSummaries).joined(separator: "\n")
+    }
+
+    func containsMessage(id: Int) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -11918,6 +11928,12 @@ final class TS3AppModel: ObservableObject {
             readStateSummaries: Self.offlineMessageReadStateSummaries(messages),
             senderSummaries: Self.offlineMessageSenderSummaries(messages),
             messageSummaries: messages.prefix(10).map(Self.offlineMessageArchiveSummary),
+            candidates: messages.map {
+                TS3OfflineMessageArchivePreview.Candidate(
+                    id: $0.id,
+                    summary: Self.offlineMessageArchiveSummary($0)
+                )
+            },
             firstSenderName: first?.senderName,
             firstSenderUniqueIdentifier: first?.senderUniqueIdentifier,
             firstSubject: first?.subject,
@@ -11925,9 +11941,13 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
-    func importOfflineMessageArchive(from data: Data) throws {
+    func importOfflineMessageArchive(from data: Data, selectedMessageIds: Set<Int>? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3OfflineMessageArchive.self, from: data)
-        offlineMessages = Array(sanitizedOfflineMessageArchiveMessages(decoded.messages).messages.prefix(500))
+        let messages = sanitizedOfflineMessageArchiveMessages(decoded.messages).messages.filter { message in
+            guard let selectedMessageIds else { return true }
+            return selectedMessageIds.contains(message.id)
+        }
+        offlineMessages = Array(messages.prefix(500))
         saveOfflineMessageHistory()
         lastError = nil
     }
