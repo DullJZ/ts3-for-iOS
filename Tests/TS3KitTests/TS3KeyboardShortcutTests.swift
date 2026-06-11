@@ -76,4 +76,107 @@ final class TS3KeyboardShortcutTests: XCTestCase {
             XCTAssertNotNil(TS3KeyboardShortcutDescriptor(shortcut.keys))
         }
     }
+
+    @MainActor
+    func testKeyboardShortcutImportPreviewSummarizesChangesWarningsAndLegacyIds() throws {
+        let model = TS3AppModel()
+        model.resetKeyboardShortcuts()
+        model.updateKeyboardShortcut(
+            try XCTUnwrap(model.keyboardShortcuts.first { $0.actionId == "open-chat" }),
+            keys: "Command-Shift-T",
+            isEnabled: true
+        )
+        let backupJSON = """
+        [
+          {
+            "actionId": "open-chat",
+            "group": "Messaging",
+            "action": "Open Chat",
+            "defaultKeys": "Command-Shift-T",
+            "keys": "Command-Option-T",
+            "isEnabled": true
+          },
+          {
+            "actionId": "open-events",
+            "group": "Messaging",
+            "action": "Open Events",
+            "defaultKeys": "Command-Shift-E",
+            "keys": "Command-Option-T",
+            "isEnabled": true
+          },
+          {
+            "actionId": "toggle-talk",
+            "group": "Voice",
+            "action": "Talk / Stop Talking",
+            "defaultKeys": "Command-T",
+            "keys": "Hyper-T",
+            "isEnabled": true
+          },
+          {
+            "actionId": "toggle-output-muted",
+            "group": "Voice",
+            "action": "Mute / Unmute Sound",
+            "defaultKeys": "Command-Shift-S",
+            "keys": "Command-Shift-S",
+            "isEnabled": false
+          },
+          {
+            "actionId": "legacy-action",
+            "group": "Legacy",
+            "action": "Legacy Action",
+            "defaultKeys": "Command-L",
+            "keys": "Command-L",
+            "isEnabled": true
+          }
+        ]
+        """
+
+        let preview = try model.keyboardShortcutsImportPreview(from: Data(backupJSON.utf8))
+
+        XCTAssertEqual(preview.totalShortcutCount, TS3AppModel.defaultKeyboardShortcuts.count)
+        XCTAssertEqual(preview.importedShortcutCount, 4)
+        XCTAssertEqual(preview.changedCount, 4)
+        XCTAssertEqual(preview.disabledCount, 1)
+        XCTAssertEqual(preview.invalidShortcutCount, 1)
+        XCTAssertEqual(preview.duplicateShortcutCount, 2)
+        XCTAssertEqual(preview.unknownShortcutCount, 1)
+        XCTAssertEqual(
+            preview.changedSummaries,
+            [
+                "changed action=Talk / Stop Talking keys=Hyper-T enabled=true",
+                "changed action=Mute / Unmute Sound keys=Command-Shift-S enabled=false",
+                "changed action=Open Chat keys=Command-Option-T enabled=true",
+                "changed action=Open Events keys=Command-Option-T enabled=true"
+            ]
+        )
+        XCTAssertEqual(preview.invalidSummaries, ["invalid action=Talk / Stop Talking keys=Hyper-T"])
+        XCTAssertEqual(
+            preview.duplicateSummaries,
+            [
+                "duplicate action=Open Chat keys=Command-Option-T",
+                "duplicate action=Open Events keys=Command-Option-T"
+            ]
+        )
+        XCTAssertEqual(preview.unknownSummaries, ["unknown actionId=legacy-action"])
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            Shortcuts: \(TS3AppModel.defaultKeyboardShortcuts.count)
+            Imported shortcuts: 4
+            Changed shortcuts: 4
+            Disabled shortcuts: 1
+            Invalid enabled shortcuts: 1
+            Duplicate enabled shortcuts: 2
+            Unknown imported shortcuts: 1
+            changed action=Talk / Stop Talking keys=Hyper-T enabled=true
+            changed action=Mute / Unmute Sound keys=Command-Shift-S enabled=false
+            changed action=Open Chat keys=Command-Option-T enabled=true
+            changed action=Open Events keys=Command-Option-T enabled=true
+            invalid action=Talk / Stop Talking keys=Hyper-T
+            duplicate action=Open Chat keys=Command-Option-T
+            duplicate action=Open Events keys=Command-Option-T
+            unknown actionId=legacy-action
+            """
+        )
+    }
 }

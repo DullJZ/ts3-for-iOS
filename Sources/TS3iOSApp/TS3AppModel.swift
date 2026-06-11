@@ -4064,6 +4064,37 @@ struct TS3KeyboardShortcutBinding: Identifiable, Codable {
     }
 }
 
+struct TS3KeyboardShortcutImportPreview {
+    let totalShortcutCount: Int
+    let importedShortcutCount: Int
+    let changedCount: Int
+    let disabledCount: Int
+    let invalidShortcutCount: Int
+    let duplicateShortcutCount: Int
+    let unknownShortcutCount: Int
+    let changedSummaries: [String]
+    let invalidSummaries: [String]
+    let duplicateSummaries: [String]
+    let unknownSummaries: [String]
+
+    var clipboardSummary: String {
+        var lines = [
+            "Shortcuts: \(totalShortcutCount)",
+            "Imported shortcuts: \(importedShortcutCount)",
+            "Changed shortcuts: \(changedCount)",
+            "Disabled shortcuts: \(disabledCount)",
+            "Invalid enabled shortcuts: \(invalidShortcutCount)",
+            "Duplicate enabled shortcuts: \(duplicateShortcutCount)",
+            "Unknown imported shortcuts: \(unknownShortcutCount)"
+        ]
+        lines.append(contentsOf: changedSummaries)
+        lines.append(contentsOf: invalidSummaries)
+        lines.append(contentsOf: duplicateSummaries)
+        lines.append(contentsOf: unknownSummaries)
+        return lines.joined(separator: "\n")
+    }
+}
+
 private struct TS3NotificationSettings: Codable {
     var isEnabled: Bool
     var soundEnabled: Bool
@@ -13997,6 +14028,49 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(keyboardShortcuts)
     }
 
+    func keyboardShortcutsImportPreview(from data: Data) throws -> TS3KeyboardShortcutImportPreview {
+        let decoded = try JSONDecoder().decode([TS3KeyboardShortcutBinding].self, from: data)
+        let sanitized = sanitizedKeyboardShortcuts(decoded)
+        let currentById = Dictionary(keyboardShortcuts.map { ($0.actionId, $0) }, uniquingKeysWith: { _, latest in latest })
+        let defaultIds = Set(Self.defaultKeyboardShortcuts.map(\.actionId))
+        let importedRecognizedIds = Set(decoded.map(\.actionId)).intersection(defaultIds)
+        let unknown = decoded.filter { !defaultIds.contains($0.actionId) }
+        let changed = sanitized.filter { shortcut in
+            guard let current = currentById[shortcut.actionId] else { return true }
+            return current.keys != shortcut.keys || current.isEnabled != shortcut.isEnabled
+        }
+        let invalid = sanitized.filter { shortcut in
+            shortcut.isEnabled && !Self.isValidKeyboardShortcutKeys(shortcut.keys)
+        }
+        let duplicateGroups = Dictionary(grouping: sanitized.filter {
+            $0.isEnabled && Self.isValidKeyboardShortcutKeys($0.keys)
+        }) { shortcut in
+            shortcut.keys.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        let duplicateShortcuts = duplicateGroups.values
+            .filter { $0.count > 1 }
+            .flatMap { $0 }
+            .sorted { lhs, rhs in
+                if lhs.keys.caseInsensitiveCompare(rhs.keys) == .orderedSame {
+                    return lhs.action.localizedCaseInsensitiveCompare(rhs.action) == .orderedAscending
+                }
+                return lhs.keys.localizedCaseInsensitiveCompare(rhs.keys) == .orderedAscending
+            }
+        return TS3KeyboardShortcutImportPreview(
+            totalShortcutCount: sanitized.count,
+            importedShortcutCount: importedRecognizedIds.count,
+            changedCount: changed.count,
+            disabledCount: sanitized.filter { !$0.isEnabled }.count,
+            invalidShortcutCount: invalid.count,
+            duplicateShortcutCount: duplicateShortcuts.count,
+            unknownShortcutCount: unknown.count,
+            changedSummaries: changed.prefix(10).map { "changed action=\($0.action) keys=\($0.keys) enabled=\($0.isEnabled ? "true" : "false")" },
+            invalidSummaries: invalid.prefix(10).map { "invalid action=\($0.action) keys=\($0.keys)" },
+            duplicateSummaries: duplicateShortcuts.prefix(10).map { "duplicate action=\($0.action) keys=\($0.keys)" },
+            unknownSummaries: unknown.prefix(10).map { "unknown actionId=\($0.actionId)" }
+        )
+    }
+
     func importKeyboardShortcuts(from data: Data) throws {
         let decoded = try JSONDecoder().decode([TS3KeyboardShortcutBinding].self, from: data)
         keyboardShortcuts = sanitizedKeyboardShortcuts(decoded)
@@ -14019,6 +14093,28 @@ final class TS3AppModel: ObservableObject {
                 keys: keys.isEmpty ? defaultShortcut.defaultKeys : keys,
                 isEnabled: imported.isEnabled
             )
+        }
+    }
+
+    private static func isValidKeyboardShortcutKeys(_ keys: String) -> Bool {
+        let parts = keys
+            .split(separator: "-")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard let keyName = parts.last else { return false }
+        for modifier in parts.dropLast() {
+            switch modifier.lowercased() {
+            case "command", "cmd", "⌘", "shift", "⇧", "option", "alt", "⌥", "control", "ctrl", "⌃":
+                continue
+            default:
+                return false
+            }
+        }
+        switch keyName.lowercased() {
+        case "return", "enter", "escape", "esc", "space", "tab", "delete", "backspace":
+            return true
+        default:
+            return keyName.count == 1
         }
     }
 

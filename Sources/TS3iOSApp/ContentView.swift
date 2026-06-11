@@ -229,7 +229,6 @@ extension View {
 
 struct KeyboardShortcutsSheet: View {
     private enum ShortcutConfirmation: Identifiable {
-        case importBackup(URL)
         case enableAll
         case disableAll
         case resetDisabled
@@ -237,7 +236,6 @@ struct KeyboardShortcutsSheet: View {
 
         var id: String {
             switch self {
-            case .importBackup: return "importBackup"
             case .enableAll: return "enableAll"
             case .disableAll: return "disableAll"
             case .resetDisabled: return "resetDisabled"
@@ -246,12 +244,19 @@ struct KeyboardShortcutsSheet: View {
         }
     }
 
+    private struct ShortcutImportConfirmation: Identifiable {
+        let id = UUID()
+        let data: Data
+        let preview: TS3KeyboardShortcutImportPreview
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var isExportingShortcuts = false
     @State private var isExportingShortcutBackup = false
     @State private var isImportingShortcutBackup = false
     @State private var confirmation: ShortcutConfirmation?
+    @State private var pendingShortcutImport: ShortcutImportConfirmation?
     @State private var captureShortcut: TS3KeyboardShortcutBinding?
     @State private var shortcutsDocument = TS3TextFileDocument()
     @State private var shortcutBackupDocument = TS3BookmarkFileDocument()
@@ -386,10 +391,22 @@ struct KeyboardShortcutsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    confirmation = .importBackup(url)
+                    prepareShortcutBackupImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .sheet(item: $pendingShortcutImport) { confirmation in
+                ShortcutImportPreviewSheet(
+                    preview: confirmation.preview,
+                    importBackup: {
+                        importShortcutBackup(data: confirmation.data)
+                        pendingShortcutImport = nil
+                    },
+                    cancel: {
+                        pendingShortcutImport = nil
+                    }
+                )
             }
             .sheet(item: $captureShortcut) { shortcut in
                 ShortcutCaptureSheet(shortcut: currentShortcut(for: shortcut)) { updatedKeys, isEnabled in
@@ -398,15 +415,6 @@ struct KeyboardShortcutsSheet: View {
             }
             .alert(item: $confirmation) { confirmation in
                 switch confirmation {
-                case .importBackup(let url):
-                    return Alert(
-                        title: Text("Import Shortcut Backup?"),
-                        message: Text("This replaces current keyboard shortcut settings with the selected backup."),
-                        primaryButton: .destructive(Text("Import")) {
-                            importShortcutBackup(from: url)
-                        },
-                        secondaryButton: .cancel()
-                    )
                 case .enableAll:
                     return Alert(
                         title: Text("Enable All Shortcuts?"),
@@ -494,7 +502,7 @@ struct KeyboardShortcutsSheet: View {
         }
     }
 
-    private func importShortcutBackup(from url: URL) {
+    private func prepareShortcutBackupImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -502,9 +510,95 @@ struct KeyboardShortcutsSheet: View {
             }
         }
         do {
-            try model.importKeyboardShortcuts(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.keyboardShortcutsImportPreview(from: data)
+            pendingShortcutImport = ShortcutImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importShortcutBackup(data: Data) {
+        do {
+            try model.importKeyboardShortcuts(from: data)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct ShortcutImportPreviewSheet: View {
+    let preview: TS3KeyboardShortcutImportPreview
+    let importBackup: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(preview.clipboardSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Shortcut Import Summary") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                if !preview.changedSummaries.isEmpty {
+                    Section(header: Text("Changed Shortcuts")) {
+                        ForEach(Array(preview.changedSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                if !preview.invalidSummaries.isEmpty || !preview.duplicateSummaries.isEmpty {
+                    Section(header: Text("Warnings")) {
+                        ForEach(Array((preview.invalidSummaries + preview.duplicateSummaries).enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                if !preview.unknownSummaries.isEmpty {
+                    Section(header: Text("Ignored Entries")) {
+                        ForEach(Array(preview.unknownSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces current shortcut settings for recognized actions, backfills missing actions with defaults, and ignores unknown legacy action IDs.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Shortcuts")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importBackup()
+                    }
+                }
+            }
         }
     }
 }
