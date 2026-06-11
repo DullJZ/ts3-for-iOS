@@ -163,6 +163,17 @@ final class TS3BanBackupTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "ip=192.0.2.10 | duration=permanent | reason=spam",
+                "name=Bad Guest | lastNickname=Recent Guest | duration=600s",
+                "uid=abc/def"
+            ]
+        )
+        XCTAssertEqual(Set(preview.candidates.map(\.id)).count, 3)
+        XCTAssertTrue(preview.containsRule(id: preview.candidates[1].id))
+        XCTAssertFalse(preview.containsRule(id: "missing-rule"))
+        XCTAssertEqual(
             preview.clipboardSummary,
             (preview.targetTypeSummaries + preview.durationSummaries + preview.ruleSummaries).joined(separator: "\n")
         )
@@ -188,6 +199,7 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertTrue(preview.targetTypeSummaries.isEmpty)
         XCTAssertTrue(preview.durationSummaries.isEmpty)
         XCTAssertTrue(preview.ruleSummaries.isEmpty)
+        XCTAssertTrue(preview.candidates.isEmpty)
         XCTAssertEqual(preview.clipboardSummary, "")
         XCTAssertFalse(preview.hasRules)
     }

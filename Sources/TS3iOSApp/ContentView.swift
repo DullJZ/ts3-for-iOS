@@ -19756,7 +19756,7 @@ struct PrivilegeKeyRow: View {
 
 struct BanListSheet: View {
     private struct BanBackupImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3BanBackupPreview
         let id = UUID()
     }
@@ -20092,8 +20092,8 @@ struct BanListSheet: View {
                 BanBackupImportSheet(
                     preview: confirmation.preview,
                     previewMessage: banBackupPreviewMessage(confirmation.preview),
-                    importBackup: {
-                        importBanBackup(from: confirmation.url)
+                    importBackup: { selectedRuleIds in
+                        importBanBackup(data: confirmation.data, selectedRuleIds: selectedRuleIds)
                         pendingBanBackupImport = nil
                     },
                     cancel: {
@@ -20254,22 +20254,17 @@ struct BanListSheet: View {
             }
         }
         do {
-            let preview = try model.banBackupPreview(from: Data(contentsOf: url))
-            pendingBanBackupImport = BanBackupImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.banBackupPreview(from: data)
+            pendingBanBackupImport = BanBackupImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importBanBackup(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importBanBackup(data: Data, selectedRuleIds: Set<String>) {
         do {
-            try model.importBanBackup(from: Data(contentsOf: url))
+            try model.importBanBackup(from: data, selectedRuleIds: selectedRuleIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -20318,8 +20313,13 @@ struct BanListSheet: View {
 private struct BanBackupImportSheet: View {
     let preview: TS3BanBackupPreview
     let previewMessage: String
-    let importBackup: () -> Void
+    let importBackup: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedRuleIds: Set<String> = []
+
+    private var validSelectedRuleIds: Set<String> {
+        Set(selectedRuleIds.filter(preview.containsRule))
+    }
 
     var body: some View {
         NavigationView {
@@ -20331,6 +20331,15 @@ private struct BanBackupImportSheet: View {
                     if preview.hasRules {
                         Button("Copy Rule Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedRuleIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedRuleIds = []
+                            }
+                            .disabled(selectedRuleIds.isEmpty)
                         }
                         ForEach(preview.targetTypeSummaries, id: \.self) { summary in
                             Text(summary)
@@ -20348,17 +20357,39 @@ private struct BanBackupImportSheet: View {
                                 .lineLimit(2)
                                 .truncationMode(.middle)
                         }
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedRuleIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedRuleIds.insert(candidate.id)
+                                    } else {
+                                        selectedRuleIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import adds the usable ban rules to the connected server. Empty and duplicate backup rules are skipped.")
+                    Text("Import adds the selected usable ban rules to the connected server. Empty and duplicate backup rules are skipped.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Ban Backup")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedRuleIds.isEmpty {
+                    selectedRuleIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -20367,9 +20398,9 @@ private struct BanBackupImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importBackup()
+                        importBackup(validSelectedRuleIds)
                     }
-                    .disabled(!preview.hasRules)
+                    .disabled(!preview.hasRules || validSelectedRuleIds.isEmpty)
                 }
             }
         }

@@ -1519,6 +1519,11 @@ private struct TS3BanBackup: Codable {
 }
 
 struct TS3BanBackupPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: String
+        let summary: String
+    }
+
     let ruleCount: Int
     let skippedRuleCount: Int
     let ipRuleCount: Int
@@ -1528,6 +1533,7 @@ struct TS3BanBackupPreview {
     let targetTypeSummaries: [String]
     let durationSummaries: [String]
     let ruleSummaries: [String]
+    let candidates: [Candidate]
     let firstIP: String?
     let firstName: String?
     let firstUniqueIdentifier: String?
@@ -1541,6 +1547,10 @@ struct TS3BanBackupPreview {
 
     var clipboardSummary: String {
         (targetTypeSummaries + durationSummaries + ruleSummaries).joined(separator: "\n")
+    }
+
+    func containsRule(id: String) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -12621,9 +12631,13 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(snapshot)
     }
 
-    func importBanBackup(from data: Data) throws {
+    func importBanBackup(from data: Data, selectedRuleIds: Set<String>? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3BanBackup.self, from: data)
-        for entry in sanitizedBanBackupEntries(decoded.entries).entries {
+        let entries = sanitizedBanBackupEntries(decoded.entries).entries.filter { entry in
+            guard let selectedRuleIds else { return true }
+            return selectedRuleIds.contains(Self.banBackupSelectionID(entry))
+        }
+        for entry in entries {
             addBan(
                 ip: entry.ip ?? "",
                 name: entry.name ?? "",
@@ -12652,6 +12666,12 @@ final class TS3AppModel: ObservableObject {
             targetTypeSummaries: Self.banBackupTargetTypeSummaries(entries),
             durationSummaries: Self.banBackupDurationSummaries(entries),
             ruleSummaries: entries.prefix(10).map(Self.banBackupRuleSummary),
+            candidates: entries.map {
+                TS3BanBackupPreview.Candidate(
+                    id: Self.banBackupSelectionID($0),
+                    summary: Self.banBackupRuleSummary($0)
+                )
+            },
             firstIP: first?.ip,
             firstName: first?.name,
             firstUniqueIdentifier: first?.uniqueIdentifier,
@@ -12698,6 +12718,17 @@ final class TS3AppModel: ObservableObject {
             )
         }
         return (sanitizedEntries, skippedCount)
+    }
+
+    private static func banBackupSelectionID(_ entry: TS3BanBackupEntry) -> String {
+        [
+            entry.ip ?? "",
+            entry.name ?? "",
+            entry.uniqueIdentifier ?? "",
+            entry.lastNickname ?? "",
+            entry.durationSeconds.map(String.init) ?? "",
+            entry.reason ?? ""
+        ].joined(separator: "\u{1F}")
     }
 
     private func trimmedBackupValue(_ value: String?) -> String? {
