@@ -13450,6 +13450,9 @@ struct ClientDatabaseSheet: View {
         if preview.skippedClientCount > 0 {
             lines.append("\(preview.skippedClientCount) invalid or duplicate records will be skipped.")
         }
+        if !preview.fieldSummaries.isEmpty {
+            lines.append("Fields: \(preview.fieldSummaries.joined(separator: " | "))")
+        }
         if let firstNickname = preview.firstNickname, let firstDatabaseId = preview.firstDatabaseId {
             var first = "First: \(firstNickname) (DB \(firstDatabaseId))"
             if let firstUniqueIdentifier = preview.firstUniqueIdentifier, !firstUniqueIdentifier.isEmpty {
@@ -13506,6 +13509,11 @@ private struct DatabaseBackupImportSheet: View {
                     if preview.hasClients {
                         Button("Copy Client Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(preview.fieldSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         ForEach(Array(preview.clientSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)

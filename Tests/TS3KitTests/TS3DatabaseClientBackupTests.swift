@@ -74,6 +74,14 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         XCTAssertEqual(preview.descriptionCount, 1)
         XCTAssertEqual(preview.lastIPCount, 1)
         XCTAssertEqual(preview.connectionCount, 1)
+        XCTAssertEqual(preview.fieldSummaries, [
+            "field=connections count=1",
+            "field=created count=1",
+            "field=description count=1",
+            "field=lastConnected count=1",
+            "field=lastIP count=1",
+            "field=uid count=1"
+        ])
         XCTAssertEqual(preview.firstNickname, "Alpha")
         XCTAssertEqual(preview.firstDatabaseId, 6)
         XCTAssertEqual(
@@ -83,7 +91,10 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
                 "db=7 | nickname=Beta | uid=uid-b | connections=5 | lastIP=203.0.113.7 | description=true | created=2678307200 | lastConnected=2678307300"
             ]
         )
-        XCTAssertEqual(preview.clipboardSummary, preview.clientSummaries.joined(separator: "\n"))
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            (preview.fieldSummaries + preview.clientSummaries).joined(separator: "\n")
+        )
         XCTAssertTrue(preview.hasClients)
     }
 

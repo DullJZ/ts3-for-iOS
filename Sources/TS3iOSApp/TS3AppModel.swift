@@ -2057,6 +2057,7 @@ struct TS3DatabaseClientBackupPreview {
     let descriptionCount: Int
     let lastIPCount: Int
     let connectionCount: Int
+    let fieldSummaries: [String]
     let clientSummaries: [String]
     let firstNickname: String?
     let firstUniqueIdentifier: String?
@@ -2067,7 +2068,7 @@ struct TS3DatabaseClientBackupPreview {
     }
 
     var clipboardSummary: String {
-        clientSummaries.joined(separator: "\n")
+        (fieldSummaries + clientSummaries).joined(separator: "\n")
     }
 }
 
@@ -9183,6 +9184,7 @@ final class TS3AppModel: ObservableObject {
             descriptionCount: clients.filter { $0.description?.isEmpty == false }.count,
             lastIPCount: clients.filter { $0.lastIP?.isEmpty == false }.count,
             connectionCount: clients.filter { $0.totalConnections != nil }.count,
+            fieldSummaries: Self.databaseClientBackupFieldSummaries(clients),
             clientSummaries: clients.prefix(10).map(\.backupSummary),
             firstNickname: first?.nickname,
             firstUniqueIdentifier: first?.uniqueIdentifier,
@@ -13017,6 +13019,28 @@ final class TS3AppModel: ObservableObject {
             return comparison == .orderedAscending
         }
         return (clients, skippedCount)
+    }
+
+    private static func databaseClientBackupFieldSummaries(_ clients: [TS3DatabaseClientSummary]) -> [String] {
+        let items: [(String, Int)] = [
+            ("uid", clients.filter { $0.uniqueIdentifier?.isEmpty == false }.count),
+            ("description", clients.filter { $0.description?.isEmpty == false }.count),
+            ("lastIP", clients.filter { $0.lastIP?.isEmpty == false }.count),
+            ("connections", clients.filter { $0.totalConnections != nil }.count),
+            ("created", clients.filter { $0.createdAt != nil }.count),
+            ("lastConnected", clients.filter { $0.lastConnectedAt != nil }.count)
+        ]
+        return items
+            .filter { $0.1 > 0 }
+            .sorted { lhs, rhs in
+                if lhs.1 != rhs.1 {
+                    return lhs.1 > rhs.1
+                }
+                return lhs.0.localizedCaseInsensitiveCompare(rhs.0) == .orderedAscending
+            }
+            .map { field, count in
+                "field=\(field) count=\(count)"
+            }
     }
 
     private func copyUser(
