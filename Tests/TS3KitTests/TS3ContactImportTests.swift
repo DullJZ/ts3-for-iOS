@@ -183,6 +183,33 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(draft.clipboardSummary, "contacts=0 | targets=None | note=Missing")
     }
 
+    func testContactStatusDraftBuildsAuditableSummaryAndDeduplicatesTargets() {
+        let first = makeContact(uniqueIdentifier: "uid-first", nickname: "First", status: .friend, note: "")
+        let second = makeContact(uniqueIdentifier: "uid-second", nickname: "Second", status: .blocked, note: "")
+        let draft = TS3ContactStatusDraft(contacts: [first, second, first], status: .blocked)
+
+        XCTAssertTrue(draft.validationMessages.isEmpty)
+        XCTAssertEqual(draft.uniqueContacts.map(\.uniqueIdentifier), ["uid-first", "uid-second"])
+        XCTAssertEqual(
+            draft.clipboardSummary,
+            "contacts=2 | targets=First, Second | status=Blocked | changed=1 | unchanged=1"
+        )
+        XCTAssertEqual(
+            draft.accessibilityValue,
+            "Set 2 contacts to Blocked. 1 changed. 1 unchanged. Targets First, Second"
+        )
+    }
+
+    func testContactStatusDraftRejectsEmptyTargets() {
+        let draft = TS3ContactStatusDraft(contacts: [], status: .ignored)
+
+        XCTAssertEqual(draft.validationMessages, ["Select contacts before changing their status."])
+        XCTAssertEqual(
+            draft.clipboardSummary,
+            "contacts=0 | targets=None | status=Ignored | changed=0 | unchanged=0"
+        )
+    }
+
     @MainActor
     func testAppendNoteDraftAppliesDeduplicatedVisibleContacts() {
         let model = TS3AppModel()

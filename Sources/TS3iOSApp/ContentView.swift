@@ -5292,6 +5292,23 @@ struct ContactsSheet: View {
         visibleContacts.contains { $0.status != .neutral }
     }
 
+    private func contactStatusDraft(_ status: TS3ContactStatus) -> TS3ContactStatusDraft {
+        TS3ContactStatusDraft(contacts: visibleContacts, status: status)
+    }
+
+    private func applyVisibleContactStatus(_ status: TS3ContactStatus) {
+        let draft = contactStatusDraft(status)
+        guard draft.validationMessages.isEmpty else {
+            model.lastError = draft.validationMessages.joined(separator: "\n")
+            return
+        }
+        model.updateContacts(draft.uniqueContacts, status: status)
+    }
+
+    private func copyVisibleContactStatusDraft(_ status: TS3ContactStatus) {
+        TS3PlatformSupport.copyToPasteboard(contactStatusDraft(status).clipboardSummary)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -5413,21 +5430,37 @@ struct ContactsSheet: View {
                         .disabled(model.onlineContactCandidates.isEmpty)
                         Divider()
                         Button("Mark Visible Friends") {
-                            model.updateContacts(visibleContacts, status: .friend)
+                            applyVisibleContactStatus(.friend)
                         }
                         .disabled(!canMarkVisibleFriends)
+                        Button("Copy Mark Friends Draft") {
+                            copyVisibleContactStatusDraft(.friend)
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button("Block Visible Contacts") {
-                            model.updateContacts(visibleContacts, status: .blocked)
+                            applyVisibleContactStatus(.blocked)
                         }
                         .disabled(!canBlockVisibleContacts)
+                        Button("Copy Block Draft") {
+                            copyVisibleContactStatusDraft(.blocked)
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button("Ignore Visible Contacts") {
-                            model.updateContacts(visibleContacts, status: .ignored)
+                            applyVisibleContactStatus(.ignored)
                         }
                         .disabled(!canIgnoreVisibleContacts)
+                        Button("Copy Ignore Draft") {
+                            copyVisibleContactStatusDraft(.ignored)
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button("Set Visible Neutral") {
-                            model.updateContacts(visibleContacts, status: .neutral)
+                            applyVisibleContactStatus(.neutral)
                         }
                         .disabled(!canSetVisibleNeutral)
+                        Button("Copy Neutral Draft") {
+                            copyVisibleContactStatusDraft(.neutral)
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button("Append Note to Visible Contacts") {
                             isShowingVisibleNoteSheet = true
                         }
@@ -12717,6 +12750,23 @@ struct ClientDatabaseSheet: View {
         visibleContactEntries.contains { $0.status != .neutral }
     }
 
+    private func visibleContactStatusDraft(_ status: TS3ContactStatus) -> TS3ContactStatusDraft {
+        TS3ContactStatusDraft(contacts: visibleContactEntries, status: status)
+    }
+
+    private func applyVisibleContactStatus(_ status: TS3ContactStatus) {
+        let draft = visibleContactStatusDraft(status)
+        guard draft.validationMessages.isEmpty else {
+            model.lastError = draft.validationMessages.joined(separator: "\n")
+            return
+        }
+        model.updateContacts(draft.uniqueContacts, status: status)
+    }
+
+    private func copyVisibleContactStatusDraft(_ status: TS3ContactStatus) {
+        TS3PlatformSupport.copyToPasteboard(visibleContactStatusDraft(status).clipboardSummary)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -12976,21 +13026,37 @@ struct ClientDatabaseSheet: View {
                         }
                         Divider()
                         Button("Mark Visible Friends") {
-                            model.updateContacts(visibleContactEntries, status: .friend)
+                            applyVisibleContactStatus(.friend)
                         }
                         .disabled(!canMarkVisibleFriends)
+                        Button("Copy Mark Friends Draft") {
+                            copyVisibleContactStatusDraft(.friend)
+                        }
+                        .disabled(visibleContactEntries.isEmpty)
                         Button("Block Visible Contacts") {
-                            model.updateContacts(visibleContactEntries, status: .blocked)
+                            applyVisibleContactStatus(.blocked)
                         }
                         .disabled(!canBlockVisibleContacts)
+                        Button("Copy Block Draft") {
+                            copyVisibleContactStatusDraft(.blocked)
+                        }
+                        .disabled(visibleContactEntries.isEmpty)
                         Button("Ignore Visible Contacts") {
-                            model.updateContacts(visibleContactEntries, status: .ignored)
+                            applyVisibleContactStatus(.ignored)
                         }
                         .disabled(!canIgnoreVisibleContacts)
+                        Button("Copy Ignore Draft") {
+                            copyVisibleContactStatusDraft(.ignored)
+                        }
+                        .disabled(visibleContactEntries.isEmpty)
                         Button("Set Visible Neutral") {
-                            model.updateContacts(visibleContactEntries, status: .neutral)
+                            applyVisibleContactStatus(.neutral)
                         }
                         .disabled(!canSetVisibleNeutral)
+                        Button("Copy Neutral Draft") {
+                            copyVisibleContactStatusDraft(.neutral)
+                        }
+                        .disabled(visibleContactEntries.isEmpty)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }

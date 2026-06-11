@@ -1099,6 +1099,54 @@ struct TS3ContactNoteDraft {
     }
 }
 
+struct TS3ContactStatusDraft {
+    let contacts: [TS3ContactEntry]
+    let status: TS3ContactStatus
+
+    var uniqueContacts: [TS3ContactEntry] {
+        var seen = Set<String>()
+        return contacts.filter { contact in
+            seen.insert(contact.uniqueIdentifier).inserted
+        }
+    }
+
+    var validationMessages: [String] {
+        uniqueContacts.isEmpty ? ["Select contacts before changing their status."] : []
+    }
+
+    var clipboardSummary: String {
+        [
+            "contacts=\(uniqueContacts.count)",
+            "targets=\(targetSummary)",
+            "status=\(status.title)",
+            "changed=\(changedCount)",
+            "unchanged=\(unchangedCount)"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        "Set \(uniqueContacts.count) contacts to \(status.title). \(changedCount) changed. \(unchangedCount) unchanged. Targets \(targetSummary)"
+    }
+
+    private var changedCount: Int {
+        uniqueContacts.filter { $0.status != status }.count
+    }
+
+    private var unchangedCount: Int {
+        uniqueContacts.count - changedCount
+    }
+
+    private var targetSummary: String {
+        let names = uniqueContacts.map(\.nickname)
+        let visible = names.prefix(6).joined(separator: ", ")
+        let remainingCount = names.count - min(names.count, 6)
+        guard remainingCount > 0 else {
+            return visible.isEmpty ? "None" : visible
+        }
+        return "\(visible), +\(remainingCount) more"
+    }
+}
+
 struct TS3ContactFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
