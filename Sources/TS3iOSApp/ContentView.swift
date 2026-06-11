@@ -20727,6 +20727,12 @@ struct ComplaintListSheet: View {
         if preview.skippedComplaintCount > 0 {
             lines.append("Skipped invalid or duplicate complaints: \(preview.skippedComplaintCount)")
         }
+        if !preview.targetSummaries.isEmpty {
+            lines.append("Target summary: \(preview.targetSummaries.joined(separator: " | "))")
+        }
+        if !preview.sourceSummaries.isEmpty {
+            lines.append("Source summary: \(preview.sourceSummaries.joined(separator: " | "))")
+        }
         if let targetName = preview.firstTargetName {
             lines.append("First target: \(targetName)")
         } else if let targetDatabaseId = preview.firstTargetDatabaseId {
@@ -20764,6 +20770,16 @@ private struct ComplaintArchiveImportSheet: View {
                     if preview.hasComplaints {
                         Button("Copy Complaint Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(preview.targetSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        ForEach(preview.sourceSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         ForEach(Array(preview.complaintSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)

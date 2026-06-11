@@ -1772,6 +1772,8 @@ struct TS3ComplaintArchivePreview {
     let namedSourceCount: Int
     let anonymousSourceCount: Int
     let messageCount: Int
+    let targetSummaries: [String]
+    let sourceSummaries: [String]
     let complaintSummaries: [String]
     let firstTargetName: String?
     let firstTargetDatabaseId: Int?
@@ -1785,7 +1787,7 @@ struct TS3ComplaintArchivePreview {
     }
 
     var clipboardSummary: String {
-        complaintSummaries.joined(separator: "\n")
+        (targetSummaries + sourceSummaries + complaintSummaries).joined(separator: "\n")
     }
 }
 
@@ -11582,6 +11584,14 @@ final class TS3AppModel: ObservableObject {
             namedSourceCount: entries.filter { $0.sourceName?.isEmpty == false }.count,
             anonymousSourceCount: entries.filter { $0.sourceName?.isEmpty != false }.count,
             messageCount: entries.filter { $0.message?.isEmpty == false }.count,
+            targetSummaries: Self.complaintArchivePartySummaries(
+                entries.map { Self.complaintArchivePartyName($0.targetName, databaseId: $0.targetClientDatabaseId) },
+                label: "target"
+            ),
+            sourceSummaries: Self.complaintArchivePartySummaries(
+                entries.map { Self.complaintArchivePartyName($0.sourceName, databaseId: $0.sourceClientDatabaseId) },
+                label: "source"
+            ),
             complaintSummaries: entries.prefix(10).map(\.clipboardSummary),
             firstTargetName: first?.targetName,
             firstTargetDatabaseId: first?.targetClientDatabaseId,
@@ -14782,6 +14792,36 @@ final class TS3AppModel: ObservableObject {
             }
         }
         return (sanitizedEntries, skippedCount)
+    }
+
+    private static func complaintArchivePartyName(_ name: String?, databaseId: Int) -> String {
+        guard let name, !name.isEmpty else {
+            return "db=\(databaseId)"
+        }
+        return "\(name) db=\(databaseId)"
+    }
+
+    private static func complaintArchivePartySummaries(_ values: [String], label: String) -> [String] {
+        let grouped = Dictionary(grouping: values, by: { $0 })
+        return grouped
+            .map { value, values in
+                (value: value, count: values.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                let lhsIsFallback = lhs.value.hasPrefix("db=")
+                let rhsIsFallback = rhs.value.hasPrefix("db=")
+                if lhsIsFallback != rhsIsFallback {
+                    return !lhsIsFallback
+                }
+                return lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            .prefix(6)
+            .map { item in
+                "\(label)=\(item.value) count=\(item.count)"
+            }
     }
 
     private func trimmedArchiveValue(_ value: String?) -> String? {

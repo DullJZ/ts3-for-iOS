@@ -133,6 +133,14 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(preview.namedSourceCount, 1)
         XCTAssertEqual(preview.anonymousSourceCount, 1)
         XCTAssertEqual(preview.messageCount, 1)
+        XCTAssertEqual(preview.targetSummaries, [
+            "target=Target db=22 count=1",
+            "target=db=23 count=1"
+        ])
+        XCTAssertEqual(preview.sourceSummaries, [
+            "source=Reporter db=44 count=1",
+            "source=db=45 count=1"
+        ])
         XCTAssertEqual(preview.firstTargetName, "Target")
         XCTAssertEqual(preview.firstSourceName, "Reporter")
         XCTAssertEqual(preview.firstMessage, "Abuse")
@@ -143,7 +151,10 @@ final class TS3ComplaintArchiveTests: XCTestCase {
                 "sourceDb=45 | targetDb=23"
             ]
         )
-        XCTAssertEqual(preview.clipboardSummary, preview.complaintSummaries.joined(separator: "\n"))
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            (preview.targetSummaries + preview.sourceSummaries + preview.complaintSummaries).joined(separator: "\n")
+        )
         XCTAssertTrue(preview.hasComplaints)
     }
 
