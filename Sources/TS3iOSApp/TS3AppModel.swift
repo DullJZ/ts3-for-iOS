@@ -2992,6 +2992,13 @@ private struct TS3PrivilegeKeyBackup: Codable {
 }
 
 struct TS3PrivilegeKeyBackupPreview {
+    struct Candidate: Identifiable, Equatable {
+        let key: String
+        let summary: String
+
+        var id: String { key }
+    }
+
     let keyCount: Int
     let serverGroupCount: Int
     let channelGroupCount: Int
@@ -2999,6 +3006,7 @@ struct TS3PrivilegeKeyBackupPreview {
     let typeSummaries: [String]
     let targetSummaries: [String]
     let keySummaries: [String]
+    let candidates: [Candidate]
     let firstKey: String?
     let firstType: TS3PrivilegeKeyType?
     let firstGroupId: Int?
@@ -3008,6 +3016,10 @@ struct TS3PrivilegeKeyBackupPreview {
 
     var hasKeys: Bool {
         keyCount > 0
+    }
+
+    func containsKey(_ key: String) -> Bool {
+        candidates.contains { $0.key == key }
     }
 
     var clipboardSummary: String {
@@ -13070,6 +13082,12 @@ final class TS3AppModel: ObservableObject {
             typeSummaries: Self.privilegeKeyBackupTypeSummaries(entries),
             targetSummaries: Self.privilegeKeyBackupTargetSummaries(entries),
             keySummaries: entries.prefix(10).map(Self.privilegeKeyBackupSummary),
+            candidates: entries.map {
+                TS3PrivilegeKeyBackupPreview.Candidate(
+                    key: $0.key,
+                    summary: Self.privilegeKeyBackupSummary($0)
+                )
+            },
             firstKey: first?.key,
             firstType: first?.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)),
             firstGroupId: first?.groupId,
@@ -13079,9 +13097,15 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
-    func importPrivilegeKeyBackup(from data: Data) throws {
+    func importPrivilegeKeyBackup(from data: Data, selectedKey: String? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3PrivilegeKeyBackup.self, from: data)
-        generatedPrivilegeKey = sanitizedPrivilegeKeyBackupEntries(decoded.entries).first?.key
+        let entries = sanitizedPrivilegeKeyBackupEntries(decoded.entries)
+        let trimmedSelectedKey = selectedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmedSelectedKey, !trimmedSelectedKey.isEmpty {
+            generatedPrivilegeKey = entries.first { $0.key == trimmedSelectedKey }?.key ?? entries.first?.key
+        } else {
+            generatedPrivilegeKey = entries.first?.key
+        }
         lastError = nil
     }
 

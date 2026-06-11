@@ -18748,7 +18748,7 @@ struct TemporaryServerPasswordRow: View {
 
 struct PrivilegeKeysSheet: View {
     private struct KeyBackupImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3PrivilegeKeyBackupPreview
         let id = UUID()
     }
@@ -19148,8 +19148,8 @@ struct PrivilegeKeysSheet: View {
                 PrivilegeKeyBackupImportSheet(
                     preview: confirmation.preview,
                     previewMessage: privilegeKeyBackupPreviewMessage(confirmation.preview),
-                    importBackup: {
-                        importPrivilegeKeyBackup(from: confirmation.url)
+                    importBackup: { selectedKey in
+                        importPrivilegeKeyBackup(data: confirmation.data, selectedKey: selectedKey)
                         pendingKeyBackupImport = nil
                     },
                     cancel: {
@@ -19373,22 +19373,17 @@ struct PrivilegeKeysSheet: View {
             }
         }
         do {
-            let preview = try model.privilegeKeyBackupPreview(from: Data(contentsOf: url))
-            pendingKeyBackupImport = KeyBackupImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.privilegeKeyBackupPreview(from: data)
+            pendingKeyBackupImport = KeyBackupImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importPrivilegeKeyBackup(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importPrivilegeKeyBackup(data: Data, selectedKey: String) {
         do {
-            try model.importPrivilegeKeyBackup(from: Data(contentsOf: url))
+            try model.importPrivilegeKeyBackup(from: data, selectedKey: selectedKey)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -19532,8 +19527,17 @@ struct PrivilegeKeysSheet: View {
 private struct PrivilegeKeyBackupImportSheet: View {
     let preview: TS3PrivilegeKeyBackupPreview
     let previewMessage: String
-    let importBackup: () -> Void
+    let importBackup: (String) -> Void
     let cancel: () -> Void
+    @State private var selectedKey: String = ""
+
+    private var selectedKeyOrFirst: String {
+        preview.containsKey(selectedKey) ? selectedKey : (preview.candidates.first?.key ?? "")
+    }
+
+    private var selectedCandidate: TS3PrivilegeKeyBackupPreview.Candidate? {
+        preview.candidates.first { $0.key == selectedKeyOrFirst }
+    }
 
     var body: some View {
         NavigationView {
@@ -19545,6 +19549,19 @@ private struct PrivilegeKeyBackupImportSheet: View {
                     if preview.hasKeys {
                         Button("Copy Key Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        Picker("Key", selection: $selectedKey) {
+                            ForEach(preview.candidates) { candidate in
+                                Text(candidate.key)
+                                    .tag(candidate.key)
+                            }
+                        }
+                        if let selectedCandidate {
+                            Text(selectedCandidate.summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
                         }
                         ForEach(preview.typeSummaries, id: \.self) { summary in
                             Text(summary)
@@ -19566,13 +19583,18 @@ private struct PrivilegeKeyBackupImportSheet: View {
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import loads the first usable key into the generated key area for copying, using, saving, or exporting.")
+                    Text("Import loads the selected usable key into the generated key area for copying, using, saving, or exporting.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Key Backup")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedKey.isEmpty {
+                    selectedKey = preview.firstKey ?? ""
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -19581,9 +19603,9 @@ private struct PrivilegeKeyBackupImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importBackup()
+                        importBackup(selectedKeyOrFirst)
                     }
-                    .disabled(!preview.hasKeys)
+                    .disabled(!preview.hasKeys || selectedKeyOrFirst.isEmpty)
                 }
             }
         }

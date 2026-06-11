@@ -154,6 +154,15 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
                 "key=second-key | type=Channel Group | group=8"
             ]
         )
+        XCTAssertEqual(preview.candidates.map(\.key), ["first-key", "second-key"])
+        XCTAssertTrue(preview.containsKey("second-key"))
+        XCTAssertFalse(preview.containsKey("missing-key"))
+        XCTAssertEqual(model.generatedPrivilegeKey, "first-key")
+
+        try model.importPrivilegeKeyBackup(from: data, selectedKey: "second-key")
+        XCTAssertEqual(model.generatedPrivilegeKey, "second-key")
+
+        try model.importPrivilegeKeyBackup(from: data, selectedKey: "missing-key")
         XCTAssertEqual(model.generatedPrivilegeKey, "first-key")
     }
 
