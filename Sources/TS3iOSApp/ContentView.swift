@@ -23581,10 +23581,12 @@ struct ChannelEditorSheet: View {
     private func draftValidationMessages(for draft: ChannelDraft) -> [String] {
         TS3ChannelDraftValidator.validationMessages(
             name: draft.name,
+            channelType: draft.channelType,
             neededTalkPower: draft.neededTalkPower,
             neededJoinPower: draft.neededJoinPower ?? "",
             neededSubscribePower: draft.neededSubscribePower,
             neededDescriptionViewPower: draft.neededDescriptionViewPower ?? "",
+            codec: draft.codec,
             codecQuality: draft.codecQuality,
             codecLatencyFactor: draft.codecLatencyFactor ?? "",
             order: draft.order ?? "",
@@ -23605,13 +23607,13 @@ struct ChannelEditorSheet: View {
         description = draft.description
         password = draft.password
         clearPassword = draft.clearPassword
-        channelType = TS3ChannelType(rawValue: draft.channelType) ?? .permanent
+        channelType = TS3ChannelType.value(forDraft: draft.channelType) ?? .permanent
         isDefault = draft.isDefault
         neededTalkPower = draft.neededTalkPower
         neededJoinPower = draft.neededJoinPower ?? ""
         neededSubscribePower = draft.neededSubscribePower
         neededDescriptionViewPower = draft.neededDescriptionViewPower ?? ""
-        codec = parsedOptionalInt(draft.codec)
+        codec = parsedOptionalCodec(draft.codec)
         codecQuality = draft.codecQuality
         codecLatencyFactor = draft.codecLatencyFactor ?? ""
         isCodecUnencrypted = draft.isCodecUnencrypted ?? false
@@ -23626,11 +23628,13 @@ struct ChannelEditorSheet: View {
     }
 
     private func channelTypeTitle(_ rawValue: String) -> String {
-        (TS3ChannelType(rawValue: rawValue) ?? .permanent).title
+        (TS3ChannelType.value(forDraft: rawValue) ?? .permanent).title
     }
 
     private func codecTitle(for rawValue: String) -> String {
-        TS3ChannelCodec.title(for: Int(rawValue.trimmingCharacters(in: .whitespacesAndNewlines))) ?? ""
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        return TS3ChannelCodec.title(for: parsedOptionalCodec(trimmed)) ?? trimmed
     }
 
     private func codecQualityTitle(for rawValue: String) -> String {
@@ -23767,6 +23771,11 @@ struct ChannelEditorSheet: View {
     private func isOptionalInt(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty || Int(trimmed) != nil
+    }
+
+    private func parsedOptionalCodec(_ text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : TS3ChannelCodec.value(forDraft: trimmed)
     }
 
     private func isRequiredInt(_ text: String) -> Bool {

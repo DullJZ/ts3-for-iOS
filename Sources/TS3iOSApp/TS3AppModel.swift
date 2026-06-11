@@ -87,6 +87,23 @@ enum TS3ChannelType: String, CaseIterable, Identifiable {
             return "Permanent"
         }
     }
+
+    static func value(forDraft value: String) -> TS3ChannelType? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        switch normalized {
+        case "temporary", "temp":
+            return .temporary
+        case "semi permanent", "semipermanent", "semi":
+            return .semiPermanent
+        case "permanent", "perm":
+            return .permanent
+        default:
+            return nil
+        }
+    }
 }
 
 enum TS3ChannelCodec: Int, CaseIterable, Identifiable {
@@ -122,6 +139,32 @@ enum TS3ChannelCodec: Int, CaseIterable, Identifiable {
             return "\(codec.title) (\(rawValue))"
         }
         return "Unknown (\(rawValue))"
+    }
+
+    static func value(forDraft value: String) -> Int? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        if let numericValue = Int(normalized) {
+            return numericValue
+        }
+        switch normalized {
+        case "speex narrowband", "narrowband", "speex nb":
+            return TS3ChannelCodec.speexNarrowband.rawValue
+        case "speex wideband", "wideband", "speex wb":
+            return TS3ChannelCodec.speexWideband.rawValue
+        case "speex ultra wideband", "speex ultrawideband", "ultra wideband", "ultrawideband", "speex uwb":
+            return TS3ChannelCodec.speexUltraWideband.rawValue
+        case "celt mono", "celt":
+            return TS3ChannelCodec.celtMono.rawValue
+        case "opus voice", "voice":
+            return TS3ChannelCodec.opusVoice.rawValue
+        case "opus music", "music":
+            return TS3ChannelCodec.opusMusic.rawValue
+        default:
+            return nil
+        }
     }
 }
 
@@ -180,10 +223,12 @@ struct TS3ChannelSummary: Identifiable {
 enum TS3ChannelDraftValidator {
     static func validationMessages(
         name: String,
+        channelType: String? = nil,
         neededTalkPower: String,
         neededJoinPower: String,
         neededSubscribePower: String,
         neededDescriptionViewPower: String,
+        codec: String? = nil,
         codecQuality: String,
         codecLatencyFactor: String,
         order: String,
@@ -199,6 +244,10 @@ enum TS3ChannelDraftValidator {
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             messages.append("Name is required before saving.")
         }
+        if let channelType,
+           TS3ChannelType.value(forDraft: channelType) == nil {
+            messages.append("Channel type must be temporary, semi-permanent, or permanent.")
+        }
         if !isOptionalInt(neededTalkPower) {
             messages.append("Needed talk power must be numeric.")
         }
@@ -210,6 +259,11 @@ enum TS3ChannelDraftValidator {
         }
         if !isOptionalInt(neededDescriptionViewPower) {
             messages.append("Needed description view power must be numeric.")
+        }
+        if let codec,
+           !codec.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           TS3ChannelCodec.value(forDraft: codec) == nil {
+            messages.append("Codec must be Speex Narrowband, Speex Wideband, Speex Ultra-Wideband, CELT Mono, Opus Voice, Opus Music, or numeric.")
         }
         if !isOptionalInt(codecQuality) ||
             !TS3ChannelCodecConstraints.isValidQuality(parsedOptionalInt(codecQuality)) {

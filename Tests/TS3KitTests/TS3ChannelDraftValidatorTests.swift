@@ -67,4 +67,61 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
 
         XCTAssertTrue(messages.isEmpty)
     }
+
+    func testChannelDraftValidatorAcceptsOfficialTypeAndCodecAliases() {
+        let messages = TS3ChannelDraftValidator.validationMessages(
+            name: "Raid Room",
+            channelType: "semi-permanent",
+            neededTalkPower: "",
+            neededJoinPower: "",
+            neededSubscribePower: "",
+            neededDescriptionViewPower: "",
+            codec: "opus-music",
+            codecQuality: "10",
+            codecLatencyFactor: "2",
+            order: "",
+            deleteDelaySeconds: "",
+            iconId: "",
+            maxClients: "",
+            maxClientsUnlimited: true,
+            maxFamilyClients: "",
+            maxFamilyClientsUnlimited: true,
+            maxFamilyClientsInherited: false
+        )
+
+        XCTAssertTrue(messages.isEmpty)
+        XCTAssertEqual(TS3ChannelType.value(forDraft: "semi-permanent"), .semiPermanent)
+        XCTAssertEqual(TS3ChannelCodec.value(forDraft: "opus-music"), TS3ChannelCodec.opusMusic.rawValue)
+        XCTAssertEqual(TS3ChannelCodec.value(forDraft: "speex_uwb"), TS3ChannelCodec.speexUltraWideband.rawValue)
+    }
+
+    func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
+        let messages = TS3ChannelDraftValidator.validationMessages(
+            name: "Raid Room",
+            channelType: "sticky",
+            neededTalkPower: "",
+            neededJoinPower: "",
+            neededSubscribePower: "",
+            neededDescriptionViewPower: "",
+            codec: "lossless",
+            codecQuality: "",
+            codecLatencyFactor: "",
+            order: "",
+            deleteDelaySeconds: "",
+            iconId: "",
+            maxClients: "",
+            maxClientsUnlimited: true,
+            maxFamilyClients: "",
+            maxFamilyClientsUnlimited: true,
+            maxFamilyClientsInherited: false
+        )
+
+        XCTAssertEqual(
+            messages,
+            [
+                "Channel type must be temporary, semi-permanent, or permanent.",
+                "Codec must be Speex Narrowband, Speex Wideband, Speex Ultra-Wideband, CELT Mono, Opus Voice, Opus Music, or numeric."
+            ]
+        )
+    }
 }
