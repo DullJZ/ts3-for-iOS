@@ -91,6 +91,16 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
                 "db=7 | nickname=Beta | uid=uid-b | connections=5 | lastIP=203.0.113.7 | description=true | created=2678307200 | lastConnected=2678307300"
             ]
         )
+        XCTAssertEqual(preview.candidates.map(\.id), [6, 7])
+        XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "db=6 | nickname=Alpha",
+                "db=7 | nickname=Beta | uid=uid-b | connections=5 | lastIP=203.0.113.7 | description=true | created=2678307200 | lastConnected=2678307300"
+            ]
+        )
+        XCTAssertTrue(preview.containsClient(id: 7))
+        XCTAssertFalse(preview.containsClient(id: 9))
         XCTAssertEqual(
             preview.clipboardSummary,
             (preview.fieldSummaries + preview.clientSummaries).joined(separator: "\n")
@@ -133,6 +143,49 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
 
         XCTAssertEqual(model.databaseClients.map(\.id), [11, 12])
         XCTAssertEqual(model.databaseClients.map(\.nickname), ["Ada", "Zed"])
+        XCTAssertEqual(model.databaseClients.last?.uniqueIdentifier, "uid-z")
+        XCTAssertEqual(model.lastError, nil)
+    }
+
+    @MainActor
+    func testDatabaseClientBackupImportCanRestoreSelectedClients() throws {
+        let model = TS3AppModel()
+        model.databaseClients = [
+            TS3DatabaseClientSummary(
+                id: 1,
+                uniqueIdentifier: "old",
+                nickname: "Old",
+                createdAt: nil,
+                lastConnectedAt: nil,
+                totalConnections: nil,
+                description: nil,
+                lastIP: nil
+            )
+        ]
+        let backupJSON = """
+        {
+          "entries": [
+            {
+              "id": 12,
+              "uniqueIdentifier": " uid-z ",
+              "nickname": " Zed "
+            },
+            {
+              "id": 11,
+              "nickname": " Ada "
+            },
+            {
+              "id": 14,
+              "nickname": " Mina "
+            }
+          ]
+        }
+        """
+
+        try model.importDatabaseClientBackup(from: Data(backupJSON.utf8), selectedClientIds: [12, 14])
+
+        XCTAssertEqual(model.databaseClients.map(\.id), [14, 12])
+        XCTAssertEqual(model.databaseClients.map(\.nickname), ["Mina", "Zed"])
         XCTAssertEqual(model.databaseClients.last?.uniqueIdentifier, "uid-z")
         XCTAssertEqual(model.lastError, nil)
     }

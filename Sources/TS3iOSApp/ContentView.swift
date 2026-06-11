@@ -12902,7 +12902,7 @@ struct GroupNameSheet: View {
 
 struct ClientDatabaseSheet: View {
     private struct DatabaseBackupImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3DatabaseClientBackupPreview
         let id = UUID()
     }
@@ -13467,8 +13467,8 @@ struct ClientDatabaseSheet: View {
                 DatabaseBackupImportSheet(
                     preview: confirmation.preview,
                     previewMessage: databaseBackupPreviewMessage(confirmation.preview),
-                    importBackup: {
-                        importDatabaseBackup(from: confirmation.url)
+                    importBackup: { selectedClientIds in
+                        importDatabaseBackup(data: confirmation.data, selectedClientIds: selectedClientIds)
                         pendingDatabaseBackupImport = nil
                     },
                     cancel: {
@@ -13690,7 +13690,7 @@ struct ClientDatabaseSheet: View {
         do {
             let data = try Data(contentsOf: url)
             let preview = try model.databaseClientBackupPreview(from: data)
-            pendingDatabaseBackupImport = DatabaseBackupImportConfirmation(url: url, preview: preview)
+            pendingDatabaseBackupImport = DatabaseBackupImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -13698,7 +13698,7 @@ struct ClientDatabaseSheet: View {
 
     private func databaseBackupPreviewMessage(_ preview: TS3DatabaseClientBackupPreview) -> String {
         var lines = [
-            "\(preview.clientCount) database clients will replace the currently loaded local list.",
+            "\(preview.clientCount) database clients are available to restore into the currently loaded local list.",
             "\(preview.uniqueIdentifierCount) with unique IDs, \(preview.descriptionCount) with descriptions, \(preview.lastIPCount) with last IPs, \(preview.connectionCount) with connection counts."
         ]
         if preview.skippedClientCount > 0 {
@@ -13714,7 +13714,7 @@ struct ClientDatabaseSheet: View {
             }
             lines.append(first)
         }
-        lines.append(preview.hasClients ? "Import replaces only the local cached database client list." : "The backup has no usable database client records.")
+        lines.append(preview.hasClients ? "Import replaces only the local cached database client list with the selected records." : "The backup has no usable database client records.")
         return lines.joined(separator: "\n")
     }
 
@@ -13732,15 +13732,9 @@ struct ClientDatabaseSheet: View {
         }
     }
 
-    private func importDatabaseBackup(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importDatabaseBackup(data: Data, selectedClientIds: Set<Int>) {
         do {
-            try model.importDatabaseClientBackup(from: Data(contentsOf: url))
+            try model.importDatabaseClientBackup(from: data, selectedClientIds: selectedClientIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -13750,8 +13744,13 @@ struct ClientDatabaseSheet: View {
 private struct DatabaseBackupImportSheet: View {
     let preview: TS3DatabaseClientBackupPreview
     let previewMessage: String
-    let importBackup: () -> Void
+    let importBackup: (Set<Int>) -> Void
     let cancel: () -> Void
+    @State private var selectedClientIds: Set<Int> = []
+
+    private var validSelectedClientIds: Set<Int> {
+        Set(selectedClientIds.filter(preview.containsClient))
+    }
 
     var body: some View {
         NavigationView {
@@ -13764,28 +13763,53 @@ private struct DatabaseBackupImportSheet: View {
                         Button("Copy Client Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
+                        HStack {
+                            Button("Select All") {
+                                selectedClientIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedClientIds = []
+                            }
+                            .disabled(selectedClientIds.isEmpty)
+                        }
                         ForEach(preview.fieldSummaries, id: \.self) { summary in
                             Text(summary)
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
-                        ForEach(Array(preview.clientSummaries.enumerated()), id: \.offset) { _, summary in
-                            Text(summary)
-                                .font(.caption2)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedClientIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedClientIds.insert(candidate.id)
+                                    } else {
+                                        selectedClientIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
                         }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached client database list for offline review and does not create, edit, or delete server database records.")
+                    Text("Import replaces the local cached client database list with the selected records for offline review and does not create, edit, or delete server database records.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Database")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedClientIds.isEmpty {
+                    selectedClientIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -13794,9 +13818,9 @@ private struct DatabaseBackupImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importBackup()
+                        importBackup(validSelectedClientIds)
                     }
-                    .disabled(!preview.hasClients)
+                    .disabled(!preview.hasClients || validSelectedClientIds.isEmpty)
                 }
             }
         }

@@ -2188,6 +2188,11 @@ struct TS3DatabaseClientSummary: Identifiable {
 }
 
 struct TS3DatabaseClientBackupPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: Int
+        let summary: String
+    }
+
     let clientCount: Int
     let skippedClientCount: Int
     let uniqueIdentifierCount: Int
@@ -2196,6 +2201,7 @@ struct TS3DatabaseClientBackupPreview {
     let connectionCount: Int
     let fieldSummaries: [String]
     let clientSummaries: [String]
+    let candidates: [Candidate]
     let firstNickname: String?
     let firstUniqueIdentifier: String?
     let firstDatabaseId: Int?
@@ -2206,6 +2212,10 @@ struct TS3DatabaseClientBackupPreview {
 
     var clipboardSummary: String {
         (fieldSummaries + clientSummaries).joined(separator: "\n")
+    }
+
+    func containsClient(id: Int) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -9607,15 +9617,22 @@ final class TS3AppModel: ObservableObject {
             connectionCount: clients.filter { $0.totalConnections != nil }.count,
             fieldSummaries: Self.databaseClientBackupFieldSummaries(clients),
             clientSummaries: clients.prefix(10).map(\.backupSummary),
+            candidates: clients.map {
+                TS3DatabaseClientBackupPreview.Candidate(id: $0.id, summary: $0.backupSummary)
+            },
             firstNickname: first?.nickname,
             firstUniqueIdentifier: first?.uniqueIdentifier,
             firstDatabaseId: first?.id
         )
     }
 
-    func importDatabaseClientBackup(from data: Data) throws {
+    func importDatabaseClientBackup(from data: Data, selectedClientIds: Set<Int>? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3DatabaseClientBackup.self, from: data)
-        databaseClients = sanitizedDatabaseClientBackupEntries(decoded.entries).clients
+        let clients = sanitizedDatabaseClientBackupEntries(decoded.entries).clients.filter { client in
+            guard let selectedClientIds else { return true }
+            return selectedClientIds.contains(client.id)
+        }
+        databaseClients = clients
         lastError = nil
     }
 
