@@ -19194,6 +19194,12 @@ struct PrivilegeKeysSheet: View {
         if preview.unknownTypeCount > 0 {
             lines.append("Unknown type keys: \(preview.unknownTypeCount)")
         }
+        if !preview.typeSummaries.isEmpty {
+            lines.append("Types: \(preview.typeSummaries.joined(separator: " | "))")
+        }
+        if !preview.targetSummaries.isEmpty {
+            lines.append("Targets: \(preview.targetSummaries.joined(separator: " | "))")
+        }
         if let firstKey = preview.firstKey {
             lines.append("First key: \(firstKey)")
         }
@@ -19330,6 +19336,16 @@ private struct PrivilegeKeyBackupImportSheet: View {
                     if preview.hasKeys {
                         Button("Copy Key Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(preview.typeSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        ForEach(preview.targetSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         ForEach(Array(preview.keySummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)

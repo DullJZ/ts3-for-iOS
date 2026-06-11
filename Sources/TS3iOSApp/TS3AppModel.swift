@@ -2879,6 +2879,8 @@ struct TS3PrivilegeKeyBackupPreview {
     let serverGroupCount: Int
     let channelGroupCount: Int
     let unknownTypeCount: Int
+    let typeSummaries: [String]
+    let targetSummaries: [String]
     let keySummaries: [String]
     let firstKey: String?
     let firstType: TS3PrivilegeKeyType?
@@ -2892,7 +2894,7 @@ struct TS3PrivilegeKeyBackupPreview {
     }
 
     var clipboardSummary: String {
-        keySummaries.joined(separator: "\n")
+        (typeSummaries + targetSummaries + keySummaries).joined(separator: "\n")
     }
 }
 
@@ -12635,6 +12637,8 @@ final class TS3AppModel: ObservableObject {
             serverGroupCount: entries.filter { TS3PrivilegeKeyType(rawValue: $0.type ?? -1) == .serverGroup }.count,
             channelGroupCount: entries.filter { TS3PrivilegeKeyType(rawValue: $0.type ?? -1) == .channelGroup }.count,
             unknownTypeCount: entries.filter { $0.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)) == nil }.count,
+            typeSummaries: Self.privilegeKeyBackupTypeSummaries(entries),
+            targetSummaries: Self.privilegeKeyBackupTargetSummaries(entries),
             keySummaries: entries.prefix(10).map(Self.privilegeKeyBackupSummary),
             firstKey: first?.key,
             firstType: first?.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)),
@@ -12687,6 +12691,49 @@ final class TS3AppModel: ObservableObject {
             parts.append("customSet=\(customSet)")
         }
         return parts.joined(separator: " | ")
+    }
+
+    private static func privilegeKeyBackupTypeSummaries(_ entries: [TS3PrivilegeKeyBackupEntry]) -> [String] {
+        let grouped = Dictionary(grouping: entries) { entry in
+            entry.type.flatMap(TS3PrivilegeKeyType.init(rawValue:))?.title ?? "Unknown"
+        }
+        return grouped
+            .map { type, entries in
+                (type: type, count: entries.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.type.localizedCaseInsensitiveCompare(rhs.type) == .orderedAscending
+            }
+            .map { item in
+                "type=\(item.type) count=\(item.count)"
+            }
+    }
+
+    private static func privilegeKeyBackupTargetSummaries(_ entries: [TS3PrivilegeKeyBackupEntry]) -> [String] {
+        let grouped = Dictionary(grouping: entries) { entry in
+            let type = entry.type.flatMap(TS3PrivilegeKeyType.init(rawValue:))?.title ?? "Unknown"
+            if let channelId = entry.channelId {
+                return "\(type) group=\(entry.groupId) channel=\(channelId)"
+            }
+            return "\(type) group=\(entry.groupId)"
+        }
+        return grouped
+            .map { target, entries in
+                (target: target, count: entries.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.target.localizedCaseInsensitiveCompare(rhs.target) == .orderedAscending
+            }
+            .prefix(6)
+            .map { item in
+                "target=\(item.target) count=\(item.count)"
+            }
     }
 
     private func privilegeKeySummaries(from keys: [TS3PrivilegeKeyEntry]) -> [TS3PrivilegeKeySummary] {
