@@ -14864,7 +14864,7 @@ struct ServerSettingsEditorSheet: View {
             reservedSlots: Int(reservedSlots.trimmingCharacters(in: .whitespacesAndNewlines)),
             password: clearPassword ? "" : (password.isEmpty ? nil : password),
             hostMessage: hostMessage,
-            hostMessageMode: Int(hostMessageMode),
+            hostMessageMode: TS3HostMessageMode.value(forDraft: hostMessageMode),
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,
             hostBannerMode: hostBannerMode,
@@ -14990,10 +14990,12 @@ struct ServerSettingsEditorSheet: View {
         clearPassword = draft.clearPassword
         password = draft.password
         hostMessage = draft.hostMessage
-        hostMessageMode = draft.hostMessageMode
+        hostMessageMode = Self.hostMessageModeDraftText(draft.hostMessageMode)
         hostBannerURL = draft.hostBannerURL
         hostBannerGraphicsURL = draft.hostBannerGraphicsURL
-        hostBannerMode = Int((draft.hostBannerMode ?? "").trimmingCharacters(in: .whitespacesAndNewlines))
+        hostBannerMode = (draft.hostBannerMode ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil
+            : TS3HostBannerMode.value(forDraft: draft.hostBannerMode ?? "")
         hostBannerGraphicsInterval = draft.hostBannerGraphicsInterval ?? ""
         hostButtonTooltip = draft.hostButtonTooltip
         hostButtonURL = draft.hostButtonURL
@@ -15019,7 +15021,9 @@ struct ServerSettingsEditorSheet: View {
         logServer = Self.boolDraftValue(draft.logServer)
         logFileTransfer = Self.boolDraftValue(draft.logFileTransfer)
         weblistEnabled = Self.boolDraftValue(draft.weblistEnabled)
-        codecEncryptionMode = Int(draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines))
+        codecEncryptionMode = draft.codecEncryptionMode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil
+            : TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode)
         defaultServerGroupId = draft.defaultServerGroupId ?? ""
         defaultChannelGroupId = draft.defaultChannelGroupId ?? ""
         defaultChannelAdminGroupId = draft.defaultChannelAdminGroupId ?? ""
@@ -15030,20 +15034,17 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private func hostMessageModeTitle(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let numericValue = Int(trimmed) else { return trimmed }
+        guard let numericValue = TS3HostMessageMode.value(forDraft: value) else { return value }
         return TS3HostMessageMode.title(for: numericValue)
     }
 
     private func codecEncryptionModeTitle(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let numericValue = Int(trimmed) else { return trimmed }
+        guard let numericValue = TS3CodecEncryptionMode.value(forDraft: value) else { return value }
         return TS3CodecEncryptionMode.title(for: numericValue)
     }
 
     private func hostBannerModeTitle(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let numericValue = Int(trimmed) else { return trimmed }
+        guard let numericValue = TS3HostBannerMode.value(forDraft: value) else { return value }
         return TS3HostBannerMode.title(for: numericValue)
     }
 
@@ -15084,6 +15085,12 @@ struct ServerSettingsEditorSheet: View {
 
     private static func boolDraftValue(_ value: String?) -> Bool? {
         TS3ServerSettingsDraftValidator.boolDraftValue(value)
+    }
+
+    private static func hostMessageModeDraftText(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let numericValue = TS3HostMessageMode.value(forDraft: trimmed) else { return trimmed }
+        return String(numericValue)
     }
 
     private static func decimalText(_ value: Double) -> String {

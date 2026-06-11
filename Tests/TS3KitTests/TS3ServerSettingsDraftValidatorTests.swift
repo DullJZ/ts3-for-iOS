@@ -65,6 +65,36 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         XCTAssertEqual(messages, ["Anti-flood plugin block must be numeric."])
     }
 
+    func testServerSettingsDraftValidatorAcceptsOfficialEnumAliases() {
+        XCTAssertTrue(
+            validationMessages(
+                hostMessageMode: "modal-quit",
+                hostBannerMode: "keep aspect ratio",
+                codecEncryptionMode: "per-channel"
+            ).isEmpty
+        )
+        XCTAssertEqual(TS3HostMessageMode.value(forDraft: "modal-quit"), 3)
+        XCTAssertEqual(TS3HostBannerMode.value(forDraft: "keep aspect ratio"), 2)
+        XCTAssertEqual(TS3CodecEncryptionMode.value(forDraft: "per-channel"), 0)
+    }
+
+    func testServerSettingsDraftValidatorRejectsInvalidEnumAliases() {
+        let messages = validationMessages(
+            hostMessageMode: "popup",
+            hostBannerMode: "crop",
+            codecEncryptionMode: "mandatory"
+        )
+
+        XCTAssertEqual(
+            messages,
+            [
+                "Host message mode must be none, log, modal, modal quit, or numeric.",
+                "Host banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric.",
+                "Codec encryption mode must be per channel, disabled, enabled, or numeric."
+            ]
+        )
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",

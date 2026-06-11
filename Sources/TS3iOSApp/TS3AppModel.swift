@@ -308,11 +308,11 @@ enum TS3ServerSettingsDraftValidator {
         if !isOptionalBoolDraft(autostart) {
             messages.append("Autostart must be enabled, disabled, true, false, 1, or 0.")
         }
-        if !isOptionalInt(hostMessageMode) {
-            messages.append("Host message mode must be numeric.")
+        if !isOptionalHostMessageMode(hostMessageMode) {
+            messages.append("Host message mode must be none, log, modal, modal quit, or numeric.")
         }
-        if !isOptionalInt(hostBannerMode) {
-            messages.append("Host banner mode must be numeric.")
+        if !isOptionalHostBannerMode(hostBannerMode) {
+            messages.append("Host banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric.")
         }
         if !isOptionalInt(hostBannerGraphicsInterval) {
             messages.append("Banner refresh seconds must be numeric.")
@@ -392,8 +392,8 @@ enum TS3ServerSettingsDraftValidator {
         if !isOptionalBoolDraft(weblistEnabled) {
             messages.append("Server list must be listed, hidden, true, false, 1, or 0.")
         }
-        if !isOptionalInt(codecEncryptionMode) {
-            messages.append("Codec encryption mode must be numeric.")
+        if !isOptionalCodecEncryptionMode(codecEncryptionMode) {
+            messages.append("Codec encryption mode must be per channel, disabled, enabled, or numeric.")
         }
         if !isOptionalInt(defaultServerGroupId) {
             messages.append("Default server group ID must be numeric.")
@@ -436,6 +436,21 @@ enum TS3ServerSettingsDraftValidator {
     private static func isOptionalDouble(_ value: String) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty || Double(trimmed) != nil
+    }
+
+    private static func isOptionalHostMessageMode(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || TS3HostMessageMode.value(forDraft: trimmed) != nil
+    }
+
+    private static func isOptionalHostBannerMode(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || TS3HostBannerMode.value(forDraft: trimmed) != nil
+    }
+
+    private static func isOptionalCodecEncryptionMode(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || TS3CodecEncryptionMode.value(forDraft: trimmed) != nil
     }
 }
 
@@ -5082,6 +5097,26 @@ enum TS3CodecEncryptionMode: Int, CaseIterable, Identifiable {
         }
         return "Unknown (\(value))"
     }
+
+    static func value(forDraft value: String) -> Int? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        if let numericValue = Int(normalized) {
+            return numericValue
+        }
+        switch normalized {
+        case "individual", "per channel", "perchannel":
+            return TS3CodecEncryptionMode.individual.rawValue
+        case "disabled", "disable", "off":
+            return TS3CodecEncryptionMode.disabled.rawValue
+        case "enabled", "enable", "on", "forced", "enforced":
+            return TS3CodecEncryptionMode.enabled.rawValue
+        default:
+            return nil
+        }
+    }
 }
 
 enum TS3HostMessageMode: Int, CaseIterable, Identifiable {
@@ -5111,6 +5146,28 @@ enum TS3HostMessageMode: Int, CaseIterable, Identifiable {
         }
         return "Unknown (\(value))"
     }
+
+    static func value(forDraft value: String) -> Int? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        if let numericValue = Int(normalized) {
+            return numericValue
+        }
+        switch normalized {
+        case "none", "off", "disabled":
+            return TS3HostMessageMode.none.rawValue
+        case "log":
+            return TS3HostMessageMode.log.rawValue
+        case "modal", "show modal":
+            return TS3HostMessageMode.modal.rawValue
+        case "modal quit", "modalquit", "modal and quit", "modal quit client":
+            return TS3HostMessageMode.modalQuit.rawValue
+        default:
+            return nil
+        }
+    }
 }
 
 enum TS3HostBannerMode: Int, CaseIterable, Identifiable {
@@ -5136,6 +5193,26 @@ enum TS3HostBannerMode: Int, CaseIterable, Identifiable {
             return "\(mode.title) (\(value))"
         }
         return "Unknown (\(value))"
+    }
+
+    static func value(forDraft value: String) -> Int? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        if let numericValue = Int(normalized) {
+            return numericValue
+        }
+        switch normalized {
+        case "no adjustment", "no adjust", "none", "off":
+            return TS3HostBannerMode.noAdjust.rawValue
+        case "ignore aspect ratio", "ignore aspect", "stretch":
+            return TS3HostBannerMode.ignoreAspect.rawValue
+        case "keep aspect ratio", "keep aspect", "scale":
+            return TS3HostBannerMode.keepAspect.rawValue
+        default:
+            return nil
+        }
     }
 }
 
