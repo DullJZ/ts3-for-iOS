@@ -187,4 +187,72 @@ final class TS3AudioProfileTests: XCTestCase {
         XCTAssertEqual(voiceActivation.transmitMode, TS3AudioTransmitMode.voiceActivation.rawValue)
         XCTAssertEqual(voiceActivation.voiceActivationThreshold, 0.12)
     }
+
+    @MainActor
+    func testUserPlaybackImportPreviewReportsSanitizedPreferences() throws {
+        let model = TS3AppModel()
+        model.resetUserPlaybackPreferences()
+        model.userPlaybackPreferences = [
+            "uid:existing": TS3UserPlaybackPreference(volume: 0.5, isMuted: false)
+        ]
+
+        let importedPreferences = [
+            " uid:existing ": TS3UserPlaybackPreference(volume: 6, isMuted: true),
+            "client:muted": TS3UserPlaybackPreference(volume: 1, isMuted: true),
+            "uid:new": TS3UserPlaybackPreference(volume: 0.25, isMuted: false),
+            "uid:default": TS3UserPlaybackPreference(volume: 1, isMuted: false),
+            "   ": TS3UserPlaybackPreference(volume: 0.5, isMuted: false)
+        ]
+        let data = try JSONEncoder().encode(importedPreferences)
+
+        let preview = try model.userPlaybackPreferencesImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPreferenceCount, 5)
+        XCTAssertEqual(preview.usablePreferenceCount, 3)
+        XCTAssertEqual(preview.newPreferenceCount, 2)
+        XCTAssertEqual(preview.replacedPreferenceCount, 1)
+        XCTAssertEqual(preview.skippedPreferenceCount, 2)
+        XCTAssertEqual(preview.adjustedPreferenceCount, 1)
+        XCTAssertEqual(preview.mutedPreferenceCount, 2)
+        XCTAssertEqual(
+            preview.adjustmentSummaries,
+            ["adjusted key=uid:existing fields=key,volume"]
+        )
+        XCTAssertEqual(
+            preview.preferenceSummaries,
+            [
+                "key=client:muted | volume=100% | muted=true",
+                "key=uid:existing | volume=400% | muted=true",
+                "key=uid:new | volume=25% | muted=false"
+            ]
+        )
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            Imported playback preferences: 5
+            Usable playback preferences: 3
+            New playback preferences: 2
+            Replacing playback preferences: 1
+            Skipped playback preferences: 2
+            Adjusted playback preferences: 1
+            Muted playback preferences: 2
+            adjusted key=uid:existing fields=key,volume
+            key=client:muted | volume=100% | muted=true
+            key=uid:existing | volume=400% | muted=true
+            key=uid:new | volume=25% | muted=false
+            """
+        )
+        XCTAssertTrue(preview.hasPreferences)
+
+        try model.importUserPlaybackPreferences(from: data)
+
+        XCTAssertEqual(model.userPlaybackPreferences.count, 3)
+        XCTAssertEqual(model.userPlaybackPreferences["uid:existing"]?.volume, 4)
+        XCTAssertEqual(model.userPlaybackPreferences["uid:existing"]?.isMuted, true)
+        XCTAssertEqual(model.userPlaybackPreferences["client:muted"]?.volume, 1)
+        XCTAssertEqual(model.userPlaybackPreferences["client:muted"]?.isMuted, true)
+        XCTAssertEqual(model.userPlaybackPreferences["uid:new"]?.volume, 0.25)
+        XCTAssertEqual(model.userPlaybackPreferences["uid:new"]?.isMuted, false)
+        XCTAssertNil(model.userPlaybackPreferences["uid:default"])
+    }
 }

@@ -24694,12 +24694,10 @@ struct SelfStatusSheet: View {
 struct AudioSettingsSheet: View {
     private enum AudioConfirmation: Identifiable {
         case importSettings(URL)
-        case importUserPlayback(URL)
 
         var id: String {
             switch self {
             case .importSettings: return "importSettings"
-            case .importUserPlayback: return "importUserPlayback"
             }
         }
     }
@@ -24708,6 +24706,12 @@ struct AudioSettingsSheet: View {
         let id = UUID()
         let data: Data
         let preview: TS3AudioProfileImportPreview
+    }
+
+    private struct UserPlaybackImportConfirmation: Identifiable {
+        let id = UUID()
+        let data: Data
+        let preview: TS3UserPlaybackImportPreview
     }
 
     @Environment(\.presentationMode) private var presentationMode
@@ -24722,6 +24726,7 @@ struct AudioSettingsSheet: View {
     @State private var isConfirmingResetUserPlayback = false
     @State private var audioConfirmation: AudioConfirmation?
     @State private var pendingAudioProfileImport: AudioProfileImportConfirmation?
+    @State private var pendingUserPlaybackImport: UserPlaybackImportConfirmation?
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
@@ -25154,7 +25159,7 @@ struct AudioSettingsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    audioConfirmation = .importUserPlayback(url)
+                    prepareUserPlaybackImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -25200,15 +25205,6 @@ struct AudioSettingsSheet: View {
                         },
                         secondaryButton: .cancel()
                     )
-                case .importUserPlayback(let url):
-                    return Alert(
-                        title: Text("Import User Playback Backup?"),
-                        message: Text("This replaces all local per-user volume and mute overrides with the selected backup."),
-                        primaryButton: .destructive(Text("Import")) {
-                            importUserPlayback(from: url)
-                        },
-                        secondaryButton: .cancel()
-                    )
                 }
             }
             .sheet(item: $pendingAudioProfileImport) { confirmation in
@@ -25220,6 +25216,18 @@ struct AudioSettingsSheet: View {
                     },
                     cancel: {
                         pendingAudioProfileImport = nil
+                    }
+                )
+            }
+            .sheet(item: $pendingUserPlaybackImport) { confirmation in
+                UserPlaybackImportPreviewSheet(
+                    preview: confirmation.preview,
+                    importPreferences: {
+                        importUserPlayback(data: confirmation.data)
+                        pendingUserPlaybackImport = nil
+                    },
+                    cancel: {
+                        pendingUserPlaybackImport = nil
                     }
                 )
             }
@@ -25291,7 +25299,7 @@ struct AudioSettingsSheet: View {
         }
     }
 
-    private func importUserPlayback(from url: URL) {
+    private func prepareUserPlaybackImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -25299,7 +25307,17 @@ struct AudioSettingsSheet: View {
             }
         }
         do {
-            try model.importUserPlaybackPreferences(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.userPlaybackPreferencesImportPreview(from: data)
+            pendingUserPlaybackImport = UserPlaybackImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importUserPlayback(data: Data) {
+        do {
+            try model.importUserPlaybackPreferences(from: data)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -25508,6 +25526,73 @@ private struct AudioProfileImportPreviewSheet: View {
                         importProfiles()
                     }
                     .disabled(!preview.hasProfiles)
+                }
+            }
+        }
+    }
+}
+
+private struct UserPlaybackImportPreviewSheet: View {
+    let preview: TS3UserPlaybackImportPreview
+    let importPreferences: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(preview.clipboardSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasPreferences {
+                        Button("Copy Playback Import Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                    }
+                }
+
+                if !preview.adjustmentSummaries.isEmpty {
+                    Section(header: Text("Adjusted Preferences")) {
+                        ForEach(Array(preview.adjustmentSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                if !preview.preferenceSummaries.isEmpty {
+                    Section(header: Text("Preferences")) {
+                        ForEach(Array(preview.preferenceSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces all local per-user playback overrides, clamps volume values to supported ranges, and skips blank or default unmuted preferences.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Playback")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPreferences()
+                    }
+                    .disabled(!preview.hasPreferences)
                 }
             }
         }

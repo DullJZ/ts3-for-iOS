@@ -1221,6 +1221,37 @@ struct TS3UserPlaybackPreferenceSummary: Identifiable {
     }
 }
 
+struct TS3UserPlaybackImportPreview {
+    let importedPreferenceCount: Int
+    let usablePreferenceCount: Int
+    let newPreferenceCount: Int
+    let replacedPreferenceCount: Int
+    let skippedPreferenceCount: Int
+    let adjustedPreferenceCount: Int
+    let mutedPreferenceCount: Int
+    let preferenceSummaries: [String]
+    let adjustmentSummaries: [String]
+
+    var hasPreferences: Bool {
+        usablePreferenceCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported playback preferences: \(importedPreferenceCount)",
+            "Usable playback preferences: \(usablePreferenceCount)",
+            "New playback preferences: \(newPreferenceCount)",
+            "Replacing playback preferences: \(replacedPreferenceCount)",
+            "Skipped playback preferences: \(skippedPreferenceCount)",
+            "Adjusted playback preferences: \(adjustedPreferenceCount)",
+            "Muted playback preferences: \(mutedPreferenceCount)"
+        ]
+        lines.append(contentsOf: adjustmentSummaries)
+        lines.append(contentsOf: preferenceSummaries)
+        return lines.joined(separator: "\n")
+    }
+}
+
 struct TS3OfflineMessageSummary: Identifiable, Codable {
     let id: Int
     let senderUniqueIdentifier: String?
@@ -6044,6 +6075,41 @@ final class TS3AppModel: ObservableObject {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(userPlaybackPreferences)
+    }
+
+    func userPlaybackPreferencesImportPreview(from data: Data) throws -> TS3UserPlaybackImportPreview {
+        let decoded = try JSONDecoder().decode([String: TS3UserPlaybackPreference].self, from: data)
+        let sanitized = sanitizedUserPlaybackPreferences(decoded)
+        let replacedCount = sanitized.keys.filter { userPlaybackPreferences.keys.contains($0) }.count
+        let adjustmentSummaries = decoded.sorted {
+            $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending
+        }.compactMap { key, preference -> String? in
+            guard let sanitizedItem = Self.sanitizedUserPlaybackPreference(key: key, preference: preference) else { return nil }
+            var changes: [String] = []
+            if sanitizedItem.key != key {
+                changes.append("key")
+            }
+            if sanitizedItem.preference.volume != preference.volume {
+                changes.append("volume")
+            }
+            guard !changes.isEmpty else { return nil }
+            return "adjusted key=\(sanitizedItem.key) fields=\(changes.joined(separator: ","))"
+        }
+        let preferenceSummaries = sanitized
+            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+            .prefix(10)
+            .map { Self.userPlaybackPreferenceSummary(key: $0.key, preference: $0.value) }
+        return TS3UserPlaybackImportPreview(
+            importedPreferenceCount: decoded.count,
+            usablePreferenceCount: sanitized.count,
+            newPreferenceCount: sanitized.count - replacedCount,
+            replacedPreferenceCount: replacedCount,
+            skippedPreferenceCount: decoded.count - sanitized.count,
+            adjustedPreferenceCount: adjustmentSummaries.count,
+            mutedPreferenceCount: sanitized.values.filter(\.isMuted).count,
+            preferenceSummaries: Array(preferenceSummaries),
+            adjustmentSummaries: Array(adjustmentSummaries.prefix(10))
+        )
     }
 
     func importUserPlaybackPreferences(from data: Data) throws {
@@ -14240,16 +14306,31 @@ final class TS3AppModel: ObservableObject {
 
     private func sanitizedUserPlaybackPreferences(_ preferences: [String: TS3UserPlaybackPreference]) -> [String: TS3UserPlaybackPreference] {
         preferences.reduce(into: [:]) { result, item in
-            let key = item.key.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !key.isEmpty else { return }
-            let preference = TS3UserPlaybackPreference(
-                volume: min(max(item.value.volume, 0), 4),
-                isMuted: item.value.isMuted
-            )
-            if preference.volume != 1 || preference.isMuted {
-                result[key] = preference
-            }
+            guard let sanitized = Self.sanitizedUserPlaybackPreference(key: item.key, preference: item.value) else { return }
+            result[sanitized.key] = sanitized.preference
         }
+    }
+
+    private static func sanitizedUserPlaybackPreference(
+        key rawKey: String,
+        preference: TS3UserPlaybackPreference
+    ) -> (key: String, preference: TS3UserPlaybackPreference)? {
+        let key = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return nil }
+        let sanitized = TS3UserPlaybackPreference(
+            volume: min(max(preference.volume, 0), 4),
+            isMuted: preference.isMuted
+        )
+        guard sanitized.volume != 1 || sanitized.isMuted else { return nil }
+        return (key, sanitized)
+    }
+
+    private static func userPlaybackPreferenceSummary(key: String, preference: TS3UserPlaybackPreference) -> String {
+        [
+            "key=\(key)",
+            "volume=\(Int((preference.volume * 100).rounded()))%",
+            "muted=\(preference.isMuted ? "true" : "false")"
+        ].joined(separator: " | ")
     }
 
     private func saveUserPlaybackPreferences() {
