@@ -14221,7 +14221,12 @@ struct ServerSettingsEditorSheet: View {
     private struct ServerSettingsDraftImportConfirmation: Identifiable {
         let draft: ServerSettingsDraft
         let previewMessage: String
+        let validationMessages: [String]
         let id = UUID()
+
+        var canImport: Bool {
+            validationMessages.isEmpty
+        }
     }
 
     private struct ServerSettingsDraft: Codable {
@@ -14641,6 +14646,7 @@ struct ServerSettingsEditorSheet: View {
             .sheet(item: $pendingDraftImport) { confirmation in
                 ServerSettingsDraftImportSheet(
                     previewMessage: confirmation.previewMessage,
+                    canImport: confirmation.canImport,
                     importDraft: {
                         applyDraft(confirmation.draft)
                         pendingDraftImport = nil
@@ -14655,6 +14661,7 @@ struct ServerSettingsEditorSheet: View {
 
     private struct ServerSettingsDraftImportSheet: View {
         let previewMessage: String
+        let canImport: Bool
         let importDraft: () -> Void
         let cancel: () -> Void
 
@@ -14671,7 +14678,7 @@ struct ServerSettingsEditorSheet: View {
                     }
 
                     Section(header: Text("Import Behavior")) {
-                        Text("Import fills the server settings editor with this draft. It does not save changes to the server until Save is tapped.")
+                        Text("Import fills the server settings editor with this draft when validation passes. It does not save changes to the server until Save is tapped.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -14688,6 +14695,7 @@ struct ServerSettingsEditorSheet: View {
                         Button("Import") {
                             importDraft()
                         }
+                        .disabled(!canImport)
                     }
                 }
             }
@@ -14983,12 +14991,14 @@ struct ServerSettingsEditorSheet: View {
         }
         do {
             let draft = try JSONDecoder().decode(ServerSettingsDraft.self, from: Data(contentsOf: url))
+            let validationMessages = serverDraftValidationMessages(for: draft)
             pendingDraftImport = ServerSettingsDraftImportConfirmation(
                 draft: draft,
                 previewMessage: settingsSnapshotMessage(
                     for: draft,
-                    validationMessages: serverDraftValidationMessages(for: draft)
-                )
+                    validationMessages: validationMessages
+                ),
+                validationMessages: validationMessages
             )
         } catch {
             model.lastError = error.localizedDescription
