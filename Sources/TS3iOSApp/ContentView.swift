@@ -10281,6 +10281,12 @@ struct ServerLogsSheet: View {
         if preview.skippedEntryCount > 0 {
             lines.append("Skipped invalid or duplicate entries: \(preview.skippedEntryCount)")
         }
+        if !preview.levelSummaries.isEmpty {
+            lines.append("Levels: \(preview.levelSummaries.joined(separator: " | "))")
+        }
+        if !preview.channelSummaries.isEmpty {
+            lines.append("Channels: \(preview.channelSummaries.joined(separator: " | "))")
+        }
         if let firstLevel = preview.firstLevel {
             lines.append("First level: \(firstLevel)")
         }
@@ -10356,6 +10362,16 @@ private struct ServerLogArchiveImportSheet: View {
                     if preview.hasEntries {
                         Button("Copy Log Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(preview.levelSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        ForEach(preview.channelSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         ForEach(Array(preview.entrySummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)

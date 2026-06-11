@@ -5139,6 +5139,8 @@ struct TS3ServerLogArchivePreview {
     let levelCount: Int
     let channelCount: Int
     let timestampCount: Int
+    let levelSummaries: [String]
+    let channelSummaries: [String]
     let entrySummaries: [String]
     let firstLevel: String?
     let firstChannel: String?
@@ -5150,7 +5152,7 @@ struct TS3ServerLogArchivePreview {
     }
 
     var clipboardSummary: String {
-        entrySummaries.joined(separator: "\n")
+        (levelSummaries + channelSummaries + entrySummaries).joined(separator: "\n")
     }
 }
 
@@ -8900,6 +8902,14 @@ final class TS3AppModel: ObservableObject {
             levelCount: entries.filter { $0.level?.isEmpty == false }.count,
             channelCount: entries.filter { $0.channel?.isEmpty == false }.count,
             timestampCount: entries.filter { $0.timestamp != nil }.count,
+            levelSummaries: Self.serverLogDistributionSummaries(
+                entries.compactMap(\.level),
+                label: "level"
+            ),
+            channelSummaries: Self.serverLogDistributionSummaries(
+                entries.compactMap(\.channel),
+                label: "channel"
+            ),
             entrySummaries: entries.prefix(10).map(\.archiveSummary),
             firstLevel: first?.level,
             firstChannel: first?.channel,
@@ -14065,6 +14075,20 @@ final class TS3AppModel: ObservableObject {
             }
         }
         return (sanitizedEntries, skippedCount)
+    }
+
+    private static func serverLogDistributionSummaries(_ values: [String], label: String) -> [String] {
+        let counts = Dictionary(grouping: values.filter { !$0.isEmpty }, by: { $0 })
+            .mapValues(\.count)
+        return counts
+            .sorted { lhs, rhs in
+                if lhs.value == rhs.value {
+                    return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+                }
+                return lhs.value > rhs.value
+            }
+            .prefix(6)
+            .map { "\(label)=\($0.key) count=\($0.value)" }
     }
 
     private func loadChannelSubscriptionPresets() {

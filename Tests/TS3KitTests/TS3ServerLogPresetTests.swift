@@ -163,6 +163,8 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertEqual(preview.levelCount, 2)
         XCTAssertEqual(preview.channelCount, 1)
         XCTAssertEqual(preview.timestampCount, 1)
+        XCTAssertEqual(preview.levelSummaries, ["level=debug count=1", "level=warning count=1"])
+        XCTAssertEqual(preview.channelSummaries, ["channel=Server count=1"])
         XCTAssertEqual(preview.firstLevel, "warning")
         XCTAssertEqual(preview.firstChannel, "Server")
         XCTAssertEqual(preview.firstMessage, "Auth failed")
@@ -173,7 +175,16 @@ final class TS3ServerLogPresetTests: XCTestCase {
                 "id=2 | message=Debug entry | level=debug"
             ]
         )
-        XCTAssertEqual(preview.clipboardSummary, preview.entrySummaries.joined(separator: "\n"))
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            level=debug count=1
+            level=warning count=1
+            channel=Server count=1
+            id=3 | message=Auth failed | level=warning | channel=Server | timestamp=2678307200
+            id=2 | message=Debug entry | level=debug
+            """
+        )
         XCTAssertTrue(preview.hasEntries)
     }
 
