@@ -11412,6 +11412,13 @@ private struct GroupArchiveImportSheet: View {
 
                 if !preview.serverGroupSummaries.isEmpty {
                     Section(header: Text("Server Groups")) {
+                        ForEach(Array(preview.serverGroupTypeSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
                         ForEach(Array(preview.serverGroupSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -11423,6 +11430,13 @@ private struct GroupArchiveImportSheet: View {
 
                 if !preview.channelGroupSummaries.isEmpty {
                     Section(header: Text("Channel Groups")) {
+                        ForEach(Array(preview.channelGroupTypeSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
                         ForEach(Array(preview.channelGroupSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)

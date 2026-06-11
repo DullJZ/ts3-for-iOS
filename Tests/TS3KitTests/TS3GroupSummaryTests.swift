@@ -303,6 +303,21 @@ final class TS3GroupSummaryTests: XCTestCase {
         XCTAssertEqual(preview.firstServerGroupName, "Admins")
         XCTAssertEqual(preview.firstChannelGroupName, "Channel Admin")
         XCTAssertEqual(
+            preview.serverGroupTypeSummaries,
+            [
+                "target=Server Groups type=Query count=1",
+                "target=Server Groups type=Regular count=1"
+            ]
+        )
+        XCTAssertEqual(
+            preview.channelGroupTypeSummaries,
+            [
+                "target=Channel Groups type=Regular count=1",
+                "target=Channel Groups type=Template count=1",
+                "target=Channel Groups type=Unknown count=1"
+            ]
+        )
+        XCTAssertEqual(
             preview.serverGroupSummaries,
             [
                 "target=Server Groups | groupId=6 | name=Admins | type=Regular",
@@ -319,7 +334,12 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
         XCTAssertEqual(
             preview.clipboardSummary,
-            (preview.serverGroupSummaries + preview.channelGroupSummaries).joined(separator: "\n")
+            (
+                preview.serverGroupTypeSummaries
+                + preview.channelGroupTypeSummaries
+                + preview.serverGroupSummaries
+                + preview.channelGroupSummaries
+            ).joined(separator: "\n")
         )
         XCTAssertTrue(preview.hasGroups)
     }

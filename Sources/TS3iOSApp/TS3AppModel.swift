@@ -2145,6 +2145,8 @@ struct TS3GroupArchivePreview {
     let regularCount: Int
     let queryCount: Int
     let unknownTypeCount: Int
+    let serverGroupTypeSummaries: [String]
+    let channelGroupTypeSummaries: [String]
     let serverGroupSummaries: [String]
     let channelGroupSummaries: [String]
     let firstServerGroupName: String?
@@ -2163,7 +2165,12 @@ struct TS3GroupArchivePreview {
     }
 
     var clipboardSummary: String {
-        (serverGroupSummaries + channelGroupSummaries).joined(separator: "\n")
+        (
+            serverGroupTypeSummaries
+            + channelGroupTypeSummaries
+            + serverGroupSummaries
+            + channelGroupSummaries
+        ).joined(separator: "\n")
     }
 }
 
@@ -11983,6 +11990,14 @@ final class TS3AppModel: ObservableObject {
             regularCount: allGroups.filter { $0.type == .regular }.count,
             queryCount: allGroups.filter { $0.type == .query }.count,
             unknownTypeCount: allGroups.filter { $0.type == nil }.count,
+            serverGroupTypeSummaries: Self.groupArchiveTypeSummaries(
+                sanitized.serverGroups,
+                target: .server
+            ),
+            channelGroupTypeSummaries: Self.groupArchiveTypeSummaries(
+                sanitized.channelGroups,
+                target: .channel
+            ),
             serverGroupSummaries: sanitized.serverGroups.prefix(10).map {
                 $0.clipboardSummary(target: .server)
             },
@@ -11992,6 +12007,28 @@ final class TS3AppModel: ObservableObject {
             firstServerGroupName: sanitized.serverGroups.first?.name,
             firstChannelGroupName: sanitized.channelGroups.first?.name
         )
+    }
+
+    private static func groupArchiveTypeSummaries(
+        _ groups: [TS3GroupSummary],
+        target: TS3GroupManagementTarget
+    ) -> [String] {
+        let grouped = Dictionary(grouping: groups) { group in
+            group.typeTitle
+        }
+        return grouped
+            .map { type, groups in
+                (type: type, count: groups.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.type.localizedCaseInsensitiveCompare(rhs.type) == .orderedAscending
+            }
+            .map { item in
+                "target=\(target.title) type=\(item.type) count=\(item.count)"
+            }
     }
 
     func importGroupArchive(from data: Data) throws {
