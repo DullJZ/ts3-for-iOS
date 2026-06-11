@@ -1883,6 +1883,11 @@ private struct TS3ComplaintArchive: Codable {
 }
 
 struct TS3ComplaintArchivePreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: String
+        let summary: String
+    }
+
     let complaintCount: Int
     let skippedComplaintCount: Int
     let targetCount: Int
@@ -1892,6 +1897,7 @@ struct TS3ComplaintArchivePreview {
     let targetSummaries: [String]
     let sourceSummaries: [String]
     let complaintSummaries: [String]
+    let candidates: [Candidate]
     let firstTargetName: String?
     let firstTargetDatabaseId: Int?
     let firstSourceName: String?
@@ -1905,6 +1911,10 @@ struct TS3ComplaintArchivePreview {
 
     var clipboardSummary: String {
         (targetSummaries + sourceSummaries + complaintSummaries).joined(separator: "\n")
+    }
+
+    func containsComplaint(id: String) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -12005,6 +12015,12 @@ final class TS3AppModel: ObservableObject {
                 label: "source"
             ),
             complaintSummaries: entries.prefix(10).map(\.clipboardSummary),
+            candidates: entries.map {
+                TS3ComplaintArchivePreview.Candidate(
+                    id: Self.complaintArchiveSelectionID($0),
+                    summary: $0.clipboardSummary
+                )
+            },
             firstTargetName: first?.targetName,
             firstTargetDatabaseId: first?.targetClientDatabaseId,
             firstSourceName: first?.sourceName,
@@ -12014,9 +12030,12 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
-    func importComplaintArchive(from data: Data) throws {
+    func importComplaintArchive(from data: Data, selectedComplaintIds: Set<String>? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3ComplaintArchive.self, from: data)
-        let entries = sanitizedComplaintArchiveEntries(decoded.entries).entries
+        let entries = sanitizedComplaintArchiveEntries(decoded.entries).entries.filter { entry in
+            guard let selectedComplaintIds else { return true }
+            return selectedComplaintIds.contains(Self.complaintArchiveSelectionID(entry))
+        }
         complaintEntries = Array(entries.prefix(500))
         saveComplaintResults()
         lastError = nil
@@ -15462,6 +15481,17 @@ final class TS3AppModel: ObservableObject {
             return "db=\(databaseId)"
         }
         return "\(name) db=\(databaseId)"
+    }
+
+    private static func complaintArchiveSelectionID(_ entry: TS3ComplaintSummary) -> String {
+        [
+            String(entry.targetClientDatabaseId),
+            entry.targetName ?? "",
+            String(entry.sourceClientDatabaseId),
+            entry.sourceName ?? "",
+            entry.message ?? "",
+            entry.timestamp?.timeIntervalSince1970.description ?? ""
+        ].joined(separator: "\u{1F}")
     }
 
     private static func complaintArchivePartySummaries(_ values: [String], label: String) -> [String] {

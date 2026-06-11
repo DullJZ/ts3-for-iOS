@@ -20409,7 +20409,7 @@ private struct BanBackupImportSheet: View {
 
 struct ComplaintListSheet: View {
     private struct ComplaintArchiveImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3ComplaintArchivePreview
         let id = UUID()
     }
@@ -20761,8 +20761,8 @@ struct ComplaintListSheet: View {
                 ComplaintArchiveImportSheet(
                     preview: confirmation.preview,
                     previewMessage: complaintArchivePreviewMessage(confirmation.preview),
-                    importArchive: {
-                        importComplaintArchive(from: confirmation.url)
+                    importArchive: { selectedComplaintIds in
+                        importComplaintArchive(data: confirmation.data, selectedComplaintIds: selectedComplaintIds)
                         pendingComplaintArchiveImport = nil
                     },
                     cancel: {
@@ -20957,22 +20957,17 @@ struct ComplaintListSheet: View {
             }
         }
         do {
-            let preview = try model.complaintArchivePreview(from: Data(contentsOf: url))
-            pendingComplaintArchiveImport = ComplaintArchiveImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.complaintArchivePreview(from: data)
+            pendingComplaintArchiveImport = ComplaintArchiveImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importComplaintArchive(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importComplaintArchive(data: Data, selectedComplaintIds: Set<String>) {
         do {
-            try model.importComplaintArchive(from: Data(contentsOf: url))
+            try model.importComplaintArchive(from: data, selectedComplaintIds: selectedComplaintIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -21019,8 +21014,13 @@ struct ComplaintListSheet: View {
 private struct ComplaintArchiveImportSheet: View {
     let preview: TS3ComplaintArchivePreview
     let previewMessage: String
-    let importArchive: () -> Void
+    let importArchive: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedComplaintIds: Set<String> = []
+
+    private var validSelectedComplaintIds: Set<String> {
+        Set(selectedComplaintIds.filter(preview.containsComplaint))
+    }
 
     var body: some View {
         NavigationView {
@@ -21032,6 +21032,15 @@ private struct ComplaintArchiveImportSheet: View {
                     if preview.hasComplaints {
                         Button("Copy Complaint Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedComplaintIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedComplaintIds = []
+                            }
+                            .disabled(selectedComplaintIds.isEmpty)
                         }
                         ForEach(preview.targetSummaries, id: \.self) { summary in
                             Text(summary)
@@ -21049,17 +21058,39 @@ private struct ComplaintArchiveImportSheet: View {
                                 .lineLimit(2)
                                 .truncationMode(.middle)
                         }
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedComplaintIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedComplaintIds.insert(candidate.id)
+                                    } else {
+                                        selectedComplaintIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached complaint list for offline review and does not submit complaints to the server.")
+                    Text("Import replaces the local cached complaint list with the selected complaints for offline review and does not submit complaints to the server.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Complaints")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedComplaintIds.isEmpty {
+                    selectedComplaintIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -21068,9 +21099,9 @@ private struct ComplaintArchiveImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importArchive()
+                        importArchive(validSelectedComplaintIds)
                     }
-                    .disabled(!preview.hasComplaints)
+                    .disabled(!preview.hasComplaints || validSelectedComplaintIds.isEmpty)
                 }
             }
         }

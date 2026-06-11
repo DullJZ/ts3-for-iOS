@@ -152,6 +152,16 @@ final class TS3ComplaintArchiveTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "sourceDb=44 | targetDb=22 | sourceName=Reporter | targetName=Target | timestamp=2678307200 | message=Abuse",
+                "sourceDb=45 | targetDb=23"
+            ]
+        )
+        XCTAssertEqual(Set(preview.candidates.map(\.id)).count, 2)
+        XCTAssertTrue(preview.containsComplaint(id: preview.candidates[1].id))
+        XCTAssertFalse(preview.containsComplaint(id: "missing-complaint"))
+        XCTAssertEqual(
             preview.clipboardSummary,
             (preview.targetSummaries + preview.sourceSummaries + preview.complaintSummaries).joined(separator: "\n")
         )
@@ -183,5 +193,39 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(model.complaintEntries.first?.sourceName, "Reporter")
         XCTAssertEqual(model.complaintEntries.first?.message, "Abuse")
         XCTAssertEqual(model.lastError, nil)
+    }
+
+    @MainActor
+    func testComplaintArchiveImportCanRestoreSelectedComplaints() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "entries": [
+            {
+              "id": "first",
+              "targetClientDatabaseId": 22,
+              "targetName": " Target ",
+              "sourceClientDatabaseId": 44,
+              "sourceName": " Reporter ",
+              "message": " Abuse "
+            },
+            {
+              "id": "second",
+              "targetClientDatabaseId": 23,
+              "sourceClientDatabaseId": 45,
+              "message": " Noise "
+            }
+          ]
+        }
+        """
+        let data = Data(archiveJSON.utf8)
+        let preview = try model.complaintArchivePreview(from: data)
+
+        try model.importComplaintArchive(from: data, selectedComplaintIds: [preview.candidates[1].id])
+
+        XCTAssertEqual(model.complaintEntries.count, 1)
+        XCTAssertEqual(model.complaintEntries.first?.targetClientDatabaseId, 23)
+        XCTAssertEqual(model.complaintEntries.first?.sourceClientDatabaseId, 45)
+        XCTAssertEqual(model.complaintEntries.first?.message, "Noise")
     }
 }
