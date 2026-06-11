@@ -95,7 +95,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Debug logs | Done | Debug log page with level/search filtering, visible-log copy/export, clear, and diagnostic report export package | Add richer packaged attachments if platform sandbox requirements emerge. |
 | Build coverage | Done | README documents SwiftPM, iOS, Catalyst, CI artifact builds | Keep README feature list updated with current capabilities. |
-| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, client migration preview details, selective migration restore options, and migration-package edge cases for channel layout, files, server administration presets, self status, and whisper | Add broader tests for legacy package decoding and real-server validated restore semantics. |
+| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, client migration preview details, selective migration restore options, legacy migration-package decoding with missing newer sections, and migration-package edge cases for channel layout, files, server administration presets, self status, and whisper | Add broader tests for real-server validated restore semantics. |
 
 ## Next Implementation Priorities
 

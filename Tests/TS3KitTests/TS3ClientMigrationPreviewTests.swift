@@ -552,6 +552,75 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
         XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Whisper Filters" && $0.1 >= 1 })
     }
 
+    @MainActor
+    func testClientMigrationDecodesLegacyPackageMissingNewerSections() throws {
+        let source = TS3AppModel()
+        source.contacts = [
+            makeContact(uniqueIdentifier: "legacy-contact", nickname: "Legacy", status: .friend, note: "old package")
+        ]
+        source.deleteAudioProfiles(source.audioProfiles)
+        source.updateAudioTransmitMode(.voiceActivation)
+        source.updateInputGain(1.25)
+
+        let exported = try source.clientMigrationPackageExportData()
+        let removedKeys = [
+            "connectionFilterPresets",
+            "savedChannelPasswords",
+            "contactFilterPresets",
+            "serverLogQueryPresets",
+            "keyboardShortcuts",
+            "channelSubscriptionPresets",
+            "channelTreeFilterPresets",
+            "collapsedChannelIds",
+            "eventFilterPresets",
+            "chatFilterPresets",
+            "fileBrowserBookmarks",
+            "fileBrowserFilterPresets",
+            "offlineMessageFilterPresets",
+            "banFilterPresets",
+            "complaintFilterPresets",
+            "temporaryServerPasswordFilterPresets",
+            "databaseClientFilterPresets",
+            "privilegeKeyFilterPresets",
+            "permissionFilterPresets",
+            "groupFilterPresets",
+            "groupClientFilterPresets",
+            "userPlaybackPreferences",
+            "selfStatusProfiles",
+            "whisperPresets",
+            "whisperFilterPresets"
+        ]
+        let legacyData = try migrationPackageData(exported, removingKeys: removedKeys)
+
+        let preview = try source.clientMigrationPackagePreview(from: legacyData)
+
+        XCTAssertEqual(preview.schemaVersion, 1)
+        XCTAssertTrue(preview.itemCounts.contains { $0.0 == "Contacts" && $0.1 == 1 })
+        XCTAssertFalse(preview.itemCounts.contains { $0.0 == "Audio Profiles" })
+        XCTAssertFalse(preview.itemCounts.contains { $0.0 == "Keyboard Shortcuts" })
+        XCTAssertFalse(preview.itemCounts.contains { $0.0 == "Whisper Presets" })
+        XCTAssertFalse(preview.itemCounts.contains { $0.0 == "Whisper Filters" })
+        XCTAssertFalse(preview.itemCounts.contains { $0.0 == "File Bookmarks" })
+        XCTAssertFalse(preview.itemCounts.contains { $0.0 == "Group Filters" })
+        XCTAssertTrue(preview.settingsDetails.contains("Audio transmit mode: voiceActivation"))
+        XCTAssertTrue(preview.settingsDetails.contains("Keyboard shortcuts: 0 enabled / 0 total"))
+
+        let target = TS3AppModel()
+        target.contacts = []
+        target.updateAudioTransmitMode(.pushToTalk)
+        let defaultShortcutCount = target.keyboardShortcuts.count
+        let defaultWhisperCount = target.whisperPresets.count
+
+        try target.importClientMigrationPackage(from: legacyData)
+
+        XCTAssertEqual(target.contacts.map(\.uniqueIdentifier), ["legacy-contact"])
+        XCTAssertEqual(target.contacts.first?.nickname, "Legacy")
+        XCTAssertEqual(target.audioTransmitMode, .voiceActivation)
+        XCTAssertEqual(target.inputGain, 1.25, accuracy: 0.001)
+        XCTAssertEqual(target.keyboardShortcuts.count, defaultShortcutCount)
+        XCTAssertEqual(target.whisperPresets.count, defaultWhisperCount)
+    }
+
     private func makeContact(
         uniqueIdentifier: String,
         nickname: String,
@@ -604,5 +673,13 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             isSubscribed: isSubscribed,
             isCurrent: false
         )
+    }
+
+    private func migrationPackageData(_ data: Data, removingKeys keys: [String]) throws -> Data {
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        for key in keys {
+            object.removeValue(forKey: key)
+        }
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
     }
 }

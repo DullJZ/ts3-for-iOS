@@ -89,6 +89,7 @@ final class TS3AudioProfileTests: XCTestCase {
     @MainActor
     func testAudioProfileImportMergesByNameAndSanitizesValues() throws {
         let model = TS3AppModel()
+        model.deleteAudioProfiles(model.audioProfiles)
         model.updatePlaybackVolume(1.2)
         model.updateInputGain(1.1)
         model.updateAudioTransmitMode(.pushToTalk)
