@@ -17731,6 +17731,9 @@ private struct PermissionBackupImportSheet: View {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(confirmation.preview.clipboardSummary)
+                    }
                     if let plan {
                         Text("Selected restore entries: \(plan.permissionCount)")
                             .font(.caption.weight(.semibold))

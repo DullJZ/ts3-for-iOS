@@ -3729,6 +3729,41 @@ struct TS3PermissionBackupPreview {
     var targetMatchesCurrentSelection: Bool {
         currentPermissionCount != nil
     }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Target: \(scope.title) - \(targetDescription)",
+            "Backup permissions: \(permissionCount)",
+            "Target comparison: \(targetMatchesCurrentSelection ? "Matched current selection" : "Not comparable with current selection")"
+        ]
+        if let currentPermissionCount,
+           let overwriteCount,
+           let changedCount,
+           let unchangedCount,
+           let newPermissionCount {
+            lines.append("Current permissions: \(currentPermissionCount)")
+            lines.append("Existing entries: \(overwriteCount)")
+            lines.append("Changed existing: \(changedCount)")
+            lines.append("Unchanged existing: \(unchangedCount)")
+            lines.append("New permissions: \(newPermissionCount)")
+        }
+        appendPermissionNames(changedPermissionNames, label: "Changing", to: &lines)
+        appendPermissionDetails(changedPermissionDetails, label: "Change details", to: &lines)
+        appendPermissionNames(overwritePermissionNames, label: "Existing", to: &lines)
+        appendPermissionNames(unchangedPermissionNames, label: "Unchanged", to: &lines)
+        appendPermissionNames(newPermissionNames, label: "Adding", to: &lines)
+        return lines.joined(separator: "\n")
+    }
+
+    private func appendPermissionNames(_ names: [String], label: String, to lines: inout [String]) {
+        guard !names.isEmpty else { return }
+        lines.append("\(label): \(names.joined(separator: ", "))")
+    }
+
+    private func appendPermissionDetails(_ details: [String], label: String, to lines: inout [String]) {
+        guard !details.isEmpty else { return }
+        lines.append("\(label): \(details.joined(separator: "; "))")
+    }
 }
 
 struct TS3PermissionBackupRestoreOptions: Equatable {

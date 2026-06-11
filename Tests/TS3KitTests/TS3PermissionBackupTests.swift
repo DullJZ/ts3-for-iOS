@@ -87,6 +87,23 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertEqual(preview.changedPermissionDetails, ["i_channel_join_power: value 25 -> 50"])
         XCTAssertTrue(preview.unchangedPermissionNames.isEmpty)
         XCTAssertEqual(preview.newPermissionNames, ["b_virtualserver_modify_name", "i_client_kick_power"])
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            Target: Server Group - Group 6
+            Backup permissions: 3
+            Target comparison: Matched current selection
+            Current permissions: 2
+            Existing entries: 1
+            Changed existing: 1
+            Unchanged existing: 0
+            New permissions: 2
+            Changing: i_channel_join_power
+            Change details: i_channel_join_power: value 25 -> 50
+            Existing: i_channel_join_power
+            Adding: b_virtualserver_modify_name, i_client_kick_power
+            """
+        )
     }
 
     @MainActor
@@ -173,6 +190,14 @@ final class TS3PermissionBackupTests: XCTestCase {
         XCTAssertTrue(preview.changedPermissionDetails.isEmpty)
         XCTAssertTrue(preview.unchangedPermissionNames.isEmpty)
         XCTAssertTrue(preview.newPermissionNames.isEmpty)
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            Target: Channel - Channel 9
+            Backup permissions: 1
+            Target comparison: Not comparable with current selection
+            """
+        )
     }
 
     @MainActor
