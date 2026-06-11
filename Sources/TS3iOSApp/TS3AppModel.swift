@@ -1235,6 +1235,8 @@ struct TS3OfflineMessageArchivePreview {
     let withBodyCount: Int
     let replyableCount: Int
     let unknownSenderCount: Int
+    let readStateSummaries: [String]
+    let senderSummaries: [String]
     let messageSummaries: [String]
     let firstSenderName: String?
     let firstSenderUniqueIdentifier: String?
@@ -1246,7 +1248,7 @@ struct TS3OfflineMessageArchivePreview {
     }
 
     var clipboardSummary: String {
-        messageSummaries.joined(separator: "\n")
+        (readStateSummaries + senderSummaries + messageSummaries).joined(separator: "\n")
     }
 }
 
@@ -11485,6 +11487,8 @@ final class TS3AppModel: ObservableObject {
             withBodyCount: messages.filter { $0.message?.isEmpty == false }.count,
             replyableCount: messages.filter { $0.senderUniqueIdentifier?.isEmpty == false }.count,
             unknownSenderCount: messages.filter { $0.senderName?.isEmpty != false && $0.senderUniqueIdentifier?.isEmpty != false }.count,
+            readStateSummaries: Self.offlineMessageReadStateSummaries(messages),
+            senderSummaries: Self.offlineMessageSenderSummaries(messages),
             messageSummaries: messages.prefix(10).map(Self.offlineMessageArchiveSummary),
             firstSenderName: first?.senderName,
             firstSenderUniqueIdentifier: first?.senderUniqueIdentifier,
@@ -16077,6 +16081,49 @@ final class TS3AppModel: ObservableObject {
             parts.append("body=true")
         }
         return parts.joined(separator: " | ")
+    }
+
+    private static func offlineMessageReadStateSummaries(_ messages: [TS3OfflineMessageSummary]) -> [String] {
+        let grouped = Dictionary(grouping: messages, by: \.isRead)
+        return grouped
+            .map { isRead, messages in
+                (isRead: isRead, count: messages.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return !lhs.isRead && rhs.isRead
+            }
+            .map { item in
+                "read=\(item.isRead ? "true" : "false") count=\(item.count)"
+            }
+    }
+
+    private static func offlineMessageSenderSummaries(_ messages: [TS3OfflineMessageSummary]) -> [String] {
+        let grouped = Dictionary(grouping: messages) { message in
+            if let senderName = message.senderName, !senderName.isEmpty {
+                return senderName
+            }
+            if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
+                return senderUniqueIdentifier
+            }
+            return "Unknown"
+        }
+        return grouped
+            .map { sender, messages in
+                (sender: sender, count: messages.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.sender.localizedCaseInsensitiveCompare(rhs.sender) == .orderedAscending
+            }
+            .prefix(6)
+            .map { item in
+                "sender=\(item.sender) count=\(item.count)"
+            }
     }
 
     private func saveOfflineMessageHistory() {

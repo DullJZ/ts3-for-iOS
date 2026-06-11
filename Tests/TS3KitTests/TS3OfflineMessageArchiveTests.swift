@@ -99,6 +99,14 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         XCTAssertEqual(preview.withBodyCount, 1)
         XCTAssertEqual(preview.replyableCount, 1)
         XCTAssertEqual(preview.unknownSenderCount, 1)
+        XCTAssertEqual(preview.readStateSummaries, [
+            "read=false count=1",
+            "read=true count=1"
+        ])
+        XCTAssertEqual(preview.senderSummaries, [
+            "sender=Sender A count=1",
+            "sender=Unknown count=1"
+        ])
         XCTAssertEqual(preview.firstSenderName, "Sender A")
         XCTAssertEqual(preview.firstSubject, "Hello")
         XCTAssertEqual(
@@ -108,7 +116,10 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
                 "id=2 | read=true | subject=No sender"
             ]
         )
-        XCTAssertEqual(preview.clipboardSummary, preview.messageSummaries.joined(separator: "\n"))
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            (preview.readStateSummaries + preview.senderSummaries + preview.messageSummaries).joined(separator: "\n")
+        )
         XCTAssertTrue(preview.hasMessages)
     }
 

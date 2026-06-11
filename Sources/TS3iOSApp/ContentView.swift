@@ -8947,6 +8947,12 @@ struct OfflineMessagesSheet: View {
         if preview.skippedMessageCount > 0 {
             lines.append("Skipped invalid or duplicate messages: \(preview.skippedMessageCount)")
         }
+        if !preview.readStateSummaries.isEmpty {
+            lines.append("Read states: \(preview.readStateSummaries.joined(separator: " | "))")
+        }
+        if !preview.senderSummaries.isEmpty {
+            lines.append("Senders: \(preview.senderSummaries.joined(separator: " | "))")
+        }
         if let senderName = preview.firstSenderName {
             lines.append("First sender: \(senderName)")
         } else if let senderUniqueIdentifier = preview.firstSenderUniqueIdentifier {
@@ -8979,6 +8985,16 @@ private struct OfflineMessageArchiveImportSheet: View {
                     if preview.hasMessages {
                         Button("Copy Message Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(preview.readStateSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        ForEach(preview.senderSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         ForEach(Array(preview.messageSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
