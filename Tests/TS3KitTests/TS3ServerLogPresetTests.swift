@@ -176,6 +176,16 @@ final class TS3ServerLogPresetTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "id=3 | message=Auth failed | level=warning | channel=Server | timestamp=2678307200",
+                "id=2 | message=Debug entry | level=debug"
+            ]
+        )
+        XCTAssertEqual(preview.candidates.map(\.id), [3, 2])
+        XCTAssertTrue(preview.containsEntry(id: 2))
+        XCTAssertFalse(preview.containsEntry(id: 99))
+        XCTAssertEqual(
             preview.clipboardSummary,
             """
             level=debug count=1
@@ -238,6 +248,40 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertEqual(model.serverLogEntries.first?.message, "Server started")
         XCTAssertEqual(model.serverLogEntries.first?.rawLine, "Server started")
         XCTAssertEqual(model.lastError, nil)
+    }
+
+    @MainActor
+    func testServerLogArchiveImportCanRestoreSelectedEntries() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "entries": [
+            {
+              "id": 9,
+              "level": " info ",
+              "channel": " VirtualSvrMgr ",
+              "message": " Server started ",
+              "rawLine": ""
+            },
+            {
+              "id": 10,
+              "level": " warning ",
+              "channel": " Server ",
+              "message": " Selected warning ",
+              "rawLine": "raw warning"
+            }
+          ]
+        }
+        """
+
+        try model.importServerLogArchive(from: Data(archiveJSON.utf8), selectedEntryIds: [10])
+
+        XCTAssertEqual(model.serverLogEntries.count, 1)
+        XCTAssertEqual(model.serverLogEntries.first?.id, 10)
+        XCTAssertEqual(model.serverLogEntries.first?.level, "warning")
+        XCTAssertEqual(model.serverLogEntries.first?.channel, "Server")
+        XCTAssertEqual(model.serverLogEntries.first?.message, "Selected warning")
+        XCTAssertEqual(model.serverLogEntries.first?.rawLine, "raw warning")
     }
 
     @MainActor

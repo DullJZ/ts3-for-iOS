@@ -5487,6 +5487,11 @@ private struct TS3ServerLogArchive: Codable {
 }
 
 struct TS3ServerLogArchivePreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: Int
+        let summary: String
+    }
+
     let entryCount: Int
     let skippedEntryCount: Int
     let levelCount: Int
@@ -5495,6 +5500,7 @@ struct TS3ServerLogArchivePreview {
     let levelSummaries: [String]
     let channelSummaries: [String]
     let entrySummaries: [String]
+    let candidates: [Candidate]
     let firstLevel: String?
     let firstChannel: String?
     let firstMessage: String?
@@ -5506,6 +5512,10 @@ struct TS3ServerLogArchivePreview {
 
     var clipboardSummary: String {
         (levelSummaries + channelSummaries + entrySummaries).joined(separator: "\n")
+    }
+
+    func containsEntry(id: Int) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -9311,6 +9321,12 @@ final class TS3AppModel: ObservableObject {
                 label: "channel"
             ),
             entrySummaries: entries.prefix(10).map(\.archiveSummary),
+            candidates: entries.map {
+                TS3ServerLogArchivePreview.Candidate(
+                    id: $0.id,
+                    summary: $0.archiveSummary
+                )
+            },
             firstLevel: first?.level,
             firstChannel: first?.channel,
             firstMessage: first?.message,
@@ -9318,9 +9334,13 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
-    func importServerLogArchive(from data: Data) throws {
+    func importServerLogArchive(from data: Data, selectedEntryIds: Set<Int>? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3ServerLogArchive.self, from: data)
-        serverLogEntries = Array(sanitizedServerLogArchiveEntries(decoded.entries).entries.prefix(500))
+        let entries = sanitizedServerLogArchiveEntries(decoded.entries).entries.filter { entry in
+            guard let selectedEntryIds else { return true }
+            return selectedEntryIds.contains(entry.id)
+        }
+        serverLogEntries = Array(entries.prefix(500))
         saveServerLogResults()
         lastError = nil
     }

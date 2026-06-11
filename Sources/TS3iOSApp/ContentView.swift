@@ -9899,7 +9899,7 @@ private struct NotificationSettingsImportSheet: View {
 
 struct ServerLogsSheet: View {
     private struct ServerLogArchiveImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3ServerLogArchivePreview
         let id = UUID()
     }
@@ -10253,8 +10253,8 @@ struct ServerLogsSheet: View {
                 ServerLogArchiveImportSheet(
                     preview: confirmation.preview,
                     previewMessage: logArchivePreviewMessage(confirmation.preview),
-                    importArchive: {
-                        importLogArchive(from: confirmation.url)
+                    importArchive: { selectedEntryIds in
+                        importLogArchive(data: confirmation.data, selectedEntryIds: selectedEntryIds)
                         pendingLogArchiveImport = nil
                     },
                     cancel: {
@@ -10413,22 +10413,17 @@ struct ServerLogsSheet: View {
             }
         }
         do {
-            let preview = try model.serverLogArchivePreview(from: Data(contentsOf: url))
-            pendingLogArchiveImport = ServerLogArchiveImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.serverLogArchivePreview(from: data)
+            pendingLogArchiveImport = ServerLogArchiveImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importLogArchive(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importLogArchive(data: Data, selectedEntryIds: Set<Int>) {
         do {
-            try model.importServerLogArchive(from: Data(contentsOf: url))
+            try model.importServerLogArchive(from: data, selectedEntryIds: selectedEntryIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -10512,8 +10507,13 @@ struct ServerLogsSheet: View {
 private struct ServerLogArchiveImportSheet: View {
     let preview: TS3ServerLogArchivePreview
     let previewMessage: String
-    let importArchive: () -> Void
+    let importArchive: (Set<Int>) -> Void
     let cancel: () -> Void
+    @State private var selectedEntryIds: Set<Int> = []
+
+    private var validSelectedEntryIds: Set<Int> {
+        Set(selectedEntryIds.filter(preview.containsEntry))
+    }
 
     var body: some View {
         NavigationView {
@@ -10525,6 +10525,15 @@ private struct ServerLogArchiveImportSheet: View {
                     if preview.hasEntries {
                         Button("Copy Log Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedEntryIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedEntryIds = []
+                            }
+                            .disabled(selectedEntryIds.isEmpty)
                         }
                         ForEach(preview.levelSummaries, id: \.self) { summary in
                             Text(summary)
@@ -10542,17 +10551,39 @@ private struct ServerLogArchiveImportSheet: View {
                                 .lineLimit(2)
                                 .truncationMode(.middle)
                         }
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedEntryIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedEntryIds.insert(candidate.id)
+                                    } else {
+                                        selectedEntryIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached server log results for offline review and does not change server-side logs.")
+                    Text("Import replaces the local cached server log results with the selected entries for offline review and does not change server-side logs.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Logs")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedEntryIds.isEmpty {
+                    selectedEntryIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -10561,9 +10592,9 @@ private struct ServerLogArchiveImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importArchive()
+                        importArchive(validSelectedEntryIds)
                     }
-                    .disabled(!preview.hasEntries)
+                    .disabled(!preview.hasEntries || validSelectedEntryIds.isEmpty)
                 }
             }
         }
