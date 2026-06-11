@@ -214,7 +214,9 @@ final class TS3PermissionBackupTests: XCTestCase {
                     name: "i_channel_join_power",
                     value: 50,
                     isNegated: false,
-                    isSkipped: false
+                    isSkipped: false,
+                    restoreReason: "changed existing",
+                    changeSummary: "value 25 -> 50"
                 )
             ]
         )
@@ -249,6 +251,8 @@ final class TS3PermissionBackupTests: XCTestCase {
         )
 
         XCTAssertEqual(plan.permissionNames, ["i_client_kick_power"])
+        XCTAssertEqual(plan.entries.first?.restoreReason, "new permission")
+        XCTAssertNil(plan.entries.first?.changeSummary)
     }
 
     @MainActor
@@ -277,6 +281,36 @@ final class TS3PermissionBackupTests: XCTestCase {
 
         XCTAssertTrue(plan.permissionNames.isEmpty)
         XCTAssertEqual(plan.permissionCount, 0)
+    }
+
+    @MainActor
+    func testPermissionBackupRestorePlanLabelsUncomparableEntries() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .channel
+        source.selectedChannelPermissionId = 9
+        source.scopedPermissions = [
+            makePermission("i_channel_needed_join_power", value: 30)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .channel
+        target.selectedChannelPermissionId = 10
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: TS3PermissionBackupRestoreOptions(
+                changedExisting: true,
+                newPermissions: true,
+                restoreWhenTargetCannotBeCompared: true
+            )
+        )
+
+        XCTAssertEqual(plan.permissionNames, ["i_channel_needed_join_power"])
+        XCTAssertEqual(plan.entries.first?.restoreReason, "not comparable")
+        XCTAssertNil(plan.entries.first?.changeSummary)
+        XCTAssertTrue(plan.auditSummary.contains("reason=not comparable"))
     }
 
     @MainActor
@@ -316,8 +350,8 @@ final class TS3PermissionBackupTests: XCTestCase {
             New permissions available: 1
             Unchanged skipped: 0
 
-            name=i_channel_join_power value=50 negated=false skip=false
-            name=i_client_kick_power value=75 negated=true skip=true
+            name=i_channel_join_power value=50 negated=false skip=false reason=changed existing change=value 25 -> 50
+            name=i_client_kick_power value=75 negated=true skip=true reason=new permission
             """
         )
         XCTAssertEqual(plan.auditSummary, plan.clipboardSummary)
@@ -355,13 +389,15 @@ final class TS3PermissionBackupTests: XCTestCase {
                     name: "i_channel_join_power",
                     value: 50,
                     isNegated: true,
-                    isSkipped: false
+                    isSkipped: false,
+                    restoreReason: "new permission"
                 ),
                 TS3PermissionBackupRestoreEntry(
                     name: "i_client_kick_power",
                     value: 75,
                     isNegated: false,
-                    isSkipped: true
+                    isSkipped: true,
+                    restoreReason: "new permission"
                 )
             ]
         )
@@ -414,8 +450,8 @@ final class TS3PermissionBackupTests: XCTestCase {
             New permissions available: 1
             Unchanged skipped: 0
 
-            name=i_channel_join_power value=50 negated=true skip=false
-            name=i_client_kick_power value=75 negated=false skip=true
+            name=i_channel_join_power value=50 negated=true skip=false reason=changed existing change=value 10 -> 50, negated off -> on
+            name=i_client_kick_power value=75 negated=false skip=true reason=new permission
             """
         )
     }

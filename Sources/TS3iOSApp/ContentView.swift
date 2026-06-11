@@ -17689,6 +17689,9 @@ private struct PermissionBackupImportSheet: View {
                                     Text("Value \(entry.value) | Negated \(entry.isNegated ? "on" : "off") | Skip \(entry.isSkipped ? "on" : "off")")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
+                                    Text(entry.changeSummary ?? entry.restoreReason)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                             if plan.permissionCount > 6 {

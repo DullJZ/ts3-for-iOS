@@ -3735,14 +3735,37 @@ struct TS3PermissionBackupRestoreEntry: Equatable {
     let value: Int
     let isNegated: Bool
     let isSkipped: Bool
+    let restoreReason: String
+    let changeSummary: String?
+
+    init(
+        name: String,
+        value: Int,
+        isNegated: Bool,
+        isSkipped: Bool,
+        restoreReason: String = "selected",
+        changeSummary: String? = nil
+    ) {
+        self.name = name
+        self.value = value
+        self.isNegated = isNegated
+        self.isSkipped = isSkipped
+        self.restoreReason = restoreReason
+        self.changeSummary = changeSummary
+    }
 
     var clipboardSummary: String {
-        [
+        var parts = [
             "name=\(name)",
             "value=\(value)",
             "negated=\(isNegated ? "true" : "false")",
-            "skip=\(isSkipped ? "true" : "false")"
-        ].joined(separator: " ")
+            "skip=\(isSkipped ? "true" : "false")",
+            "reason=\(restoreReason)"
+        ]
+        if let changeSummary, !changeSummary.isEmpty {
+            parts.append("change=\(changeSummary)")
+        }
+        return parts.joined(separator: " ")
     }
 }
 
@@ -8380,7 +8403,9 @@ final class TS3AppModel: ObservableObject {
             permissions,
             currentByName: currentByName,
             options: options
-        ).map(Self.permissionBackupRestoreEntry(from:))
+        ).map { permission in
+            Self.permissionBackupRestoreEntry(from: permission, currentByName: currentByName)
+        }
         return TS3PermissionBackupRestorePlan(
             entries: plannedNames,
             targetDescription: permissionBackupTargetDescription(decoded, scope: scope),
@@ -8642,7 +8667,7 @@ final class TS3AppModel: ObservableObject {
             && backupPermission.isSkipped == current.isSkipped
     }
 
-    private static func permissionBackupChangeDescription(
+    private static func permissionBackupChangeSummary(
         name: String,
         backup: TS3PermissionBackupPermission,
         current: TS3PermissionSummary
@@ -8657,7 +8682,15 @@ final class TS3AppModel: ObservableObject {
         if backup.isSkipped != current.isSkipped {
             changes.append("skip \(permissionBackupFlagDescription(current.isSkipped)) -> \(permissionBackupFlagDescription(backup.isSkipped))")
         }
-        return "\(name): \(changes.joined(separator: ", "))"
+        return changes.joined(separator: ", ")
+    }
+
+    private static func permissionBackupChangeDescription(
+        name: String,
+        backup: TS3PermissionBackupPermission,
+        current: TS3PermissionSummary
+    ) -> String {
+        "\(name): \(permissionBackupChangeSummary(name: name, backup: backup, current: current))"
     }
 
     private static func permissionBackupFlagDescription(_ value: Bool) -> String {
@@ -8665,13 +8698,29 @@ final class TS3AppModel: ObservableObject {
     }
 
     private static func permissionBackupRestoreEntry(
-        from permission: TS3PermissionBackupPermission
+        from permission: TS3PermissionBackupPermission,
+        currentByName: [String: TS3PermissionSummary]?
     ) -> TS3PermissionBackupRestoreEntry {
-        TS3PermissionBackupRestoreEntry(
+        let current = currentByName?[permission.name]
+        let reason: String
+        let changeSummary: String?
+        if let current {
+            reason = "changed existing"
+            changeSummary = permissionBackupChangeSummary(name: permission.name, backup: permission, current: current)
+        } else if currentByName == nil {
+            reason = "not comparable"
+            changeSummary = nil
+        } else {
+            reason = "new permission"
+            changeSummary = nil
+        }
+        return TS3PermissionBackupRestoreEntry(
             name: permission.name,
             value: permission.value,
             isNegated: permission.isNegated,
-            isSkipped: permission.isSkipped
+            isSkipped: permission.isSkipped,
+            restoreReason: reason,
+            changeSummary: changeSummary
         )
     }
 
