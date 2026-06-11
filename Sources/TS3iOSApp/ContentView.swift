@@ -20039,6 +20039,12 @@ struct BanListSheet: View {
         if preview.skippedRuleCount > 0 {
             lines.append("Skipped empty or duplicate rules: \(preview.skippedRuleCount)")
         }
+        if !preview.targetTypeSummaries.isEmpty {
+            lines.append("Targets: \(preview.targetTypeSummaries.joined(separator: " | "))")
+        }
+        if !preview.durationSummaries.isEmpty {
+            lines.append("Durations: \(preview.durationSummaries.joined(separator: " | "))")
+        }
         if let ip = preview.firstIP {
             lines.append("First IP: \(ip)")
         }
@@ -20078,6 +20084,16 @@ private struct BanBackupImportSheet: View {
                     if preview.hasRules {
                         Button("Copy Rule Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        ForEach(preview.targetTypeSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        ForEach(preview.durationSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         ForEach(Array(preview.ruleSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)

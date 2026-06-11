@@ -1418,6 +1418,8 @@ struct TS3BanBackupPreview {
     let nameRuleCount: Int
     let uniqueIdentifierRuleCount: Int
     let lastNicknameRuleCount: Int
+    let targetTypeSummaries: [String]
+    let durationSummaries: [String]
     let ruleSummaries: [String]
     let firstIP: String?
     let firstName: String?
@@ -1431,7 +1433,7 @@ struct TS3BanBackupPreview {
     }
 
     var clipboardSummary: String {
-        ruleSummaries.joined(separator: "\n")
+        (targetTypeSummaries + durationSummaries + ruleSummaries).joined(separator: "\n")
     }
 }
 
@@ -12203,6 +12205,8 @@ final class TS3AppModel: ObservableObject {
             nameRuleCount: entries.filter { $0.name?.isEmpty == false }.count,
             uniqueIdentifierRuleCount: entries.filter { $0.uniqueIdentifier?.isEmpty == false }.count,
             lastNicknameRuleCount: entries.filter { $0.lastNickname?.isEmpty == false }.count,
+            targetTypeSummaries: Self.banBackupTargetTypeSummaries(entries),
+            durationSummaries: Self.banBackupDurationSummaries(entries),
             ruleSummaries: entries.prefix(10).map(Self.banBackupRuleSummary),
             firstIP: first?.ip,
             firstName: first?.name,
@@ -12281,6 +12285,48 @@ final class TS3AppModel: ObservableObject {
             parts.append("reason=\(reason)")
         }
         return parts.joined(separator: " | ")
+    }
+
+    private static func banBackupTargetTypeSummaries(_ entries: [TS3BanBackupEntry]) -> [String] {
+        let items: [(String, Int)] = [
+            ("ip", entries.filter { $0.ip?.isEmpty == false }.count),
+            ("name", entries.filter { $0.name?.isEmpty == false }.count),
+            ("uid", entries.filter { $0.uniqueIdentifier?.isEmpty == false }.count),
+            ("lastNickname", entries.filter { $0.lastNickname?.isEmpty == false }.count)
+        ]
+        return items
+            .filter { $0.1 > 0 }
+            .sorted { lhs, rhs in
+                if lhs.1 != rhs.1 {
+                    return lhs.1 > rhs.1
+                }
+                return lhs.0.localizedCaseInsensitiveCompare(rhs.0) == .orderedAscending
+            }
+            .map { target, count in
+                "target=\(target) count=\(count)"
+            }
+    }
+
+    private static func banBackupDurationSummaries(_ entries: [TS3BanBackupEntry]) -> [String] {
+        let grouped = Dictionary(grouping: entries) { entry in
+            guard let durationSeconds = entry.durationSeconds else {
+                return "unspecified"
+            }
+            return durationSeconds == 0 ? "permanent" : "temporary"
+        }
+        return grouped
+            .map { duration, entries in
+                (duration: duration, count: entries.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.duration.localizedCaseInsensitiveCompare(rhs.duration) == .orderedAscending
+            }
+            .map { item in
+                "duration=\(item.duration) count=\(item.count)"
+            }
     }
 
     func deleteComplaint(_ entry: TS3ComplaintSummary) {

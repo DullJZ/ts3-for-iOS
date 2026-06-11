@@ -140,6 +140,17 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(preview.nameRuleCount, 1)
         XCTAssertEqual(preview.uniqueIdentifierRuleCount, 1)
         XCTAssertEqual(preview.lastNicknameRuleCount, 1)
+        XCTAssertEqual(preview.targetTypeSummaries, [
+            "target=ip count=1",
+            "target=lastNickname count=1",
+            "target=name count=1",
+            "target=uid count=1"
+        ])
+        XCTAssertEqual(preview.durationSummaries, [
+            "duration=permanent count=1",
+            "duration=temporary count=1",
+            "duration=unspecified count=1"
+        ])
         XCTAssertEqual(preview.firstIP, "192.0.2.10")
         XCTAssertEqual(preview.firstDurationSeconds, 0)
         XCTAssertEqual(preview.firstReason, "spam")
@@ -151,7 +162,10 @@ final class TS3BanBackupTests: XCTestCase {
                 "uid=abc/def"
             ]
         )
-        XCTAssertEqual(preview.clipboardSummary, preview.ruleSummaries.joined(separator: "\n"))
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            (preview.targetTypeSummaries + preview.durationSummaries + preview.ruleSummaries).joined(separator: "\n")
+        )
         XCTAssertTrue(preview.hasRules)
     }
 
@@ -171,6 +185,8 @@ final class TS3BanBackupTests: XCTestCase {
 
         XCTAssertEqual(preview.ruleCount, 0)
         XCTAssertEqual(preview.skippedRuleCount, 2)
+        XCTAssertTrue(preview.targetTypeSummaries.isEmpty)
+        XCTAssertTrue(preview.durationSummaries.isEmpty)
         XCTAssertTrue(preview.ruleSummaries.isEmpty)
         XCTAssertEqual(preview.clipboardSummary, "")
         XCTAssertFalse(preview.hasRules)
