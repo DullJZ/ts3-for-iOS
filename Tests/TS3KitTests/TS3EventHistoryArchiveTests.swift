@@ -22,6 +22,28 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
               "reasonId": 5,
               "reasonMessage": "Requested",
               "isOwnClient": false
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000003",
+              "timestamp": 1700000200,
+              "kind": "clientMoved",
+              "clientId": 13,
+              "clientName": "Riley",
+              "channelId": 5,
+              "channelName": "Ops",
+              "fromChannelId": 4,
+              "toChannelId": 5,
+              "isOwnClient": true
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000004",
+              "timestamp": 1700000300,
+              "kind": "clientEntered",
+              "clientId": 14,
+              "clientName": "Quinn",
+              "channelId": 4,
+              "channelName": "Lobby",
+              "isOwnClient": false
             }
           ],
           "pokeEvents": [
@@ -33,6 +55,15 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
               "senderUniqueIdentifier": "uid-m",
               "message": "Ping",
               "isOwnPoke": true
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000005",
+              "timestamp": 1700000400,
+              "senderId": 10,
+              "senderName": "Alex",
+              "senderUniqueIdentifier": "uid-a",
+              "message": "Hello",
+              "isOwnPoke": false
             }
           ]
         }
@@ -40,23 +71,48 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
 
         let preview = try model.eventHistoryArchivePreview(from: Data(archiveJSON.utf8))
 
-        XCTAssertEqual(preview.activityCount, 1)
-        XCTAssertEqual(preview.pokeCount, 1)
+        XCTAssertEqual(preview.activityCount, 3)
+        XCTAssertEqual(preview.pokeCount, 2)
         XCTAssertEqual(preview.currentActivityCount, 0)
         XCTAssertEqual(preview.currentPokeCount, 0)
         XCTAssertEqual(
+            preview.activityKindSummaries,
+            [
+                "activityKind=clientMoved count=2",
+                "activityKind=clientEntered count=1"
+            ]
+        )
+        XCTAssertEqual(
+            preview.pokeDirectionSummaries,
+            [
+                "pokeDirection=in count=1",
+                "pokeDirection=out count=1"
+            ]
+        )
+        XCTAssertEqual(
             preview.activitySummaries,
             [
-                "kind=clientMoved | client=Taylor | clientId=12 | timestamp=2678307200 | own=false | channel=Lobby | channelId=4 | from=2 | to=4 | invoker=Admin | reasonId=5 | reason=Requested"
+                "kind=clientMoved | client=Taylor | clientId=12 | timestamp=2678307200 | own=false | channel=Lobby | channelId=4 | from=2 | to=4 | invoker=Admin | reasonId=5 | reason=Requested",
+                "kind=clientMoved | client=Riley | clientId=13 | timestamp=2678307400 | own=true | channel=Ops | channelId=5 | from=4 | to=5",
+                "kind=clientEntered | client=Quinn | clientId=14 | timestamp=2678307500 | own=false | channel=Lobby | channelId=4"
             ]
         )
         XCTAssertEqual(
             preview.pokeSummaries,
             [
-                "direction=out | sender=Morgan | timestamp=2678307300 | senderId=9 | senderUid=uid-m | message=Ping"
+                "direction=out | sender=Morgan | timestamp=2678307300 | senderId=9 | senderUid=uid-m | message=Ping",
+                "direction=in | sender=Alex | timestamp=2678307600 | senderId=10 | senderUid=uid-a | message=Hello"
             ]
         )
-        XCTAssertEqual(preview.clipboardSummary, (preview.activitySummaries + preview.pokeSummaries).joined(separator: "\n"))
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            (
+                preview.activityKindSummaries
+                + preview.pokeDirectionSummaries
+                + preview.activitySummaries
+                + preview.pokeSummaries
+            ).joined(separator: "\n")
+        )
         XCTAssertTrue(preview.hasEvents)
     }
 

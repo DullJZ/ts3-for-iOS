@@ -7932,6 +7932,13 @@ private struct EventArchiveImportSheet: View {
 
                 if !preview.activitySummaries.isEmpty {
                     Section(header: Text("Activity")) {
+                        ForEach(Array(preview.activityKindSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
                         ForEach(Array(preview.activitySummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -7943,6 +7950,13 @@ private struct EventArchiveImportSheet: View {
 
                 if !preview.pokeSummaries.isEmpty {
                     Section(header: Text("Pokes")) {
+                        ForEach(Array(preview.pokeDirectionSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
                         ForEach(Array(preview.pokeSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)

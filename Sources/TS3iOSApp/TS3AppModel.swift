@@ -930,6 +930,8 @@ struct TS3EventHistoryArchivePreview {
     let pokeCount: Int
     let currentActivityCount: Int
     let currentPokeCount: Int
+    let activityKindSummaries: [String]
+    let pokeDirectionSummaries: [String]
     let activitySummaries: [String]
     let pokeSummaries: [String]
 
@@ -946,7 +948,12 @@ struct TS3EventHistoryArchivePreview {
     }
 
     var clipboardSummary: String {
-        (activitySummaries + pokeSummaries).joined(separator: "\n")
+        (
+            activityKindSummaries
+            + pokeDirectionSummaries
+            + activitySummaries
+            + pokeSummaries
+        ).joined(separator: "\n")
     }
 }
 
@@ -11233,9 +11240,49 @@ final class TS3AppModel: ObservableObject {
             pokeCount: archive.pokeEvents.count,
             currentActivityCount: activityEvents.count,
             currentPokeCount: pokeEvents.count,
+            activityKindSummaries: Self.eventArchiveActivityKindSummaries(archive.activityEvents),
+            pokeDirectionSummaries: Self.eventArchivePokeDirectionSummaries(archive.pokeEvents),
             activitySummaries: archive.activityEvents.prefix(10).map(\.clipboardSummary),
             pokeSummaries: archive.pokeEvents.prefix(10).map(\.clipboardSummary)
         )
+    }
+
+    private static func eventArchiveActivityKindSummaries(_ events: [TS3ActivitySummary]) -> [String] {
+        let grouped = Dictionary(grouping: events) { event in
+            event.kind.encodedValueForSummary
+        }
+        return grouped
+            .map { kind, events in
+                (kind: kind, count: events.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.kind.localizedCaseInsensitiveCompare(rhs.kind) == .orderedAscending
+            }
+            .map { item in
+                "activityKind=\(item.kind) count=\(item.count)"
+            }
+    }
+
+    private static func eventArchivePokeDirectionSummaries(_ pokes: [TS3PokeSummary]) -> [String] {
+        let grouped = Dictionary(grouping: pokes) { poke in
+            poke.isOwnPoke ? "out" : "in"
+        }
+        return grouped
+            .map { direction, pokes in
+                (direction: direction, count: pokes.count)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count > rhs.count
+                }
+                return lhs.direction.localizedCaseInsensitiveCompare(rhs.direction) == .orderedAscending
+            }
+            .map { item in
+                "pokeDirection=\(item.direction) count=\(item.count)"
+            }
     }
 
     func restoreEventHistoryArchive(from data: Data) throws {
