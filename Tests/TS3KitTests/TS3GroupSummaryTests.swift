@@ -333,6 +333,21 @@ final class TS3GroupSummaryTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "target=Server Groups | groupId=6 | name=Admins | type=Regular",
+                "target=Server Groups | groupId=7 | name=Query | type=Query",
+                "target=Channel Groups | groupId=9 | name=Channel Admin | type=Regular",
+                "target=Channel Groups | groupId=10 | name=Template | type=Template",
+                "target=Channel Groups | groupId=11 | name=Unknown | type=Unknown"
+            ]
+        )
+        XCTAssertEqual(preview.candidates.map(\.id), ["server:6", "server:7", "channel:9", "channel:10", "channel:11"])
+        XCTAssertEqual(preview.candidates.filter { $0.target == .server }.count, 2)
+        XCTAssertEqual(preview.candidates.filter { $0.target == .channel }.count, 3)
+        XCTAssertTrue(preview.containsGroup(id: "channel:9"))
+        XCTAssertFalse(preview.containsGroup(id: "server:9"))
+        XCTAssertEqual(
             preview.clipboardSummary,
             (
                 preview.serverGroupTypeSummaries
@@ -365,6 +380,36 @@ final class TS3GroupSummaryTests: XCTestCase {
         XCTAssertEqual(model.serverGroups.map(\.id), [12])
         XCTAssertEqual(model.serverGroups.first?.name, "Server Operators")
         XCTAssertEqual(model.channelGroups.map(\.id), [13])
+        XCTAssertEqual(model.channelGroups.first?.name, "Channel Voice")
+        XCTAssertEqual(model.lastError, nil)
+    }
+
+    @MainActor
+    func testGroupArchiveImportCanRestoreSelectedGroups() throws {
+        let model = TS3AppModel()
+        model.serverGroups = [TS3GroupSummary(id: 1, name: "Old Server", type: .regular)]
+        model.channelGroups = [TS3GroupSummary(id: 2, name: "Old Channel", type: .regular)]
+        let archiveJSON = """
+        {
+          "serverGroups": [
+            { "id": 12, "name": " Server Operators ", "type": 1 },
+            { "id": 13, "name": " Server Guests ", "type": 1 }
+          ],
+          "channelGroups": [
+            { "id": 12, "name": " Channel Voice ", "type": 1 },
+            { "id": 14, "name": " Channel Admin ", "type": 1 }
+          ]
+        }
+        """
+
+        try model.importGroupArchive(
+            from: Data(archiveJSON.utf8),
+            selectedGroupIds: ["server:13", "channel:12"]
+        )
+
+        XCTAssertEqual(model.serverGroups.map(\.id), [13])
+        XCTAssertEqual(model.serverGroups.first?.name, "Server Guests")
+        XCTAssertEqual(model.channelGroups.map(\.id), [12])
         XCTAssertEqual(model.channelGroups.first?.name, "Channel Voice")
         XCTAssertEqual(model.lastError, nil)
     }

@@ -11032,7 +11032,7 @@ enum TS3GroupManagementTarget: String, CaseIterable, Identifiable {
 
 struct GroupManagementSheet: View {
     private struct GroupArchiveImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3GroupArchivePreview
         let id = UUID()
     }
@@ -11370,8 +11370,8 @@ struct GroupManagementSheet: View {
                 GroupArchiveImportSheet(
                     preview: confirmation.preview,
                     previewMessage: groupArchivePreviewMessage(confirmation.preview),
-                    importArchive: {
-                        importGroupArchive(from: confirmation.url)
+                    importArchive: { selectedGroupIds in
+                        importGroupArchive(data: confirmation.data, selectedGroupIds: selectedGroupIds)
                         pendingGroupArchiveImport = nil
                     },
                     cancel: {
@@ -11493,22 +11493,17 @@ struct GroupManagementSheet: View {
             }
         }
         do {
-            let preview = try model.groupArchivePreview(from: Data(contentsOf: url))
-            pendingGroupArchiveImport = GroupArchiveImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.groupArchivePreview(from: data)
+            pendingGroupArchiveImport = GroupArchiveImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importGroupArchive(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importGroupArchive(data: Data, selectedGroupIds: Set<String>) {
         do {
-            try model.importGroupArchive(from: Data(contentsOf: url))
+            try model.importGroupArchive(from: data, selectedGroupIds: selectedGroupIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -11563,8 +11558,13 @@ struct GroupManagementSheet: View {
 private struct GroupArchiveImportSheet: View {
     let preview: TS3GroupArchivePreview
     let previewMessage: String
-    let importArchive: () -> Void
+    let importArchive: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedGroupIds: Set<String> = []
+
+    private var validSelectedGroupIds: Set<String> {
+        Set(selectedGroupIds.filter(preview.containsGroup))
+    }
 
     var body: some View {
         NavigationView {
@@ -11576,6 +11576,15 @@ private struct GroupArchiveImportSheet: View {
                     if preview.hasGroups {
                         Button("Copy Group Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedGroupIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedGroupIds = []
+                            }
+                            .disabled(selectedGroupIds.isEmpty)
                         }
                     }
                 }
@@ -11595,6 +11604,23 @@ private struct GroupArchiveImportSheet: View {
                                 .lineLimit(2)
                                 .truncationMode(.middle)
                         }
+                        ForEach(preview.candidates.filter { $0.target == .server }) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedGroupIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedGroupIds.insert(candidate.id)
+                                    } else {
+                                        selectedGroupIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
@@ -11613,17 +11639,39 @@ private struct GroupArchiveImportSheet: View {
                                 .lineLimit(2)
                                 .truncationMode(.middle)
                         }
+                        ForEach(preview.candidates.filter { $0.target == .channel }) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedGroupIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedGroupIds.insert(candidate.id)
+                                    } else {
+                                        selectedGroupIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached group lists for offline review and does not create, rename, or delete server groups.")
+                    Text("Import replaces the local cached group lists with the selected groups for offline review and does not create, rename, or delete server groups.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Groups")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedGroupIds.isEmpty {
+                    selectedGroupIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -11632,9 +11680,9 @@ private struct GroupArchiveImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importArchive()
+                        importArchive(validSelectedGroupIds)
                     }
-                    .disabled(!preview.hasGroups)
+                    .disabled(!preview.hasGroups || validSelectedGroupIds.isEmpty)
                 }
             }
         }

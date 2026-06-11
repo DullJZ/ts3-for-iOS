@@ -2274,6 +2274,12 @@ private struct TS3GroupArchive: Codable {
 }
 
 struct TS3GroupArchivePreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: String
+        let summary: String
+        let target: TS3GroupManagementTarget
+    }
+
     let serverGroupCount: Int
     let channelGroupCount: Int
     let skippedServerGroupCount: Int
@@ -2286,6 +2292,7 @@ struct TS3GroupArchivePreview {
     let channelGroupTypeSummaries: [String]
     let serverGroupSummaries: [String]
     let channelGroupSummaries: [String]
+    let candidates: [Candidate]
     let firstServerGroupName: String?
     let firstChannelGroupName: String?
 
@@ -2308,6 +2315,10 @@ struct TS3GroupArchivePreview {
             + serverGroupSummaries
             + channelGroupSummaries
         ).joined(separator: "\n")
+    }
+
+    func containsGroup(id: String) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -12466,6 +12477,19 @@ final class TS3AppModel: ObservableObject {
             channelGroupSummaries: sanitized.channelGroups.prefix(10).map {
                 $0.clipboardSummary(target: .channel)
             },
+            candidates: sanitized.serverGroups.map {
+                TS3GroupArchivePreview.Candidate(
+                    id: Self.groupArchiveSelectionID($0, target: .server),
+                    summary: $0.clipboardSummary(target: .server),
+                    target: .server
+                )
+            } + sanitized.channelGroups.map {
+                TS3GroupArchivePreview.Candidate(
+                    id: Self.groupArchiveSelectionID($0, target: .channel),
+                    summary: $0.clipboardSummary(target: .channel),
+                    target: .channel
+                )
+            },
             firstServerGroupName: sanitized.serverGroups.first?.name,
             firstChannelGroupName: sanitized.channelGroups.first?.name
         )
@@ -12493,11 +12517,19 @@ final class TS3AppModel: ObservableObject {
             }
     }
 
-    func importGroupArchive(from data: Data) throws {
+    func importGroupArchive(from data: Data, selectedGroupIds: Set<String>? = nil) throws {
         let decoded = try JSONDecoder().decode(TS3GroupArchive.self, from: data)
         let sanitized = sanitizedGroupArchive(serverGroups: decoded.serverGroups, channelGroups: decoded.channelGroups)
-        serverGroups = Array(sanitized.serverGroups.prefix(500))
-        channelGroups = Array(sanitized.channelGroups.prefix(500))
+        let selectedServerGroups = sanitized.serverGroups.filter { group in
+            guard let selectedGroupIds else { return true }
+            return selectedGroupIds.contains(Self.groupArchiveSelectionID(group, target: .server))
+        }
+        let selectedChannelGroups = sanitized.channelGroups.filter { group in
+            guard let selectedGroupIds else { return true }
+            return selectedGroupIds.contains(Self.groupArchiveSelectionID(group, target: .channel))
+        }
+        serverGroups = Array(selectedServerGroups.prefix(500))
+        channelGroups = Array(selectedChannelGroups.prefix(500))
         saveGroupResults()
         lastError = nil
     }
@@ -15942,6 +15974,10 @@ final class TS3AppModel: ObservableObject {
                 : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
         return (sanitizedGroups, skippedCount)
+    }
+
+    private static func groupArchiveSelectionID(_ group: TS3GroupSummary, target: TS3GroupManagementTarget) -> String {
+        "\(target.rawValue):\(group.id)"
     }
 
     private func saveGroupFilterPresets() {
