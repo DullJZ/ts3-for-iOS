@@ -87,6 +87,61 @@ final class TS3AudioProfileTests: XCTestCase {
     }
 
     @MainActor
+    func testAudioSettingsImportPreviewReportsSanitizedValues() throws {
+        let model = TS3AppModel()
+        let data = Data("""
+        {
+          "playbackVolume": 6,
+          "inputGain": -1,
+          "transmitMode": "invalid-mode",
+          "voiceActivationThreshold": 0.8,
+          "prefersSpeakerOutput": false,
+          "whisperActivationMode": "invalid-whisper"
+        }
+        """.utf8)
+
+        let preview = try model.audioSettingsImportPreview(from: data)
+
+        XCTAssertEqual(preview.playbackVolumeText, "400%")
+        XCTAssertEqual(preview.inputGainText, "0%")
+        XCTAssertEqual(preview.transmitModeTitle, "Push To Talk")
+        XCTAssertEqual(preview.voiceActivationThresholdText, "0.500")
+        XCTAssertFalse(preview.prefersSpeakerOutput)
+        XCTAssertEqual(preview.whisperActivationModeTitle, "Hold to Whisper")
+        XCTAssertEqual(preview.adjustedSettingCount, 5)
+        XCTAssertEqual(
+            preview.adjustmentSummaries,
+            ["playbackVolume", "inputGain", "transmitMode", "voiceActivationThreshold", "whisperActivationMode"]
+        )
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            Transmit mode: Push To Talk
+            Playback volume: 400%
+            Input gain: 0%
+            Voice activation threshold: 0.500
+            Default to speaker: No
+            Whisper activation mode: Hold to Whisper
+            Adjusted settings: playbackVolume,inputGain,transmitMode,voiceActivationThreshold,whisperActivationMode
+            adjusted field=playbackVolume
+            adjusted field=inputGain
+            adjusted field=transmitMode
+            adjusted field=voiceActivationThreshold
+            adjusted field=whisperActivationMode
+            """
+        )
+
+        try model.importAudioSettings(from: data)
+
+        XCTAssertEqual(model.playbackVolume, 4)
+        XCTAssertEqual(model.inputGain, 0)
+        XCTAssertEqual(model.audioTransmitMode, .pushToTalk)
+        XCTAssertEqual(model.voiceActivationThreshold, 0.5)
+        XCTAssertFalse(model.prefersSpeakerOutput)
+        XCTAssertEqual(model.whisperActivationMode, .holdToWhisper)
+    }
+
+    @MainActor
     func testAudioProfileImportMergesByNameAndSanitizesValues() throws {
         let model = TS3AppModel()
         model.deleteAudioProfiles(model.audioProfiles)

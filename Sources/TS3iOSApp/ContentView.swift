@@ -24767,14 +24767,10 @@ struct SelfStatusSheet: View {
 }
 
 struct AudioSettingsSheet: View {
-    private enum AudioConfirmation: Identifiable {
-        case importSettings(URL)
-
-        var id: String {
-            switch self {
-            case .importSettings: return "importSettings"
-            }
-        }
+    private struct AudioSettingsImportConfirmation: Identifiable {
+        let id = UUID()
+        let data: Data
+        let preview: TS3AudioSettingsImportPreview
     }
 
     private struct AudioProfileImportConfirmation: Identifiable {
@@ -24799,7 +24795,7 @@ struct AudioSettingsSheet: View {
     @State private var isConfirmingDeleteProfiles = false
     @State private var isConfirmingResetAudioSettings = false
     @State private var isConfirmingResetUserPlayback = false
-    @State private var audioConfirmation: AudioConfirmation?
+    @State private var pendingAudioSettingsImport: AudioSettingsImportConfirmation?
     @State private var pendingAudioProfileImport: AudioProfileImportConfirmation?
     @State private var pendingUserPlaybackImport: UserPlaybackImportConfirmation?
     @State private var audioSettingsDocument = TS3TextFileDocument()
@@ -25212,7 +25208,7 @@ struct AudioSettingsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    audioConfirmation = .importSettings(url)
+                    prepareAudioSettingsImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -25269,18 +25265,17 @@ struct AudioSettingsSheet: View {
                     secondaryButton: .cancel()
                 )
             }
-            .alert(item: $audioConfirmation) { confirmation in
-                switch confirmation {
-                case .importSettings(let url):
-                    return Alert(
-                        title: Text("Import Audio Settings?"),
-                        message: Text("This replaces current local audio settings with the selected settings file."),
-                        primaryButton: .destructive(Text("Import")) {
-                            importAudioSettings(from: url)
-                        },
-                        secondaryButton: .cancel()
-                    )
-                }
+            .sheet(item: $pendingAudioSettingsImport) { confirmation in
+                AudioSettingsImportPreviewSheet(
+                    preview: confirmation.preview,
+                    importSettings: {
+                        importAudioSettings(data: confirmation.data)
+                        pendingAudioSettingsImport = nil
+                    },
+                    cancel: {
+                        pendingAudioSettingsImport = nil
+                    }
+                )
             }
             .sheet(item: $pendingAudioProfileImport) { confirmation in
                 AudioProfileImportPreviewSheet(
@@ -25336,7 +25331,7 @@ struct AudioSettingsSheet: View {
         }
     }
 
-    private func importAudioSettings(from url: URL) {
+    private func prepareAudioSettingsImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -25344,7 +25339,17 @@ struct AudioSettingsSheet: View {
             }
         }
         do {
-            try model.importAudioSettings(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.audioSettingsImportPreview(from: data)
+            pendingAudioSettingsImport = AudioSettingsImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importAudioSettings(data: Data) {
+        do {
+            try model.importAudioSettings(from: data)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -25537,6 +25542,57 @@ struct AudioSettingsSheet: View {
             return "\(Int(amount)) \(units[unitIndex])"
         }
         return "\(String(format: "%.1f", amount)) \(units[unitIndex])"
+    }
+}
+
+private struct AudioSettingsImportPreviewSheet: View {
+    let preview: TS3AudioSettingsImportPreview
+    let importSettings: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(preview.clipboardSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Copy Settings Import Summary") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                if !preview.adjustmentSummaries.isEmpty {
+                    Section(header: Text("Adjusted Settings")) {
+                        ForEach(preview.adjustmentSummaries, id: \.self) { summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import replaces the local audio settings, clamps gain and volume to supported ranges, and falls back to known transmit and whisper modes when imported values are not recognized.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Audio")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importSettings()
+                    }
+                }
+            }
+        }
     }
 }
 

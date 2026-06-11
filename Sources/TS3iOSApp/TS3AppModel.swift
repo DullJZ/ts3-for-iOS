@@ -4029,6 +4029,36 @@ private struct TS3AudioSettings: Codable {
     }
 }
 
+struct TS3AudioSettingsImportPreview {
+    let playbackVolumeText: String
+    let inputGainText: String
+    let transmitModeTitle: String
+    let voiceActivationThresholdText: String
+    let prefersSpeakerOutput: Bool
+    let whisperActivationModeTitle: String
+    let adjustmentSummaries: [String]
+
+    var adjustedSettingCount: Int {
+        adjustmentSummaries.count
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Transmit mode: \(transmitModeTitle)",
+            "Playback volume: \(playbackVolumeText)",
+            "Input gain: \(inputGainText)",
+            "Voice activation threshold: \(voiceActivationThresholdText)",
+            "Default to speaker: \(prefersSpeakerOutput ? "Yes" : "No")",
+            "Whisper activation mode: \(whisperActivationModeTitle)",
+            "Adjusted settings: \(adjustmentSummaries.isEmpty ? "none" : adjustmentSummaries.joined(separator: ","))"
+        ]
+        if !adjustmentSummaries.isEmpty {
+            lines.append(contentsOf: adjustmentSummaries.map { "adjusted field=\($0)" })
+        }
+        return lines.joined(separator: "\n")
+    }
+}
+
 struct TS3AudioRouteDeviceSummary: Identifiable, Equatable {
     let id: String
     let name: String
@@ -14396,7 +14426,7 @@ final class TS3AppModel: ObservableObject {
 
     func importAudioSettings(from data: Data) throws {
         let decoded = try JSONDecoder().decode(TS3AudioSettings.self, from: data)
-        applyAudioSettingsSnapshot(decoded)
+        applyAudioSettingsSnapshot(Self.sanitizedAudioSettingsSnapshot(decoded))
         saveAudioSettings()
         if let client {
             applyAudioSettings(to: client)
@@ -14405,13 +14435,59 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func audioSettingsImportPreview(from data: Data) throws -> TS3AudioSettingsImportPreview {
+        let decoded = try JSONDecoder().decode(TS3AudioSettings.self, from: data)
+        let sanitized = Self.sanitizedAudioSettingsSnapshot(decoded)
+        var adjustments: [String] = []
+        if sanitized.playbackVolume != decoded.playbackVolume {
+            adjustments.append("playbackVolume")
+        }
+        if sanitized.inputGain != decoded.inputGain {
+            adjustments.append("inputGain")
+        }
+        if sanitized.transmitMode != decoded.transmitMode {
+            adjustments.append("transmitMode")
+        }
+        if sanitized.voiceActivationThreshold != decoded.voiceActivationThreshold {
+            adjustments.append("voiceActivationThreshold")
+        }
+        if sanitized.whisperActivationMode != decoded.whisperActivationMode {
+            adjustments.append("whisperActivationMode")
+        }
+        return TS3AudioSettingsImportPreview(
+            playbackVolumeText: Self.audioPercentText(sanitized.playbackVolume),
+            inputGainText: Self.audioPercentText(sanitized.inputGain),
+            transmitModeTitle: TS3AudioTransmitMode.title(for: sanitized.transmitMode),
+            voiceActivationThresholdText: String(format: "%.3f", sanitized.voiceActivationThreshold),
+            prefersSpeakerOutput: sanitized.prefersSpeakerOutput,
+            whisperActivationModeTitle: TS3WhisperActivationMode(rawValue: sanitized.whisperActivationMode)?.title ?? sanitized.whisperActivationMode,
+            adjustmentSummaries: adjustments
+        )
+    }
+
     private func applyAudioSettingsSnapshot(_ settings: TS3AudioSettings) {
-        playbackVolume = min(max(settings.playbackVolume, 0), 4)
-        inputGain = min(max(settings.inputGain, 0), 4)
-        audioTransmitMode = TS3AudioTransmitMode(rawValue: settings.transmitMode) ?? .pushToTalk
-        voiceActivationThreshold = min(max(settings.voiceActivationThreshold, 0.001), 0.5)
-        prefersSpeakerOutput = settings.prefersSpeakerOutput
-        whisperActivationMode = TS3WhisperActivationMode(rawValue: settings.whisperActivationMode) ?? .holdToWhisper
+        let sanitized = Self.sanitizedAudioSettingsSnapshot(settings)
+        playbackVolume = sanitized.playbackVolume
+        inputGain = sanitized.inputGain
+        audioTransmitMode = TS3AudioTransmitMode(rawValue: sanitized.transmitMode) ?? .pushToTalk
+        voiceActivationThreshold = sanitized.voiceActivationThreshold
+        prefersSpeakerOutput = sanitized.prefersSpeakerOutput
+        whisperActivationMode = TS3WhisperActivationMode(rawValue: sanitized.whisperActivationMode) ?? .holdToWhisper
+    }
+
+    private static func sanitizedAudioSettingsSnapshot(_ settings: TS3AudioSettings) -> TS3AudioSettings {
+        TS3AudioSettings(
+            playbackVolume: min(max(settings.playbackVolume, 0), 4),
+            inputGain: min(max(settings.inputGain, 0), 4),
+            transmitMode: TS3AudioTransmitMode(rawValue: settings.transmitMode)?.rawValue ?? TS3AudioTransmitMode.pushToTalk.rawValue,
+            voiceActivationThreshold: min(max(settings.voiceActivationThreshold, 0.001), 0.5),
+            prefersSpeakerOutput: settings.prefersSpeakerOutput,
+            whisperActivationMode: TS3WhisperActivationMode(rawValue: settings.whisperActivationMode)?.rawValue ?? TS3WhisperActivationMode.holdToWhisper.rawValue
+        )
+    }
+
+    private static func audioPercentText(_ value: Double) -> String {
+        "\(Int((value * 100).rounded()))%"
     }
 
     private func sanitizedAudioProfiles(_ profiles: [TS3AudioProfile]) -> [TS3AudioProfile] {
