@@ -12432,7 +12432,18 @@ struct GroupClientRow: View {
                             actionMode = .contactNote
                         }
                     }
-                    if onlineUser != nil {
+                    Button("Send Offline Message") {
+                        actionMode = .offlineMessage
+                    }
+                    .disabled(!model.canSendOfflineMessage(to: databaseRecord))
+                    Button("Submit Complaint") {
+                        actionMode = .complain
+                    }
+                    Button("Ban Unique ID") {
+                        actionMode = .ban
+                    }
+                    .disabled(!model.canBanDatabaseClient(databaseRecord))
+                    if model.hasOnlineClientActions(for: databaseRecord) {
                         Button("Poke Online Client") {
                             onlineActionMode = .poke
                         }
@@ -12526,7 +12537,18 @@ struct GroupClientRow: View {
                 Button("Edit Contact Note") {
                     actionMode = .contactNote
                 }
-                if onlineUser != nil {
+                Button("Send Offline Message") {
+                    actionMode = .offlineMessage
+                }
+                .disabled(!model.canSendOfflineMessage(to: databaseRecord))
+                Button("Submit Complaint") {
+                    actionMode = .complain
+                }
+                Button("Ban Unique ID") {
+                    actionMode = .ban
+                }
+                .disabled(!model.canBanDatabaseClient(databaseRecord))
+                if model.hasOnlineClientActions(for: databaseRecord) {
                     Button("Poke Online Client") {
                         onlineActionMode = .poke
                     }
@@ -13116,7 +13138,7 @@ struct ClientDatabaseSheet: View {
                             model.refreshOnlineLocations(for: selected)
                         }
                         .disabled(selected.uniqueIdentifier == nil)
-                        if model.onlineUser(for: selected) != nil {
+                        if model.hasOnlineClientActions(for: selected) {
                             Button("Poke Online Client") {
                                 onlineActionMode = .poke
                             }
@@ -13134,7 +13156,7 @@ struct ClientDatabaseSheet: View {
                         Button("Send Offline Message") {
                             actionMode = .offlineMessage
                         }
-                        .disabled(selected.uniqueIdentifier == nil)
+                        .disabled(!model.canSendOfflineMessage(to: selected))
                         Button("Submit Complaint") {
                             actionMode = .complain
                         }
@@ -13145,7 +13167,7 @@ struct ClientDatabaseSheet: View {
                         Button("Ban Unique ID") {
                             actionMode = .ban
                         }
-                        .disabled(selected.uniqueIdentifier == nil)
+                        .disabled(!model.canBanDatabaseClient(selected))
                         Button("Delete Database Record") {
                             isConfirmingDelete = true
                         }
@@ -13957,6 +13979,7 @@ struct DatabaseClientRow: View {
     let record: TS3DatabaseClientSummary
     @State private var onlineActionMode: UserActionMode?
     @State private var databaseActionMode: DatabaseClientActionMode?
+    @State private var isShowingComplaints = false
 
     private var onlineUser: TS3UserSummary? {
         model.onlineUser(for: record)
@@ -14039,7 +14062,22 @@ struct DatabaseClientRow: View {
                     }
                 }
             }
-            if onlineUser != nil {
+            Button("Send Offline Message") {
+                databaseActionMode = .offlineMessage
+            }
+            .disabled(!model.canSendOfflineMessage(to: record))
+            Button("Submit Complaint") {
+                databaseActionMode = .complain
+            }
+            Button("View Complaints") {
+                model.refreshComplaints(for: record)
+                isShowingComplaints = true
+            }
+            Button("Ban Unique ID") {
+                databaseActionMode = .ban
+            }
+            .disabled(!model.canBanDatabaseClient(record))
+            if model.hasOnlineClientActions(for: record) {
                 Button("Poke Online Client") {
                     onlineActionMode = .poke
                 }
@@ -14077,6 +14115,23 @@ struct DatabaseClientRow: View {
                 databaseActionMode = .contactNote
             }
         }
+        .accessibilityAction(named: "Send Offline Message") {
+            if model.canSendOfflineMessage(to: record) {
+                databaseActionMode = .offlineMessage
+            }
+        }
+        .accessibilityAction(named: "Submit Complaint") {
+            databaseActionMode = .complain
+        }
+        .accessibilityAction(named: "View Complaints") {
+            model.refreshComplaints(for: record)
+            isShowingComplaints = true
+        }
+        .accessibilityAction(named: "Ban Unique ID") {
+            if model.canBanDatabaseClient(record) {
+                databaseActionMode = .ban
+            }
+        }
         .sheet(item: $databaseActionMode) { mode in
             DatabaseClientActionSheet(mode: mode, record: record)
                 .environmentObject(model)
@@ -14086,6 +14141,10 @@ struct DatabaseClientRow: View {
                 UserActionSheet(mode: mode, user: onlineUser)
                     .environmentObject(model)
             }
+        }
+        .sheet(isPresented: $isShowingComplaints) {
+            ComplaintListSheet()
+                .environmentObject(model)
         }
     }
 }

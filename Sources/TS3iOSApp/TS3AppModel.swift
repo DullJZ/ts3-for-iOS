@@ -6459,6 +6459,18 @@ final class TS3AppModel: ObservableObject {
         return clients.first { $0.uniqueIdentifier == uniqueIdentifier }
     }
 
+    func canSendOfflineMessage(to record: TS3DatabaseClientSummary) -> Bool {
+        record.uniqueIdentifier?.isEmpty == false
+    }
+
+    func canBanDatabaseClient(_ record: TS3DatabaseClientSummary) -> Bool {
+        record.uniqueIdentifier?.isEmpty == false
+    }
+
+    func hasOnlineClientActions(for record: TS3DatabaseClientSummary) -> Bool {
+        onlineUser(for: record) != nil
+    }
+
     func onlineUser(for poke: TS3PokeSummary) -> TS3UserSummary? {
         if let senderId = poke.senderId,
            let user = clients.first(where: { $0.id == senderId }) {

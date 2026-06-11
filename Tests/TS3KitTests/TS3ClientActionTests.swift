@@ -160,6 +160,29 @@ final class TS3ClientActionTests: XCTestCase {
     }
 
     @MainActor
+    func testDatabaseClientActionAvailabilityUsesUniqueIdentifierAndOnlinePresence() {
+        let model = TS3AppModel()
+        model.clients = [
+            makeUser(id: 7, databaseId: 99, uniqueIdentifier: "loaded-uid", nickname: "Online Client")
+        ]
+        let loadedRecord = makeDatabaseClient(id: 99, uniqueIdentifier: "loaded-uid", nickname: "Loaded")
+        let offlineRecord = makeDatabaseClient(id: 100, uniqueIdentifier: "offline-uid", nickname: "Offline")
+        let missingIdentityRecord = makeDatabaseClient(id: 101, uniqueIdentifier: nil, nickname: "Missing")
+
+        XCTAssertTrue(model.canSendOfflineMessage(to: loadedRecord))
+        XCTAssertTrue(model.canBanDatabaseClient(loadedRecord))
+        XCTAssertTrue(model.hasOnlineClientActions(for: loadedRecord))
+
+        XCTAssertTrue(model.canSendOfflineMessage(to: offlineRecord))
+        XCTAssertTrue(model.canBanDatabaseClient(offlineRecord))
+        XCTAssertFalse(model.hasOnlineClientActions(for: offlineRecord))
+
+        XCTAssertFalse(model.canSendOfflineMessage(to: missingIdentityRecord))
+        XCTAssertFalse(model.canBanDatabaseClient(missingIdentityRecord))
+        XCTAssertFalse(model.hasOnlineClientActions(for: missingIdentityRecord))
+    }
+
+    @MainActor
     func testPokeEventResolvesOnlineSenderByClientIdThenUniqueIdentifier() throws {
         let model = TS3AppModel()
         model.clients = [
