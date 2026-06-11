@@ -24704,6 +24704,12 @@ struct AudioSettingsSheet: View {
         }
     }
 
+    private struct AudioProfileImportConfirmation: Identifiable {
+        let id = UUID()
+        let data: Data
+        let preview: TS3AudioProfileImportPreview
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var audioProfileName = ""
@@ -24715,6 +24721,7 @@ struct AudioSettingsSheet: View {
     @State private var isConfirmingResetAudioSettings = false
     @State private var isConfirmingResetUserPlayback = false
     @State private var audioConfirmation: AudioConfirmation?
+    @State private var pendingAudioProfileImport: AudioProfileImportConfirmation?
     @State private var audioSettingsDocument = TS3TextFileDocument()
 
     private var volumeBinding: Binding<Double> {
@@ -25136,7 +25143,7 @@ struct AudioSettingsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importAudioProfiles(from: url)
+                    prepareAudioProfileImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -25204,6 +25211,18 @@ struct AudioSettingsSheet: View {
                     )
                 }
             }
+            .sheet(item: $pendingAudioProfileImport) { confirmation in
+                AudioProfileImportPreviewSheet(
+                    preview: confirmation.preview,
+                    importProfiles: {
+                        importAudioProfiles(data: confirmation.data)
+                        pendingAudioProfileImport = nil
+                    },
+                    cancel: {
+                        pendingAudioProfileImport = nil
+                    }
+                )
+            }
         }
     }
 
@@ -25248,7 +25267,7 @@ struct AudioSettingsSheet: View {
         }
     }
 
-    private func importAudioProfiles(from url: URL) {
+    private func prepareAudioProfileImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -25256,7 +25275,17 @@ struct AudioSettingsSheet: View {
             }
         }
         do {
-            try model.importAudioProfiles(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.audioProfilesImportPreview(from: data)
+            pendingAudioProfileImport = AudioProfileImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importAudioProfiles(data: Data) {
+        do {
+            try model.importAudioProfiles(from: data)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -25415,6 +25444,73 @@ struct AudioSettingsSheet: View {
             return "\(Int(amount)) \(units[unitIndex])"
         }
         return "\(String(format: "%.1f", amount)) \(units[unitIndex])"
+    }
+}
+
+private struct AudioProfileImportPreviewSheet: View {
+    let preview: TS3AudioProfileImportPreview
+    let importProfiles: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text(preview.clipboardSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if preview.hasProfiles {
+                        Button("Copy Profile Import Summary") {
+                            TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                    }
+                }
+
+                if !preview.adjustmentSummaries.isEmpty {
+                    Section(header: Text("Adjusted Profiles")) {
+                        ForEach(Array(preview.adjustmentSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                if !preview.profileSummaries.isEmpty {
+                    Section(header: Text("Profiles")) {
+                        ForEach(Array(preview.profileSummaries.enumerated()), id: \.offset) { _, summary in
+                            Text(summary)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section(header: Text("Import Behavior")) {
+                    Text("Import merges profiles by name, replaces existing profiles with matching names, clamps audio values to supported ranges, and skips blank profile names.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Profiles")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importProfiles()
+                    }
+                    .disabled(!preview.hasProfiles)
+                }
+            }
+        }
     }
 }
 

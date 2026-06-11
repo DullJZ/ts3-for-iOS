@@ -4015,6 +4015,35 @@ struct TS3AudioProfile: Identifiable, Codable {
     }
 }
 
+struct TS3AudioProfileImportPreview {
+    let importedProfileCount: Int
+    let usableProfileCount: Int
+    let newProfileCount: Int
+    let replacedProfileCount: Int
+    let skippedProfileCount: Int
+    let adjustedProfileCount: Int
+    let profileSummaries: [String]
+    let adjustmentSummaries: [String]
+
+    var hasProfiles: Bool {
+        usableProfileCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported profiles: \(importedProfileCount)",
+            "Usable profiles: \(usableProfileCount)",
+            "New profiles: \(newProfileCount)",
+            "Replacing profiles: \(replacedProfileCount)",
+            "Skipped profiles: \(skippedProfileCount)",
+            "Adjusted profiles: \(adjustedProfileCount)"
+        ]
+        lines.append(contentsOf: adjustmentSummaries)
+        lines.append(contentsOf: profileSummaries)
+        return lines.joined(separator: "\n")
+    }
+}
+
 struct TS3KeyboardShortcutBinding: Identifiable, Codable {
     var actionId: String
     var group: String
@@ -13943,6 +13972,44 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(audioProfiles)
     }
 
+    func audioProfilesImportPreview(from data: Data) throws -> TS3AudioProfileImportPreview {
+        let imported = try JSONDecoder().decode([TS3AudioProfile].self, from: data)
+        let sanitized = sanitizedAudioProfiles(imported)
+        let currentNames = Set(audioProfiles.map { $0.name.lowercased() })
+        let replacedCount = sanitized.filter { currentNames.contains($0.name.lowercased()) }.count
+        let adjustmentSummaries = imported.compactMap { profile -> String? in
+            guard let sanitized = Self.sanitizedAudioProfile(profile) else { return nil }
+            var changes: [String] = []
+            if sanitized.name != profile.name {
+                changes.append("name")
+            }
+            if sanitized.playbackVolume != profile.playbackVolume {
+                changes.append("playback")
+            }
+            if sanitized.inputGain != profile.inputGain {
+                changes.append("input")
+            }
+            if sanitized.transmitMode != profile.transmitMode {
+                changes.append("mode")
+            }
+            if sanitized.voiceActivationThreshold != profile.voiceActivationThreshold {
+                changes.append("threshold")
+            }
+            guard !changes.isEmpty else { return nil }
+            return "adjusted name=\(sanitized.name) fields=\(changes.joined(separator: ","))"
+        }
+        return TS3AudioProfileImportPreview(
+            importedProfileCount: imported.count,
+            usableProfileCount: sanitized.count,
+            newProfileCount: sanitized.count - replacedCount,
+            replacedProfileCount: replacedCount,
+            skippedProfileCount: imported.count - sanitized.count,
+            adjustedProfileCount: adjustmentSummaries.count,
+            profileSummaries: sanitized.prefix(10).map(\.clipboardSummary),
+            adjustmentSummaries: Array(adjustmentSummaries.prefix(10))
+        )
+    }
+
     @discardableResult
     func importAudioProfiles(from data: Data) throws -> Int {
         let imported = try JSONDecoder().decode([TS3AudioProfile].self, from: data)
@@ -14139,7 +14206,16 @@ final class TS3AppModel: ObservableObject {
     }
 
     private func sanitizedAudioProfiles(_ profiles: [TS3AudioProfile]) -> [TS3AudioProfile] {
-        profiles.compactMap { profile in
+        profiles.compactMap(Self.sanitizedAudioProfile)
+        .sorted { lhs, rhs in
+            if lhs.updatedAt == rhs.updatedAt {
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        }
+    }
+
+    private static func sanitizedAudioProfile(_ profile: TS3AudioProfile) -> TS3AudioProfile? {
             let name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !name.isEmpty else { return nil }
             return TS3AudioProfile(
@@ -14151,13 +14227,6 @@ final class TS3AppModel: ObservableObject {
                 voiceActivationThreshold: min(max(profile.voiceActivationThreshold, 0.001), 0.5),
                 updatedAt: profile.updatedAt
             )
-        }
-        .sorted { lhs, rhs in
-            if lhs.updatedAt == rhs.updatedAt {
-                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-            }
-            return lhs.updatedAt > rhs.updatedAt
-        }
     }
 
     private func loadUserPlaybackPreferences() {

@@ -120,13 +120,57 @@ final class TS3AudioProfileTests: XCTestCase {
                 transmitMode: TS3AudioTransmitMode.voiceActivation.rawValue,
                 voiceActivationThreshold: 0.12,
                 updatedAt: Date(timeIntervalSince1970: 1_700_000_020)
+            ),
+            TS3AudioProfile(
+                id: UUID(uuidString: "44444444-4444-4444-4444-444444444444")!,
+                name: "   ",
+                playbackVolume: 1,
+                inputGain: 1,
+                transmitMode: TS3AudioTransmitMode.pushToTalk.rawValue,
+                voiceActivationThreshold: 0.03,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_030)
             )
         ]
         let data = try JSONEncoder().encode(importedProfiles)
 
+        let preview = try model.audioProfilesImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedProfileCount, 3)
+        XCTAssertEqual(preview.usableProfileCount, 2)
+        XCTAssertEqual(preview.newProfileCount, 1)
+        XCTAssertEqual(preview.replacedProfileCount, 1)
+        XCTAssertEqual(preview.skippedProfileCount, 1)
+        XCTAssertEqual(preview.adjustedProfileCount, 1)
+        XCTAssertEqual(
+            preview.adjustmentSummaries,
+            ["adjusted name=raid fields=name,playback,input,mode,threshold"]
+        )
+        XCTAssertEqual(
+            preview.profileSummaries,
+            [
+                "name=Voice Activation | mode=Voice Activation | input=170% | playback=250% | threshold=0.120",
+                "name=raid | mode=Push To Talk | input=0% | playback=400% | threshold=0.001"
+            ]
+        )
+        XCTAssertEqual(
+            preview.clipboardSummary,
+            """
+            Imported profiles: 3
+            Usable profiles: 2
+            New profiles: 1
+            Replacing profiles: 1
+            Skipped profiles: 1
+            Adjusted profiles: 1
+            adjusted name=raid fields=name,playback,input,mode,threshold
+            name=Voice Activation | mode=Voice Activation | input=170% | playback=250% | threshold=0.120
+            name=raid | mode=Push To Talk | input=0% | playback=400% | threshold=0.001
+            """
+        )
+        XCTAssertTrue(preview.hasProfiles)
+
         let importedCount = try model.importAudioProfiles(from: data)
 
-        XCTAssertEqual(importedCount, 2)
+        XCTAssertEqual(importedCount, 3)
         XCTAssertEqual(model.audioProfiles.count, 3)
         XCTAssertEqual(Set(model.audioProfiles.map(\.name)), ["Voice Activation", "raid", "Music"])
         XCTAssertFalse(model.audioProfiles.contains { $0.name == "Raid" })
