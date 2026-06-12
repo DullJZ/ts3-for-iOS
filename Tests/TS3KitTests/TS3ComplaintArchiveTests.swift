@@ -85,6 +85,156 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(complaint.accessibilityValue, "Source database ID 44. Target database ID 22")
     }
 
+    func testComplaintFilterPresetSummaryAndAccessibilityText() {
+        let preset = makeComplaintFilterPreset(
+            id: UUID(),
+            name: "Named Sources",
+            complaintFilter: "namedSource",
+            sortMode: "source",
+            sortAscending: true,
+            searchText: "abuse"
+        )
+
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            "name=Named Sources | complaintFilter=namedSource | sortMode=source | sortAscending=true | search=abuse"
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Complaint filter namedSource. Sort by source. Ascending. Search abuse"
+        )
+    }
+
+    @MainActor
+    func testComplaintFilterPresetImportPreviewSanitizesCandidates() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let invalidId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Complaint Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importComplaintFilterPresets(from: encodedComplaintFilterPresets([
+            makeComplaintFilterPreset(
+                id: existingId,
+                name: existingName,
+                complaintFilter: "namedSource",
+                sortMode: "source",
+                sortAscending: true,
+                searchText: "keep"
+            )
+        ]))
+        let data = try encodedComplaintFilterPresets([
+            makeComplaintFilterPreset(
+                id: existingId,
+                name: " \(existingName) ",
+                complaintFilter: "invalid",
+                sortMode: "invalidSort",
+                sortAscending: false,
+                searchText: "  search value  "
+            ),
+            makeComplaintFilterPreset(
+                id: newId,
+                name: " Message Complaints \(suffix) ",
+                complaintFilter: "withMessage",
+                sortMode: "message",
+                sortAscending: true,
+                searchText: String(repeating: "x", count: 140)
+            ),
+            makeComplaintFilterPreset(
+                id: invalidId,
+                name: "   ",
+                complaintFilter: "anonymousSource",
+                sortMode: "date",
+                sortAscending: false,
+                searchText: "ignored"
+            )
+        ])
+
+        let preview = try model.complaintFilterPresetsImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertEqual(preview.candidates.map(\.id), [existingId, newId])
+        XCTAssertEqual(preview.presetSummaries, [
+            "name=\(existingName) | complaintFilter=all | sortMode=date | sortAscending=false | search=search value",
+            "name=Message Complaints \(suffix) | complaintFilter=withMessage | sortMode=message | sortAscending=true | search=\(String(repeating: "x", count: 120))"
+        ])
+        XCTAssertTrue(preview.containsPreset(id: newId))
+        XCTAssertFalse(preview.containsPreset(id: invalidId))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped complaint filter presets: 1"))
+    }
+
+    @MainActor
+    func testComplaintFilterPresetImportRestoresOnlySelectedPresets() throws {
+        let existingId = UUID()
+        let selectedId = UUID()
+        let unselectedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Complaint Filter \(suffix)"
+        let selectedName = "Selected Complaint Filter \(suffix)"
+        let unselectedName = "Unselected Complaint Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importComplaintFilterPresets(from: encodedComplaintFilterPresets([
+            makeComplaintFilterPreset(
+                id: existingId,
+                name: existingName,
+                complaintFilter: "namedSource",
+                sortMode: "source",
+                sortAscending: true,
+                searchText: "keep"
+            )
+        ]))
+        let data = try encodedComplaintFilterPresets([
+            makeComplaintFilterPreset(
+                id: existingId,
+                name: existingName,
+                complaintFilter: "anonymousSource",
+                sortMode: "date",
+                sortAscending: false,
+                searchText: "replace"
+            ),
+            makeComplaintFilterPreset(
+                id: selectedId,
+                name: selectedName,
+                complaintFilter: "withTimestamp",
+                sortMode: "sourceDatabaseId",
+                sortAscending: true,
+                searchText: "ops"
+            ),
+            makeComplaintFilterPreset(
+                id: unselectedId,
+                name: unselectedName,
+                complaintFilter: "withoutMessage",
+                sortMode: "message",
+                sortAscending: false,
+                searchText: "away"
+            )
+        ])
+
+        let restoredCount = try model.importComplaintFilterPresets(
+            from: data,
+            selectedPresetIds: [selectedId]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        let existing = try XCTUnwrap(model.complaintFilterPresets.first { $0.name == existingName })
+        XCTAssertEqual(existing.complaintFilter, "namedSource")
+        XCTAssertEqual(existing.sortMode, "source")
+        XCTAssertEqual(existing.sortAscending, true)
+        XCTAssertEqual(existing.searchText, "keep")
+        let selected = try XCTUnwrap(model.complaintFilterPresets.first { $0.id == selectedId })
+        XCTAssertEqual(selected.name, selectedName)
+        XCTAssertEqual(selected.complaintFilter, "withTimestamp")
+        XCTAssertEqual(selected.sortMode, "sourceDatabaseId")
+        XCTAssertEqual(selected.sortAscending, true)
+        XCTAssertEqual(selected.searchText, "ops")
+        XCTAssertFalse(model.complaintFilterPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
+        XCTAssertEqual(model.lastError, nil)
+    }
+
     @MainActor
     func testComplaintArchivePreviewSanitizesCountsAndFirstDetails() throws {
         let model = TS3AppModel()
@@ -227,5 +377,28 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(model.complaintEntries.first?.targetClientDatabaseId, 23)
         XCTAssertEqual(model.complaintEntries.first?.sourceClientDatabaseId, 45)
         XCTAssertEqual(model.complaintEntries.first?.message, "Noise")
+    }
+
+    private func encodedComplaintFilterPresets(_ presets: [TS3ComplaintFilterPreset]) throws -> Data {
+        try JSONEncoder().encode(presets)
+    }
+
+    private func makeComplaintFilterPreset(
+        id: UUID,
+        name: String,
+        complaintFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) -> TS3ComplaintFilterPreset {
+        TS3ComplaintFilterPreset(
+            id: id,
+            name: name,
+            complaintFilter: complaintFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
     }
 }

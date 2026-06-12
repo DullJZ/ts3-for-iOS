@@ -3676,6 +3676,68 @@ struct TS3ComplaintFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3ComplaintFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "complaintFilter=\(complaintFilter)",
+            "sortMode=\(sortMode)",
+            "sortAscending=\(sortAscending)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Complaint filter \(complaintFilter)",
+            "Sort by \(sortMode)",
+            sortAscending ? "Ascending" : "Descending"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3ComplaintFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported complaint filter presets: \(importedPresetCount)",
+            "Usable complaint filter presets: \(usablePresetCount)",
+            "New complaint filter presets: \(newPresetCount)",
+            "Replacing complaint filter presets: \(replacedPresetCount)",
+            "Skipped complaint filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 enum TS3TemporaryServerPasswordDraftValidator {
     static func validationMessages(
         password: String,
@@ -13160,18 +13222,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(complaintFilterPresets)
     }
 
+    func complaintFilterPresetsImportPreview(from data: Data) throws -> TS3ComplaintFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ComplaintFilterPreset].self, from: data)
+        let usable = sanitizedComplaintFilterPresets(imported)
+        let existingNames = Set(complaintFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ComplaintFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ComplaintFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importComplaintFilterPresets(from data: Data) throws -> Int {
+    func importComplaintFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ComplaintFilterPreset].self, from: data)
         var merged = complaintFilterPresets
-        for preset in sanitizedComplaintFilterPresets(imported) {
+        let selectedPresets = sanitizedComplaintFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         complaintFilterPresets = sanitizedComplaintFilterPresets(merged)
         saveComplaintFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func complaintArchiveData() throws -> Data {
