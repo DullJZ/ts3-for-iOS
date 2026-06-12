@@ -25544,8 +25544,8 @@ struct AudioSettingsSheet: View {
             .sheet(item: $pendingAudioProfileImport) { confirmation in
                 AudioProfileImportPreviewSheet(
                     preview: confirmation.preview,
-                    importProfiles: {
-                        importAudioProfiles(data: confirmation.data)
+                    importProfiles: { selectedProfileIds in
+                        importAudioProfiles(data: confirmation.data, selectedProfileIds: selectedProfileIds)
                         pendingAudioProfileImport = nil
                     },
                     cancel: {
@@ -25635,9 +25635,9 @@ struct AudioSettingsSheet: View {
         }
     }
 
-    private func importAudioProfiles(data: Data) {
+    private func importAudioProfiles(data: Data, selectedProfileIds: Set<String>) {
         do {
-            try model.importAudioProfiles(from: data)
+            try model.importAudioProfiles(from: data, selectedProfileIds: selectedProfileIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -25862,8 +25862,13 @@ private struct AudioSettingsImportPreviewSheet: View {
 
 private struct AudioProfileImportPreviewSheet: View {
     let preview: TS3AudioProfileImportPreview
-    let importProfiles: () -> Void
+    let importProfiles: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedProfileIds: Set<String> = []
+
+    private var validSelectedProfileIds: Set<String> {
+        Set(selectedProfileIds.filter(preview.containsProfile))
+    }
 
     var body: some View {
         NavigationView {
@@ -25875,6 +25880,15 @@ private struct AudioProfileImportPreviewSheet: View {
                     if preview.hasProfiles {
                         Button("Copy Profile Import Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedProfileIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedProfileIds = []
+                            }
+                            .disabled(selectedProfileIds.isEmpty)
                         }
                     }
                 }
@@ -25893,23 +25907,39 @@ private struct AudioProfileImportPreviewSheet: View {
 
                 if !preview.profileSummaries.isEmpty {
                     Section(header: Text("Profiles")) {
-                        ForEach(Array(preview.profileSummaries.enumerated()), id: \.offset) { _, summary in
-                            Text(summary)
-                                .font(.caption2)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedProfileIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedProfileIds.insert(candidate.id)
+                                    } else {
+                                        selectedProfileIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
                         }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import merges profiles by name, replaces existing profiles with matching names, clamps audio values to supported ranges, and skips blank profile names.")
+                    Text("Import merges the selected profiles by name, replaces existing profiles with matching names, clamps audio values to supported ranges, and skips blank profile names.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Profiles")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedProfileIds.isEmpty {
+                    selectedProfileIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -25918,9 +25948,9 @@ private struct AudioProfileImportPreviewSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importProfiles()
+                        importProfiles(validSelectedProfileIds)
                     }
-                    .disabled(!preview.hasProfiles)
+                    .disabled(!preview.hasProfiles || validSelectedProfileIds.isEmpty)
                 }
             }
         }

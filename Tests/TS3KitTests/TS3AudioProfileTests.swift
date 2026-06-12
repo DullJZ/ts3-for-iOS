@@ -207,6 +207,16 @@ final class TS3AudioProfileTests: XCTestCase {
                 "name=raid | mode=Push To Talk | input=0% | playback=400% | threshold=0.001"
             ]
         )
+        XCTAssertEqual(preview.candidates.map(\.id), ["voice activation", "raid"])
+        XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "name=Voice Activation | mode=Voice Activation | input=170% | playback=250% | threshold=0.120",
+                "name=raid | mode=Push To Talk | input=0% | playback=400% | threshold=0.001"
+            ]
+        )
+        XCTAssertTrue(preview.containsProfile(id: "raid"))
+        XCTAssertFalse(preview.containsProfile(id: "music"))
         XCTAssertEqual(
             preview.clipboardSummary,
             """
@@ -241,6 +251,59 @@ final class TS3AudioProfileTests: XCTestCase {
         XCTAssertEqual(voiceActivation.inputGain, 1.7)
         XCTAssertEqual(voiceActivation.transmitMode, TS3AudioTransmitMode.voiceActivation.rawValue)
         XCTAssertEqual(voiceActivation.voiceActivationThreshold, 0.12)
+    }
+
+    @MainActor
+    func testAudioProfileImportCanRestoreSelectedProfiles() throws {
+        let model = TS3AppModel()
+        model.deleteAudioProfiles(model.audioProfiles)
+        model.updatePlaybackVolume(1.2)
+        model.updateInputGain(1.1)
+        model.updateAudioTransmitMode(.pushToTalk)
+        model.updateVoiceActivationThreshold(0.04)
+        model.saveCurrentAudioProfile(name: "Raid")
+
+        model.updatePlaybackVolume(0.8)
+        model.updateInputGain(0.9)
+        model.updateAudioTransmitMode(.continuous)
+        model.updateVoiceActivationThreshold(0.03)
+        model.saveCurrentAudioProfile(name: "Music")
+
+        let importedProfiles = [
+            TS3AudioProfile(
+                id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+                name: " raid ",
+                playbackVolume: 6,
+                inputGain: -1,
+                transmitMode: "invalid-mode",
+                voiceActivationThreshold: 0,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_010)
+            ),
+            TS3AudioProfile(
+                id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+                name: "Voice Activation",
+                playbackVolume: 2.5,
+                inputGain: 1.7,
+                transmitMode: TS3AudioTransmitMode.voiceActivation.rawValue,
+                voiceActivationThreshold: 0.12,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_020)
+            )
+        ]
+        let data = try JSONEncoder().encode(importedProfiles)
+
+        let importedCount = try model.importAudioProfiles(from: data, selectedProfileIds: ["voice activation"])
+
+        XCTAssertEqual(importedCount, 2)
+        XCTAssertEqual(Set(model.audioProfiles.map(\.name)), ["Voice Activation", "Raid", "Music"])
+        XCTAssertTrue(model.audioProfiles.contains { $0.name == "Raid" })
+
+        let voiceActivation = try XCTUnwrap(model.audioProfiles.first { $0.name == "Voice Activation" })
+        XCTAssertEqual(voiceActivation.playbackVolume, 2.5)
+        XCTAssertEqual(voiceActivation.inputGain, 1.7)
+        XCTAssertEqual(voiceActivation.transmitMode, TS3AudioTransmitMode.voiceActivation.rawValue)
+        XCTAssertEqual(voiceActivation.voiceActivationThreshold, 0.12)
+        XCTAssertEqual(model.lastError, nil)
+        model.deleteAudioProfiles(model.audioProfiles)
     }
 
     @MainActor

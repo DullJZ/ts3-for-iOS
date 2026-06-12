@@ -4235,6 +4235,11 @@ struct TS3AudioProfile: Identifiable, Codable {
 }
 
 struct TS3AudioProfileImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: String
+        let summary: String
+    }
+
     let importedProfileCount: Int
     let usableProfileCount: Int
     let newProfileCount: Int
@@ -4243,6 +4248,7 @@ struct TS3AudioProfileImportPreview {
     let adjustedProfileCount: Int
     let profileSummaries: [String]
     let adjustmentSummaries: [String]
+    let candidates: [Candidate]
 
     var hasProfiles: Bool {
         usableProfileCount > 0
@@ -4260,6 +4266,10 @@ struct TS3AudioProfileImportPreview {
         lines.append(contentsOf: adjustmentSummaries)
         lines.append(contentsOf: profileSummaries)
         return lines.joined(separator: "\n")
+    }
+
+    func containsProfile(id: String) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -14476,15 +14486,26 @@ final class TS3AppModel: ObservableObject {
             skippedProfileCount: imported.count - sanitized.count,
             adjustedProfileCount: adjustmentSummaries.count,
             profileSummaries: sanitized.prefix(10).map(\.clipboardSummary),
-            adjustmentSummaries: Array(adjustmentSummaries.prefix(10))
+            adjustmentSummaries: Array(adjustmentSummaries.prefix(10)),
+            candidates: sanitized.map {
+                TS3AudioProfileImportPreview.Candidate(
+                    id: Self.audioProfileImportSelectionID($0),
+                    summary: $0.clipboardSummary
+                )
+            }
         )
     }
 
     @discardableResult
-    func importAudioProfiles(from data: Data) throws -> Int {
+    func importAudioProfiles(from data: Data, selectedProfileIds: Set<String>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3AudioProfile].self, from: data)
         var merged = audioProfiles
-        for profile in sanitizedAudioProfiles(imported) {
+        let sanitized = sanitizedAudioProfiles(imported)
+        let selectedProfiles = sanitized.filter { profile in
+            guard let selectedProfileIds else { return true }
+            return selectedProfileIds.contains(Self.audioProfileImportSelectionID(profile))
+        }
+        for profile in selectedProfiles {
             merged.removeAll { $0.name.caseInsensitiveCompare(profile.name) == .orderedSame }
             merged.insert(profile, at: 0)
         }
@@ -14743,6 +14764,10 @@ final class TS3AppModel: ObservableObject {
                 voiceActivationThreshold: min(max(profile.voiceActivationThreshold, 0.001), 0.5),
                 updatedAt: profile.updatedAt
             )
+    }
+
+    private static func audioProfileImportSelectionID(_ profile: TS3AudioProfile) -> String {
+        profile.name.lowercased()
     }
 
     private func loadUserPlaybackPreferences() {
