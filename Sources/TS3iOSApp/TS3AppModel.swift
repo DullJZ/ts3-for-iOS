@@ -995,6 +995,17 @@ private struct TS3EventHistoryArchive: Codable {
 }
 
 struct TS3EventHistoryArchivePreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: String
+        let summary: String
+        let kind: Kind
+
+        enum Kind: String {
+            case activity
+            case poke
+        }
+    }
+
     let activityCount: Int
     let pokeCount: Int
     let currentActivityCount: Int
@@ -1003,6 +1014,7 @@ struct TS3EventHistoryArchivePreview {
     let pokeDirectionSummaries: [String]
     let activitySummaries: [String]
     let pokeSummaries: [String]
+    let candidates: [Candidate]
 
     var totalCount: Int {
         activityCount + pokeCount
@@ -1023,6 +1035,10 @@ struct TS3EventHistoryArchivePreview {
             + activitySummaries
             + pokeSummaries
         ).joined(separator: "\n")
+    }
+
+    func containsEvent(id: String) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -11632,7 +11648,20 @@ final class TS3AppModel: ObservableObject {
             activityKindSummaries: Self.eventArchiveActivityKindSummaries(archive.activityEvents),
             pokeDirectionSummaries: Self.eventArchivePokeDirectionSummaries(archive.pokeEvents),
             activitySummaries: archive.activityEvents.prefix(10).map(\.clipboardSummary),
-            pokeSummaries: archive.pokeEvents.prefix(10).map(\.clipboardSummary)
+            pokeSummaries: archive.pokeEvents.prefix(10).map(\.clipboardSummary),
+            candidates: archive.activityEvents.map {
+                TS3EventHistoryArchivePreview.Candidate(
+                    id: Self.eventArchiveSelectionID($0),
+                    summary: $0.clipboardSummary,
+                    kind: .activity
+                )
+            } + archive.pokeEvents.map {
+                TS3EventHistoryArchivePreview.Candidate(
+                    id: Self.eventArchiveSelectionID($0),
+                    summary: $0.clipboardSummary,
+                    kind: .poke
+                )
+            }
         )
     }
 
@@ -11674,10 +11703,26 @@ final class TS3AppModel: ObservableObject {
             }
     }
 
-    func restoreEventHistoryArchive(from data: Data) throws {
+    private static func eventArchiveSelectionID(_ event: TS3ActivitySummary) -> String {
+        "activity:\(event.id.uuidString)"
+    }
+
+    private static func eventArchiveSelectionID(_ event: TS3PokeSummary) -> String {
+        "poke:\(event.id.uuidString)"
+    }
+
+    func restoreEventHistoryArchive(from data: Data, selectedEventIds: Set<String>? = nil) throws {
         let archive = try JSONDecoder().decode(TS3EventHistoryArchive.self, from: data)
-        activityEvents = Array(archive.activityEvents.prefix(100))
-        pokeEvents = Array(archive.pokeEvents.prefix(50))
+        let selectedActivityEvents = archive.activityEvents.filter { event in
+            guard let selectedEventIds else { return true }
+            return selectedEventIds.contains(Self.eventArchiveSelectionID(event))
+        }
+        let selectedPokeEvents = archive.pokeEvents.filter { event in
+            guard let selectedEventIds else { return true }
+            return selectedEventIds.contains(Self.eventArchiveSelectionID(event))
+        }
+        activityEvents = Array(selectedActivityEvents.prefix(100))
+        pokeEvents = Array(selectedPokeEvents.prefix(50))
         unreadActivityCount = 0
         unreadPokeCount = 0
         saveEventHistory()

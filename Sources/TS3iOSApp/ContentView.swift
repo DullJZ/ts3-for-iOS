@@ -7391,7 +7391,7 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
 
 struct EventsSheet: View {
     private struct EventArchiveImportConfirmation: Identifiable {
-        let url: URL
+        let data: Data
         let preview: TS3EventHistoryArchivePreview
         let id = UUID()
     }
@@ -7857,8 +7857,8 @@ struct EventsSheet: View {
                 EventArchiveImportSheet(
                     preview: confirmation.preview,
                     previewMessage: eventArchivePreviewMessage(confirmation.preview),
-                    restoreArchive: {
-                        importEventArchive(from: confirmation.url)
+                    restoreArchive: { selectedEventIds in
+                        importEventArchive(data: confirmation.data, selectedEventIds: selectedEventIds)
                         pendingEventArchiveImport = nil
                     },
                     cancel: {
@@ -7956,8 +7956,9 @@ struct EventsSheet: View {
             }
         }
         do {
-            let preview = try model.eventHistoryArchivePreview(from: Data(contentsOf: url))
-            pendingEventArchiveImport = EventArchiveImportConfirmation(url: url, preview: preview)
+            let data = try Data(contentsOf: url)
+            let preview = try model.eventHistoryArchivePreview(from: data)
+            pendingEventArchiveImport = EventArchiveImportConfirmation(data: data, preview: preview)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -7971,19 +7972,13 @@ struct EventsSheet: View {
             "Current events: \(preview.currentTotalCount)",
             "Current activity: \(preview.currentActivityCount)",
             "Current pokes: \(preview.currentPokeCount)",
-            "Restore replaces the local event archive and marks restored events as read."
+            "Restore replaces the local event archive with the selected events and marks restored events as read."
         ].joined(separator: "\n")
     }
 
-    private func importEventArchive(from url: URL) {
-        let canAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if canAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
+    private func importEventArchive(data: Data, selectedEventIds: Set<String>) {
         do {
-            try model.restoreEventHistoryArchive(from: Data(contentsOf: url))
+            try model.restoreEventHistoryArchive(from: data, selectedEventIds: selectedEventIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -8007,8 +8002,13 @@ struct EventsSheet: View {
 private struct EventArchiveImportSheet: View {
     let preview: TS3EventHistoryArchivePreview
     let previewMessage: String
-    let restoreArchive: () -> Void
+    let restoreArchive: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedEventIds: Set<String> = []
+
+    private var validSelectedEventIds: Set<String> {
+        Set(selectedEventIds.filter(preview.containsEvent))
+    }
 
     var body: some View {
         NavigationView {
@@ -8020,6 +8020,15 @@ private struct EventArchiveImportSheet: View {
                     if preview.hasEvents {
                         Button("Copy Event Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedEventIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedEventIds = []
+                            }
+                            .disabled(selectedEventIds.isEmpty)
                         }
                     }
                 }
@@ -8033,11 +8042,22 @@ private struct EventArchiveImportSheet: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
-                        ForEach(Array(preview.activitySummaries.enumerated()), id: \.offset) { _, summary in
-                            Text(summary)
-                                .font(.caption2)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
+                        ForEach(preview.candidates.filter { $0.kind == .activity }) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedEventIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedEventIds.insert(candidate.id)
+                                    } else {
+                                        selectedEventIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
                         }
                     }
                 }
@@ -8051,23 +8071,39 @@ private struct EventArchiveImportSheet: View {
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                         }
-                        ForEach(Array(preview.pokeSummaries.enumerated()), id: \.offset) { _, summary in
-                            Text(summary)
-                                .font(.caption2)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
+                        ForEach(preview.candidates.filter { $0.kind == .poke }) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedEventIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedEventIds.insert(candidate.id)
+                                    } else {
+                                        selectedEventIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
                         }
                     }
                 }
 
                 Section(header: Text("Restore Behavior")) {
-                    Text("Restore replaces the local event archive for offline review and marks restored activity and pokes as read.")
+                    Text("Restore replaces the local event archive with the selected events for offline review and marks restored activity and pokes as read.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Restore Events")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedEventIds.isEmpty {
+                    selectedEventIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -8076,9 +8112,9 @@ private struct EventArchiveImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Restore") {
-                        restoreArchive()
+                        restoreArchive(validSelectedEventIds)
                     }
-                    .disabled(!preview.hasEvents)
+                    .disabled(!preview.hasEvents || validSelectedEventIds.isEmpty)
                 }
             }
         }

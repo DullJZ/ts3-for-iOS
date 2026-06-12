@@ -5,6 +5,7 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
     @MainActor
     func testEventHistoryArchivePreviewIncludesCopyableActivityAndPokeSummaries() throws {
         let model = TS3AppModel()
+        model.clearEventHistory()
         let archiveJSON = """
         {
           "activityEvents": [
@@ -105,6 +106,21 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
+            preview.candidates.map(\.id),
+            [
+                "activity:00000000-0000-0000-0000-000000000001",
+                "activity:00000000-0000-0000-0000-000000000003",
+                "activity:00000000-0000-0000-0000-000000000004",
+                "poke:00000000-0000-0000-0000-000000000002",
+                "poke:00000000-0000-0000-0000-000000000005"
+            ]
+        )
+        XCTAssertEqual(preview.candidates.filter { $0.kind == .activity }.count, 3)
+        XCTAssertEqual(preview.candidates.filter { $0.kind == .poke }.count, 2)
+        XCTAssertTrue(preview.containsEvent(id: "activity:00000000-0000-0000-0000-000000000001"))
+        XCTAssertTrue(preview.containsEvent(id: "poke:00000000-0000-0000-0000-000000000002"))
+        XCTAssertFalse(preview.containsEvent(id: "activity:00000000-0000-0000-0000-000000000002"))
+        XCTAssertEqual(
             preview.clipboardSummary,
             (
                 preview.activityKindSummaries
@@ -114,6 +130,69 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             ).joined(separator: "\n")
         )
         XCTAssertTrue(preview.hasEvents)
+    }
+
+    @MainActor
+    func testEventHistoryArchiveRestoreCanRestoreSelectedEvents() throws {
+        let model = TS3AppModel()
+        model.clearEventHistory()
+        let archiveJSON = """
+        {
+          "activityEvents": [
+            {
+              "id": "00000000-0000-0000-0000-000000000001",
+              "timestamp": 1700000000,
+              "kind": "clientMoved",
+              "clientId": 12,
+              "clientName": "Taylor",
+              "isOwnClient": false
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000003",
+              "timestamp": 1700000200,
+              "kind": "clientEntered",
+              "clientId": 13,
+              "clientName": "Riley",
+              "isOwnClient": true
+            }
+          ],
+          "pokeEvents": [
+            {
+              "id": "00000000-0000-0000-0000-000000000002",
+              "timestamp": 1700000100,
+              "senderId": 9,
+              "senderName": "Morgan",
+              "senderUniqueIdentifier": "uid-m",
+              "message": "Ping",
+              "isOwnPoke": true
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000005",
+              "timestamp": 1700000400,
+              "senderId": 10,
+              "senderName": "Alex",
+              "senderUniqueIdentifier": "uid-a",
+              "message": "Hello",
+              "isOwnPoke": false
+            }
+          ]
+        }
+        """
+
+        try model.restoreEventHistoryArchive(
+            from: Data(archiveJSON.utf8),
+            selectedEventIds: [
+                "activity:00000000-0000-0000-0000-000000000003",
+                "poke:00000000-0000-0000-0000-000000000002"
+            ]
+        )
+
+        XCTAssertEqual(model.activityEvents.map(\.clientName), ["Riley"])
+        XCTAssertEqual(model.pokeEvents.map(\.senderName), ["Morgan"])
+        XCTAssertEqual(model.unreadActivityCount, 0)
+        XCTAssertEqual(model.unreadPokeCount, 0)
+        XCTAssertEqual(model.lastError, nil)
+        model.clearEventHistory()
     }
 
     func testPokeSummaryCopyAndAccessibilityText() {
