@@ -5113,6 +5113,74 @@ struct TS3ConnectionFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3ConnectionFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "filter=\(connectionFilter)",
+            "sort=\(sortMode)",
+            "sortAscending=\(sortAscending)"
+        ]
+        if !bookmarkFolderFilter.isEmpty {
+            parts.append("folder=\(bookmarkFolderFilter)")
+        }
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Filter \(connectionFilter)",
+            "Sort \(sortMode)",
+            sortAscending ? "Ascending" : "Descending"
+        ]
+        if !bookmarkFolderFilter.isEmpty {
+            parts.append("Folder \(bookmarkFolderFilter)")
+        }
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3ConnectionFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported connection filter presets: \(importedPresetCount)",
+            "Usable connection filter presets: \(usablePresetCount)",
+            "New connection filter presets: \(newPresetCount)",
+            "Replacing connection filter presets: \(replacedPresetCount)",
+            "Skipped connection filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3ConnectionSnapshot: Identifiable, Codable {
     let id: UUID
     let host: String
@@ -7878,18 +7946,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(connectionFilterPresets)
     }
 
+    func connectionFilterPresetsImportPreview(from data: Data) throws -> TS3ConnectionFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ConnectionFilterPreset].self, from: data)
+        let usable = sanitizedConnectionFilterPresets(imported)
+        let existingNames = Set(connectionFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ConnectionFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ConnectionFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importConnectionFilterPresets(from data: Data) throws -> Int {
+    func importConnectionFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ConnectionFilterPreset].self, from: data)
         var merged = connectionFilterPresets
-        for preset in sanitizedConnectionFilterPresets(imported) {
+        let selectedPresets = sanitizedConnectionFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         connectionFilterPresets = sanitizedConnectionFilterPresets(merged)
         saveConnectionFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     @discardableResult

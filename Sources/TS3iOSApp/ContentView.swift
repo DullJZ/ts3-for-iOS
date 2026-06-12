@@ -842,6 +842,12 @@ struct ConnectView: View {
         }
     }
 
+    private struct ConnectionPresetImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3ConnectionFilterPresetImportPreview
+        let id = UUID()
+    }
+
     @EnvironmentObject private var model: TS3AppModel
     let allowsConnectionActions: Bool
     @State private var bookmarkName = ""
@@ -868,6 +874,7 @@ struct ConnectView: View {
     @State private var isImportingClientPackage = false
     @State private var isExportingClientPackage = false
     @State private var deleteConfirmation: DeleteConfirmation?
+    @State private var pendingConnectionPresetImport: ConnectionPresetImportConfirmation?
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
     @State private var connectionPresetsDocument = TS3BookmarkFileDocument()
     @State private var recentConnectionsDocument = TS3BookmarkFileDocument()
@@ -1514,10 +1521,22 @@ struct ConnectView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
-                importConnectionPresets(from: url)
+                prepareConnectionPresetImport(from: url)
             } else if case .failure(let error) = result {
                 model.lastError = error.localizedDescription
             }
+        }
+        .sheet(item: $pendingConnectionPresetImport) { confirmation in
+            ConnectionFilterPresetImportSheet(
+                preview: confirmation.preview,
+                importPresets: { selectedPresetIds in
+                    importConnectionPresets(data: confirmation.data, selectedPresetIds: selectedPresetIds)
+                    pendingConnectionPresetImport = nil
+                },
+                cancel: {
+                    pendingConnectionPresetImport = nil
+                }
+            )
         }
         .fileExporter(
             isPresented: $isExportingConnectionPresets,
@@ -1790,7 +1809,7 @@ struct ConnectView: View {
         }
     }
 
-    private func importConnectionPresets(from url: URL) {
+    private func prepareConnectionPresetImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -1798,7 +1817,17 @@ struct ConnectView: View {
             }
         }
         do {
-            _ = try model.importConnectionFilterPresets(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.connectionFilterPresetsImportPreview(from: data)
+            pendingConnectionPresetImport = ConnectionPresetImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importConnectionPresets(data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            _ = try model.importConnectionFilterPresets(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -2055,6 +2084,97 @@ struct ConnectionManagerSheet: View {
                         }
                     }
                 }
+        }
+    }
+}
+
+private struct ConnectionFilterPresetImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3ConnectionFilterPresetImportPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3ConnectionFilterPresetImportPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected connection filter presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Filters")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
         }
     }
 }

@@ -16,7 +16,7 @@ Status legend:
 | Channel tree and online clients | Done | Main channel/client list, refresh actions, channel switching, persisted channel tree expansion state, and subscription plus channel-tree filter preset backup import/export with selectable restore preview | Improve very large server navigation if real-server scale testing shows issues. |
 | Channel join passwords | Done | Password prompts for protected channel join/move operations, optional saved per-server/channel passwords, migration package backup/restore, and forget controls | Monitor real-server password retry behavior. |
 | Invite links | Done | Copy current invite and full invite links, bookmark invite copy, incoming `ts3server://`/`teamspeak://` URL handling, opaque host:port parsing, parameter-alias tests | Monitor additional invite variants found in real-world links. |
-| Recent connections | Done | Connection manager import/export, global entry, local notes, filter presets, duplicate cleanup, row copy summaries, and VoiceOver row actions | Add richer real-server diagnostics if future connection history fields are exposed. |
+| Recent connections | Done | Connection manager import/export, global entry, local notes, filter presets with backup import/export and selectable restore preview, duplicate cleanup, row copy summaries, and VoiceOver row actions | Add richer real-server diagnostics if future connection history fields are exposed. |
 
 ## Voice And Audio
 
@@ -95,7 +95,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Debug logs | Done | Debug log page with level/search filtering, visible-log copy/export, clear, and diagnostic report export package | Add richer packaged attachments if platform sandbox requirements emerge. |
 | Build coverage | Done | README documents SwiftPM, iOS, Catalyst, CI artifact builds | Keep README feature list updated with current capabilities. |
-| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, bookmark/recent-server row summaries, channel subscription and tree filter preset selectable restore previews, identity and self-status profile selectable restore previews, client migration preview details, selective migration restore options, legacy migration-package decoding with missing newer sections, and migration-package edge cases for channel layout, files, server administration presets, self status, and whisper | Add broader tests for real-server validated restore semantics. |
+| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, bookmark/recent-server row summaries, connection filter plus channel subscription and tree filter preset selectable restore previews, identity and self-status profile selectable restore previews, client migration preview details, selective migration restore options, legacy migration-package decoding with missing newer sections, and migration-package edge cases for channel layout, files, server administration presets, self status, and whisper | Add broader tests for real-server validated restore semantics. |
 
 ## Next Implementation Priorities
 
