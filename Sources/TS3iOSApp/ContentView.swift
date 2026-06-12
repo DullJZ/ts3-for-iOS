@@ -342,7 +342,7 @@ struct KeyboardShortcutsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Actions")) {
+                Section(header: Text("shortcuts.actions")) {
                     ForEach(model.keyboardShortcuts) { shortcut in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -361,17 +361,17 @@ struct KeyboardShortcutsSheet: View {
                                     .labelsHidden()
                             }
                             HStack {
-                                TextField("Keys", text: shortcutKeysBinding(shortcut))
+                                TextField("shortcuts.keys", text: shortcutKeysBinding(shortcut))
                                     .font(.system(.body, design: .monospaced))
                                     .ts3PlainTextField()
-                                Button("Record") {
+                                Button("shortcuts.record") {
                                     captureShortcut = currentShortcut(for: shortcut)
                                 }
                                 .buttonStyle(.borderless)
                             }
                             let current = currentShortcut(for: shortcut)
                             if current.isEnabled && TS3KeyboardShortcutDescriptor(current.keys) == nil {
-                                Text("Invalid shortcut. Use formats like Command-Shift-T, Command-/, or Command-Return.")
+                                Text("shortcuts.invalidFormat")
                                     .font(.caption)
                                     .foregroundColor(.red)
                             }
@@ -381,7 +381,7 @@ struct KeyboardShortcutsSheet: View {
                                     .foregroundColor(.orange)
                             }
                             if shortcut.keys != shortcut.defaultKeys {
-                                Button("Reset to \(shortcut.defaultKeys)") {
+                                Button(String(format: NSLocalizedString("shortcuts.resetToFormat", comment: ""), shortcut.defaultKeys)) {
                                     model.updateKeyboardShortcut(
                                         shortcut,
                                         keys: shortcut.defaultKeys,
@@ -389,7 +389,7 @@ struct KeyboardShortcutsSheet: View {
                                     )
                                 }
                             }
-                            Button("Copy Shortcut Summary") {
+                            Button("shortcuts.copySummary") {
                                 TS3PlatformSupport.copyToPasteboard(currentShortcut(for: shortcut).clipboardSummary)
                             }
                             .font(.caption)
@@ -397,48 +397,48 @@ struct KeyboardShortcutsSheet: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(shortcut.action)
                         .accessibilityValue(currentShortcut(for: shortcut).accessibilityValue)
-                        .accessibilityAction(named: "Copy Shortcut Summary") {
+                        .accessibilityAction(named: NSLocalizedString("shortcuts.copySummary", comment: "")) {
                             TS3PlatformSupport.copyToPasteboard(currentShortcut(for: shortcut).clipboardSummary)
                         }
                     }
                 }
 
-                Section(header: Text("Export")) {
-                    Button("Copy Shortcuts") {
+                Section(header: Text("shortcuts.export")) {
+                    Button("shortcuts.copyShortcuts") {
                         TS3PlatformSupport.copyToPasteboard(shortcutsSnapshot)
                     }
-                    Button("Export Shortcuts") {
+                    Button("shortcuts.exportShortcuts") {
                         shortcutsDocument = TS3TextFileDocument(data: Data(shortcutsSnapshot.utf8))
                         isExportingShortcuts = true
                     }
-                    Button("Export Shortcut Backup") {
+                    Button("shortcuts.exportBackup") {
                         exportShortcutBackup()
                     }
-                    Button("Import Shortcut Backup") {
+                    Button("shortcuts.importBackup") {
                         isImportingShortcutBackup = true
                     }
                 }
 
-                Section(header: Text("Manage")) {
-                    Button("Enable All Shortcuts") {
+                Section(header: Text("shortcuts.manage")) {
+                    Button("shortcuts.enableAll") {
                         confirmation = .enableAll
                     }
-                    Button("Disable All Shortcuts") {
+                    Button("shortcuts.disableAll") {
                         confirmation = .disableAll
                     }
-                    Button("Reset Disabled Shortcuts") {
+                    Button("shortcuts.resetDisabled") {
                         confirmation = .resetDisabled
                     }
-                    Button("Reset Shortcuts") {
+                    Button("shortcuts.resetAll") {
                         confirmation = .resetAll
                     }
                 }
             }
-            .navigationTitle("Keyboard Shortcuts")
+            .navigationTitle("shortcuts.title")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button("common.done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -495,36 +495,36 @@ struct KeyboardShortcutsSheet: View {
                 switch confirmation {
                 case .enableAll:
                     return Alert(
-                        title: Text("Enable All Shortcuts?"),
-                        message: Text("This enables every configured keyboard shortcut."),
-                        primaryButton: .default(Text("Enable")) {
+                        title: Text("shortcuts.enableAllAlert.title"),
+                        message: Text("shortcuts.enableAllAlert.message"),
+                        primaryButton: .default(Text("shortcuts.enable")) {
                             model.setAllKeyboardShortcutsEnabled(true)
                         },
                         secondaryButton: .cancel()
                     )
                 case .disableAll:
                     return Alert(
-                        title: Text("Disable All Shortcuts?"),
-                        message: Text("This disables every configured keyboard shortcut until they are re-enabled."),
-                        primaryButton: .destructive(Text("Disable")) {
+                        title: Text("shortcuts.disableAllAlert.title"),
+                        message: Text("shortcuts.disableAllAlert.message"),
+                        primaryButton: .destructive(Text("shortcuts.disable")) {
                             model.setAllKeyboardShortcutsEnabled(false)
                         },
                         secondaryButton: .cancel()
                     )
                 case .resetDisabled:
                     return Alert(
-                        title: Text("Reset Disabled Shortcuts?"),
-                        message: Text("This re-enables disabled keyboard shortcuts and restores their default keys."),
-                        primaryButton: .destructive(Text("Reset")) {
+                        title: Text("shortcuts.resetDisabledAlert.title"),
+                        message: Text("shortcuts.resetDisabledAlert.message"),
+                        primaryButton: .destructive(Text("shortcuts.reset")) {
                             model.resetDisabledKeyboardShortcuts()
                         },
                         secondaryButton: .cancel()
                     )
                 case .resetAll:
                     return Alert(
-                        title: Text("Reset Keyboard Shortcuts?"),
-                        message: Text("This restores all keyboard shortcuts to their default keys and enabled state."),
-                        primaryButton: .destructive(Text("Reset")) {
+                        title: Text("shortcuts.resetAllAlert.title"),
+                        message: Text("shortcuts.resetAllAlert.message"),
+                        primaryButton: .destructive(Text("shortcuts.reset")) {
                             model.resetKeyboardShortcuts()
                         },
                         secondaryButton: .cancel()
@@ -568,7 +568,7 @@ struct KeyboardShortcutsSheet: View {
                 && $0.keys.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedKeys
         }
         guard !duplicates.isEmpty else { return nil }
-        return "Also assigned to \(duplicates.map(\.action).joined(separator: ", "))."
+        return String(format: NSLocalizedString("shortcuts.duplicateFormat", comment: ""), duplicates.map(\.action).joined(separator: ", "))
     }
 
     private func exportShortcutBackup() {
@@ -613,17 +613,17 @@ private struct ShortcutImportPreviewSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text("shortcuts.importPreview")) {
                     Text(preview.clipboardSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Shortcut Import Summary") {
+                    Button("shortcuts.copyImportSummary") {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
                 if !preview.changedSummaries.isEmpty {
-                    Section(header: Text("Changed Shortcuts")) {
+                    Section(header: Text("shortcuts.changedShortcuts")) {
                         ForEach(Array(preview.changedSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -634,7 +634,7 @@ private struct ShortcutImportPreviewSheet: View {
                 }
 
                 if !preview.invalidSummaries.isEmpty || !preview.duplicateSummaries.isEmpty {
-                    Section(header: Text("Warnings")) {
+                    Section(header: Text("shortcuts.warnings")) {
                         ForEach(Array((preview.invalidSummaries + preview.duplicateSummaries).enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -646,7 +646,7 @@ private struct ShortcutImportPreviewSheet: View {
                 }
 
                 if !preview.unknownSummaries.isEmpty {
-                    Section(header: Text("Ignored Entries")) {
+                    Section(header: Text("shortcuts.ignoredEntries")) {
                         ForEach(Array(preview.unknownSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -657,22 +657,22 @@ private struct ShortcutImportPreviewSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces current shortcut settings for recognized actions, backfills missing actions with defaults, and ignores unknown legacy action IDs.")
+                Section(header: Text("shortcuts.importBehavior")) {
+                    Text("shortcuts.importBehavior.summary")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Shortcuts")
+            .navigationTitle("shortcuts.importTitle")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button("shortcuts.import") {
                         importBackup()
                     }
                 }
@@ -726,58 +726,58 @@ struct ShortcutCaptureSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(shortcut.action)) {
-                    Toggle("Enabled", isOn: $isEnabled)
+                    Toggle("shortcuts.enabled", isOn: $isEnabled)
                     Toggle("Command", isOn: $usesCommand)
                     Toggle("Shift", isOn: $usesShift)
                     Toggle("Option", isOn: $usesOption)
                     Toggle("Control", isOn: $usesControl)
                 }
 
-                Section(header: Text("Key")) {
-                    Picker("Key", selection: $selectedKey) {
+                Section(header: Text("shortcuts.key")) {
+                    Picker("shortcuts.key", selection: $selectedKey) {
                         ForEach(Self.keyOptions, id: \.self) { key in
                             Text(key).tag(key)
                         }
                     }
                     if selectedKey == Self.customKeyToken {
-                        TextField("Single key or Return", text: $customKey)
+                        TextField("shortcuts.singleKeyPlaceholder", text: $customKey)
                             .font(.system(.body, design: .monospaced))
                             .ts3PlainTextField()
                     }
                 }
 
-                Section(header: Text("Preview")) {
+                Section(header: Text("shortcuts.preview")) {
                     Text(capturedKeys)
                         .font(.system(.body, design: .monospaced))
                     if TS3KeyboardShortcutDescriptor(capturedKeys) == nil {
-                        Text("Choose a single character or a supported key such as Return, Space, Tab, Escape, or Delete.")
+                        Text("shortcuts.chooseSupportedKey")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
                     if !hasModifier {
-                        Text("Shortcuts without modifiers may conflict with typing in text fields.")
+                        Text("shortcuts.noModifierWarning")
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
                 }
 
                 Section {
-                    Button("Save Shortcut") {
+                    Button("shortcuts.saveShortcut") {
                         save(capturedKeys, isEnabled)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(TS3KeyboardShortcutDescriptor(capturedKeys) == nil)
-                    Button("Use Default") {
+                    Button("shortcuts.useDefault") {
                         save(shortcut.defaultKeys, isEnabled)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            .navigationTitle("Record Shortcut")
+            .navigationTitle("shortcuts.recordTitle")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
