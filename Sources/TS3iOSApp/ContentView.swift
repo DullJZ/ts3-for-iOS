@@ -9459,7 +9459,7 @@ struct OfflineMessageReplySheet: View {
 struct ServerToolsSheet: View {
     private struct NotificationSettingsImportConfirmation: Identifiable {
         let url: URL
-        let previewLines: [String]
+        let preview: TS3NotificationSettingsPreview
         let id = UUID()
     }
 
@@ -9828,9 +9828,12 @@ struct ServerToolsSheet: View {
                 }
             ) { confirmation in
                 NotificationSettingsImportSheet(
-                    previewLines: confirmation.previewLines,
-                    importSettings: {
-                        importNotificationSettings(from: confirmation.url)
+                    preview: confirmation.preview,
+                    importSettings: { selectedSettingIds in
+                        importNotificationSettings(
+                            from: confirmation.url,
+                            selectedSettingIds: selectedSettingIds
+                        )
                         pendingNotificationSettingsImport = nil
                     },
                     cancel: {
@@ -9862,14 +9865,14 @@ struct ServerToolsSheet: View {
             let preview = try model.notificationSettingsPreview(from: data)
             pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(
                 url: url,
-                previewLines: preview.lines
+                preview: preview
             )
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importNotificationSettings(from url: URL) {
+    private func importNotificationSettings(from url: URL, selectedSettingIds: Set<String>) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -9877,7 +9880,14 @@ struct ServerToolsSheet: View {
             }
         }
         do {
-            try model.importNotificationSettings(from: Data(contentsOf: url))
+            try model.importNotificationSettings(
+                from: Data(contentsOf: url),
+                options: TS3NotificationSettingsImportOptions(
+                    baseSettings: selectedSettingIds.contains("base"),
+                    mutedRules: selectedSettingIds.contains("muted-rules"),
+                    quietHours: selectedSettingIds.contains("quiet-hours")
+                )
+            )
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -9887,19 +9897,35 @@ struct ServerToolsSheet: View {
 private struct NotificationSettingsImportSheet: View {
     @Environment(\.presentationMode) private var presentationMode
 
-    let previewLines: [String]
-    let importSettings: () -> Void
+    let preview: TS3NotificationSettingsPreview
+    let importSettings: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedSettingIds: Set<String>
+
+    init(
+        preview: TS3NotificationSettingsPreview,
+        importSettings: @escaping (Set<String>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importSettings = importSettings
+        self.cancel = cancel
+        _selectedSettingIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
 
     private var previewSummary: String {
-        previewLines.joined(separator: "\n")
+        preview.lines.joined(separator: "\n")
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedSettingIds.contains($0.id) }
     }
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Preview")) {
-                    ForEach(previewLines, id: \.self) { line in
+                    ForEach(preview.lines, id: \.self) { line in
                         Text(line)
                     }
                     Button("Copy Notification Summary") {
@@ -9907,8 +9933,41 @@ private struct NotificationSettingsImportSheet: View {
                     }
                 }
 
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedSettingIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedSettingIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            isOn: Binding(
+                                get: { selectedSettingIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedSettingIds.insert(candidate.id)
+                                    } else {
+                                        selectedSettingIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        ) {
+                            VStack(alignment: .leading) {
+                                Text(candidate.title)
+                                Text(candidate.summary)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 Section {
-                    Text("Importing replaces current local notification preferences, event rules, muted servers, muted contacts, and quiet hours with the selected settings file.")
+                    Text("Importing replaces only the selected notification preference groups with values from the settings file.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -9924,9 +9983,10 @@ private struct NotificationSettingsImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importSettings()
+                        importSettings(selectedSettingIds)
                         presentationMode.wrappedValue.dismiss()
                     }
+                    .disabled(!canImport)
                 }
             }
         }
@@ -23037,7 +23097,7 @@ private struct ClientPackageImportSheet: View {
 struct NotificationSettingsSheet: View {
     private struct NotificationSettingsImportConfirmation: Identifiable {
         let url: URL
-        let previewLines: [String]
+        let preview: TS3NotificationSettingsPreview
         let id = UUID()
     }
 
@@ -23175,9 +23235,12 @@ struct NotificationSettingsSheet: View {
                 }
             ) { confirmation in
                 NotificationSettingsImportSheet(
-                    previewLines: confirmation.previewLines,
-                    importSettings: {
-                        importNotificationSettings(from: confirmation.url)
+                    preview: confirmation.preview,
+                    importSettings: { selectedSettingIds in
+                        importNotificationSettings(
+                            from: confirmation.url,
+                            selectedSettingIds: selectedSettingIds
+                        )
                         pendingNotificationSettingsImport = nil
                     },
                     cancel: {
@@ -23209,14 +23272,14 @@ struct NotificationSettingsSheet: View {
             let preview = try model.notificationSettingsPreview(from: data)
             pendingNotificationSettingsImport = NotificationSettingsImportConfirmation(
                 url: url,
-                previewLines: preview.lines
+                preview: preview
             )
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func importNotificationSettings(from url: URL) {
+    private func importNotificationSettings(from url: URL, selectedSettingIds: Set<String>) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -23224,7 +23287,14 @@ struct NotificationSettingsSheet: View {
             }
         }
         do {
-            try model.importNotificationSettings(from: Data(contentsOf: url))
+            try model.importNotificationSettings(
+                from: Data(contentsOf: url),
+                options: TS3NotificationSettingsImportOptions(
+                    baseSettings: selectedSettingIds.contains("base"),
+                    mutedRules: selectedSettingIds.contains("muted-rules"),
+                    quietHours: selectedSettingIds.contains("quiet-hours")
+                )
+            )
         } catch {
             model.lastError = error.localizedDescription
         }

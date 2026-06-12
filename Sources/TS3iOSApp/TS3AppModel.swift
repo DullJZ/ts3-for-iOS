@@ -4838,7 +4838,42 @@ struct TS3ClientMigrationRestoreOptions: Codable, Equatable {
 }
 
 struct TS3NotificationSettingsPreview {
+    struct Candidate: Identifiable, Hashable {
+        let id: String
+        let title: String
+        let summary: String
+    }
+
     let lines: [String]
+    let candidates: [Candidate]
+
+    func containsSetting(id: String) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3NotificationSettingsImportOptions {
+    var baseSettings: Bool
+    var mutedRules: Bool
+    var quietHours: Bool
+
+    static let all = TS3NotificationSettingsImportOptions(
+        baseSettings: true,
+        mutedRules: true,
+        quietHours: true
+    )
+
+    var selectedSettingIds: Set<String> {
+        var ids = Set<String>()
+        if baseSettings { ids.insert("base") }
+        if mutedRules { ids.insert("muted-rules") }
+        if quietHours { ids.insert("quiet-hours") }
+        return ids
+    }
+
+    var hasSelectedSettings: Bool {
+        baseSettings || mutedRules || quietHours
+    }
 }
 
 struct TS3BookmarkSummary: Identifiable, Codable {
@@ -14865,18 +14900,7 @@ final class TS3AppModel: ObservableObject {
 
     func notificationSettingsPreview(from data: Data) throws -> TS3NotificationSettingsPreview {
         let decoded = try JSONDecoder().decode(TS3NotificationSettings.self, from: data)
-        let sanitized = TS3NotificationSettings(
-            isEnabled: decoded.isEnabled,
-            soundEnabled: decoded.soundEnabled,
-            privateMessagesEnabled: decoded.privateMessagesEnabled,
-            pokesEnabled: decoded.pokesEnabled,
-            activityEnabled: decoded.activityEnabled,
-            mutedServerKeys: sanitizedNotificationKeys(decoded.mutedServerKeys),
-            mutedContactUniqueIdentifiers: sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers),
-            quietHoursEnabled: decoded.quietHoursEnabled,
-            quietHoursStartMinute: sanitizedMinuteOfDay(decoded.quietHoursStartMinute),
-            quietHoursEndMinute: sanitizedMinuteOfDay(decoded.quietHoursEndMinute)
-        )
+        let sanitized = sanitizedNotificationSettings(decoded)
         return TS3NotificationSettingsPreview(lines: [
             "Notifications: \(sanitized.isEnabled ? "Enabled" : "Disabled")",
             "Notification sounds: \(sanitized.soundEnabled ? "On" : "Off")",
@@ -14884,23 +14908,67 @@ final class TS3AppModel: ObservableObject {
             "Quiet hours: \(quietHoursPreviewText(sanitized))",
             "Muted notification servers: \(sanitized.mutedServerKeys.count)",
             "Muted notification contacts: \(sanitized.mutedContactUniqueIdentifiers.count)"
+        ], candidates: [
+            TS3NotificationSettingsPreview.Candidate(
+                id: "base",
+                title: "Notification Preferences",
+                summary: "\(sanitized.isEnabled ? "Enabled" : "Disabled"), sounds \(sanitized.soundEnabled ? "on" : "off"), \(notificationEventTypesText(sanitized))"
+            ),
+            TS3NotificationSettingsPreview.Candidate(
+                id: "muted-rules",
+                title: "Muted Servers and Contacts",
+                summary: "\(sanitized.mutedServerKeys.count) servers, \(sanitized.mutedContactUniqueIdentifiers.count) contacts"
+            ),
+            TS3NotificationSettingsPreview.Candidate(
+                id: "quiet-hours",
+                title: "Quiet Hours",
+                summary: quietHoursPreviewText(sanitized)
+            )
         ])
     }
 
-    func importNotificationSettings(from data: Data) throws {
+    func importNotificationSettings(
+        from data: Data,
+        options: TS3NotificationSettingsImportOptions = .all
+    ) throws {
         let decoded = try JSONDecoder().decode(TS3NotificationSettings.self, from: data)
-        notificationsEnabled = decoded.isEnabled
-        notificationSoundEnabled = decoded.soundEnabled
-        privateMessageNotificationsEnabled = decoded.privateMessagesEnabled
-        pokeNotificationsEnabled = decoded.pokesEnabled
-        activityNotificationsEnabled = decoded.activityEnabled
-        mutedNotificationServerKeys = sanitizedNotificationKeys(decoded.mutedServerKeys)
-        mutedNotificationContactUniqueIdentifiers = sanitizedNotificationKeys(decoded.mutedContactUniqueIdentifiers)
-        notificationQuietHoursEnabled = decoded.quietHoursEnabled
-        notificationQuietHoursStartMinute = sanitizedMinuteOfDay(decoded.quietHoursStartMinute)
-        notificationQuietHoursEndMinute = sanitizedMinuteOfDay(decoded.quietHoursEndMinute)
+        let sanitized = sanitizedNotificationSettings(decoded)
+        guard options.hasSelectedSettings else {
+            return
+        }
+        if options.baseSettings {
+            notificationsEnabled = sanitized.isEnabled
+            notificationSoundEnabled = sanitized.soundEnabled
+            privateMessageNotificationsEnabled = sanitized.privateMessagesEnabled
+            pokeNotificationsEnabled = sanitized.pokesEnabled
+            activityNotificationsEnabled = sanitized.activityEnabled
+        }
+        if options.mutedRules {
+            mutedNotificationServerKeys = sanitized.mutedServerKeys
+            mutedNotificationContactUniqueIdentifiers = sanitized.mutedContactUniqueIdentifiers
+        }
+        if options.quietHours {
+            notificationQuietHoursEnabled = sanitized.quietHoursEnabled
+            notificationQuietHoursStartMinute = sanitized.quietHoursStartMinute
+            notificationQuietHoursEndMinute = sanitized.quietHoursEndMinute
+        }
         saveNotificationSettings()
         lastError = nil
+    }
+
+    private func sanitizedNotificationSettings(_ settings: TS3NotificationSettings) -> TS3NotificationSettings {
+        TS3NotificationSettings(
+            isEnabled: settings.isEnabled,
+            soundEnabled: settings.soundEnabled,
+            privateMessagesEnabled: settings.privateMessagesEnabled,
+            pokesEnabled: settings.pokesEnabled,
+            activityEnabled: settings.activityEnabled,
+            mutedServerKeys: sanitizedNotificationKeys(settings.mutedServerKeys),
+            mutedContactUniqueIdentifiers: sanitizedNotificationKeys(settings.mutedContactUniqueIdentifiers),
+            quietHoursEnabled: settings.quietHoursEnabled,
+            quietHoursStartMinute: sanitizedMinuteOfDay(settings.quietHoursStartMinute),
+            quietHoursEndMinute: sanitizedMinuteOfDay(settings.quietHoursEndMinute)
+        )
     }
 
     private var notificationSettingsSnapshot: TS3NotificationSettings {
