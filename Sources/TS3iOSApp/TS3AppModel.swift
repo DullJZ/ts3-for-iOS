@@ -6330,6 +6330,68 @@ struct TS3EventFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3EventFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "eventFilter=\(eventFilter)",
+            "sourceFilter=\(sourceFilter)",
+            "newestFirst=\(newestFirst)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Event filter \(eventFilter)",
+            "Source filter \(sourceFilter)",
+            newestFirst ? "Newest first" : "Oldest first"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3EventFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported event filter presets: \(importedPresetCount)",
+            "Usable event filter presets: \(usablePresetCount)",
+            "New event filter presets: \(newPresetCount)",
+            "Replacing event filter presets: \(replacedPresetCount)",
+            "Skipped event filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3ChatFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -12197,18 +12259,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(eventFilterPresets)
     }
 
+    func eventFilterPresetsImportPreview(from data: Data) throws -> TS3EventFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3EventFilterPreset].self, from: data)
+        let usable = sanitizedEventFilterPresets(imported)
+        let existingNames = Set(eventFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3EventFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3EventFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importEventFilterPresets(from data: Data) throws -> Int {
+    func importEventFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3EventFilterPreset].self, from: data)
         var merged = eventFilterPresets
-        for preset in sanitizedEventFilterPresets(imported) {
+        let selectedPresets = sanitizedEventFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         eventFilterPresets = sanitizedEventFilterPresets(merged)
         saveEventFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func eventHistoryArchiveData() throws -> Data {

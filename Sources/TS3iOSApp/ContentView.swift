@@ -7933,6 +7933,12 @@ struct EventsSheet: View {
         let id = UUID()
     }
 
+    private struct EventFilterPresetImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3EventFilterPresetImportPreview
+        let id = UUID()
+    }
+
     private enum EventCleanupConfirmation: Identifiable {
         case all
         case activity
@@ -8066,6 +8072,7 @@ struct EventsSheet: View {
     @State private var isConfirmingDeletePresets = false
     @State private var cleanupConfirmation: EventCleanupConfirmation?
     @State private var pendingEventArchiveImport: EventArchiveImportConfirmation?
+    @State private var pendingPresetImport: EventFilterPresetImportConfirmation?
     @State private var eventsDocument = TS3TextFileDocument()
     @State private var eventArchiveDocument = TS3BookmarkFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
@@ -8358,7 +8365,7 @@ struct EventsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importPresets(from: url)
+                    preparePresetImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -8400,6 +8407,18 @@ struct EventsSheet: View {
                     },
                     cancel: {
                         pendingEventArchiveImport = nil
+                    }
+                )
+            }
+            .sheet(item: $pendingPresetImport) { confirmation in
+                EventFilterPresetImportSheet(
+                    preview: confirmation.preview,
+                    importPresets: { selectedPresetIds in
+                        importPresets(data: confirmation.data, selectedPresetIds: selectedPresetIds)
+                        pendingPresetImport = nil
+                    },
+                    cancel: {
+                        pendingPresetImport = nil
                     }
                 )
             }
@@ -8521,7 +8540,7 @@ struct EventsSheet: View {
         }
     }
 
-    private func importPresets(from url: URL) {
+    private func preparePresetImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -8529,7 +8548,17 @@ struct EventsSheet: View {
             }
         }
         do {
-            _ = try model.importEventFilterPresets(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.eventFilterPresetsImportPreview(from: data)
+            pendingPresetImport = EventFilterPresetImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            _ = try model.importEventFilterPresets(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -8652,6 +8681,97 @@ private struct EventArchiveImportSheet: View {
                         restoreArchive(validSelectedEventIds)
                     }
                     .disabled(!preview.hasEvents || validSelectedEventIds.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+private struct EventFilterPresetImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3EventFilterPresetImportPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3EventFilterPresetImportPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected event filter presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Filters")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
                 }
             }
         }
