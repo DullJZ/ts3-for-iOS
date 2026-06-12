@@ -117,6 +117,174 @@ final class TS3ServerLogPresetTests: XCTestCase {
     }
 
     @MainActor
+    func testServerLogQueryPresetImportPreviewSanitizesCandidates() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let invalidId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Log Query \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importServerLogQueryPresets(from: encodedServerLogQueryPresets([
+            makeServerLogQueryPreset(
+                id: existingId,
+                name: existingName,
+                limit: 25,
+                beginPosition: 10,
+                reverse: true,
+                instance: false,
+                levelFilter: "warning",
+                channelFilter: "Server",
+                searchText: "keep"
+            )
+        ]))
+        let data = try encodedServerLogQueryPresets([
+            makeServerLogQueryPreset(
+                id: existingId,
+                name: " \(existingName) ",
+                limit: 2_500,
+                beginPosition: -5,
+                reverse: false,
+                instance: true,
+                levelFilter: "invalid",
+                channelFilter: "  Query  ",
+                searchText: "  search value  "
+            ),
+            makeServerLogQueryPreset(
+                id: newId,
+                name: " Error Query \(suffix) ",
+                limit: 50,
+                beginPosition: 12,
+                reverse: true,
+                instance: false,
+                levelFilter: "error",
+                channelFilter: String(repeating: "channel", count: 20),
+                searchText: String(repeating: "x", count: 140)
+            ),
+            makeServerLogQueryPreset(
+                id: invalidId,
+                name: "   ",
+                limit: 10,
+                beginPosition: 0,
+                reverse: true,
+                instance: false,
+                levelFilter: "info",
+                channelFilter: "ignored",
+                searchText: "ignored"
+            )
+        ])
+
+        let preview = try model.serverLogQueryPresetsImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertEqual(Set(preview.candidates.map(\.id)), [existingId, newId])
+        let summariesById = Dictionary(uniqueKeysWithValues: preview.candidates.map { ($0.id, $0.summary) })
+        XCTAssertEqual(summariesById[existingId], """
+        Scope: Instance logs
+        Lines: 1000
+        Begin position: 0
+        Order: Forward
+        Level filter: All Levels
+        Channel filter: Query
+        Search: search value
+        """)
+        XCTAssertTrue(summariesById[newId]?.contains("Level filter: Error") == true)
+        XCTAssertTrue(summariesById[newId]?.contains("Search: \(String(repeating: "x", count: 120))") == true)
+        XCTAssertTrue(preview.containsPreset(id: newId))
+        XCTAssertFalse(preview.containsPreset(id: invalidId))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped server log query presets: 1"))
+    }
+
+    @MainActor
+    func testServerLogQueryPresetImportRestoresOnlySelectedPresets() throws {
+        let existingId = UUID()
+        let selectedId = UUID()
+        let unselectedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Log Query \(suffix)"
+        let selectedName = "Selected Log Query \(suffix)"
+        let unselectedName = "Unselected Log Query \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importServerLogQueryPresets(from: encodedServerLogQueryPresets([
+            makeServerLogQueryPreset(
+                id: existingId,
+                name: existingName,
+                limit: 25,
+                beginPosition: 10,
+                reverse: true,
+                instance: false,
+                levelFilter: "warning",
+                channelFilter: "Server",
+                searchText: "keep"
+            )
+        ]))
+        let data = try encodedServerLogQueryPresets([
+            makeServerLogQueryPreset(
+                id: existingId,
+                name: existingName,
+                limit: 500,
+                beginPosition: 20,
+                reverse: false,
+                instance: true,
+                levelFilter: "error",
+                channelFilter: "Query",
+                searchText: "replace"
+            ),
+            makeServerLogQueryPreset(
+                id: selectedId,
+                name: selectedName,
+                limit: 75,
+                beginPosition: 15,
+                reverse: false,
+                instance: true,
+                levelFilter: "debug",
+                channelFilter: "VirtualSvrMgr",
+                searchText: "ops"
+            ),
+            makeServerLogQueryPreset(
+                id: unselectedId,
+                name: unselectedName,
+                limit: 30,
+                beginPosition: 0,
+                reverse: true,
+                instance: false,
+                levelFilter: "info",
+                channelFilter: "Server",
+                searchText: "away"
+            )
+        ])
+
+        let restoredCount = try model.importServerLogQueryPresets(
+            from: data,
+            selectedPresetIds: [selectedId]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        let existing = try XCTUnwrap(model.serverLogQueryPresets.first { $0.name == existingName })
+        XCTAssertEqual(existing.limit, 25)
+        XCTAssertEqual(existing.beginPosition, 10)
+        XCTAssertEqual(existing.reverse, true)
+        XCTAssertEqual(existing.instance, false)
+        XCTAssertEqual(existing.levelFilter, "warning")
+        XCTAssertEqual(existing.channelFilter, "Server")
+        XCTAssertEqual(existing.searchText, "keep")
+        let selected = try XCTUnwrap(model.serverLogQueryPresets.first { $0.id == selectedId })
+        XCTAssertEqual(selected.name, selectedName)
+        XCTAssertEqual(selected.limit, 75)
+        XCTAssertEqual(selected.beginPosition, 15)
+        XCTAssertEqual(selected.reverse, false)
+        XCTAssertEqual(selected.instance, true)
+        XCTAssertEqual(selected.levelFilter, "debug")
+        XCTAssertEqual(selected.channelFilter, "VirtualSvrMgr")
+        XCTAssertEqual(selected.searchText, "ops")
+        XCTAssertFalse(model.serverLogQueryPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
+        XCTAssertEqual(model.lastError, nil)
+    }
+
+    @MainActor
     func testServerLogArchivePreviewSanitizesCountsAndFirstDetails() throws {
         let model = TS3AppModel()
         let archiveJSON = """
@@ -373,5 +541,34 @@ final class TS3ServerLogPresetTests: XCTestCase {
         let reloadedModel = TS3AppModel()
         XCTAssertEqual(Set(reloadedModel.serverLogEntries.map(\.id)), [1, 3])
         XCTAssertFalse(reloadedModel.serverLogEntries.contains { $0.id == 2 })
+    }
+
+    private func encodedServerLogQueryPresets(_ presets: [TS3ServerLogQueryPreset]) throws -> Data {
+        try JSONEncoder().encode(presets)
+    }
+
+    private func makeServerLogQueryPreset(
+        id: UUID,
+        name: String,
+        limit: Int,
+        beginPosition: Int,
+        reverse: Bool,
+        instance: Bool,
+        levelFilter: String,
+        channelFilter: String,
+        searchText: String
+    ) -> TS3ServerLogQueryPreset {
+        TS3ServerLogQueryPreset(
+            id: id,
+            name: name,
+            limit: limit,
+            beginPosition: beginPosition,
+            reverse: reverse,
+            instance: instance,
+            levelFilter: levelFilter,
+            channelFilter: channelFilter,
+            searchText: searchText,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
     }
 }

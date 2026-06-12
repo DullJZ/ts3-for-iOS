@@ -10897,6 +10897,12 @@ struct ServerLogsSheet: View {
         let id = UUID()
     }
 
+    private struct ServerLogQueryPresetImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3ServerLogQueryPresetImportPreview
+        let id = UUID()
+    }
+
     private enum LogLevelFilter: String, CaseIterable, Identifiable {
         case all
         case info
@@ -10959,6 +10965,7 @@ struct ServerLogsSheet: View {
     @State private var isExportingPresets = false
     @State private var confirmation: LogConfirmation?
     @State private var pendingLogArchiveImport: ServerLogArchiveImportConfirmation?
+    @State private var pendingPresetImport: ServerLogQueryPresetImportConfirmation?
     @State private var presetDocument = TS3BookmarkFileDocument()
 
     var body: some View {
@@ -11237,7 +11244,7 @@ struct ServerLogsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importPresets(from: url)
+                    preparePresetImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -11252,6 +11259,18 @@ struct ServerLogsSheet: View {
                     },
                     cancel: {
                         pendingLogArchiveImport = nil
+                    }
+                )
+            }
+            .sheet(item: $pendingPresetImport) { confirmation in
+                ServerLogQueryPresetImportSheet(
+                    preview: confirmation.preview,
+                    importPresets: { selectedPresetIds in
+                        importPresets(data: confirmation.data, selectedPresetIds: selectedPresetIds)
+                        pendingPresetImport = nil
+                    },
+                    cancel: {
+                        pendingPresetImport = nil
                     }
                 )
             }
@@ -11463,7 +11482,7 @@ struct ServerLogsSheet: View {
         }
     }
 
-    private func importPresets(from url: URL) {
+    private func preparePresetImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -11471,7 +11490,17 @@ struct ServerLogsSheet: View {
             }
         }
         do {
-            _ = try model.importServerLogQueryPresets(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.serverLogQueryPresetsImportPreview(from: data)
+            pendingPresetImport = ServerLogQueryPresetImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            _ = try model.importServerLogQueryPresets(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -11588,6 +11617,101 @@ private struct ServerLogArchiveImportSheet: View {
                         importArchive(validSelectedEntryIds)
                     }
                     .disabled(!preview.hasEntries || validSelectedEntryIds.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+private struct ServerLogQueryPresetImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3ServerLogQueryPresetImportPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3ServerLogQueryPresetImportPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        ) {
+                            Text(candidate.summary)
+                                .font(.caption2)
+                                .lineLimit(3)
+                                .truncationMode(.middle)
+                        }
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected server log query presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Log Presets")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
                 }
             }
         }

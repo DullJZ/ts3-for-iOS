@@ -6166,6 +6166,41 @@ extension TS3ServerLogQueryPreset {
     }
 }
 
+struct TS3ServerLogQueryPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported server log query presets: \(importedPresetCount)",
+            "Usable server log query presets: \(usablePresetCount)",
+            "New server log query presets: \(newPresetCount)",
+            "Replacing server log query presets: \(replacedPresetCount)",
+            "Skipped server log query presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3ChannelSubscriptionPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -10150,18 +10185,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(serverLogQueryPresets)
     }
 
+    func serverLogQueryPresetsImportPreview(from data: Data) throws -> TS3ServerLogQueryPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ServerLogQueryPreset].self, from: data)
+        let usable = sanitizedServerLogQueryPresets(imported)
+        let existingNames = Set(serverLogQueryPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ServerLogQueryPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ServerLogQueryPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importServerLogQueryPresets(from data: Data) throws -> Int {
+    func importServerLogQueryPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ServerLogQueryPreset].self, from: data)
         var merged = serverLogQueryPresets
-        for preset in sanitizedServerLogQueryPresets(imported) {
+        let selectedPresets = sanitizedServerLogQueryPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         serverLogQueryPresets = sanitizedServerLogQueryPresets(merged)
         saveServerLogQueryPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func refreshClientDatabase(limit: Int? = nil) {
