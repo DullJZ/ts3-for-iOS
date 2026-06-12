@@ -2038,6 +2038,41 @@ struct TS3SelfStatusProfile: Identifiable, Codable {
     }
 }
 
+struct TS3SelfStatusProfileImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedProfileCount: Int
+    let usableProfileCount: Int
+    let newProfileCount: Int
+    let replacedProfileCount: Int
+    let skippedProfileCount: Int
+    let profileSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasProfiles: Bool {
+        usableProfileCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported status profiles: \(importedProfileCount)",
+            "Usable status profiles: \(usableProfileCount)",
+            "New status profiles: \(newProfileCount)",
+            "Replacing status profiles: \(replacedProfileCount)",
+            "Skipped status profiles: \(skippedProfileCount)"
+        ]
+        lines.append(contentsOf: profileSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsProfile(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3DatabaseClientSummary: Identifiable {
     let id: Int
     let uniqueIdentifier: String?
@@ -17553,12 +17588,40 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(selfStatusProfiles)
     }
 
+    func selfStatusProfilesImportPreview(from data: Data) throws -> TS3SelfStatusProfileImportPreview {
+        let imported = try JSONDecoder().decode([TS3SelfStatusProfile].self, from: data)
+        let usable = sanitizedSelfStatusProfiles(imported)
+        let existingNames = Set(selfStatusProfiles.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3SelfStatusProfileImportPreview(
+            importedProfileCount: imported.count,
+            usableProfileCount: usable.count,
+            newProfileCount: usable.count - replacedCount,
+            replacedProfileCount: replacedCount,
+            skippedProfileCount: imported.count - usable.count,
+            profileSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { profile in
+                TS3SelfStatusProfileImportPreview.Candidate(
+                    id: profile.id,
+                    summary: profile.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importSelfStatusProfiles(from data: Data) throws -> Int {
+    func importSelfStatusProfiles(from data: Data, selectedProfileIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3SelfStatusProfile].self, from: data)
         var merged = selfStatusProfiles
-        for profile in sanitizedSelfStatusProfiles(imported) {
-            merged.removeAll { $0.name.caseInsensitiveCompare(profile.name) == .orderedSame }
+        let sanitized = sanitizedSelfStatusProfiles(imported).filter { profile in
+            guard let selectedProfileIds else { return true }
+            return selectedProfileIds.contains(profile.id)
+        }
+        for profile in sanitized {
+            merged.removeAll { existing in
+                existing.id == profile.id ||
+                existing.name.caseInsensitiveCompare(profile.name) == .orderedSame
+            }
             merged.insert(profile, at: 0)
         }
         selfStatusProfiles = sanitizedSelfStatusProfiles(merged)

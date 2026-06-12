@@ -24670,6 +24670,12 @@ struct SelfStatusSheet: View {
         }
     }
 
+    private struct SelfStatusProfileImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3SelfStatusProfileImportPreview
+        let id = UUID()
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var nickname = ""
@@ -24692,6 +24698,7 @@ struct SelfStatusSheet: View {
     @State private var isImportingAppliedStatus = false
     @State private var isImportingStatusProfiles = false
     @State private var confirmation: SelfStatusConfirmation?
+    @State private var pendingProfileImport: SelfStatusProfileImportConfirmation?
     @State private var statusDocument = TS3TextFileDocument()
     @State private var statusBackupDocument = TS3TextFileDocument()
 
@@ -25030,7 +25037,7 @@ struct SelfStatusSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importStatusProfiles(from: url)
+                    prepareStatusProfilesImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -25065,6 +25072,26 @@ struct SelfStatusSheet: View {
                         secondaryButton: .cancel()
                     )
                 }
+            }
+            .sheet(
+                item: $pendingProfileImport,
+                onDismiss: {
+                    pendingProfileImport = nil
+                }
+            ) { confirmation in
+                SelfStatusProfileImportSheet(
+                    preview: confirmation.preview,
+                    importProfiles: { selectedProfileIds in
+                        importStatusProfiles(
+                            from: confirmation.data,
+                            selectedProfileIds: selectedProfileIds
+                        )
+                        pendingProfileImport = nil
+                    },
+                    cancel: {
+                        pendingProfileImport = nil
+                    }
+                )
             }
         }
     }
@@ -25168,7 +25195,7 @@ struct SelfStatusSheet: View {
         }
     }
 
-    private func importStatusProfiles(from url: URL) {
+    private func prepareStatusProfilesImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -25176,7 +25203,17 @@ struct SelfStatusSheet: View {
             }
         }
         do {
-            try model.importSelfStatusProfiles(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.selfStatusProfilesImportPreview(from: data)
+            pendingProfileImport = SelfStatusProfileImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importStatusProfiles(from data: Data, selectedProfileIds: Set<UUID>) {
+        do {
+            try model.importSelfStatusProfiles(from: data, selectedProfileIds: selectedProfileIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -25225,6 +25262,97 @@ struct SelfStatusSheet: View {
                 model.setChannelCommander(value)
             }
         )
+    }
+}
+
+private struct SelfStatusProfileImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3SelfStatusProfileImportPreview
+    let importProfiles: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedProfileIds: Set<UUID>
+
+    init(
+        preview: TS3SelfStatusProfileImportPreview,
+        importProfiles: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importProfiles = importProfiles
+        self.cancel = cancel
+        _selectedProfileIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedProfileIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported profiles: \(preview.importedProfileCount)")
+                    Text("Usable profiles: \(preview.usableProfileCount)")
+                    Text("New profiles: \(preview.newProfileCount)")
+                    Text("Replacing profiles: \(preview.replacedProfileCount)")
+                    Text("Skipped profiles: \(preview.skippedProfileCount)")
+                    Button("Copy Profile Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedProfileIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedProfileIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedProfileIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedProfileIds.insert(candidate.id)
+                                    } else {
+                                        selectedProfileIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected status profiles by name and leaves unselected profiles unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Status Profiles")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importProfiles(selectedProfileIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
+        }
     }
 }
 
