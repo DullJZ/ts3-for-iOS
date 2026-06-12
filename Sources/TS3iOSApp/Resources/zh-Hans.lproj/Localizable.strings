@@ -1,0 +1,16 @@
+"app.title" = "TeamSpeak";
+"home.connectionStatus" = "连接状态";
+"home.menu.more" = "更多";
+"home.menu.connections" = "连接";
+"home.menu.identity" = "身份";
+"home.menu.migration" = "客户端迁移";
+"home.menu.notifications" = "通知";
+"home.menu.shortcuts" = "快捷键";
+"home.menu.debug" = "调试日志";
+"connect.action" = "连接";
+"connect.savedConnections" = "已保存连接";
+"connect.savedConnections.summary" = "浏览最近服务器、书签、保存的过滤器，以及批量导入或导出工具。";
+"connect.management" = "连接管理";
+"connect.management.summary" = "书签、邀请链接、客户端迁移、通知和收件箱工具在这里。";
+"connect.diagnosticsRecovery" = "诊断与恢复";
+"connect.diagnosticsRecovery.summary" = "需要时可展开连接诊断和自动重连设置。";

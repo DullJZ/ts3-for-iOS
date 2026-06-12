@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TS3iOS",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v14),
         .macOS(.v11)
@@ -31,7 +32,10 @@ let package = Package(
         .executableTarget(
             name: "TS3iOSApp",
             dependencies: ["TS3Kit"],
-            path: "Sources/TS3iOSApp"
+            path: "Sources/TS3iOSApp",
+            resources: [
+                .process("Resources")
+            ]
         ),
         .executableTarget(
             name: "TS3CLI",

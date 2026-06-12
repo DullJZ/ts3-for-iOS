@@ -1,0 +1,16 @@
+"app.title" = "TeamSpeak";
+"home.connectionStatus" = "Connection status";
+"home.menu.more" = "More";
+"home.menu.connections" = "Connections";
+"home.menu.identity" = "Identity";
+"home.menu.migration" = "Client Migration";
+"home.menu.notifications" = "Notifications";
+"home.menu.shortcuts" = "Keyboard Shortcuts";
+"home.menu.debug" = "Debug Log";
+"connect.action" = "Connect";
+"connect.savedConnections" = "Saved Connections";
+"connect.savedConnections.summary" = "Browse recent servers, bookmarks, saved filters, and bulk import or export tools.";
+"connect.management" = "Connection Management";
+"connect.management.summary" = "Bookmarks, invite links, client migration, notifications, and inbox tools live here.";
+"connect.diagnosticsRecovery" = "Diagnostics & Recovery";
+"connect.diagnosticsRecovery.summary" = "Connection diagnostics and automatic reconnect settings are available when needed.";

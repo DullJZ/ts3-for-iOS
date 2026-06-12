@@ -13,33 +13,9 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
 
-    private var debugButton: some View {
-        Button {
-            model.isShowingDebug = true
-        } label: {
-            Label("调试", systemImage: "ladybug")
-        }
-    }
-
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    Button {
-                        model.isShowingKeyboardShortcuts = true
-                    } label: {
-                        Label("快捷键", systemImage: "keyboard")
-                    }
-                    .buttonStyle(TS3BorderedButtonStyle())
-                    .ts3KeyboardShortcut("show-shortcuts", in: model)
-                    debugButton
-                        .buttonStyle(TS3BorderedButtonStyle())
-                        .ts3KeyboardShortcut("show-debug-log", in: model)
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-
                 Group {
                     switch model.state {
                     case .disconnected:
@@ -49,6 +25,17 @@ struct ContentView: View {
                     case .connected:
                         ChannelListView()
                     }
+                }
+            }
+            .navigationTitle(Text("app.title"))
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    AppConnectionStatusLabel()
+                        .environmentObject(model)
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    AppHomeMenu()
+                        .environmentObject(model)
                 }
             }
             .sheet(isPresented: $model.isShowingDebug) {
@@ -153,6 +140,97 @@ struct ContentView: View {
             }
         }
         .ts3InlineNavigationTitle()
+    }
+}
+
+private struct AppConnectionStatusLabel: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    private var systemImage: String {
+        switch model.state {
+        case .connected:
+            return "checkmark.circle.fill"
+        case .connecting:
+            return "clock"
+        case .disconnected:
+            return "circle"
+        }
+    }
+
+    private var tint: Color {
+        switch model.state {
+        case .connected:
+            return .green
+        case .connecting:
+            return .orange
+        case .disconnected:
+            return .secondary
+        }
+    }
+
+    var body: some View {
+        Label {
+            Text(model.connectedStatus)
+                .lineLimit(1)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundColor(tint)
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .accessibilityLabel(Text("home.connectionStatus"))
+        .accessibilityValue(Text(model.connectedStatus))
+    }
+}
+
+private struct AppHomeMenu: View {
+    @EnvironmentObject private var model: TS3AppModel
+
+    var body: some View {
+        Menu {
+            Section {
+                Button {
+                    model.isShowingConnectionManager = true
+                } label: {
+                    Label("home.menu.connections", systemImage: "server.rack")
+                }
+                Button {
+                    model.isShowingIdentity = true
+                } label: {
+                    Label("home.menu.identity", systemImage: "person.text.rectangle")
+                }
+                Button {
+                    model.isShowingClientMigration = true
+                } label: {
+                    Label("home.menu.migration", systemImage: "tray.and.arrow.down")
+                }
+                Button {
+                    model.isShowingNotificationSettings = true
+                } label: {
+                    Label("home.menu.notifications", systemImage: "bell")
+                }
+            }
+
+            Section {
+                Button {
+                    model.isShowingKeyboardShortcuts = true
+                } label: {
+                    Label("home.menu.shortcuts", systemImage: "keyboard")
+                }
+                .ts3KeyboardShortcut("show-shortcuts", in: model)
+
+                Button {
+                    model.isShowingDebug = true
+                } label: {
+                    Label("home.menu.debug", systemImage: "ladybug")
+                }
+                .ts3KeyboardShortcut("show-debug-log", in: model)
+            }
+        } label: {
+            Label("home.menu.more", systemImage: "ellipsis.circle")
+                .labelStyle(.iconOnly)
+        }
+        .accessibilityLabel(Text("home.menu.more"))
     }
 }
 
@@ -873,6 +951,9 @@ struct ConnectView: View {
     @State private var isExportingConnectionDiagnostics = false
     @State private var isImportingClientPackage = false
     @State private var isExportingClientPackage = false
+    @State private var isShowingSavedConnectionLibrary = false
+    @State private var isShowingConnectionManagement = false
+    @State private var isShowingConnectionDiagnostics = false
     @State private var deleteConfirmation: DeleteConfirmation?
     @State private var pendingConnectionPresetImport: ConnectionPresetImportConfirmation?
     @State private var bookmarkExportDocument = TS3BookmarkFileDocument()
@@ -977,6 +1058,18 @@ struct ConnectView: View {
     var body: some View {
         Form {
             if !model.recentConnections.isEmpty || !model.bookmarks.isEmpty {
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingSavedConnectionLibrary) {
+                        Text("connect.savedConnections.summary")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } label: {
+                        Label("connect.savedConnections", systemImage: "tray.full")
+                    }
+                }
+            }
+
+            if isShowingSavedConnectionLibrary && (!model.recentConnections.isEmpty || !model.bookmarks.isEmpty) {
                 Section(header: Text("Saved Connections")) {
                     Picker("Filter", selection: $connectionFilter) {
                         ForEach(ConnectionFilter.allCases) { filter in
@@ -1063,7 +1156,7 @@ struct ConnectView: View {
                 }
             }
 
-            if !model.recentConnections.isEmpty {
+            if isShowingSavedConnectionLibrary && !model.recentConnections.isEmpty {
                 Section(header: Text("Recent Servers")) {
                     if displayedRecentConnections.isEmpty {
                         Text("No matching recent servers")
@@ -1180,7 +1273,7 @@ struct ConnectView: View {
                 }
             }
 
-            if !model.bookmarks.isEmpty {
+            if isShowingSavedConnectionLibrary && !model.bookmarks.isEmpty {
                 Section(header: Text("Bookmarks")) {
                     if displayedBookmarks.isEmpty {
                         Text("No matching bookmarks")
@@ -1310,68 +1403,95 @@ struct ConnectView: View {
                 }
             }
 
-            Section(header: Text("Bookmark")) {
-                TextField("Bookmark Name", text: $bookmarkName)
-                TextField("Folder (optional)", text: $bookmarkFolder)
-                    .ts3PlainTextField()
-                Button("Save Current Server") {
-                    model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
-                    bookmarkName = ""
-                    bookmarkFolder = ""
+            if allowsConnectionActions {
+                Section {
+                    Button(action: {
+                        model.connect()
+                    }) {
+                        Text("connect.action")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(model.serverHost.isEmpty || model.nickname.isEmpty ? .gray : .accentColor)
+                    }
+                    .buttonStyle(.borderless)
+                    .contentShape(Rectangle())
+                    .disabled(model.serverHost.isEmpty || model.nickname.isEmpty)
                 }
-                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Button("Copy Invite Link") {
-                    model.copyCurrentInviteLink()
-                }
-                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Button("Copy Full Invite Link") {
-                    model.copyCurrentFullInviteLink()
-                }
-                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Button("Copy Connection Summary") {
-                    model.copyCurrentConnectionSummary()
-                }
-                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Button("Import Bookmarks") {
-                    isShowingBookmarkImporter = true
-                }
-                Button("Export Bookmarks") {
-                    exportBookmarks()
-                }
-                .disabled(model.bookmarks.isEmpty)
-                Text("Bookmark backups include saved passwords and privilege keys.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
 
-            Section(header: Text("Client Migration")) {
-                Button("Export Client Package") {
-                    exportClientPackage()
+            Section {
+                DisclosureGroup(isExpanded: $isShowingConnectionManagement) {
+                    Text("connect.management.summary")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } label: {
+                    Label("connect.management", systemImage: "folder.badge.gearshape")
                 }
-                Button("Import Client Package") {
-                    isImportingClientPackage = true
-                }
-                Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, channel layout, audio, status, playback, and whisper presets.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
 
-            Section(header: Text("Notifications")) {
-                Button("Notification Settings") {
-                    model.isShowingNotificationSettings = true
+            if isShowingConnectionManagement {
+                Section(header: Text("Bookmark")) {
+                    TextField("Bookmark Name", text: $bookmarkName)
+                    TextField("Folder (optional)", text: $bookmarkFolder)
+                        .ts3PlainTextField()
+                    Button("Save Current Server") {
+                        model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
+                        bookmarkName = ""
+                        bookmarkFolder = ""
+                    }
+                    .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Copy Invite Link") {
+                        model.copyCurrentInviteLink()
+                    }
+                    .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Copy Full Invite Link") {
+                        model.copyCurrentFullInviteLink()
+                    }
+                    .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Copy Connection Summary") {
+                        model.copyCurrentConnectionSummary()
+                    }
+                    .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Import Bookmarks") {
+                        isShowingBookmarkImporter = true
+                    }
+                    Button("Export Bookmarks") {
+                        exportBookmarks()
+                    }
+                    .disabled(model.bookmarks.isEmpty)
+                    Text("Bookmark backups include saved passwords and privilege keys.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                Text("Configure alerts for private messages, pokes, and server activity.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
 
-            Section(header: Text("Messaging")) {
-                Button("Inbox") {
-                    model.showOfflineMessages()
+                Section(header: Text("Client Migration")) {
+                    Button("Export Client Package") {
+                        exportClientPackage()
+                    }
+                    Button("Import Client Package") {
+                        isImportingClientPackage = true
+                    }
+                    Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, channel layout, audio, status, playback, and whisper presets.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                Text(model.offlineMessages.isEmpty ? "No cached offline messages" : "\(model.offlineMessages.count) cached offline message\(model.offlineMessages.count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+
+                Section(header: Text("Notifications")) {
+                    Button("Notification Settings") {
+                        model.isShowingNotificationSettings = true
+                    }
+                    Text("Configure alerts for private messages, pokes, and server activity.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section(header: Text("Messaging")) {
+                    Button("Inbox") {
+                        model.showOfflineMessages()
+                    }
+                    Text(model.offlineMessages.isEmpty ? "No cached offline messages" : "\(model.offlineMessages.count) cached offline message\(model.offlineMessages.count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
 
             if let error = model.lastError {
@@ -1399,89 +1519,86 @@ struct ConnectView: View {
                 }
             }
 
-            Section(header: Text("Connection Diagnostics")) {
-                ServerInfoDetailRow(label: "State", value: model.connectedStatus)
-                ServerInfoDetailRow(label: "Host", value: model.serverHost.isEmpty ? "Not set" : "\(model.serverHost):\(model.serverPort)")
-                ServerInfoDetailRow(label: "Nickname", value: model.nickname.isEmpty ? "Not set" : model.nickname)
-                ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.connectionDecimalText($0)) ms" } ?? "Unknown")
-                ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.connectionLossText) ?? "Unknown")
-                ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.connectionLossText) ?? "Unknown")
-                ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.connectionByteText) ?? "Unknown")
-                ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.connectionByteText) ?? "Unknown")
-                ServerInfoDetailRow(label: "Connected Time", value: model.connectionInfo.connectedSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
-                ServerInfoDetailRow(label: "Idle Time", value: model.connectionInfo.idleSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
-                if let status = model.autoReconnectStatus, !status.isEmpty {
-                    ServerInfoDetailRow(label: "Recovery Status", value: status)
-                }
-                if let message = model.lastDisconnectMessage, !message.isEmpty {
-                    ServerInfoDetailRow(label: "Last Disconnect", value: message)
-                }
-                Button("Copy Connection Diagnostics") {
-                    TS3PlatformSupport.copyToPasteboard(connectionDiagnosticsSnapshot)
-                }
-                Button("Export Connection Diagnostics") {
-                    connectionDiagnosticsDocument = TS3TextFileDocument(data: Data(connectionDiagnosticsSnapshot.utf8))
-                    isExportingConnectionDiagnostics = true
-                }
-            }
-
-            Section(header: Text("Connection Recovery")) {
-                Toggle("Reconnect Automatically", isOn: autoReconnectBinding)
-                Stepper(
-                    "Initial Delay: \(model.autoReconnectInitialDelaySeconds)s",
-                    value: autoReconnectInitialDelayBinding,
-                    in: 1...300
-                )
-                Stepper(
-                    "Max Delay: \(model.autoReconnectMaxDelaySeconds)s",
-                    value: autoReconnectMaxDelayBinding,
-                    in: 1...600
-                )
-                Stepper(
-                    model.autoReconnectMaxAttempts == 0
-                        ? "Max Attempts: Unlimited"
-                        : "Max Attempts: \(model.autoReconnectMaxAttempts)",
-                    value: autoReconnectMaxAttemptsBinding,
-                    in: 0...100
-                )
-                if let status = model.autoReconnectStatus {
-                    Text(status)
+            Section {
+                DisclosureGroup(isExpanded: $isShowingConnectionDiagnostics) {
+                    Text("connect.diagnosticsRecovery.summary")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                }
-                if model.autoReconnectIsScheduled {
-                    Button("Cancel Scheduled Reconnect") {
-                        model.cancelScheduledReconnect()
-                    }
-                    .foregroundColor(.red)
-                }
-                Button("Copy Recovery Snapshot") {
-                    TS3PlatformSupport.copyToPasteboard(connectionRecoverySnapshot)
-                }
-                Button("Export Recovery Snapshot") {
-                    recoverySnapshotDocument = TS3TextFileDocument(data: Data(connectionRecoverySnapshot.utf8))
-                    isExportingRecoverySnapshot = true
-                }
-                Button("Export Recovery Settings") {
-                    exportRecoverySettings()
-                }
-                Button("Import Recovery Settings") {
-                    isImportingRecoverySettings = true
+                } label: {
+                    Label("connect.diagnosticsRecovery", systemImage: "waveform.path.ecg")
                 }
             }
 
-            if allowsConnectionActions {
-                Section {
-                    Button(action: {
-                        model.connect()
-                    }) {
-                        Text("Connect")
-                            .frame(maxWidth: .infinity)
-                            .foregroundColor(model.serverHost.isEmpty || model.nickname.isEmpty ? .gray : .accentColor)
+            if isShowingConnectionDiagnostics {
+                Section(header: Text("Connection Diagnostics")) {
+                    ServerInfoDetailRow(label: "State", value: model.connectedStatus)
+                    ServerInfoDetailRow(label: "Host", value: model.serverHost.isEmpty ? "Not set" : "\(model.serverHost):\(model.serverPort)")
+                    ServerInfoDetailRow(label: "Nickname", value: model.nickname.isEmpty ? "Not set" : model.nickname)
+                    ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.connectionDecimalText($0)) ms" } ?? "Unknown")
+                    ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.connectionLossText) ?? "Unknown")
+                    ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.connectionLossText) ?? "Unknown")
+                    ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.connectionByteText) ?? "Unknown")
+                    ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.connectionByteText) ?? "Unknown")
+                    ServerInfoDetailRow(label: "Connected Time", value: model.connectionInfo.connectedSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
+                    ServerInfoDetailRow(label: "Idle Time", value: model.connectionInfo.idleSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
+                    if let status = model.autoReconnectStatus, !status.isEmpty {
+                        ServerInfoDetailRow(label: "Recovery Status", value: status)
                     }
-                    .buttonStyle(.borderless)
-                    .contentShape(Rectangle())
-                    .disabled(model.serverHost.isEmpty || model.nickname.isEmpty)
+                    if let message = model.lastDisconnectMessage, !message.isEmpty {
+                        ServerInfoDetailRow(label: "Last Disconnect", value: message)
+                    }
+                    Button("Copy Connection Diagnostics") {
+                        TS3PlatformSupport.copyToPasteboard(connectionDiagnosticsSnapshot)
+                    }
+                    Button("Export Connection Diagnostics") {
+                        connectionDiagnosticsDocument = TS3TextFileDocument(data: Data(connectionDiagnosticsSnapshot.utf8))
+                        isExportingConnectionDiagnostics = true
+                    }
+                }
+
+                Section(header: Text("Connection Recovery")) {
+                    Toggle("Reconnect Automatically", isOn: autoReconnectBinding)
+                    Stepper(
+                        "Initial Delay: \(model.autoReconnectInitialDelaySeconds)s",
+                        value: autoReconnectInitialDelayBinding,
+                        in: 1...300
+                    )
+                    Stepper(
+                        "Max Delay: \(model.autoReconnectMaxDelaySeconds)s",
+                        value: autoReconnectMaxDelayBinding,
+                        in: 1...600
+                    )
+                    Stepper(
+                        model.autoReconnectMaxAttempts == 0
+                            ? "Max Attempts: Unlimited"
+                            : "Max Attempts: \(model.autoReconnectMaxAttempts)",
+                        value: autoReconnectMaxAttemptsBinding,
+                        in: 0...100
+                    )
+                    if let status = model.autoReconnectStatus {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if model.autoReconnectIsScheduled {
+                        Button("Cancel Scheduled Reconnect") {
+                            model.cancelScheduledReconnect()
+                        }
+                        .foregroundColor(.red)
+                    }
+                    Button("Copy Recovery Snapshot") {
+                        TS3PlatformSupport.copyToPasteboard(connectionRecoverySnapshot)
+                    }
+                    Button("Export Recovery Snapshot") {
+                        recoverySnapshotDocument = TS3TextFileDocument(data: Data(connectionRecoverySnapshot.utf8))
+                        isExportingRecoverySnapshot = true
+                    }
+                    Button("Export Recovery Settings") {
+                        exportRecoverySettings()
+                    }
+                    Button("Import Recovery Settings") {
+                        isImportingRecoverySettings = true
+                    }
                 }
             }
         }

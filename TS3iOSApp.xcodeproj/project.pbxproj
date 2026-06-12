@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		038FDA793A9CCAE9467E2291 /* TS3iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29CF3DB7F420C07AD05C0EFE /* TS3iOSApp.swift */; };
 		196E2D8A7E04C945AD5E87D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C6B8B0A46D377E409D526844 /* Assets.xcassets */; };
+		2A8E2C6B8A934AA7B71F455A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 74A4FD83E4AA4E5AB1E64372 /* Localizable.strings */; };
 		33B040A01282760B040FEBA6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64086B313104EDF5F066D05B /* ContentView.swift */; };
 		87F5E0F52FAB0B8DE59502F4 /* TS3AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 899BA39C842C303A1444437B /* TS3AppModel.swift */; };
 		95AF7E7AF85AC3B101069AB3 /* TS3Kit in Frameworks */ = {isa = PBXBuildFile; productRef = 1F08198664E7959A6E468809 /* TS3Kit */; };
@@ -17,10 +18,12 @@
 
 /* Begin PBXFileReference section */
 		29CF3DB7F420C07AD05C0EFE /* TS3iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TS3iOSApp.swift; sourceTree = "<group>"; };
+		2E7F2612E72C4A289A92D98B /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		34B4F23944B4173926CF61FB /* ts3-for-iOS */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "ts3-for-iOS"; path = .; sourceTree = SOURCE_ROOT; };
 		64086B313104EDF5F066D05B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6C340D6D1A97AA53E67178B0 /* DebugLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogView.swift; sourceTree = "<group>"; };
 		899BA39C842C303A1444437B /* TS3AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TS3AppModel.swift; sourceTree = "<group>"; };
+		A01D4550129447B698A94BAF /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		C6B8B0A46D377E409D526844 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = TS3iOSApp/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		EAF2AADD4ECEA00BBAAE4B74 /* TS3iOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TS3iOSApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -58,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				C6B8B0A46D377E409D526844 /* Assets.xcassets */,
+				4B4107B131264EEC8754CC81 /* Resources */,
 				64086B313104EDF5F066D05B /* ContentView.swift */,
 				6C340D6D1A97AA53E67178B0 /* DebugLogView.swift */,
 				899BA39C842C303A1444437B /* TS3AppModel.swift */,
@@ -65,6 +69,14 @@
 			);
 			name = TS3iOSApp;
 			path = Sources/TS3iOSApp;
+			sourceTree = "<group>";
+		};
+		4B4107B131264EEC8754CC81 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				74A4FD83E4AA4E5AB1E64372 /* Localizable.strings */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		BDC9062C0B6C996044BF003A /* Products */ = {
@@ -114,6 +126,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 1780A449909B575F9804C65B;
 			minimizedProjectReferenceProxies = 1;
@@ -134,6 +147,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				196E2D8A7E04C945AD5E87D6 /* Assets.xcassets in Resources */,
+				2A8E2C6B8A934AA7B71F455A /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -152,6 +166,18 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		74A4FD83E4AA4E5AB1E64372 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A01D4550129447B698A94BAF /* Localizable.strings */,
+				2E7F2612E72C4A289A92D98B /* Localizable.strings */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		1A8BA550DE4D01A29FDEE613 /* Debug */ = {
