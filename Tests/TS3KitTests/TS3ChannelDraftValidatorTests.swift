@@ -124,4 +124,46 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
             ]
         )
     }
+
+    func testChannelDraftValidatorReportsImportBlockingErrorsTogether() {
+        let messages = TS3ChannelDraftValidator.validationMessages(
+            name: "   ",
+            channelType: "sticky",
+            neededTalkPower: "voice",
+            neededJoinPower: "join",
+            neededSubscribePower: "subscribe",
+            neededDescriptionViewPower: "view",
+            codec: "lossless",
+            codecQuality: "12",
+            codecLatencyFactor: "0",
+            order: "after-lobby",
+            deleteDelaySeconds: "soon",
+            iconId: "icon",
+            maxClients: "",
+            maxClientsUnlimited: false,
+            maxFamilyClients: "",
+            maxFamilyClientsUnlimited: false,
+            maxFamilyClientsInherited: false
+        )
+
+        XCTAssertEqual(
+            messages,
+            [
+                "Name is required before saving.",
+                "Channel type must be temporary, semi-permanent, or permanent.",
+                "Needed talk power must be numeric.",
+                "Needed join power must be numeric.",
+                "Needed subscribe power must be numeric.",
+                "Needed description view power must be numeric.",
+                "Codec must be Speex Narrowband, Speex Wideband, Speex Ultra-Wideband, CELT Mono, Opus Voice, Opus Music, or numeric.",
+                "Codec quality must be between 0 and 10.",
+                "Codec latency factor must be between 1 and 10.",
+                "Position must be numeric.",
+                "Delete delay must be numeric.",
+                "Icon ID must be numeric.",
+                "Max clients is required when the client limit is not unlimited.",
+                "Max family clients is required when the family limit is not inherited or unlimited."
+            ]
+        )
+    }
 }

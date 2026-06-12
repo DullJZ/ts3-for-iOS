@@ -25472,7 +25472,12 @@ struct ChannelEditorSheet: View {
     private struct ChannelDraftImportConfirmation: Identifiable {
         let draft: ChannelDraft
         let previewMessage: String
+        let validationMessages: [String]
         let id = UUID()
+
+        var canImport: Bool {
+            validationMessages.isEmpty
+        }
     }
 
     private struct ChannelDraft: Codable {
@@ -25821,6 +25826,7 @@ struct ChannelEditorSheet: View {
             .sheet(item: $pendingDraftImport) { confirmation in
                 ChannelDraftImportSheet(
                     previewMessage: confirmation.previewMessage,
+                    canImport: confirmation.canImport,
                     importDraft: {
                         applyDraft(confirmation.draft)
                         pendingDraftImport = nil
@@ -25835,6 +25841,7 @@ struct ChannelEditorSheet: View {
 
     private struct ChannelDraftImportSheet: View {
         let previewMessage: String
+        let canImport: Bool
         let importDraft: () -> Void
         let cancel: () -> Void
 
@@ -25868,6 +25875,7 @@ struct ChannelEditorSheet: View {
                         Button("Import") {
                             importDraft()
                         }
+                        .disabled(!canImport)
                     }
                 }
             }
@@ -25996,16 +26004,18 @@ struct ChannelEditorSheet: View {
         }
         do {
             let draft = try JSONDecoder().decode(ChannelDraft.self, from: Data(contentsOf: url))
+            let validationMessages = draftValidationMessages(for: draft)
             pendingDraftImport = ChannelDraftImportConfirmation(
                 draft: draft,
-                previewMessage: draftImportPreviewMessage(for: draft)
+                previewMessage: draftImportPreviewMessage(for: draft, validationMessages: validationMessages),
+                validationMessages: validationMessages
             )
         } catch {
             model.lastError = error.localizedDescription
         }
     }
 
-    private func draftImportPreviewMessage(for draft: ChannelDraft) -> String {
+    private func draftImportPreviewMessage(for draft: ChannelDraft, validationMessages: [String]) -> String {
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let type = channelTypeTitle(draft.channelType)
         let codec = codecTitle(for: draft.codec)
@@ -26014,7 +26024,6 @@ struct ChannelEditorSheet: View {
         let position = positionTitle(for: draft.order ?? "")
         let maxClients = draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients
         let maxFamilyClients = draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)
-        let validationMessages = draftValidationMessages(for: draft)
         var lines = [
             "Name: \(name.isEmpty ? "Missing" : name)",
             "Type: \(type)",
