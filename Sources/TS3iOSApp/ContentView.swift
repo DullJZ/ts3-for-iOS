@@ -16419,6 +16419,12 @@ struct ServerSettingsEditorSheet: View {
 }
 
 struct FileBrowserSheet: View {
+    private struct FileBrowserFilterPresetImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3FileBrowserFilterPresetImportPreview
+        let id = UUID()
+    }
+
     private struct UploadConflictPreview: Identifiable {
         let url: URL
         let remoteEntry: TS3FileEntrySummary
@@ -16502,6 +16508,7 @@ struct FileBrowserSheet: View {
     @State private var pendingUploadURLs: [URL] = []
     @State private var uploadConflictPreviews: [UploadConflictPreview] = []
     @State private var isShowingUploadConflictActions = false
+    @State private var pendingPresetImport: FileBrowserFilterPresetImportConfirmation?
     @State private var transferConfirmation: TransferConfirmation?
     @State private var isConfirmingSelectedDelete = false
     @State private var isMovingSelectedEntries = false
@@ -17032,10 +17039,22 @@ struct FileBrowserSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importPresets(from: url)
+                    preparePresetImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .sheet(item: $pendingPresetImport) { confirmation in
+                FileBrowserFilterPresetImportSheet(
+                    preview: confirmation.preview,
+                    importPresets: { selectedPresetIds in
+                        importPresets(data: confirmation.data, selectedPresetIds: selectedPresetIds)
+                        pendingPresetImport = nil
+                    },
+                    cancel: {
+                        pendingPresetImport = nil
+                    }
+                )
             }
             .sheet(isPresented: $isShowingUploadConflictActions) {
                 UploadConflictSheet(
@@ -17279,7 +17298,7 @@ struct FileBrowserSheet: View {
         }
     }
 
-    private func importPresets(from url: URL) {
+    private func preparePresetImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -17287,7 +17306,17 @@ struct FileBrowserSheet: View {
             }
         }
         do {
-            _ = try model.importFileBrowserFilterPresets(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.fileBrowserFilterPresetsImportPreview(from: data)
+            pendingPresetImport = FileBrowserFilterPresetImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            _ = try model.importFileBrowserFilterPresets(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -17540,6 +17569,97 @@ struct FileBrowserSheet: View {
                 }
             }
         )
+    }
+}
+
+private struct FileBrowserFilterPresetImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3FileBrowserFilterPresetImportPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3FileBrowserFilterPresetImportPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected file filter presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import File Filters")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
+        }
     }
 }
 

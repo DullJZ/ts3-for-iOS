@@ -3413,6 +3413,66 @@ struct TS3FileBrowserFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3FileBrowserFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "sortMode=\(sortMode)",
+            "sortAscending=\(sortAscending)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Sort by \(sortMode)",
+            sortAscending ? "Ascending" : "Descending"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3FileBrowserFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported file filter presets: \(importedPresetCount)",
+            "Usable file filter presets: \(usablePresetCount)",
+            "New file filter presets: \(newPresetCount)",
+            "Replacing file filter presets: \(replacedPresetCount)",
+            "Skipped file filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3OfflineMessageFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -12760,18 +12820,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(fileBrowserFilterPresets)
     }
 
+    func fileBrowserFilterPresetsImportPreview(from data: Data) throws -> TS3FileBrowserFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3FileBrowserFilterPreset].self, from: data)
+        let usable = sanitizedFileBrowserFilterPresets(imported)
+        let existingNames = Set(fileBrowserFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3FileBrowserFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3FileBrowserFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importFileBrowserFilterPresets(from data: Data) throws -> Int {
+    func importFileBrowserFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3FileBrowserFilterPreset].self, from: data)
         var merged = fileBrowserFilterPresets
-        for preset in sanitizedFileBrowserFilterPresets(imported) {
+        let selectedPresets = sanitizedFileBrowserFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         fileBrowserFilterPresets = sanitizedFileBrowserFilterPresets(merged)
         saveFileBrowserFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func saveOfflineMessageFilterPreset(

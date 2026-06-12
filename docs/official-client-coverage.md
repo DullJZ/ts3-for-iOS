@@ -66,7 +66,7 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter presets, move/rename conflict previews, row copy summaries, and VoiceOver file-entry actions | Add deeper cross-directory conflict previews if needed. |
+| Channel file browser | Done | Browse by channel/path/password, server file status summary, bookmarks, search/sort/filter preset backup import/export with selectable restore preview, move/rename conflict previews, row copy summaries, and VoiceOver file-entry actions | Add deeper cross-directory conflict previews if needed. |
 | Upload/download | Done | Transfer socket, upload importer, download queue, retry/cancel, queue export, row copy summaries, and VoiceOver queue actions | Add folder upload/download if server protocol and platform sandbox allow it. |
 | File operations | Done | Rename, move, delete, create directory, batch actions, rename plus single/batch move conflict previews, and upload overwrite/resume conflict details | Validate conflict behavior against real servers and add cross-directory previews if server listing is expanded. |
 | Local downloaded files | Done | Persistent recent download history, downloads folder open/copy/cleanup actions, export/open/copy/remove actions, queue row open local file | Add richer downloads folder organization if needed. |
@@ -95,7 +95,7 @@ Status legend:
 | --- | --- | --- | --- |
 | Debug logs | Done | Debug log page with level/search filtering, visible-log copy/export, clear, and diagnostic report export package | Add richer packaged attachments if platform sandbox requirements emerge. |
 | Build coverage | Done | README documents SwiftPM, iOS, Catalyst, CI artifact builds | Keep README feature list updated with current capabilities. |
-| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, bookmark/recent-server row summaries, connection/contact/event/chat/offline-message filter plus server-log query, channel subscription, and tree filter preset selectable restore previews, identity and self-status profile selectable restore previews, client migration preview details, selective migration restore options, legacy migration-package decoding with missing newer sections, and migration-package edge cases for channel layout, files, server administration presets, self status, and whisper | Add broader tests for real-server validated restore semantics. |
+| Protocol test coverage | Partial | Unit tests for command parsing, admin command builders, file transfer init/response parameters, broader invite URL variants, byte buffer, icons, whisper, notification import previews, bookmark/recent-server row summaries, connection/contact/event/chat/offline-message/file-browser filter plus server-log query, channel subscription, and tree filter preset selectable restore previews, identity and self-status profile selectable restore previews, client migration preview details, selective migration restore options, legacy migration-package decoding with missing newer sections, and migration-package edge cases for channel layout, files, server administration presets, self status, and whisper | Add broader tests for real-server validated restore semantics. |
 
 ## Next Implementation Priorities
 
