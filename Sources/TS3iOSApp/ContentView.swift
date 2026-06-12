@@ -15827,6 +15827,12 @@ struct ServerSettingsEditorSheet: View {
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
     @State private var isExportingSnapshot = false
+    @State private var isShowingGeneralSettings = true
+    @State private var isShowingHostSettings = false
+    @State private var isShowingLimitSettings = false
+    @State private var isShowingGroupSettings = false
+    @State private var isShowingSafetySettings = false
+    @State private var isShowingLogSettings = false
     @State private var pendingDraftImport: ServerSettingsDraftImportConfirmation?
     @State private var draftDocument = TS3TextFileDocument()
     @State private var snapshotDocument = TS3TextFileDocument()
@@ -15850,225 +15856,243 @@ struct ServerSettingsEditorSheet: View {
                     }
                 }
 
-                Section(header: Text("General")) {
-                    TextField("Server Name", text: $name)
-                        .ts3PlainTextField()
-                    TextField("Phonetic Name", text: $phoneticName)
-                        .ts3PlainTextField()
-                    TextField("Server Port", text: $port)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Machine ID", text: $machineId)
-                        .ts3PlainTextField()
-                    Picker("Autostart", selection: $autostart) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
-                    }
-                    TextField("Welcome Message", text: $welcomeMessage)
-                        .ts3PlainTextField()
-                    TextField("Max Clients", text: $maxClients)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Reserved Slots", text: $reservedSlots)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    Toggle("Clear Server Password", isOn: $clearPassword)
-                    SecureField("New Server Password", text: $password)
-                        .disabled(clearPassword)
-                    TextField("Icon ID", text: $iconId)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    Button {
-                        isShowingIconImporter = true
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingGeneralSettings) {
+                        TextField("Server Name", text: $name)
+                            .ts3PlainTextField()
+                        TextField("Phonetic Name", text: $phoneticName)
+                            .ts3PlainTextField()
+                        TextField("Server Port", text: $port)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Machine ID", text: $machineId)
+                            .ts3PlainTextField()
+                        Picker("Autostart", selection: $autostart) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                        TextField("Welcome Message", text: $welcomeMessage)
+                            .ts3PlainTextField()
+                        TextField("Max Clients", text: $maxClients)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Reserved Slots", text: $reservedSlots)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        Toggle("Clear Server Password", isOn: $clearPassword)
+                        SecureField("New Server Password", text: $password)
+                            .disabled(clearPassword)
+                        TextField("Icon ID", text: $iconId)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        Button {
+                            isShowingIconImporter = true
+                        } label: {
+                            Label("Upload Icon", systemImage: "photo")
+                        }
+                        Picker("Server List", selection: $weblistEnabled) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Listed").tag(Optional(true))
+                            Text("Hidden").tag(Optional(false))
+                        }
                     } label: {
-                        Label("Upload Icon", systemImage: "photo")
-                    }
-                    Picker("Server List", selection: $weblistEnabled) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Listed").tag(Optional(true))
-                        Text("Hidden").tag(Optional(false))
+                        Label("General", systemImage: "server.rack")
                     }
                 }
 
-                Section(header: Text("Host Message")) {
-                    Picker("Mode", selection: $hostMessageMode) {
-                        ForEach(TS3HostMessageMode.allCases) { mode in
-                            Text(mode.title).tag(String(mode.rawValue))
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingHostSettings) {
+                        Picker("Host Message Mode", selection: $hostMessageMode) {
+                            ForEach(TS3HostMessageMode.allCases) { mode in
+                                Text(mode.title).tag(String(mode.rawValue))
+                            }
+                            if let numericMode = Int(hostMessageMode.trimmingCharacters(in: .whitespacesAndNewlines)),
+                               TS3HostMessageMode(rawValue: numericMode) == nil {
+                                Text(TS3HostMessageMode.title(for: numericMode)).tag(hostMessageMode)
+                            }
                         }
-                        if let numericMode = Int(hostMessageMode.trimmingCharacters(in: .whitespacesAndNewlines)),
-                           TS3HostMessageMode(rawValue: numericMode) == nil {
-                            Text(TS3HostMessageMode.title(for: numericMode)).tag(hostMessageMode)
+                        TextField("Host Message", text: $hostMessage)
+                            .ts3PlainTextField()
+                        TextField("Banner Link URL", text: $hostBannerURL)
+                            .ts3URLTextField()
+                        TextField("Banner Image URL", text: $hostBannerGraphicsURL)
+                            .ts3URLTextField()
+                        Picker("Banner Mode", selection: $hostBannerMode) {
+                            Text("Unchanged").tag(Int?.none)
+                            ForEach(TS3HostBannerMode.allCases) { mode in
+                                Text(mode.title).tag(Optional(mode.rawValue))
+                            }
+                            if let hostBannerMode,
+                               TS3HostBannerMode(rawValue: hostBannerMode) == nil {
+                                Text(TS3HostBannerMode.title(for: hostBannerMode)).tag(Optional(hostBannerMode))
+                            }
                         }
-                    }
-                    TextField("Message", text: $hostMessage)
-                        .ts3PlainTextField()
-                }
-
-                Section(header: Text("Host Banner")) {
-                    TextField("Banner Link URL", text: $hostBannerURL)
-                        .ts3URLTextField()
-                    TextField("Banner Image URL", text: $hostBannerGraphicsURL)
-                        .ts3URLTextField()
-                    Picker("Mode", selection: $hostBannerMode) {
-                        Text("Unchanged").tag(Int?.none)
-                        ForEach(TS3HostBannerMode.allCases) { mode in
-                            Text(mode.title).tag(Optional(mode.rawValue))
-                        }
-                        if let hostBannerMode,
-                           TS3HostBannerMode(rawValue: hostBannerMode) == nil {
-                            Text(TS3HostBannerMode.title(for: hostBannerMode)).tag(Optional(hostBannerMode))
-                        }
-                    }
-                    TextField("Image Refresh Seconds", text: $hostBannerGraphicsInterval)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                }
-
-                Section(header: Text("Host Button")) {
-                    TextField("Tooltip", text: $hostButtonTooltip)
-                        .ts3PlainTextField()
-                    TextField("Button Link URL", text: $hostButtonURL)
-                        .ts3URLTextField()
-                    TextField("Button Image URL", text: $hostButtonGraphicsURL)
-                        .ts3URLTextField()
-                }
-
-                Section(header: Text("Limits")) {
-                    TextField("Download Quota Bytes", text: $downloadQuota)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Upload Quota Bytes", text: $uploadQuota)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Max Download Bandwidth Bytes/s", text: $maxDownloadTotalBandwidth)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Max Upload Bandwidth Bytes/s", text: $maxUploadTotalBandwidth)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Needed Identity Security Level", text: $neededIdentitySecurityLevel)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Minimum Client Version", text: $minClientVersion)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Minimum Android Version", text: $minAndroidVersion)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Minimum iOS Version", text: $minIOSVersion)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    Picker("Codec Encryption", selection: $codecEncryptionMode) {
-                        Text("Unchanged").tag(Int?.none)
-                        ForEach(TS3CodecEncryptionMode.allCases) { mode in
-                            Text(mode.title).tag(Optional(mode.rawValue))
-                        }
-                        if let codecEncryptionMode,
-                           TS3CodecEncryptionMode(rawValue: codecEncryptionMode) == nil {
-                            Text(TS3CodecEncryptionMode.title(for: codecEncryptionMode)).tag(Optional(codecEncryptionMode))
-                        }
+                        TextField("Image Refresh Seconds", text: $hostBannerGraphicsInterval)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Button Tooltip", text: $hostButtonTooltip)
+                            .ts3PlainTextField()
+                        TextField("Button Link URL", text: $hostButtonURL)
+                            .ts3URLTextField()
+                        TextField("Button Image URL", text: $hostButtonGraphicsURL)
+                            .ts3URLTextField()
+                    } label: {
+                        Label("Host Branding", systemImage: "rectangle.and.text.magnifyingglass")
                     }
                 }
 
-                Section(header: Text("Default Groups")) {
-                    Picker("Server Group", selection: $defaultServerGroupId) {
-                        Text("Unchanged").tag("")
-                        ForEach(model.serverGroups) { group in
-                            Text(groupPickerTitle(group)).tag(String(group.id))
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingLimitSettings) {
+                        TextField("Download Quota Bytes", text: $downloadQuota)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Upload Quota Bytes", text: $uploadQuota)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Max Download Bandwidth Bytes/s", text: $maxDownloadTotalBandwidth)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Max Upload Bandwidth Bytes/s", text: $maxUploadTotalBandwidth)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Needed Identity Security Level", text: $neededIdentitySecurityLevel)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Minimum Client Version", text: $minClientVersion)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Minimum Android Version", text: $minAndroidVersion)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Minimum iOS Version", text: $minIOSVersion)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        Picker("Codec Encryption", selection: $codecEncryptionMode) {
+                            Text("Unchanged").tag(Int?.none)
+                            ForEach(TS3CodecEncryptionMode.allCases) { mode in
+                                Text(mode.title).tag(Optional(mode.rawValue))
+                            }
+                            if let codecEncryptionMode,
+                               TS3CodecEncryptionMode(rawValue: codecEncryptionMode) == nil {
+                                Text(TS3CodecEncryptionMode.title(for: codecEncryptionMode)).tag(Optional(codecEncryptionMode))
+                            }
                         }
-                        if shouldShowCustomGroup(defaultServerGroupId, in: model.serverGroups) {
-                            Text(groupDraftTitle(defaultServerGroupId)).tag(defaultServerGroupId)
-                        }
+                    } label: {
+                        Label("Limits and Security", systemImage: "speedometer")
                     }
-                    TextField("Server Group ID", text: $defaultServerGroupId)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    Picker("Channel Group", selection: $defaultChannelGroupId) {
-                        Text("Unchanged").tag("")
-                        ForEach(model.channelGroups) { group in
-                            Text(groupPickerTitle(group)).tag(String(group.id))
-                        }
-                        if shouldShowCustomGroup(defaultChannelGroupId, in: model.channelGroups) {
-                            Text(groupDraftTitle(defaultChannelGroupId)).tag(defaultChannelGroupId)
-                        }
-                    }
-                    TextField("Channel Group ID", text: $defaultChannelGroupId)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    Picker("Channel Admin", selection: $defaultChannelAdminGroupId) {
-                        Text("Unchanged").tag("")
-                        ForEach(model.channelGroups) { group in
-                            Text(groupPickerTitle(group)).tag(String(group.id))
-                        }
-                        if shouldShowCustomGroup(defaultChannelAdminGroupId, in: model.channelGroups) {
-                            Text(groupDraftTitle(defaultChannelAdminGroupId)).tag(defaultChannelAdminGroupId)
-                        }
-                    }
-                    TextField("Channel Admin Group ID", text: $defaultChannelAdminGroupId)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
                 }
 
-                Section(header: Text("Anti-Flood and Complaints")) {
-                    TextField("Auto-Ban Complaint Count", text: $complainAutoBanCount)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Auto-Ban Seconds", text: $complainAutoBanTime)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Complaint Remove Seconds", text: $complainRemoveTime)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Forced Silence Client Count", text: $minClientsInChannelBeforeForcedSilence)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Priority Speaker Dimming", text: $prioritySpeakerDimmModificator)
-                        .ts3PlainTextField()
-                    TextField("Anti-Flood Tick Reduce", text: $antiFloodPointsTickReduce)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Anti-Flood Command Block", text: $antiFloodPointsNeededCommandBlock)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Anti-Flood IP Block", text: $antiFloodPointsNeededIPBlock)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
-                    TextField("Anti-Flood Plugin Block", text: $antiFloodPointsNeededPluginBlock)
-                        .ts3NumericKeyboard()
-                        .ts3PlainTextField()
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingGroupSettings) {
+                        Picker("Server Group", selection: $defaultServerGroupId) {
+                            Text("Unchanged").tag("")
+                            ForEach(model.serverGroups) { group in
+                                Text(groupPickerTitle(group)).tag(String(group.id))
+                            }
+                            if shouldShowCustomGroup(defaultServerGroupId, in: model.serverGroups) {
+                                Text(groupDraftTitle(defaultServerGroupId)).tag(defaultServerGroupId)
+                            }
+                        }
+                        TextField("Server Group ID", text: $defaultServerGroupId)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        Picker("Channel Group", selection: $defaultChannelGroupId) {
+                            Text("Unchanged").tag("")
+                            ForEach(model.channelGroups) { group in
+                                Text(groupPickerTitle(group)).tag(String(group.id))
+                            }
+                            if shouldShowCustomGroup(defaultChannelGroupId, in: model.channelGroups) {
+                                Text(groupDraftTitle(defaultChannelGroupId)).tag(defaultChannelGroupId)
+                            }
+                        }
+                        TextField("Channel Group ID", text: $defaultChannelGroupId)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        Picker("Channel Admin", selection: $defaultChannelAdminGroupId) {
+                            Text("Unchanged").tag("")
+                            ForEach(model.channelGroups) { group in
+                                Text(groupPickerTitle(group)).tag(String(group.id))
+                            }
+                            if shouldShowCustomGroup(defaultChannelAdminGroupId, in: model.channelGroups) {
+                                Text(groupDraftTitle(defaultChannelAdminGroupId)).tag(defaultChannelAdminGroupId)
+                            }
+                        }
+                        TextField("Channel Admin Group ID", text: $defaultChannelAdminGroupId)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                    } label: {
+                        Label("Default Groups", systemImage: "person.3")
+                    }
                 }
 
-                Section(header: Text("Server Log Options")) {
-                    Picker("Client Log", selection: $logClient) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingSafetySettings) {
+                        TextField("Auto-Ban Complaint Count", text: $complainAutoBanCount)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Auto-Ban Seconds", text: $complainAutoBanTime)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Complaint Remove Seconds", text: $complainRemoveTime)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Forced Silence Client Count", text: $minClientsInChannelBeforeForcedSilence)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Priority Speaker Dimming", text: $prioritySpeakerDimmModificator)
+                            .ts3PlainTextField()
+                        TextField("Anti-Flood Tick Reduce", text: $antiFloodPointsTickReduce)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Anti-Flood Command Block", text: $antiFloodPointsNeededCommandBlock)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Anti-Flood IP Block", text: $antiFloodPointsNeededIPBlock)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                        TextField("Anti-Flood Plugin Block", text: $antiFloodPointsNeededPluginBlock)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
+                    } label: {
+                        Label("Anti-Flood and Complaints", systemImage: "shield")
                     }
-                    Picker("Query Log", selection: $logQuery) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
-                    }
-                    Picker("Channel Log", selection: $logChannel) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
-                    }
-                    Picker("Permission Log", selection: $logPermissions) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
-                    }
-                    Picker("Server Log", selection: $logServer) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
-                    }
-                    Picker("File Transfer Log", selection: $logFileTransfer) {
-                        Text("Unchanged").tag(Bool?.none)
-                        Text("Enabled").tag(Optional(true))
-                        Text("Disabled").tag(Optional(false))
+                }
+
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingLogSettings) {
+                        Picker("Client Log", selection: $logClient) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                        Picker("Query Log", selection: $logQuery) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                        Picker("Channel Log", selection: $logChannel) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                        Picker("Permission Log", selection: $logPermissions) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                        Picker("Server Log", selection: $logServer) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                        Picker("File Transfer Log", selection: $logFileTransfer) {
+                            Text("Unchanged").tag(Bool?.none)
+                            Text("Enabled").tag(Optional(true))
+                            Text("Disabled").tag(Optional(false))
+                        }
+                    } label: {
+                        Label("Server Log Options", systemImage: "doc.text.magnifyingglass")
                     }
                 }
             }
