@@ -19,169 +19,169 @@ struct TS3iOSApp: App {
         }
         #if targetEnvironment(macCatalyst) || os(macOS)
         .commands {
-            CommandMenu("TeamSpeak") {
-                Button("Show Keyboard Shortcuts") {
+            CommandMenu("catalyst.menu.teamSpeak") {
+                Button("catalyst.showKeyboardShortcuts") {
                     model.isShowingKeyboardShortcuts = true
                 }
                 .ts3KeyboardShortcut("show-shortcuts", in: model)
 
-                Button("Show Debug Log") {
+                Button("catalyst.showDebugLog") {
                     model.isShowingDebug = true
                 }
                 .ts3KeyboardShortcut("show-debug-log", in: model)
 
-                Button("Manage Identity") {
+                Button("catalyst.manageIdentity") {
                     model.isShowingIdentity = true
                 }
                 .ts3KeyboardShortcut("manage-identity", in: model)
 
-                Button("Connection Manager") {
+                Button("catalyst.connectionManager") {
                     model.isShowingConnectionManager = true
                 }
                 .ts3KeyboardShortcut("connection-manager", in: model)
 
-                Button("Client Migration") {
+                Button("catalyst.clientMigration") {
                     model.isShowingClientMigration = true
                 }
                 .ts3KeyboardShortcut("client-migration", in: model)
 
-                Button("Notification Settings") {
+                Button("catalyst.notificationSettings") {
                     model.isShowingNotificationSettings = true
                 }
                 .ts3KeyboardShortcut("notification-settings", in: model)
             }
 
-            CommandMenu("Connection") {
-                Button("Refresh Channels and Clients") {
+            CommandMenu("catalyst.menu.connection") {
+                Button("catalyst.refreshChannelsClients") {
                     model.refreshServerView()
                 }
                 .ts3KeyboardShortcut("refresh-server", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Save Current Server as Bookmark") {
+                Button("catalyst.saveCurrentServerBookmark") {
                     model.saveCurrentBookmark(name: model.serverHost)
                 }
                 .ts3KeyboardShortcut("save-bookmark", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Copy Invite Link") {
+                Button("connect.copyInviteLink") {
                     model.copyCurrentInviteLink()
                 }
                 .ts3KeyboardShortcut("copy-invite", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Copy Full Invite Link") {
+                Button("connect.copyFullInviteLink") {
                     model.copyCurrentFullInviteLink()
                 }
                 .ts3KeyboardShortcut("copy-full-invite", in: model)
                 .disabled(model.state != .connected)
             }
 
-            CommandMenu("Messaging") {
-                Button("Open Chat") {
+            CommandMenu("catalyst.menu.messaging") {
+                Button("catalyst.openChat") {
                     model.showChat()
                 }
                 .ts3KeyboardShortcut("open-chat", in: model)
 
-                Button("Open Offline Messages") {
+                Button("catalyst.openOfflineMessages") {
                     model.showOfflineMessages()
                 }
                 .ts3KeyboardShortcut("open-offline-messages", in: model)
 
-                Button("Open Events") {
+                Button("catalyst.openEvents") {
                     model.showEvents()
                 }
                 .ts3KeyboardShortcut("open-events", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Open Whisper") {
+                Button("catalyst.openWhisper") {
                     model.showWhisper()
                 }
                 .ts3KeyboardShortcut("open-whisper", in: model)
                 .disabled(model.state != .connected)
             }
 
-            CommandMenu("Administration") {
-                Button("View Server Logs") {
+            CommandMenu("catalyst.menu.administration") {
+                Button("catalyst.viewServerLogs") {
                     model.showServerLogs()
                 }
                 .ts3KeyboardShortcut("view-server-logs", in: model)
                 .disabled(model.state != .connected)
 
-                Button("View Server Information") {
+                Button("catalyst.viewServerInformation") {
                     model.showServerInformation()
                 }
                 .ts3KeyboardShortcut("view-server-info", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Edit Server Settings") {
+                Button("catalyst.editServerSettings") {
                     model.showServerSettings()
                 }
                 .ts3KeyboardShortcut("edit-server-settings", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Manage Contacts") {
+                Button("catalyst.manageContacts") {
                     model.showContacts()
                 }
                 .ts3KeyboardShortcut("manage-contacts", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Browse Client Database") {
+                Button("catalyst.browseClientDatabase") {
                     model.showClientDatabase()
                 }
                 .ts3KeyboardShortcut("browse-client-database", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Manage Bans") {
+                Button("catalyst.manageBans") {
                     model.showBanList()
                 }
                 .ts3KeyboardShortcut("manage-bans", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Browse Channel Files") {
+                Button("catalyst.browseChannelFiles") {
                     model.showFileBrowser()
                 }
                 .ts3KeyboardShortcut("browse-files", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Channel Subscription Presets") {
+                Button("channels.subscriptionPresets") {
                     model.isShowingSubscriptionPresets = true
                 }
                 .ts3KeyboardShortcut("manage-subscription-presets", in: model)
                 .disabled(model.state != .connected)
 
-                Button("View Permissions") {
+                Button("catalyst.viewPermissions") {
                     model.showPermissions()
                 }
                 .ts3KeyboardShortcut("manage-permissions", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Manage Permission Groups") {
+                Button("catalyst.managePermissionGroups") {
                     model.showGroupManagement()
                 }
                 .ts3KeyboardShortcut("manage-permission-groups", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Manage Privilege Keys") {
+                Button("catalyst.managePrivilegeKeys") {
                     model.showPrivilegeKeys()
                 }
                 .ts3KeyboardShortcut("manage-privilege-keys", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Manage Complaints") {
+                Button("catalyst.manageComplaints") {
                     model.showComplaints()
                 }
                 .ts3KeyboardShortcut("manage-complaints", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Manage Temporary Passwords") {
+                Button("catalyst.manageTemporaryPasswords") {
                     model.showTemporaryServerPasswords()
                 }
                 .ts3KeyboardShortcut("manage-temporary-passwords", in: model)
                 .disabled(model.state != .connected)
             }
 
-            CommandMenu("Voice") {
+            CommandMenu("catalyst.menu.voice") {
                 Button(model.transmitButtonTitle) {
                     model.toggleTalking()
                 }
@@ -189,44 +189,50 @@ struct TS3iOSApp: App {
                 .disabled(model.state != .connected)
 
                 Button(model.whisperActivationMode == .holdToWhisper
-                       ? "Toggle Temporary Whisper"
-                       : (model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper")) {
+                       ? NSLocalizedString("catalyst.toggleTemporaryWhisper", comment: "")
+                       : (model.isWhisperActivationActive
+                          ? NSLocalizedString("catalyst.stopTemporaryWhisper", comment: "")
+                          : NSLocalizedString("catalyst.startTemporaryWhisper", comment: ""))) {
                     model.toggleCurrentWhisperActivation()
                 }
                 .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
                 .disabled(model.state != .connected || model.whisperRoute == .none)
 
-                Button("Start Temporary Whisper") {
+                Button("catalyst.startTemporaryWhisper") {
                     model.beginCurrentWhisperActivation()
                 }
                 .ts3KeyboardShortcut("start-whisper-activation", in: model)
                 .disabled(model.state != .connected || model.whisperRoute == .none || model.isWhisperActivationActive)
 
-                Button("Stop Temporary Whisper") {
+                Button("catalyst.stopTemporaryWhisper") {
                     model.endWhisperActivation()
                 }
                 .ts3KeyboardShortcut("stop-whisper-activation", in: model)
                 .disabled(!model.isWhisperActivationActive)
 
-                Button(model.isInputMuted ? "Unmute Microphone" : "Mute Microphone") {
+                Button(model.isInputMuted
+                       ? NSLocalizedString("catalyst.unmuteMicrophone", comment: "")
+                       : NSLocalizedString("catalyst.muteMicrophone", comment: "")) {
                     model.toggleInputMuted()
                 }
                 .ts3KeyboardShortcut("toggle-input-muted", in: model)
                 .disabled(model.state != .connected)
 
-                Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
+                Button(model.isOutputMuted
+                       ? NSLocalizedString("catalyst.unmuteSound", comment: "")
+                       : NSLocalizedString("catalyst.muteSound", comment: "")) {
                     model.toggleOutputMuted()
                 }
                 .ts3KeyboardShortcut("toggle-output-muted", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Self Status") {
+                Button("catalyst.selfStatus") {
                     model.isShowingSelfStatus = true
                 }
                 .ts3KeyboardShortcut("self-status", in: model)
                 .disabled(model.state != .connected)
 
-                Button("Audio Settings") {
+                Button("catalyst.audioSettings") {
                     model.isShowingAudioSettings = true
                 }
                 .ts3KeyboardShortcut("audio-settings", in: model)
