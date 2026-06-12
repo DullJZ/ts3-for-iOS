@@ -964,6 +964,11 @@ struct ConnectView: View {
     @State private var connectionDiagnosticsDocument = TS3TextFileDocument()
     @State private var clientPackageDocument = TS3BookmarkFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     private var autoReconnectBinding: Binding<Bool> {
         Binding(
             get: { model.autoReconnectEnabled },
@@ -1070,32 +1075,32 @@ struct ConnectView: View {
             }
 
             if isShowingSavedConnectionLibrary && (!model.recentConnections.isEmpty || !model.bookmarks.isEmpty) {
-                Section(header: Text("Saved Connections")) {
-                    Picker("Filter", selection: $connectionFilter) {
+                Section(header: Text("connect.savedConnections")) {
+                    Picker("connect.filter", selection: $connectionFilter) {
                         ForEach(ConnectionFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $connectionSortMode) {
+                    Picker("connect.sortBy", selection: $connectionSortMode) {
                         ForEach(ConnectionSortMode.allCases) { mode in
                             Text(mode.title).tag(mode)
                         }
                     }
                     if !bookmarkFolders.isEmpty {
-                        Picker("Bookmark Folder", selection: $bookmarkFolderFilter) {
-                            Text("All Folders").tag("")
-                            Text("Unfiled").tag("__unfiled__")
+                        Picker("connect.bookmarkFolder", selection: $bookmarkFolderFilter) {
+                            Text("connect.allFolders").tag("")
+                            Text("connect.unfiled").tag("__unfiled__")
                             ForEach(bookmarkFolders, id: \.self) { folder in
                                 Text(folder).tag(folder)
                             }
                         }
                     }
-                    Toggle("Ascending", isOn: $connectionSortAscending)
-                    TextField("Search saved servers", text: $connectionSearchText)
+                    Toggle("connect.ascending", isOn: $connectionSortAscending)
+                    TextField("connect.searchSavedServers", text: $connectionSearchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $connectionPresetName)
-                        Button("Save Current Filters") {
+                        TextField("connect.presetName", text: $connectionPresetName)
+                        Button("connect.saveCurrentFilters") {
                             model.saveConnectionFilterPreset(
                                 name: connectionPresetName,
                                 connectionFilter: connectionFilter.rawValue,
@@ -1108,17 +1113,17 @@ struct ConnectView: View {
                         }
                         .disabled(connectionPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.connectionFilterPresets.isEmpty {
-                            Text("No saved connection filter presets")
+                            Text("connect.noSavedFilterPresets")
                         } else {
                             ForEach(model.connectionFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button("connect.applyPreset") {
                                         applyConnectionPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button("connect.useName") {
                                         connectionPresetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button("connect.deletePreset") {
                                         model.deleteConnectionFilterPreset(preset)
                                     }
                                 } label: {
@@ -1130,22 +1135,22 @@ struct ConnectView: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button("connect.exportPresets") {
                             exportConnectionPresets()
                         }
                         .disabled(model.connectionFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button("connect.importPresets") {
                             isImportingConnectionPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button("connect.deleteAllPresets") {
                             deleteConfirmation = .deleteAllFilterPresets
                         }
                         .disabled(model.connectionFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label("connect.filterPresets", systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasSavedConnectionOptions {
-                        Button("Clear Saved Connection Filters") {
+                        Button("connect.clearSavedConnectionFilters") {
                             connectionFilter = .all
                             connectionSortMode = .savedOrder
                             connectionSortAscending = true
@@ -1157,9 +1162,9 @@ struct ConnectView: View {
             }
 
             if isShowingSavedConnectionLibrary && !model.recentConnections.isEmpty {
-                Section(header: Text("Recent Servers")) {
+                Section(header: Text("connect.recentServers")) {
                     if displayedRecentConnections.isEmpty {
-                        Text("No matching recent servers")
+                        Text("connect.noMatchingRecentServers")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(displayedRecentConnections) { snapshot in
@@ -1191,13 +1196,13 @@ struct ConnectView: View {
                                     privilegeKey: snapshot.privilegeKey
                                 )
                                 Menu {
-                                    Button("Copy Safe Invite Link") {
+                                    Button("connect.copySafeInviteLink") {
                                         model.copyInviteLink(for: recentBookmark)
                                     }
-                                    Button("Copy Full Invite Link") {
+                                    Button("connect.copyFullInviteLink") {
                                         model.copyFullInviteLink(for: recentBookmark)
                                     }
-                                    Button("Copy Connection Summary") {
+                                    Button("connect.copyConnectionSummary") {
                                         TS3PlatformSupport.copyToPasteboard(snapshot.clipboardSummary)
                                     }
                                 } label: {
@@ -1228,55 +1233,55 @@ struct ConnectView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel(snapshot.host)
                             .accessibilityValue(snapshot.accessibilityValue)
-                            .accessibilityAction(named: "Copy Connection Summary") {
+                            .accessibilityAction(named: Text("connect.copyConnectionSummary")) {
                                 TS3PlatformSupport.copyToPasteboard(snapshot.clipboardSummary)
                             }
                             .contextMenu {
-                                Button("Copy Connection Summary") {
+                                Button("connect.copyConnectionSummary") {
                                     TS3PlatformSupport.copyToPasteboard(snapshot.clipboardSummary)
                                 }
-                                Button("Copy Safe Invite Link") {
+                                Button("connect.copySafeInviteLink") {
                                     model.copyInviteLink(for: bookmark(for: snapshot))
                                 }
-                                Button("Copy Full Invite Link") {
+                                Button("connect.copyFullInviteLink") {
                                     model.copyFullInviteLink(for: bookmark(for: snapshot))
                                 }
                             }
                         }
                     }
-                    Button("Clear Recent Servers") {
+                    Button("connect.clearRecentServers") {
                         deleteConfirmation = .clearRecent
                     }
                     .foregroundColor(.red)
                     Menu {
-                        Button("Save Visible as Bookmarks") {
+                        Button("connect.saveVisibleAsBookmarks") {
                             model.saveBookmarks(from: displayedRecentConnections, folder: bookmarkFolder)
                         }
                         .disabled(displayedRecentConnections.isEmpty)
-                        Button("Remove Duplicate Recent Servers") {
+                        Button("connect.removeDuplicateRecentServers") {
                             model.removeDuplicateRecentConnections()
                         }
                         .disabled(model.recentConnections.isEmpty)
-                        Button("Delete Visible Recent Servers") {
+                        Button("connect.deleteVisibleRecentServers") {
                             deleteConfirmation = .visibleRecent
                         }
                         .disabled(displayedRecentConnections.isEmpty)
                     } label: {
-                        Label("Visible Recent Servers", systemImage: "clock.arrow.circlepath")
+                        Label("connect.visibleRecentServers", systemImage: "clock.arrow.circlepath")
                     }
-                    Button("Export Recent Servers") {
+                    Button("connect.exportRecentServers") {
                         exportRecentConnections()
                     }
-                    Button("Import Recent Servers") {
+                    Button("connect.importRecentServers") {
                         isImportingRecentConnections = true
                     }
                 }
             }
 
             if isShowingSavedConnectionLibrary && !model.bookmarks.isEmpty {
-                Section(header: Text("Bookmarks")) {
+                Section(header: Text("connect.bookmarks")) {
                     if displayedBookmarks.isEmpty {
-                        Text("No matching bookmarks")
+                        Text("connect.noMatchingBookmarks")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(displayedBookmarks) { bookmark in
@@ -1301,13 +1306,13 @@ struct ConnectView: View {
                                 }
                                 .buttonStyle(.borderless)
                                 Menu {
-                                    Button("Copy Safe Invite Link") {
+                                    Button("connect.copySafeInviteLink") {
                                         model.copyInviteLink(for: bookmark)
                                     }
-                                    Button("Copy Full Invite Link") {
+                                    Button("connect.copyFullInviteLink") {
                                         model.copyFullInviteLink(for: bookmark)
                                     }
-                                    Button("Copy Bookmark Summary") {
+                                    Button("connect.copyBookmarkSummary") {
                                         TS3PlatformSupport.copyToPasteboard(bookmark.clipboardSummary)
                                     }
                                 } label: {
@@ -1330,75 +1335,75 @@ struct ConnectView: View {
                             .accessibilityElement(children: .combine)
                             .accessibilityLabel(bookmark.name)
                             .accessibilityValue(bookmark.accessibilityValue)
-                            .accessibilityAction(named: "Copy Bookmark Summary") {
+                            .accessibilityAction(named: Text("connect.copyBookmarkSummary")) {
                                 TS3PlatformSupport.copyToPasteboard(bookmark.clipboardSummary)
                             }
                             .contextMenu {
-                                Button("Copy Bookmark Summary") {
+                                Button("connect.copyBookmarkSummary") {
                                     TS3PlatformSupport.copyToPasteboard(bookmark.clipboardSummary)
                                 }
-                                Button("Copy Safe Invite Link") {
+                                Button("connect.copySafeInviteLink") {
                                     model.copyInviteLink(for: bookmark)
                                 }
-                                Button("Copy Full Invite Link") {
+                                Button("connect.copyFullInviteLink") {
                                     model.copyFullInviteLink(for: bookmark)
                                 }
                             }
                         }
                     }
                     Menu {
-                        Button("Move Visible to Folder") {
+                        Button("connect.moveVisibleToFolder") {
                             model.moveBookmarks(displayedBookmarks, toFolder: bookmarkFolder)
                         }
                         .disabled(displayedBookmarks.isEmpty)
-                        Button("Move Visible to Unfiled") {
+                        Button("connect.moveVisibleToUnfiled") {
                             model.moveBookmarks(displayedBookmarks, toFolder: "")
                         }
                         .disabled(displayedBookmarks.isEmpty)
-                        Button("Remove Duplicate Bookmarks") {
+                        Button("connect.removeDuplicateBookmarks") {
                             model.removeDuplicateBookmarks()
                         }
                         .disabled(model.bookmarks.isEmpty)
-                        Button("Delete Visible Bookmarks") {
+                        Button("connect.deleteVisibleBookmarks") {
                             deleteConfirmation = .visibleBookmarks
                         }
                         .disabled(displayedBookmarks.isEmpty)
                     } label: {
-                        Label("Visible Bookmarks", systemImage: "folder")
+                        Label("connect.visibleBookmarks", systemImage: "folder")
                     }
                 }
             }
 
-            Section(header: Text("Invitation Link")) {
+            Section(header: Text("connect.invitationLink")) {
                 TextField("ts3server://host?nickname=...", text: $serverURLText)
                     .ts3URLTextField()
-                Button("Import Link") {
+                Button("connect.importLink") {
                     model.applyServerURL(serverURLText)
                     serverURLText = ""
                 }
                 .disabled(serverURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
-            Section(header: Text("Server")) {
-                TextField("Host (e.g. ts.example.com)", text: $model.serverHost)
+            Section(header: Text("connect.server")) {
+                TextField("connect.hostPlaceholder", text: $model.serverHost)
                     .ts3URLTextField()
-                TextField("Port", text: $model.serverPort)
+                TextField("connect.port", text: $model.serverPort)
                     .ts3NumericKeyboard()
-                SecureField("Server Password (optional)", text: $model.serverPassword)
-                TextField("Default Channel (optional)", text: $model.defaultChannel)
+                SecureField("connect.serverPasswordOptional", text: $model.serverPassword)
+                TextField("connect.defaultChannelOptional", text: $model.defaultChannel)
                     .ts3PlainTextField()
-                SecureField("Channel Password (optional)", text: $model.defaultChannelPassword)
+                SecureField("connect.channelPasswordOptional", text: $model.defaultChannelPassword)
             }
 
-            Section(header: Text("Profile")) {
-                TextField("Nickname", text: $model.nickname)
+            Section(header: Text("connect.profile")) {
+                TextField("connect.nickname", text: $model.nickname)
                     .ts3PlainTextField()
-                TextField("Phonetic Nickname (optional)", text: $model.phoneticNickname)
+                TextField("connect.phoneticNicknameOptional", text: $model.phoneticNickname)
                     .ts3PlainTextField()
-                TextField("Connection Note (optional)", text: $model.connectionNote)
+                TextField("connect.connectionNoteOptional", text: $model.connectionNote)
                     .ts3PlainTextField()
-                SecureField("Privilege Key (optional)", text: $model.privilegeKey)
-                Button("Manage Identity") {
+                SecureField("connect.privilegeKeyOptional", text: $model.privilegeKey)
+                Button("connect.manageIdentity") {
                     isShowingIdentity = true
                 }
             }
@@ -1429,66 +1434,66 @@ struct ConnectView: View {
             }
 
             if isShowingConnectionManagement {
-                Section(header: Text("Bookmark")) {
-                    TextField("Bookmark Name", text: $bookmarkName)
-                    TextField("Folder (optional)", text: $bookmarkFolder)
+                Section(header: Text("connect.bookmark")) {
+                    TextField("connect.bookmarkName", text: $bookmarkName)
+                    TextField("connect.folderOptional", text: $bookmarkFolder)
                         .ts3PlainTextField()
-                    Button("Save Current Server") {
+                    Button("connect.saveCurrentServer") {
                         model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
                         bookmarkName = ""
                         bookmarkFolder = ""
                     }
                     .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Copy Invite Link") {
+                    Button("connect.copyInviteLink") {
                         model.copyCurrentInviteLink()
                     }
                     .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Copy Full Invite Link") {
+                    Button("connect.copyFullInviteLink") {
                         model.copyCurrentFullInviteLink()
                     }
                     .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Copy Connection Summary") {
+                    Button("connect.copyConnectionSummary") {
                         model.copyCurrentConnectionSummary()
                     }
                     .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Import Bookmarks") {
+                    Button("connect.importBookmarks") {
                         isShowingBookmarkImporter = true
                     }
-                    Button("Export Bookmarks") {
+                    Button("connect.exportBookmarks") {
                         exportBookmarks()
                     }
                     .disabled(model.bookmarks.isEmpty)
-                    Text("Bookmark backups include saved passwords and privilege keys.")
+                    Text("connect.bookmarkBackupWarning")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Client Migration")) {
-                    Button("Export Client Package") {
+                Section(header: Text("connect.clientMigration")) {
+                    Button("connect.exportClientPackage") {
                         exportClientPackage()
                     }
-                    Button("Import Client Package") {
+                    Button("connect.importClientPackage") {
                         isImportingClientPackage = true
                     }
-                    Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, channel layout, audio, status, playback, and whisper presets.")
+                    Text("connect.clientPackageSummary")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Notifications")) {
-                    Button("Notification Settings") {
+                Section(header: Text("connect.notifications")) {
+                    Button("connect.notificationSettings") {
                         model.isShowingNotificationSettings = true
                     }
-                    Text("Configure alerts for private messages, pokes, and server activity.")
+                    Text("connect.notificationSummary")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Messaging")) {
-                    Button("Inbox") {
+                Section(header: Text("connect.messaging")) {
+                    Button("connect.inbox") {
                         model.showOfflineMessages()
                     }
-                    Text(model.offlineMessages.isEmpty ? "No cached offline messages" : "\(model.offlineMessages.count) cached offline message\(model.offlineMessages.count == 1 ? "" : "s")")
+                    Text(model.offlineMessages.isEmpty ? localized("connect.noCachedOfflineMessages") : localized("connect.cachedOfflineMessageCount", model.offlineMessages.count))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -1503,7 +1508,7 @@ struct ConnectView: View {
             }
 
             if let snapshot = model.lastConnectionSnapshot {
-                Section(header: Text("Recent Connection")) {
+                Section(header: Text("connect.recentConnection")) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(snapshot.title)
                         if let message = model.lastDisconnectMessage, !message.isEmpty {
@@ -1512,7 +1517,7 @@ struct ConnectView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    Button("Reconnect") {
+                    Button("connect.reconnect") {
                         model.reconnect()
                     }
                     .disabled(snapshot.host.isEmpty || snapshot.nickname.isEmpty)
@@ -1530,48 +1535,48 @@ struct ConnectView: View {
             }
 
             if isShowingConnectionDiagnostics {
-                Section(header: Text("Connection Diagnostics")) {
-                    ServerInfoDetailRow(label: "State", value: model.connectedStatus)
-                    ServerInfoDetailRow(label: "Host", value: model.serverHost.isEmpty ? "Not set" : "\(model.serverHost):\(model.serverPort)")
-                    ServerInfoDetailRow(label: "Nickname", value: model.nickname.isEmpty ? "Not set" : model.nickname)
-                    ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.connectionDecimalText($0)) ms" } ?? "Unknown")
-                    ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.connectionLossText) ?? "Unknown")
-                    ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.connectionLossText) ?? "Unknown")
-                    ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.connectionByteText) ?? "Unknown")
-                    ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.connectionByteText) ?? "Unknown")
-                    ServerInfoDetailRow(label: "Connected Time", value: model.connectionInfo.connectedSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
-                    ServerInfoDetailRow(label: "Idle Time", value: model.connectionInfo.idleSeconds.map(ServerInfoRows.uptimeText) ?? "Unknown")
+                Section(header: Text("connect.connectionDiagnostics")) {
+                    ServerInfoDetailRow(label: localized("connect.state"), value: model.connectedStatus)
+                    ServerInfoDetailRow(label: localized("connect.host"), value: model.serverHost.isEmpty ? localized("connect.notSet") : "\(model.serverHost):\(model.serverPort)")
+                    ServerInfoDetailRow(label: localized("connect.nickname"), value: model.nickname.isEmpty ? localized("connect.notSet") : model.nickname)
+                    ServerInfoDetailRow(label: localized("connect.ping"), value: model.connectionInfo.ping.map { "\(Self.connectionDecimalText($0)) ms" } ?? localized("connect.unknown"))
+                    ServerInfoDetailRow(label: localized("connect.packetLoss"), value: model.connectionInfo.packetLossTotal.map(Self.connectionLossText) ?? localized("connect.unknown"))
+                    ServerInfoDetailRow(label: localized("connect.speechLoss"), value: model.connectionInfo.packetLossSpeech.map(Self.connectionLossText) ?? localized("connect.unknown"))
+                    ServerInfoDetailRow(label: localized("connect.sessionDownloaded"), value: model.connectionInfo.bytesReceived.map(Self.connectionByteText) ?? localized("connect.unknown"))
+                    ServerInfoDetailRow(label: localized("connect.sessionUploaded"), value: model.connectionInfo.bytesSent.map(Self.connectionByteText) ?? localized("connect.unknown"))
+                    ServerInfoDetailRow(label: localized("connect.connectedTime"), value: model.connectionInfo.connectedSeconds.map(ServerInfoRows.uptimeText) ?? localized("connect.unknown"))
+                    ServerInfoDetailRow(label: localized("connect.idleTime"), value: model.connectionInfo.idleSeconds.map(ServerInfoRows.uptimeText) ?? localized("connect.unknown"))
                     if let status = model.autoReconnectStatus, !status.isEmpty {
-                        ServerInfoDetailRow(label: "Recovery Status", value: status)
+                        ServerInfoDetailRow(label: localized("connect.recoveryStatus"), value: status)
                     }
                     if let message = model.lastDisconnectMessage, !message.isEmpty {
-                        ServerInfoDetailRow(label: "Last Disconnect", value: message)
+                        ServerInfoDetailRow(label: localized("connect.lastDisconnect"), value: message)
                     }
-                    Button("Copy Connection Diagnostics") {
+                    Button("connect.copyConnectionDiagnostics") {
                         TS3PlatformSupport.copyToPasteboard(connectionDiagnosticsSnapshot)
                     }
-                    Button("Export Connection Diagnostics") {
+                    Button("connect.exportConnectionDiagnostics") {
                         connectionDiagnosticsDocument = TS3TextFileDocument(data: Data(connectionDiagnosticsSnapshot.utf8))
                         isExportingConnectionDiagnostics = true
                     }
                 }
 
-                Section(header: Text("Connection Recovery")) {
-                    Toggle("Reconnect Automatically", isOn: autoReconnectBinding)
+                Section(header: Text("connect.connectionRecovery")) {
+                    Toggle("connect.reconnectAutomatically", isOn: autoReconnectBinding)
                     Stepper(
-                        "Initial Delay: \(model.autoReconnectInitialDelaySeconds)s",
+                        localized("connect.initialDelay", model.autoReconnectInitialDelaySeconds),
                         value: autoReconnectInitialDelayBinding,
                         in: 1...300
                     )
                     Stepper(
-                        "Max Delay: \(model.autoReconnectMaxDelaySeconds)s",
+                        localized("connect.maxDelay", model.autoReconnectMaxDelaySeconds),
                         value: autoReconnectMaxDelayBinding,
                         in: 1...600
                     )
                     Stepper(
                         model.autoReconnectMaxAttempts == 0
-                            ? "Max Attempts: Unlimited"
-                            : "Max Attempts: \(model.autoReconnectMaxAttempts)",
+                            ? localized("connect.maxAttemptsUnlimited")
+                            : localized("connect.maxAttempts", model.autoReconnectMaxAttempts),
                         value: autoReconnectMaxAttemptsBinding,
                         in: 0...100
                     )
@@ -1581,28 +1586,28 @@ struct ConnectView: View {
                             .foregroundColor(.secondary)
                     }
                     if model.autoReconnectIsScheduled {
-                        Button("Cancel Scheduled Reconnect") {
+                        Button("connect.cancelScheduledReconnect") {
                             model.cancelScheduledReconnect()
                         }
                         .foregroundColor(.red)
                     }
-                    Button("Copy Recovery Snapshot") {
+                    Button("connect.copyRecoverySnapshot") {
                         TS3PlatformSupport.copyToPasteboard(connectionRecoverySnapshot)
                     }
-                    Button("Export Recovery Snapshot") {
+                    Button("connect.exportRecoverySnapshot") {
                         recoverySnapshotDocument = TS3TextFileDocument(data: Data(connectionRecoverySnapshot.utf8))
                         isExportingRecoverySnapshot = true
                     }
-                    Button("Export Recovery Settings") {
+                    Button("connect.exportRecoverySettings") {
                         exportRecoverySettings()
                     }
-                    Button("Import Recovery Settings") {
+                    Button("connect.importRecoverySettings") {
                         isImportingRecoverySettings = true
                     }
                 }
             }
         }
-        .navigationTitle(allowsConnectionActions ? "TS3 Connect" : "Connection Manager")
+        .navigationTitle(allowsConnectionActions ? localized("connect.title") : localized("connect.managerTitle"))
         .sheet(isPresented: $isShowingIdentity) {
             IdentityManagementSheet()
                 .environmentObject(model)
@@ -1752,38 +1757,38 @@ struct ConnectView: View {
             switch confirmation {
             case .clearRecent:
                 return Alert(
-                    title: Text("Clear Recent Servers?"),
-                    message: Text("This removes the local connection history on this device."),
-                    primaryButton: .destructive(Text("Clear")) {
+                    title: Text("connect.clearRecentServersAlert.title"),
+                    message: Text("connect.clearRecentServersAlert.message"),
+                    primaryButton: .destructive(Text("connect.clear")) {
                         model.clearRecentConnections()
                     },
                     secondaryButton: .cancel()
                 )
             case .visibleRecent:
                 return Alert(
-                    title: Text("Delete Visible Recent Servers?"),
-                    message: Text("This removes \(displayedRecentConnections.count) recent server entries from this device."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text("connect.deleteVisibleRecentServersAlert.title"),
+                    message: Text(localized("connect.deleteVisibleRecentServersAlert.message", displayedRecentConnections.count)),
+                    primaryButton: .destructive(Text("connect.delete")) {
                         model.deleteRecentConnections(displayedRecentConnections)
                     },
                     secondaryButton: .cancel()
                 )
             case .visibleBookmarks:
                 return Alert(
-                    title: Text("Delete Visible Bookmarks?"),
-                    message: Text("This removes \(displayedBookmarks.count) saved bookmarks from this device."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text("connect.deleteVisibleBookmarksAlert.title"),
+                    message: Text(localized("connect.deleteVisibleBookmarksAlert.message", displayedBookmarks.count)),
+                    primaryButton: .destructive(Text("connect.delete")) {
                         model.deleteBookmarks(displayedBookmarks)
                     },
                     secondaryButton: .cancel()
                 )
             case .deleteAllFilterPresets:
                 let presetCount = model.connectionFilterPresets.count
-                let message = "This removes \(presetCount) saved local filter presets."
+                let message = localized("connect.deleteAllFilterPresetsAlert.message", presetCount)
                 return Alert(
-                    title: Text("Delete All Connection Filter Presets?"),
+                    title: Text("connect.deleteAllFilterPresetsAlert.title"),
                     message: Text(message),
-                    primaryButton: .destructive(Text("Delete")) {
+                    primaryButton: .destructive(Text("connect.delete")) {
                         model.deleteAllConnectionFilterPresets()
                     },
                     secondaryButton: .cancel()
