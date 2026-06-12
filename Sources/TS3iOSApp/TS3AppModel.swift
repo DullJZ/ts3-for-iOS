@@ -3919,6 +3919,70 @@ struct TS3DatabaseClientFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3DatabaseClientFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "recordFilter=\(recordFilter)",
+            "sortMode=\(sortMode)",
+            "sortAscending=\(sortAscending)",
+            "batchSize=\(batchSize)"
+        ]
+        if !localFilterText.isEmpty {
+            parts.append("localFilter=\(localFilterText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Database client filter \(recordFilter)",
+            "Sort by \(sortMode)",
+            sortAscending ? "Ascending" : "Descending",
+            "Batch size \(batchSize)"
+        ]
+        if !localFilterText.isEmpty {
+            parts.append("Filter \(localFilterText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3DatabaseClientFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported database client filter presets: \(importedPresetCount)",
+            "Usable database client filter presets: \(usablePresetCount)",
+            "New database client filter presets: \(newPresetCount)",
+            "Replacing database client filter presets: \(replacedPresetCount)",
+            "Skipped database client filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3PrivilegeKeyFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -13501,18 +13565,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(databaseClientFilterPresets)
     }
 
+    func databaseClientFilterPresetsImportPreview(from data: Data) throws -> TS3DatabaseClientFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3DatabaseClientFilterPreset].self, from: data)
+        let usable = sanitizedDatabaseClientFilterPresets(imported)
+        let existingNames = Set(databaseClientFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3DatabaseClientFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3DatabaseClientFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importDatabaseClientFilterPresets(from data: Data) throws -> Int {
+    func importDatabaseClientFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3DatabaseClientFilterPreset].self, from: data)
         var merged = databaseClientFilterPresets
-        for preset in sanitizedDatabaseClientFilterPresets(imported) {
+        let selectedPresets = sanitizedDatabaseClientFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         databaseClientFilterPresets = sanitizedDatabaseClientFilterPresets(merged)
         saveDatabaseClientFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func savePrivilegeKeyFilterPreset(
