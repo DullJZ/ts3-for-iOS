@@ -4,13 +4,23 @@ import UniformTypeIdentifiers
 
 struct DebugLogView: View {
     private enum LevelFilter: String, CaseIterable, Identifiable {
-        case all = "All"
-        case debug = "Debug"
-        case info = "Info"
-        case warning = "Warning"
-        case error = "Error"
+        case all
+        case debug
+        case info
+        case warning
+        case error
 
         var id: String { rawValue }
+
+        var titleKey: LocalizedStringKey {
+            switch self {
+            case .all: return "debug.level.all"
+            case .debug: return "debug.level.debug"
+            case .info: return "debug.level.info"
+            case .warning: return "debug.level.warning"
+            case .error: return "debug.level.error"
+            }
+        }
 
         func includes(_ level: TS3LogLevel) -> Bool {
             switch self {
@@ -46,20 +56,27 @@ struct DebugLogView: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Filter")) {
-                    Picker("Level", selection: $levelFilter) {
+                Section(header: Text("debug.filter")) {
+                    Picker("debug.level", selection: $levelFilter) {
                         ForEach(LevelFilter.allCases) { filter in
-                            Text(filter.rawValue).tag(filter)
+                            Text(filter.titleKey).tag(filter)
                         }
                     }
-                    TextField("Search logs", text: $searchText)
+                    TextField("debug.searchLogs", text: $searchText)
                         .disableAutocorrection(true)
-                    ServerInfoDetailRow(label: "Visible", value: "\(filteredLogs.count) of \(model.logs.count)")
+                    ServerInfoDetailRow(
+                        label: NSLocalizedString("debug.visible", comment: ""),
+                        value: String(
+                            format: NSLocalizedString("debug.visibleCountFormat", comment: ""),
+                            filteredLogs.count,
+                            model.logs.count
+                        )
+                    )
                 }
 
-                Section(header: Text("Logs")) {
+                Section(header: Text("debug.logs")) {
                     if filteredLogs.isEmpty {
-                        Text("No matching log entries")
+                        Text("debug.noMatchingLogs")
                             .foregroundColor(.secondary)
                     }
                     ForEach(filteredLogs) { entry in
@@ -74,34 +91,34 @@ struct DebugLogView: View {
                     }
                 }
             }
-            .navigationTitle("调试日志")
+            .navigationTitle("debug.title")
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("关闭") {
+                    Button("debug.close") {
                         model.isShowingDebug = false
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("复制") {
+                    Button("debug.copy") {
                         copyVisibleLogs()
                     }
                     .disabled(filteredLogs.isEmpty)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("导出") {
+                    Button("debug.export") {
                         logDocument = TS3TextFileDocument(data: Data(logTranscript(from: filteredLogs).utf8))
                         isExportingLogs = true
                     }
                     .disabled(filteredLogs.isEmpty)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("诊断包") {
+                    Button("debug.diagnosticReport") {
                         diagnosticReportDocument = TS3TextFileDocument(data: model.diagnosticReportData())
                         isExportingDiagnosticReport = true
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("清空") {
+                    Button("debug.clear") {
                         isConfirmingClearLogs = true
                     }
                     .disabled(model.logs.isEmpty)
@@ -109,12 +126,12 @@ struct DebugLogView: View {
             }
             .alert(isPresented: $isConfirmingClearLogs) {
                 Alert(
-                    title: Text("清空调试日志？"),
-                    message: Text("这会删除当前会话中显示的所有调试日志。"),
-                    primaryButton: .destructive(Text("清空")) {
+                    title: Text("debug.clearAlert.title"),
+                    message: Text("debug.clearAlert.message"),
+                    primaryButton: .destructive(Text("debug.clear")) {
                         model.clearLogs()
                     },
-                    secondaryButton: .cancel(Text("取消"))
+                    secondaryButton: .cancel(Text("common.cancel"))
                 )
             }
             .fileExporter(
