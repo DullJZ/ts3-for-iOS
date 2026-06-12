@@ -1265,6 +1265,66 @@ struct TS3ContactFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3ContactFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "sort=\(sortMode)",
+            "sortAscending=\(sortAscending)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Sort \(sortMode)",
+            sortAscending ? "Ascending" : "Descending"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3ContactFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported contact filter presets: \(importedPresetCount)",
+            "Usable contact filter presets: \(usablePresetCount)",
+            "New contact filter presets: \(newPresetCount)",
+            "Replacing contact filter presets: \(replacedPresetCount)",
+            "Skipped contact filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3UserPlaybackPreference: Codable {
     var volume: Double = 1.0
     var isMuted = false
@@ -17367,18 +17427,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(contactFilterPresets)
     }
 
+    func contactFilterPresetsImportPreview(from data: Data) throws -> TS3ContactFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ContactFilterPreset].self, from: data)
+        let usable = sanitizedContactFilterPresets(imported)
+        let existingNames = Set(contactFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ContactFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ContactFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importContactFilterPresets(from data: Data) throws -> Int {
+    func importContactFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ContactFilterPreset].self, from: data)
         var merged = contactFilterPresets
-        for preset in sanitizedContactFilterPresets(imported) {
+        let selectedPresets = sanitizedContactFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         contactFilterPresets = sanitizedContactFilterPresets(merged)
         saveContactFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     @discardableResult

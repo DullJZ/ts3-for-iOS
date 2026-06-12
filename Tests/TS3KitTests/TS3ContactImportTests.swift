@@ -247,6 +247,118 @@ final class TS3ContactImportTests: XCTestCase {
         )
     }
 
+    func testContactFilterPresetSummaryAndAccessibilityText() {
+        let preset = makeContactFilterPreset(
+            id: UUID(),
+            name: "Ops Contacts",
+            sortMode: "updated",
+            sortAscending: false,
+            searchText: "ops"
+        )
+
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            "name=Ops Contacts | sort=updated | sortAscending=false | search=ops"
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Sort updated. Descending. Search ops"
+        )
+    }
+
+    @MainActor
+    func testContactFilterPresetImportPreviewSanitizesCandidates() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let invalidId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Contact Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importContactFilterPresets(from: encodedContactFilterPresets([
+            makeContactFilterPreset(id: existingId, name: existingName, sortMode: "status", searchText: "keep")
+        ]))
+        let data = try encodedContactFilterPresets([
+            makeContactFilterPreset(
+                id: existingId,
+                name: " \(existingName) ",
+                sortMode: "invalidSort",
+                searchText: "  search value  "
+            ),
+            makeContactFilterPreset(
+                id: newId,
+                name: " Raid Contacts \(suffix) ",
+                sortMode: "note",
+                sortAscending: false,
+                searchText: String(repeating: "x", count: 140)
+            ),
+            makeContactFilterPreset(
+                id: invalidId,
+                name: "   ",
+                sortMode: "nickname",
+                searchText: "ignored"
+            )
+        ])
+
+        let preview = try model.contactFilterPresetsImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertEqual(preview.candidates.map(\.id), [existingId, newId])
+        XCTAssertEqual(preview.presetSummaries, [
+            "name=\(existingName) | sort=nickname | sortAscending=true | search=search value",
+            "name=Raid Contacts \(suffix) | sort=note | sortAscending=false | search=\(String(repeating: "x", count: 120))"
+        ])
+        XCTAssertTrue(preview.containsPreset(id: newId))
+        XCTAssertFalse(preview.containsPreset(id: invalidId))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped contact filter presets: 1"))
+    }
+
+    @MainActor
+    func testContactFilterPresetImportRestoresOnlySelectedPresets() throws {
+        let existingId = UUID()
+        let selectedId = UUID()
+        let unselectedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Contact Filter \(suffix)"
+        let selectedName = "Selected Contact Filter \(suffix)"
+        let unselectedName = "Unselected Contact Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importContactFilterPresets(from: encodedContactFilterPresets([
+            makeContactFilterPreset(id: existingId, name: existingName, sortMode: "status", searchText: "keep")
+        ]))
+        let data = try encodedContactFilterPresets([
+            makeContactFilterPreset(id: existingId, name: existingName, sortMode: "note", searchText: "replace"),
+            makeContactFilterPreset(
+                id: selectedId,
+                name: selectedName,
+                sortMode: "updated",
+                sortAscending: false,
+                searchText: "ops"
+            ),
+            makeContactFilterPreset(id: unselectedId, name: unselectedName, sortMode: "nickname", searchText: "away")
+        ])
+
+        let restoredCount = try model.importContactFilterPresets(
+            from: data,
+            selectedPresetIds: [selectedId]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        let existing = try XCTUnwrap(model.contactFilterPresets.first { $0.name == existingName })
+        XCTAssertEqual(existing.sortMode, "status")
+        XCTAssertEqual(existing.searchText, "keep")
+        let selected = try XCTUnwrap(model.contactFilterPresets.first { $0.id == selectedId })
+        XCTAssertEqual(selected.name, selectedName)
+        XCTAssertEqual(selected.sortMode, "updated")
+        XCTAssertEqual(selected.sortAscending, false)
+        XCTAssertEqual(selected.searchText, "ops")
+        XCTAssertFalse(model.contactFilterPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
+        XCTAssertEqual(model.lastError, nil)
+    }
+
     private func makeContact(
         uniqueIdentifier: String,
         nickname: String,
@@ -264,6 +376,27 @@ final class TS3ContactImportTests: XCTestCase {
 
     private func encodedContacts(_ contacts: [TS3ContactEntry]) throws -> Data {
         try JSONEncoder().encode(contacts)
+    }
+
+    private func encodedContactFilterPresets(_ presets: [TS3ContactFilterPreset]) throws -> Data {
+        try JSONEncoder().encode(presets)
+    }
+
+    private func makeContactFilterPreset(
+        id: UUID,
+        name: String,
+        sortMode: String,
+        sortAscending: Bool = true,
+        searchText: String
+    ) -> TS3ContactFilterPreset {
+        TS3ContactFilterPreset(
+            id: id,
+            name: name,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
     }
 
     private static func dateText(_ date: Date) -> String {
