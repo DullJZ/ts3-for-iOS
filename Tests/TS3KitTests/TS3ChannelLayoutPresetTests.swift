@@ -18,6 +18,29 @@ final class TS3ChannelLayoutPresetTests: XCTestCase {
         )
     }
 
+    func testChannelTreeFilterPresetSummaryAndAccessibilityText() {
+        let preset = makeTreeFilterPreset(
+            id: UUID(),
+            name: "Ops Filter",
+            treeFilter: "talkRequests",
+            sortMode: "name",
+            sortAscending: false,
+            memberSortMode: "talkPower",
+            memberSortAscending: false,
+            currentUserFirst: false,
+            searchText: "ops"
+        )
+
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            "name=Ops Filter | filter=talkRequests | sort=name | sortAscending=false | memberSort=talkPower | memberSortAscending=false | currentUserFirst=false | search=ops"
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Filter talkRequests. Channel sort name. Channels descending. Member sort talkPower. Members descending. Current user not pinned. Search ops"
+        )
+    }
+
     @MainActor
     func testChannelSubscriptionPresetImportPreviewSanitizesCandidates() throws {
         let existingId = UUID()
@@ -86,7 +109,113 @@ final class TS3ChannelLayoutPresetTests: XCTestCase {
         XCTAssertEqual(model.lastError, nil)
     }
 
+    @MainActor
+    func testChannelTreeFilterPresetImportPreviewSanitizesCandidates() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let invalidId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importChannelTreeFilterPresets(from: encodedTreeFilterPresets([
+            makeTreeFilterPreset(id: existingId, name: existingName, treeFilter: "default", searchText: "root")
+        ]))
+        let data = try encodedTreeFilterPresets([
+            makeTreeFilterPreset(
+                id: existingId,
+                name: " \(existingName) ",
+                treeFilter: "unknown",
+                sortMode: "badSort",
+                memberSortMode: "badMembers",
+                searchText: "  search value  "
+            ),
+            makeTreeFilterPreset(
+                id: newId,
+                name: " Raid Filter \(suffix) ",
+                treeFilter: "talkRequests",
+                sortMode: "name",
+                sortAscending: false,
+                memberSortMode: "status",
+                memberSortAscending: false,
+                currentUserFirst: false,
+                searchText: String(repeating: "x", count: 140)
+            ),
+            makeTreeFilterPreset(id: invalidId, name: "   ", treeFilter: "all", searchText: "ignored")
+        ])
+
+        let preview = try model.channelTreeFilterPresetsImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertEqual(preview.candidates.map(\.id), [existingId, newId])
+        XCTAssertEqual(preview.presetSummaries, [
+            "name=\(existingName) | filter=all | sort=serverOrder | sortAscending=true | memberSort=nickname | memberSortAscending=true | currentUserFirst=true | search=search value",
+            "name=Raid Filter \(suffix) | filter=talkRequests | sort=name | sortAscending=false | memberSort=status | memberSortAscending=false | currentUserFirst=false | search=\(String(repeating: "x", count: 120))"
+        ])
+        XCTAssertTrue(preview.containsPreset(id: newId))
+        XCTAssertFalse(preview.containsPreset(id: invalidId))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped channel tree filter presets: 1"))
+    }
+
+    @MainActor
+    func testChannelTreeFilterPresetImportRestoresOnlySelectedPresets() throws {
+        let existingId = UUID()
+        let selectedId = UUID()
+        let unselectedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Filter \(suffix)"
+        let selectedName = "Selected Filter \(suffix)"
+        let unselectedName = "Unselected Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importChannelTreeFilterPresets(from: encodedTreeFilterPresets([
+            makeTreeFilterPreset(id: existingId, name: existingName, treeFilter: "default", searchText: "keep")
+        ]))
+        let data = try encodedTreeFilterPresets([
+            makeTreeFilterPreset(id: existingId, name: existingName, treeFilter: "empty", searchText: "replace"),
+            makeTreeFilterPreset(
+                id: selectedId,
+                name: selectedName,
+                treeFilter: "talkRequests",
+                sortMode: "name",
+                sortAscending: false,
+                memberSortMode: "status",
+                memberSortAscending: false,
+                currentUserFirst: false,
+                searchText: "ops"
+            ),
+            makeTreeFilterPreset(id: unselectedId, name: unselectedName, treeFilter: "awayUsers", searchText: "away")
+        ])
+
+        let restoredCount = try model.importChannelTreeFilterPresets(
+            from: data,
+            selectedPresetIds: [selectedId]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        let existing = try XCTUnwrap(model.channelTreeFilterPresets.first { $0.name == existingName })
+        XCTAssertEqual(existing.treeFilter, "default")
+        XCTAssertEqual(existing.searchText, "keep")
+        let selected = try XCTUnwrap(model.channelTreeFilterPresets.first { $0.id == selectedId })
+        XCTAssertEqual(selected.name, selectedName)
+        XCTAssertEqual(selected.treeFilter, "talkRequests")
+        XCTAssertEqual(selected.sortMode, "name")
+        XCTAssertEqual(selected.sortAscending, false)
+        XCTAssertEqual(selected.memberSortMode, "status")
+        XCTAssertEqual(selected.memberSortAscending, false)
+        XCTAssertEqual(selected.currentUserFirst, false)
+        XCTAssertEqual(selected.searchText, "ops")
+        XCTAssertFalse(model.channelTreeFilterPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
+        XCTAssertEqual(model.lastError, nil)
+    }
+
     private func encodedPresets(_ presets: [TS3ChannelSubscriptionPreset]) throws -> Data {
+        try JSONEncoder().encode(presets)
+    }
+
+    private func encodedTreeFilterPresets(_ presets: [TS3ChannelTreeFilterPreset]) throws -> Data {
         try JSONEncoder().encode(presets)
     }
 
@@ -95,6 +224,31 @@ final class TS3ChannelLayoutPresetTests: XCTestCase {
             id: id,
             name: name,
             channelIds: channelIds,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    private func makeTreeFilterPreset(
+        id: UUID,
+        name: String,
+        treeFilter: String,
+        sortMode: String = "serverOrder",
+        sortAscending: Bool = true,
+        memberSortMode: String = "nickname",
+        memberSortAscending: Bool = true,
+        currentUserFirst: Bool = true,
+        searchText: String
+    ) -> TS3ChannelTreeFilterPreset {
+        TS3ChannelTreeFilterPreset(
+            id: id,
+            name: name,
+            treeFilter: treeFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            memberSortMode: memberSortMode,
+            memberSortAscending: memberSortAscending,
+            currentUserFirst: currentUserFirst,
+            searchText: searchText,
             updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
     }

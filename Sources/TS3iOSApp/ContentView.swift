@@ -2177,6 +2177,12 @@ struct BookmarkEditorSheet: View {
 }
 
 struct ChannelListView: View {
+    private struct TreeFilterPresetImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3ChannelTreeFilterPresetImportPreview
+        let id = UUID()
+    }
+
     private enum ChannelConfirmation: Identifiable {
         case unsubscribeAll
         case deleteAllFilterPresets
@@ -2298,6 +2304,7 @@ struct ChannelListView: View {
     @State private var channelCurrentUserFirst = true
     @State private var channelTreePresetName = ""
     @State private var confirmation: ChannelConfirmation?
+    @State private var pendingTreeFilterPresetImport: TreeFilterPresetImportConfirmation?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -2599,10 +2606,22 @@ struct ChannelListView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
-                importChannelTreePresets(from: url)
+                prepareChannelTreePresetImport(from: url)
             } else if case .failure(let error) = result {
                 model.lastError = error.localizedDescription
             }
+        }
+        .sheet(item: $pendingTreeFilterPresetImport) { confirmation in
+            ChannelTreeFilterPresetImportSheet(
+                preview: confirmation.preview,
+                importPresets: { selectedPresetIds in
+                    importChannelTreePresets(data: confirmation.data, selectedPresetIds: selectedPresetIds)
+                    pendingTreeFilterPresetImport = nil
+                },
+                cancel: {
+                    pendingTreeFilterPresetImport = nil
+                }
+            )
         }
         .alert(item: $confirmation) { confirmation in
             switch confirmation {
@@ -2868,7 +2887,7 @@ struct ChannelListView: View {
         }
     }
 
-    private func importChannelTreePresets(from url: URL) {
+    private func prepareChannelTreePresetImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -2876,7 +2895,17 @@ struct ChannelListView: View {
             }
         }
         do {
-            _ = try model.importChannelTreeFilterPresets(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.channelTreeFilterPresetsImportPreview(from: data)
+            pendingTreeFilterPresetImport = TreeFilterPresetImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importChannelTreePresets(data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            _ = try model.importChannelTreeFilterPresets(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -3162,6 +3191,97 @@ private struct ChannelSubscriptionPresetImportSheet: View {
                 }
             }
             .navigationTitle("Import Subscriptions")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
+        }
+    }
+}
+
+private struct ChannelTreeFilterPresetImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3ChannelTreeFilterPresetImportPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3ChannelTreeFilterPresetImportPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected channel tree filter presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Filters")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {

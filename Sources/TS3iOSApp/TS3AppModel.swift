@@ -6106,6 +6106,74 @@ struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3ChannelTreeFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "filter=\(treeFilter)",
+            "sort=\(sortMode)",
+            "sortAscending=\(sortAscending)",
+            "memberSort=\(memberSortMode)",
+            "memberSortAscending=\(memberSortAscending)",
+            "currentUserFirst=\(currentUserFirst)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Filter \(treeFilter)",
+            "Channel sort \(sortMode)",
+            sortAscending ? "Channels ascending" : "Channels descending",
+            "Member sort \(memberSortMode)",
+            memberSortAscending ? "Members ascending" : "Members descending",
+            currentUserFirst ? "Current user first" : "Current user not pinned"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3ChannelTreeFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported channel tree filter presets: \(importedPresetCount)",
+            "Usable channel tree filter presets: \(usablePresetCount)",
+            "New channel tree filter presets: \(newPresetCount)",
+            "Replacing channel tree filter presets: \(replacedPresetCount)",
+            "Skipped channel tree filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3EventFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -11867,18 +11935,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(channelTreeFilterPresets)
     }
 
+    func channelTreeFilterPresetsImportPreview(from data: Data) throws -> TS3ChannelTreeFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ChannelTreeFilterPreset].self, from: data)
+        let usable = sanitizedChannelTreeFilterPresets(imported)
+        let existingNames = Set(channelTreeFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ChannelTreeFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ChannelTreeFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importChannelTreeFilterPresets(from data: Data) throws -> Int {
+    func importChannelTreeFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ChannelTreeFilterPreset].self, from: data)
         var merged = channelTreeFilterPresets
-        for preset in sanitizedChannelTreeFilterPresets(imported) {
+        let selectedPresets = sanitizedChannelTreeFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         channelTreeFilterPresets = sanitizedChannelTreeFilterPresets(merged)
         saveChannelTreeFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func isChannelCollapsed(_ channelId: Int) -> Bool {
