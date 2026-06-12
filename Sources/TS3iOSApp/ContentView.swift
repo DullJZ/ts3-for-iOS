@@ -19511,6 +19511,12 @@ struct PermissionInfoRow: View {
 }
 
 struct TemporaryServerPasswordsSheet: View {
+    private struct TemporaryServerPasswordFilterPresetImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3TemporaryServerPasswordFilterPresetImportPreview
+        let id = UUID()
+    }
+
     private enum PasswordFilter: String, CaseIterable, Identifiable {
         case all
         case serverDefault
@@ -19594,6 +19600,7 @@ struct TemporaryServerPasswordsSheet: View {
     @State private var isConfirmingDeletePresets = false
     @State private var passwordsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
+    @State private var pendingPresetImport: TemporaryServerPasswordFilterPresetImportConfirmation?
 
     private var passwordsSnapshot: String {
         filteredPasswords.map { $0.clipboardSummary(channels: model.channels) }.joined(separator: "\n")
@@ -19786,10 +19793,22 @@ struct TemporaryServerPasswordsSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importPresets(from: url)
+                    preparePresetImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
+            }
+            .sheet(item: $pendingPresetImport) { confirmation in
+                TemporaryServerPasswordFilterPresetImportSheet(
+                    preview: confirmation.preview,
+                    importPresets: { selectedPresetIds in
+                        importPresets(data: confirmation.data, selectedPresetIds: selectedPresetIds)
+                        pendingPresetImport = nil
+                    },
+                    cancel: {
+                        pendingPresetImport = nil
+                    }
+                )
             }
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
@@ -20001,7 +20020,7 @@ struct TemporaryServerPasswordsSheet: View {
         }
     }
 
-    private func importPresets(from url: URL) {
+    private func preparePresetImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -20009,7 +20028,17 @@ struct TemporaryServerPasswordsSheet: View {
             }
         }
         do {
-            _ = try model.importTemporaryServerPasswordFilterPresets(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.temporaryServerPasswordFilterPresetsImportPreview(from: data)
+            pendingPresetImport = TemporaryServerPasswordFilterPresetImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresets(data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            _ = try model.importTemporaryServerPasswordFilterPresets(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -20021,6 +20050,97 @@ struct TemporaryServerPasswordsSheet: View {
         duration = .oneHour
         customMinutes = "60"
         targetChannelPassword = ""
+    }
+}
+
+private struct TemporaryServerPasswordFilterPresetImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3TemporaryServerPasswordFilterPresetImportPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3TemporaryServerPasswordFilterPresetImportPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected temporary password filter presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Temporary Password Filters")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
+        }
     }
 }
 

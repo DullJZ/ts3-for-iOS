@@ -121,17 +121,49 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
     }
 
     @MainActor
-    func testTemporaryPasswordPresetImportSanitizesInvalidFields() throws {
+    func testTemporaryPasswordPresetSummaryAndAccessibilityText() {
+        let preset = TS3TemporaryServerPasswordFilterPreset(
+            name: "Guest Passwords",
+            passwordFilter: "channelTarget",
+            sortMode: "duration",
+            sortAscending: true,
+            searchText: "ops"
+        )
+
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            "name=Guest Passwords | passwordFilter=channelTarget | sortMode=duration | sortAscending=true | search=ops"
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Temporary password filter channelTarget. Sort by duration. Ascending. Search ops"
+        )
+    }
+
+    @MainActor
+    func testTemporaryPasswordPresetImportPreviewSanitizesCandidates() throws {
         let model = TS3AppModel()
-        let presetName = "Temp Password Sanitized Preset"
-        deletePresets(named: presetName, in: model)
-        defer { deletePresets(named: presetName, in: model) }
+        let existingName = "Temp Password Existing Preview Preset"
+        let importedName = "Temp Password Sanitized Preview Preset"
+        deletePresets(named: existingName, in: model)
+        deletePresets(named: importedName, in: model)
+        defer {
+            deletePresets(named: existingName, in: model)
+            deletePresets(named: importedName, in: model)
+        }
+        model.saveTemporaryServerPasswordFilterPreset(
+            name: existingName,
+            passwordFilter: "serverDefault",
+            sortMode: "target",
+            sortAscending: false,
+            searchText: "old"
+        )
         let longSearch = String(repeating: "x", count: 140)
         let data = Data("""
         [
           {
             "id": "11111111-1111-1111-1111-111111111111",
-            "name": "  \(presetName)  ",
+            "name": "  \(importedName)  ",
             "passwordFilter": "bad-filter",
             "sortMode": "bad-sort",
             "sortAscending": true,
@@ -146,27 +178,62 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
             "sortAscending": false,
             "searchText": "ignored",
             "updatedAt": 1
+          },
+          {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "name": "\(existingName.lowercased())",
+            "passwordFilter": "withExpiration",
+            "sortMode": "duration",
+            "sortAscending": false,
+            "searchText": "replace",
+            "updatedAt": 2
           }
         ]
         """.utf8)
 
-        XCTAssertEqual(try model.importTemporaryServerPasswordFilterPresets(from: data), 2)
+        let preview = try model.temporaryServerPasswordFilterPresetsImportPreview(from: data)
 
-        let preset = try XCTUnwrap(model.temporaryServerPasswordFilterPresets.first { $0.name == presetName })
-        XCTAssertEqual(preset.passwordFilter, "all")
-        XCTAssertEqual(preset.sortMode, "created")
-        XCTAssertTrue(preset.sortAscending)
-        XCTAssertEqual(preset.searchText.count, 120)
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertTrue(preview.hasPresets)
+        XCTAssertEqual(preview.candidates.count, 2)
+        XCTAssertTrue(preview.containsPreset(id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!))
+        XCTAssertFalse(preview.containsPreset(id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!))
+        XCTAssertTrue(preview.clipboardSummary.contains("Imported temporary password filter presets: 3"))
+        XCTAssertTrue(preview.presetSummaries.contains { summary in
+            summary.contains("name=\(importedName)")
+                && summary.contains("passwordFilter=all")
+                && summary.contains("sortMode=created")
+                && summary.contains("search=\(String(longSearch.prefix(120)))")
+        })
     }
 
     @MainActor
-    func testTemporaryPasswordPresetImportMergesByNameAndExports() throws {
+    func testTemporaryPasswordPresetImportRestoresOnlySelectedPresets() throws {
         let model = TS3AppModel()
-        let presetName = "Temp Password Merge Preset"
-        deletePresets(named: presetName, in: model)
-        defer { deletePresets(named: presetName, in: model) }
+        let unchangedName = "Temp Password Unchanged Preset"
+        let replacedName = "Temp Password Replace Preset"
+        let skippedName = "Temp Password Skipped Preset"
+        deletePresets(named: unchangedName, in: model)
+        deletePresets(named: replacedName, in: model)
+        deletePresets(named: skippedName, in: model)
+        defer {
+            deletePresets(named: unchangedName, in: model)
+            deletePresets(named: replacedName, in: model)
+            deletePresets(named: skippedName, in: model)
+        }
         model.saveTemporaryServerPasswordFilterPreset(
-            name: presetName,
+            name: unchangedName,
+            passwordFilter: "serverDefault",
+            sortMode: "target",
+            sortAscending: false,
+            searchText: "old"
+        )
+        model.saveTemporaryServerPasswordFilterPreset(
+            name: replacedName,
             passwordFilter: "serverDefault",
             sortMode: "target",
             sortAscending: false,
@@ -177,28 +244,51 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
         [
           {
             "id": "33333333-3333-3333-3333-333333333333",
-            "name": "\(presetName.lowercased())",
+            "name": "\(replacedName.lowercased())",
             "passwordFilter": "channelTarget",
             "sortMode": "duration",
             "sortAscending": true,
             "searchText": "new",
             "updatedAt": 2
+          },
+          {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "name": "\(skippedName)",
+            "passwordFilter": "withCreator",
+            "sortMode": "creator",
+            "sortAscending": false,
+            "searchText": "skip",
+            "updatedAt": 3
           }
         ]
         """.utf8)
 
-        XCTAssertEqual(try model.importTemporaryServerPasswordFilterPresets(from: data), 1)
+        XCTAssertEqual(
+            try model.importTemporaryServerPasswordFilterPresets(
+                from: data,
+                selectedPresetIds: [UUID(uuidString: "33333333-3333-3333-3333-333333333333")!]
+            ),
+            1
+        )
 
         let matchingPresets = model.temporaryServerPasswordFilterPresets.filter {
-            $0.name.caseInsensitiveCompare(presetName) == .orderedSame
+            $0.name.caseInsensitiveCompare(replacedName) == .orderedSame
         }
         let preset = try XCTUnwrap(matchingPresets.first)
         XCTAssertEqual(matchingPresets.count, 1)
-        XCTAssertEqual(preset.name, presetName.lowercased())
+        XCTAssertEqual(preset.name, replacedName.lowercased())
         XCTAssertEqual(preset.passwordFilter, "channelTarget")
         XCTAssertEqual(preset.sortMode, "duration")
         XCTAssertTrue(preset.sortAscending)
         XCTAssertEqual(preset.searchText, "new")
+        XCTAssertTrue(model.temporaryServerPasswordFilterPresets.contains { preset in
+            preset.name == unchangedName
+                && preset.passwordFilter == "serverDefault"
+                && preset.searchText == "old"
+        })
+        XCTAssertFalse(model.temporaryServerPasswordFilterPresets.contains { preset in
+            preset.name == skippedName
+        })
         XCTAssertFalse(try model.temporaryServerPasswordFilterPresetsExportData().isEmpty)
     }
 

@@ -3826,6 +3826,68 @@ struct TS3TemporaryServerPasswordFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3TemporaryServerPasswordFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "passwordFilter=\(passwordFilter)",
+            "sortMode=\(sortMode)",
+            "sortAscending=\(sortAscending)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Temporary password filter \(passwordFilter)",
+            "Sort by \(sortMode)",
+            sortAscending ? "Ascending" : "Descending"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3TemporaryServerPasswordFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported temporary password filter presets: \(importedPresetCount)",
+            "Usable temporary password filter presets: \(usablePresetCount)",
+            "New temporary password filter presets: \(newPresetCount)",
+            "Replacing temporary password filter presets: \(replacedPresetCount)",
+            "Skipped temporary password filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3DatabaseClientFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -13356,18 +13418,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(temporaryServerPasswordFilterPresets)
     }
 
+    func temporaryServerPasswordFilterPresetsImportPreview(from data: Data) throws -> TS3TemporaryServerPasswordFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3TemporaryServerPasswordFilterPreset].self, from: data)
+        let usable = sanitizedTemporaryServerPasswordFilterPresets(imported)
+        let existingNames = Set(temporaryServerPasswordFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3TemporaryServerPasswordFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3TemporaryServerPasswordFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importTemporaryServerPasswordFilterPresets(from data: Data) throws -> Int {
+    func importTemporaryServerPasswordFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3TemporaryServerPasswordFilterPreset].self, from: data)
         var merged = temporaryServerPasswordFilterPresets
-        for preset in sanitizedTemporaryServerPasswordFilterPresets(imported) {
+        let selectedPresets = sanitizedTemporaryServerPasswordFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         temporaryServerPasswordFilterPresets = sanitizedTemporaryServerPasswordFilterPresets(merged)
         saveTemporaryServerPasswordFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func saveDatabaseClientFilterPreset(
