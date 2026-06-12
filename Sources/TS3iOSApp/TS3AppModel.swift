@@ -5215,6 +5215,41 @@ struct TS3IdentityProfile: Identifiable, Codable, Equatable {
     }
 }
 
+struct TS3IdentityProfileImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedProfileCount: Int
+    let usableProfileCount: Int
+    let newProfileCount: Int
+    let replacedProfileCount: Int
+    let skippedProfileCount: Int
+    let profileSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasProfiles: Bool {
+        usableProfileCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported identity profiles: \(importedProfileCount)",
+            "Usable identity profiles: \(usableProfileCount)",
+            "New identity profiles: \(newProfileCount)",
+            "Replacing identity profiles: \(replacedProfileCount)",
+            "Skipped identity profiles: \(skippedProfileCount)"
+        ]
+        lines.append(contentsOf: profileSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsProfile(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3ServerInfoSummary {
     var name: String
     var uniqueIdentifier: String?
@@ -14017,16 +14052,47 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
-    @discardableResult
-    func importIdentityProfiles(from data: Data) throws -> Int {
+    func identityProfilesExportData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(identityProfiles)
+    }
+
+    func identityProfilesImportPreview(from data: Data) throws -> TS3IdentityProfileImportPreview {
         let imported = try JSONDecoder().decode([TS3IdentityProfile].self, from: data)
-        for profile in try sanitizedIdentityProfiles(imported) {
+        let sanitized = sanitizedIdentityProfilesForImport(imported)
+        let existingUIDs = Set(identityProfiles.map { $0.uid.lowercased() })
+        let replacedCount = sanitized.profiles.filter { existingUIDs.contains($0.uid.lowercased()) }.count
+        return TS3IdentityProfileImportPreview(
+            importedProfileCount: imported.count,
+            usableProfileCount: sanitized.profiles.count,
+            newProfileCount: sanitized.profiles.count - replacedCount,
+            replacedProfileCount: replacedCount,
+            skippedProfileCount: sanitized.skippedCount,
+            profileSummaries: sanitized.profiles.map(\.clipboardSummary),
+            candidates: sanitized.profiles.map { profile in
+                TS3IdentityProfileImportPreview.Candidate(
+                    id: profile.id,
+                    summary: profile.clipboardSummary
+                )
+            }
+        )
+    }
+
+    @discardableResult
+    func importIdentityProfiles(from data: Data, selectedProfileIds: Set<UUID>? = nil) throws -> Int {
+        let imported = try JSONDecoder().decode([TS3IdentityProfile].self, from: data)
+        let sanitized = sanitizedIdentityProfilesForImport(imported).profiles.filter { profile in
+            guard let selectedProfileIds else { return true }
+            return selectedProfileIds.contains(profile.id)
+        }
+        for profile in sanitized {
             upsertIdentityProfile(profile, shouldSave: false)
         }
         saveIdentityProfiles()
         updateActiveIdentityProfile()
         lastError = nil
-        return imported.count
+        return sanitized.count
     }
 
     private func applyIdentitySnapshot(_ snapshot: TS3IdentitySnapshot) {
@@ -14406,6 +14472,31 @@ final class TS3AppModel: ObservableObject {
             ))
         }
         return sanitized
+    }
+
+    private func sanitizedIdentityProfilesForImport(_ profiles: [TS3IdentityProfile]) -> (profiles: [TS3IdentityProfile], skippedCount: Int) {
+        var seen: Set<String> = []
+        var sanitized: [TS3IdentityProfile] = []
+        var skippedCount = 0
+        for profile in profiles {
+            guard let snapshot = try? TS3Client.identitySnapshot(fromExportString: profile.exportString),
+                  seen.insert(snapshot.uid.lowercased()).inserted else {
+                skippedCount += 1
+                continue
+            }
+            let name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            sanitized.append(TS3IdentityProfile(
+                id: profile.id,
+                name: name.isEmpty ? defaultIdentityProfileName(uid: snapshot.uid) : name,
+                uid: snapshot.uid,
+                securityLevel: snapshot.securityLevel,
+                keyOffset: snapshot.keyOffset,
+                exportString: snapshot.exportString,
+                createdAt: profile.createdAt,
+                updatedAt: profile.updatedAt
+            ))
+        }
+        return (sanitized, skippedCount)
     }
 
     @discardableResult

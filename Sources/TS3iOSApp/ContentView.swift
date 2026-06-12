@@ -22731,16 +22731,26 @@ struct IdentitySummaryRows: View {
 }
 
 struct IdentityManagementSheet: View {
+    private struct IdentityProfileImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3IdentityProfileImportPreview
+        let id = UUID()
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var importedIdentity = ""
     @State private var identityProfileName = ""
     @State private var isImportingIdentity = false
     @State private var isImportingIdentityProfile = false
+    @State private var isImportingIdentityProfiles = false
     @State private var isExportingIdentity = false
     @State private var isExportingIdentitySnapshot = false
+    @State private var isExportingIdentityProfiles = false
+    @State private var pendingIdentityProfileImport: IdentityProfileImportConfirmation?
     @State private var identityExportDocument = TS3TextFileDocument()
     @State private var identitySnapshotDocument = TS3TextFileDocument()
+    @State private var identityProfilesDocument = TS3TextFileDocument()
 
     var body: some View {
         NavigationView {
@@ -22771,6 +22781,13 @@ struct IdentityManagementSheet: View {
                     .disabled(model.identitySummary.exportString.isEmpty)
                     Button("Import Backup as Profile") {
                         isImportingIdentityProfile = true
+                    }
+                    Button("Export Profile Backup") {
+                        exportIdentityProfiles()
+                    }
+                    .disabled(model.identityProfiles.isEmpty)
+                    Button("Import Profile Backup") {
+                        isImportingIdentityProfiles = true
                     }
                     if model.identityProfiles.isEmpty {
                         Text("No saved identity profiles")
@@ -22819,6 +22836,17 @@ struct IdentityManagementSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileImporter(
+                isPresented: $isImportingIdentityProfiles,
+                allowedContentTypes: [.json, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    prepareIdentityProfilesImport(from: url)
+                } else if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
             .fileExporter(
                 isPresented: $isExportingIdentity,
                 document: identityExportDocument,
@@ -22839,6 +22867,36 @@ struct IdentityManagementSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
+            .fileExporter(
+                isPresented: $isExportingIdentityProfiles,
+                document: identityProfilesDocument,
+                contentType: .json,
+                defaultFilename: "ts3-identity-profiles"
+            ) { result in
+                if case .failure(let error) = result {
+                    model.lastError = error.localizedDescription
+                }
+            }
+            .sheet(
+                item: $pendingIdentityProfileImport,
+                onDismiss: {
+                    pendingIdentityProfileImport = nil
+                }
+            ) { confirmation in
+                IdentityProfileImportSheet(
+                    preview: confirmation.preview,
+                    importProfiles: { selectedProfileIds in
+                        importIdentityProfiles(
+                            from: confirmation.data,
+                            selectedProfileIds: selectedProfileIds
+                        )
+                        pendingIdentityProfileImport = nil
+                    },
+                    cancel: {
+                        pendingIdentityProfileImport = nil
+                    }
+                )
+            }
         }
     }
 
@@ -22851,6 +22909,15 @@ struct IdentityManagementSheet: View {
     private func exportIdentitySnapshot() {
         identitySnapshotDocument = TS3TextFileDocument(data: model.identitySnapshotData())
         isExportingIdentitySnapshot = true
+    }
+
+    private func exportIdentityProfiles() {
+        do {
+            identityProfilesDocument = TS3TextFileDocument(data: try model.identityProfilesExportData())
+            isExportingIdentityProfiles = true
+        } catch {
+            model.lastError = error.localizedDescription
+        }
     }
 
     private func importIdentity(from url: URL) {
@@ -22888,6 +22955,121 @@ struct IdentityManagementSheet: View {
             identityProfileName = ""
         } catch {
             model.lastError = error.localizedDescription
+        }
+    }
+
+    private func prepareIdentityProfilesImport(from url: URL) {
+        let canAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if canAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            let preview = try model.identityProfilesImportPreview(from: data)
+            pendingIdentityProfileImport = IdentityProfileImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importIdentityProfiles(from data: Data, selectedProfileIds: Set<UUID>) {
+        do {
+            try model.importIdentityProfiles(from: data, selectedProfileIds: selectedProfileIds)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+}
+
+private struct IdentityProfileImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3IdentityProfileImportPreview
+    let importProfiles: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedProfileIds: Set<UUID>
+
+    init(
+        preview: TS3IdentityProfileImportPreview,
+        importProfiles: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importProfiles = importProfiles
+        self.cancel = cancel
+        _selectedProfileIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedProfileIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported profiles: \(preview.importedProfileCount)")
+                    Text("Usable profiles: \(preview.usableProfileCount)")
+                    Text("New profiles: \(preview.newProfileCount)")
+                    Text("Replacing profiles: \(preview.replacedProfileCount)")
+                    Text("Skipped profiles: \(preview.skippedProfileCount)")
+                    Button("Copy Profile Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedProfileIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedProfileIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedProfileIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedProfileIds.insert(candidate.id)
+                                    } else {
+                                        selectedProfileIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected identity profiles by UID and leaves unselected profiles unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Identity Profiles")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importProfiles(selectedProfileIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
         }
     }
 }

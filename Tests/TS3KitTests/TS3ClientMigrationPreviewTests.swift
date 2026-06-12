@@ -315,6 +315,71 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
     }
 
     @MainActor
+    func testIdentityProfileImportPreviewSkipsInvalidAndDuplicateProfiles() async throws {
+        let existingSnapshot = try await makeIdentitySnapshot()
+        let newSnapshot = try await makeIdentitySnapshot()
+        let existingProfile = identityProfile(name: "Existing Identity", snapshot: existingSnapshot)
+        let replacementProfile = identityProfile(name: "Replacement Identity", snapshot: existingSnapshot)
+        let newProfile = identityProfile(name: "New Identity", snapshot: newSnapshot)
+        let invalidProfile = TS3IdentityProfile(
+            name: "Broken Identity",
+            uid: "broken-\(UUID().uuidString)",
+            securityLevel: 0,
+            keyOffset: 0,
+            exportString: "not-a-valid-identity"
+        )
+
+        let target = TS3AppModel()
+        _ = try target.importIdentityProfiles(from: try identityProfilesData([existingProfile]))
+        let data = try identityProfilesData([
+            replacementProfile,
+            newProfile,
+            invalidProfile,
+            identityProfile(name: "Duplicate Identity", snapshot: existingSnapshot)
+        ])
+
+        let preview = try target.identityProfilesImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedProfileCount, 4)
+        XCTAssertEqual(preview.usableProfileCount, 2)
+        XCTAssertEqual(preview.newProfileCount, 1)
+        XCTAssertEqual(preview.replacedProfileCount, 1)
+        XCTAssertEqual(preview.skippedProfileCount, 2)
+        XCTAssertTrue(preview.hasProfiles)
+        XCTAssertTrue(preview.containsProfile(id: replacementProfile.id))
+        XCTAssertTrue(preview.containsProfile(id: newProfile.id))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped identity profiles: 2"))
+        XCTAssertTrue(preview.clipboardSummary.contains("name=Replacement Identity"))
+        XCTAssertTrue(preview.clipboardSummary.contains("name=New Identity"))
+    }
+
+    @MainActor
+    func testIdentityProfileImportRestoresOnlySelectedProfiles() async throws {
+        let existingSnapshot = try await makeIdentitySnapshot()
+        let selectedSnapshot = try await makeIdentitySnapshot()
+        let unselectedSnapshot = try await makeIdentitySnapshot()
+        let existingProfile = identityProfile(name: "Local Identity", snapshot: existingSnapshot)
+        let selectedProfile = identityProfile(name: "Selected Identity", snapshot: selectedSnapshot)
+        let unselectedProfile = identityProfile(name: "Unselected Identity", snapshot: unselectedSnapshot)
+        let replacementProfile = identityProfile(name: "Skipped Replacement", snapshot: existingSnapshot)
+
+        let target = TS3AppModel()
+        _ = try target.importIdentityProfiles(from: try identityProfilesData([existingProfile]))
+        let data = try identityProfilesData([replacementProfile, selectedProfile, unselectedProfile])
+
+        let restoredCount = try target.importIdentityProfiles(
+            from: data,
+            selectedProfileIds: [selectedProfile.id]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        XCTAssertTrue(target.identityProfiles.contains { $0.name == "Local Identity" && $0.uid == existingSnapshot.uid })
+        XCTAssertTrue(target.identityProfiles.contains { $0.name == "Selected Identity" && $0.uid == selectedSnapshot.uid })
+        XCTAssertFalse(target.identityProfiles.contains { $0.name == "Skipped Replacement" })
+        XCTAssertFalse(target.identityProfiles.contains { $0.uid == unselectedSnapshot.uid })
+    }
+
+    @MainActor
     func testClientMigrationCanRestoreOnlyChannelLayout() throws {
         let suffix = UUID().uuidString
         let source = TS3AppModel()
@@ -681,5 +746,28 @@ final class TS3ClientMigrationPreviewTests: XCTestCase {
             object.removeValue(forKey: key)
         }
         return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    private func makeIdentitySnapshot() async throws -> TS3IdentitySnapshot {
+        try await TS3Client(config: TS3ClientConfig(
+            host: "localhost",
+            port: 9987,
+            nickname: "Identity Test",
+            serverPassword: nil
+        )).regenerateIdentity(securityLevel: 0)
+    }
+
+    private func identityProfile(name: String, snapshot: TS3IdentitySnapshot) -> TS3IdentityProfile {
+        TS3IdentityProfile(
+            name: name,
+            uid: snapshot.uid,
+            securityLevel: snapshot.securityLevel,
+            keyOffset: snapshot.keyOffset,
+            exportString: snapshot.exportString
+        )
+    }
+
+    private func identityProfilesData(_ profiles: [TS3IdentityProfile]) throws -> Data {
+        try JSONEncoder().encode(profiles)
     }
 }
