@@ -213,6 +213,82 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(fallbackSender.nickname, "Fallback Sender")
     }
 
+    @MainActor
+    func testPokeEventCanCreateContactFromSenderUniqueIdentifier() throws {
+        let model = TS3AppModel()
+        model.contacts = []
+        let poke = TS3PokeSummary(
+            senderId: nil,
+            senderName: " Offline Sender ",
+            senderUniqueIdentifier: " uid-poke ",
+            message: "ping",
+            isOwnPoke: false
+        )
+
+        model.addContact(from: poke, status: .ignored, note: "from poke")
+
+        let contact = try XCTUnwrap(model.contacts.first)
+        XCTAssertEqual(contact.uniqueIdentifier, "uid-poke")
+        XCTAssertEqual(contact.nickname, "Offline Sender")
+        XCTAssertEqual(contact.status, .ignored)
+        XCTAssertEqual(contact.note, "from poke")
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testOfflineMessageCanCreateContactFromSenderUniqueIdentifier() throws {
+        let model = TS3AppModel()
+        model.contacts = []
+        let message = TS3OfflineMessageSummary(
+            id: 42,
+            senderUniqueIdentifier: " uid-message ",
+            senderName: " ",
+            subject: "hello",
+            message: "body",
+            timestamp: nil,
+            isRead: false
+        )
+
+        model.addContact(from: message, status: .blocked, note: "from inbox")
+
+        let contact = try XCTUnwrap(model.contacts.first)
+        XCTAssertEqual(contact.uniqueIdentifier, "uid-message")
+        XCTAssertEqual(contact.nickname, "uid-message")
+        XCTAssertEqual(contact.status, .blocked)
+        XCTAssertEqual(contact.note, "from inbox")
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testOfflineEventContactActionsRequireUniqueIdentifier() {
+        let model = TS3AppModel()
+        model.contacts = []
+        let poke = TS3PokeSummary(
+            senderId: nil,
+            senderName: "No UID",
+            senderUniqueIdentifier: nil,
+            message: "ping",
+            isOwnPoke: false
+        )
+        let message = TS3OfflineMessageSummary(
+            id: 43,
+            senderUniqueIdentifier: " ",
+            senderName: "No UID",
+            subject: "hello",
+            message: nil,
+            timestamp: nil,
+            isRead: false
+        )
+
+        model.addContact(from: poke)
+        XCTAssertTrue(model.contacts.isEmpty)
+        XCTAssertEqual(model.lastError, "The poke sender did not provide a unique id.")
+
+        model.addContact(from: message)
+        XCTAssertTrue(model.contacts.isEmpty)
+        XCTAssertEqual(model.lastError, "The offline message sender did not provide a unique id.")
+    }
+
     private func makeUser(
         id: Int = 12,
         databaseId: Int? = 44,

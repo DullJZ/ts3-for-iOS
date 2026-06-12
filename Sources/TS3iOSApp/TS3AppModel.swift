@@ -7705,6 +7705,34 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func addContact(from poke: TS3PokeSummary, status: TS3ContactStatus = .friend, note: String = "") {
+        guard let uniqueIdentifier = poke.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !uniqueIdentifier.isEmpty else {
+            lastError = "The poke sender did not provide a unique id."
+            return
+        }
+        addContact(
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: poke.senderName,
+            status: status,
+            note: note
+        )
+    }
+
+    func addContact(from message: TS3OfflineMessageSummary, status: TS3ContactStatus = .friend, note: String = "") {
+        guard let uniqueIdentifier = message.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !uniqueIdentifier.isEmpty else {
+            lastError = "The offline message sender did not provide a unique id."
+            return
+        }
+        addContact(
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: message.senderDisplayName,
+            status: status,
+            note: note
+        )
+    }
+
     func updateContact(_ contact: TS3ContactEntry, status: TS3ContactStatus, note: String) {
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         if status == .neutral && trimmedNote.isEmpty {

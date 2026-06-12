@@ -9175,6 +9175,10 @@ struct PokeEventRow: View {
                             isShowingOfflineReply = true
                         }
                         .buttonStyle(.borderless)
+                        Button("Add Contact") {
+                            model.addContact(from: poke)
+                        }
+                        .buttonStyle(.borderless)
                     }
                 }
                 .font(.caption)
@@ -9193,6 +9197,9 @@ struct PokeEventRow: View {
             if poke.senderUniqueIdentifier?.isEmpty == false {
                 Button("Offline Reply") {
                     isShowingOfflineReply = true
+                }
+                Button("Add Contact") {
+                    model.addContact(from: poke)
                 }
             }
             Button("Copy Poke") {
@@ -9227,6 +9234,10 @@ struct PokeEventRow: View {
         .accessibilityAction(named: "Offline Reply") {
             guard poke.senderUniqueIdentifier?.isEmpty == false else { return }
             isShowingOfflineReply = true
+        }
+        .accessibilityAction(named: "Add Contact") {
+            guard poke.senderUniqueIdentifier?.isEmpty == false else { return }
+            model.addContact(from: poke)
         }
         .sheet(item: $replyTarget) { user in
             ChatPrivateReplySheet(user: user)
@@ -10272,6 +10283,10 @@ struct OfflineMessageRow: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(!canUseServerActions)
+                    Button("Add Contact") {
+                        model.addContact(from: message)
+                    }
+                    .buttonStyle(.borderless)
                 }
                 Button(message.isRead ? "Mark Unread" : "Mark Read") {
                     model.markOfflineMessage(message, read: !message.isRead)
@@ -10313,6 +10328,11 @@ struct OfflineMessageRow: View {
                     TS3PlatformSupport.copyToPasteboard(sender)
                 }
             }
+            if canReply {
+                Button("Add Contact") {
+                    model.addContact(from: message)
+                }
+            }
             Button("Copy Summary") {
                 TS3PlatformSupport.copyToPasteboard(message.clipboardSummary)
             }
@@ -10330,6 +10350,10 @@ struct OfflineMessageRow: View {
         .accessibilityAction(named: "Delete Message") {
             guard canUseServerActions else { return }
             model.deleteOfflineMessage(message)
+        }
+        .accessibilityAction(named: "Add Contact") {
+            guard canReply else { return }
+            model.addContact(from: message)
         }
     }
 
