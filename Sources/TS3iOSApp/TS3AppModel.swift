@@ -5020,6 +5020,68 @@ struct TS3BookmarkSummary: Identifiable, Codable {
     }
 }
 
+extension TS3BookmarkSummary {
+    var clipboardSummary: String {
+        connectionSummaryParts(name: name).joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        connectionAccessibilityParts(name: name).joined(separator: ". ")
+    }
+
+    fileprivate func connectionSummaryParts(name: String? = nil) -> [String] {
+        var parts: [String] = []
+        if let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("name=\(name.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !folder.isEmpty {
+            parts.append("folder=\(folder)")
+        }
+        parts.append("server=\(host):\(port)")
+        parts.append("nickname=\(nickname.isEmpty ? "Not set" : nickname)")
+        if !phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("phonetic=\(phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("note=\(note.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("defaultChannel=\(defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        parts.append("serverPassword=\(serverPassword.isEmpty ? "No" : "Configured")")
+        parts.append("channelPassword=\(defaultChannelPassword.isEmpty ? "No" : "Configured")")
+        parts.append("privilegeKey=\(privilegeKey.isEmpty ? "No" : "Configured")")
+        return parts
+    }
+
+    fileprivate func connectionAccessibilityParts(name: String? = nil) -> [String] {
+        var parts: [String] = []
+        if let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("Name \(name.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !folder.isEmpty {
+            parts.append("Folder \(folder)")
+        }
+        parts.append("Server \(host):\(port)")
+        parts.append("Nickname \(nickname.isEmpty ? "not set" : nickname)")
+        if !phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("Phonetic nickname \(phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("Note \(note.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("Default channel \(defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        parts.append("Server password \(serverPassword.isEmpty ? "not configured" : "configured")")
+        parts.append("Channel password \(defaultChannelPassword.isEmpty ? "not configured" : "configured")")
+        parts.append("Privilege key \(privilegeKey.isEmpty ? "not configured" : "configured")")
+        return parts
+    }
+}
+
 struct TS3ConnectionFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -5116,6 +5178,33 @@ struct TS3ConnectionSnapshot: Identifiable, Codable {
         defaultChannel = try container.decode(String.self, forKey: .defaultChannel)
         defaultChannelPassword = try container.decode(String.self, forKey: .defaultChannelPassword)
         privilegeKey = try container.decodeIfPresent(String.self, forKey: .privilegeKey) ?? ""
+    }
+}
+
+extension TS3ConnectionSnapshot {
+    var clipboardSummary: String {
+        asBookmarkSummary.connectionSummaryParts().joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        asBookmarkSummary.connectionAccessibilityParts().joined(separator: ". ")
+    }
+
+    private var asBookmarkSummary: TS3BookmarkSummary {
+        TS3BookmarkSummary(
+            id: id,
+            name: host,
+            folder: "",
+            note: note,
+            host: host,
+            port: port,
+            nickname: nickname,
+            phoneticNickname: phoneticNickname,
+            serverPassword: serverPassword,
+            defaultChannel: defaultChannel,
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey
+        )
     }
 }
 

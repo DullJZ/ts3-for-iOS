@@ -1097,6 +1097,9 @@ struct ConnectView: View {
                                     Button("Copy Full Invite Link") {
                                         model.copyFullInviteLink(for: recentBookmark)
                                     }
+                                    Button("Copy Connection Summary") {
+                                        TS3PlatformSupport.copyToPasteboard(snapshot.clipboardSummary)
+                                    }
                                 } label: {
                                     Image(systemName: "link")
                                 }
@@ -1121,6 +1124,23 @@ struct ConnectView: View {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.borderless)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(snapshot.host)
+                            .accessibilityValue(snapshot.accessibilityValue)
+                            .accessibilityAction(named: "Copy Connection Summary") {
+                                TS3PlatformSupport.copyToPasteboard(snapshot.clipboardSummary)
+                            }
+                            .contextMenu {
+                                Button("Copy Connection Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(snapshot.clipboardSummary)
+                                }
+                                Button("Copy Safe Invite Link") {
+                                    model.copyInviteLink(for: bookmark(for: snapshot))
+                                }
+                                Button("Copy Full Invite Link") {
+                                    model.copyFullInviteLink(for: bookmark(for: snapshot))
+                                }
                             }
                         }
                     }
@@ -1187,6 +1207,9 @@ struct ConnectView: View {
                                     Button("Copy Full Invite Link") {
                                         model.copyFullInviteLink(for: bookmark)
                                     }
+                                    Button("Copy Bookmark Summary") {
+                                        TS3PlatformSupport.copyToPasteboard(bookmark.clipboardSummary)
+                                    }
                                 } label: {
                                     Image(systemName: "link")
                                 }
@@ -1203,6 +1226,23 @@ struct ConnectView: View {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.borderless)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(bookmark.name)
+                            .accessibilityValue(bookmark.accessibilityValue)
+                            .accessibilityAction(named: "Copy Bookmark Summary") {
+                                TS3PlatformSupport.copyToPasteboard(bookmark.clipboardSummary)
+                            }
+                            .contextMenu {
+                                Button("Copy Bookmark Summary") {
+                                    TS3PlatformSupport.copyToPasteboard(bookmark.clipboardSummary)
+                                }
+                                Button("Copy Safe Invite Link") {
+                                    model.copyInviteLink(for: bookmark)
+                                }
+                                Button("Copy Full Invite Link") {
+                                    model.copyFullInviteLink(for: bookmark)
+                                }
                             }
                         }
                     }
@@ -1903,6 +1943,23 @@ struct ConnectView: View {
         let note = bookmark.note.trimmingCharacters(in: .whitespacesAndNewlines)
         let location = folder.isEmpty ? server : "\(folder) · \(server)"
         return note.isEmpty ? location : "\(location) · \(note)"
+    }
+
+    private func bookmark(for snapshot: TS3ConnectionSnapshot) -> TS3BookmarkSummary {
+        TS3BookmarkSummary(
+            id: snapshot.id,
+            name: snapshot.host,
+            folder: "",
+            note: snapshot.note,
+            host: snapshot.host,
+            port: snapshot.port,
+            nickname: snapshot.nickname,
+            phoneticNickname: snapshot.phoneticNickname,
+            serverPassword: snapshot.serverPassword,
+            defaultChannel: snapshot.defaultChannel,
+            defaultChannelPassword: snapshot.defaultChannelPassword,
+            privilegeKey: snapshot.privilegeKey
+        )
     }
 
     private func sortedBookmarks(_ bookmarks: [TS3BookmarkSummary]) -> [TS3BookmarkSummary] {
