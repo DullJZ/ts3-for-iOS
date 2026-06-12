@@ -6420,6 +6420,68 @@ struct TS3ChatFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3ChatFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "messageFilter=\(messageFilter)",
+            "senderFilter=\(senderFilter)",
+            "newestFirst=\(newestFirst)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Message filter \(messageFilter)",
+            "Sender filter \(senderFilter)",
+            newestFirst ? "Newest first" : "Oldest first"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3ChatFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported chat filter presets: \(importedPresetCount)",
+            "Usable chat filter presets: \(usablePresetCount)",
+            "New chat filter presets: \(newPresetCount)",
+            "Replacing chat filter presets: \(replacedPresetCount)",
+            "Skipped chat filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 enum TS3WhisperRoute: Equatable {
     case none
     case server
@@ -12434,18 +12496,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(chatFilterPresets)
     }
 
+    func chatFilterPresetsImportPreview(from data: Data) throws -> TS3ChatFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ChatFilterPreset].self, from: data)
+        let usable = sanitizedChatFilterPresets(imported)
+        let existingNames = Set(chatFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ChatFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ChatFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importChatFilterPresets(from data: Data) throws -> Int {
+    func importChatFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ChatFilterPreset].self, from: data)
         var merged = chatFilterPresets
-        for preset in sanitizedChatFilterPresets(imported) {
+        let selectedPresets = sanitizedChatFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         chatFilterPresets = sanitizedChatFilterPresets(merged)
         saveChatFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func saveCurrentFileBrowserBookmark(name: String) {
