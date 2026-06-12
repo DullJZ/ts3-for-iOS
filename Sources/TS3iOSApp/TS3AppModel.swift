@@ -3590,6 +3590,64 @@ struct TS3BanFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3BanFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "banFilter=\(banFilter)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Ban filter \(banFilter)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3BanFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported ban filter presets: \(importedPresetCount)",
+            "Usable ban filter presets: \(usablePresetCount)",
+            "New ban filter presets: \(newPresetCount)",
+            "Replacing ban filter presets: \(replacedPresetCount)",
+            "Skipped ban filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3ComplaintFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -12976,18 +13034,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(banFilterPresets)
     }
 
+    func banFilterPresetsImportPreview(from data: Data) throws -> TS3BanFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3BanFilterPreset].self, from: data)
+        let usable = sanitizedBanFilterPresets(imported)
+        let existingNames = Set(banFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3BanFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3BanFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importBanFilterPresets(from data: Data) throws -> Int {
+    func importBanFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3BanFilterPreset].self, from: data)
         var merged = banFilterPresets
-        for preset in sanitizedBanFilterPresets(imported) {
+        let selectedPresets = sanitizedBanFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         banFilterPresets = sanitizedBanFilterPresets(merged)
         saveBanFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func offlineMessageArchiveData() throws -> Data {

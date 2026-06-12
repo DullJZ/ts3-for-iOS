@@ -116,6 +116,109 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(entry.accessibilityValue, "IP 203.0.113.9. Duration Permanent")
     }
 
+    func testBanFilterPresetSummaryAndAccessibilityText() {
+        let preset = makeBanFilterPreset(
+            id: UUID(),
+            name: "Permanent Bans",
+            banFilter: "permanent",
+            searchText: "spam"
+        )
+
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            "name=Permanent Bans | banFilter=permanent | search=spam"
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Ban filter permanent. Search spam"
+        )
+    }
+
+    @MainActor
+    func testBanFilterPresetImportPreviewSanitizesCandidates() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let invalidId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Ban Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importBanFilterPresets(from: encodedBanFilterPresets([
+            makeBanFilterPreset(id: existingId, name: existingName, banFilter: "ip", searchText: "keep")
+        ]))
+        let data = try encodedBanFilterPresets([
+            makeBanFilterPreset(
+                id: existingId,
+                name: " \(existingName) ",
+                banFilter: "invalid",
+                searchText: "  search value  "
+            ),
+            makeBanFilterPreset(
+                id: newId,
+                name: " Temporary Ban Filter \(suffix) ",
+                banFilter: "temporary",
+                searchText: String(repeating: "x", count: 140)
+            ),
+            makeBanFilterPreset(
+                id: invalidId,
+                name: "   ",
+                banFilter: "name",
+                searchText: "ignored"
+            )
+        ])
+
+        let preview = try model.banFilterPresetsImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertEqual(preview.candidates.map(\.id), [existingId, newId])
+        XCTAssertEqual(preview.presetSummaries, [
+            "name=\(existingName) | banFilter=all | search=search value",
+            "name=Temporary Ban Filter \(suffix) | banFilter=temporary | search=\(String(repeating: "x", count: 120))"
+        ])
+        XCTAssertTrue(preview.containsPreset(id: newId))
+        XCTAssertFalse(preview.containsPreset(id: invalidId))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped ban filter presets: 1"))
+    }
+
+    @MainActor
+    func testBanFilterPresetImportRestoresOnlySelectedPresets() throws {
+        let existingId = UUID()
+        let selectedId = UUID()
+        let unselectedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Ban Filter \(suffix)"
+        let selectedName = "Selected Ban Filter \(suffix)"
+        let unselectedName = "Unselected Ban Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importBanFilterPresets(from: encodedBanFilterPresets([
+            makeBanFilterPreset(id: existingId, name: existingName, banFilter: "ip", searchText: "keep")
+        ]))
+        let data = try encodedBanFilterPresets([
+            makeBanFilterPreset(id: existingId, name: existingName, banFilter: "temporary", searchText: "replace"),
+            makeBanFilterPreset(id: selectedId, name: selectedName, banFilter: "permanent", searchText: "ops"),
+            makeBanFilterPreset(id: unselectedId, name: unselectedName, banFilter: "uniqueIdentifier", searchText: "away")
+        ])
+
+        let restoredCount = try model.importBanFilterPresets(
+            from: data,
+            selectedPresetIds: [selectedId]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        let existing = try XCTUnwrap(model.banFilterPresets.first { $0.name == existingName })
+        XCTAssertEqual(existing.banFilter, "ip")
+        XCTAssertEqual(existing.searchText, "keep")
+        let selected = try XCTUnwrap(model.banFilterPresets.first { $0.id == selectedId })
+        XCTAssertEqual(selected.name, selectedName)
+        XCTAssertEqual(selected.banFilter, "permanent")
+        XCTAssertEqual(selected.searchText, "ops")
+        XCTAssertFalse(model.banFilterPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
+        XCTAssertEqual(model.lastError, nil)
+    }
+
     @MainActor
     func testBanBackupPreviewCountsTargetsAndSkipsEmptyOrDuplicateRules() throws {
         let model = TS3AppModel()
@@ -224,6 +327,25 @@ final class TS3BanBackupTests: XCTestCase {
                 "ip=192.0.2.10 | duration=permanent | reason=spam",
                 "name=Bad Guest | lastNickname=Recent Guest | duration=600s"
             ]
+        )
+    }
+
+    private func encodedBanFilterPresets(_ presets: [TS3BanFilterPreset]) throws -> Data {
+        try JSONEncoder().encode(presets)
+    }
+
+    private func makeBanFilterPreset(
+        id: UUID,
+        name: String,
+        banFilter: String,
+        searchText: String
+    ) -> TS3BanFilterPreset {
+        TS3BanFilterPreset(
+            id: id,
+            name: name,
+            banFilter: banFilter,
+            searchText: searchText,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
     }
 
