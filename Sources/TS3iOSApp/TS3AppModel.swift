@@ -3444,6 +3444,70 @@ struct TS3OfflineMessageFilterPreset: Identifiable, Codable {
     }
 }
 
+extension TS3OfflineMessageFilterPreset {
+    var clipboardSummary: String {
+        var parts = [
+            "name=\(name)",
+            "readFilter=\(readFilter)",
+            "contentFilter=\(contentFilter)",
+            "sortMode=\(sortMode)",
+            "sortAscending=\(sortAscending)"
+        ]
+        if !searchText.isEmpty {
+            parts.append("search=\(searchText)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        var parts = [
+            "Read filter \(readFilter)",
+            "Content filter \(contentFilter)",
+            "Sort by \(sortMode)",
+            sortAscending ? "Ascending" : "Descending"
+        ]
+        if !searchText.isEmpty {
+            parts.append("Search \(searchText)")
+        }
+        return parts.joined(separator: ". ")
+    }
+}
+
+struct TS3OfflineMessageFilterPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported offline message filter presets: \(importedPresetCount)",
+            "Usable offline message filter presets: \(usablePresetCount)",
+            "New offline message filter presets: \(newPresetCount)",
+            "Replacing offline message filter presets: \(replacedPresetCount)",
+            "Skipped offline message filter presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3BanFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -12694,18 +12758,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(offlineMessageFilterPresets)
     }
 
+    func offlineMessageFilterPresetsImportPreview(from data: Data) throws -> TS3OfflineMessageFilterPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3OfflineMessageFilterPreset].self, from: data)
+        let usable = sanitizedOfflineMessageFilterPresets(imported)
+        let existingNames = Set(offlineMessageFilterPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3OfflineMessageFilterPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3OfflineMessageFilterPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importOfflineMessageFilterPresets(from data: Data) throws -> Int {
+    func importOfflineMessageFilterPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3OfflineMessageFilterPreset].self, from: data)
         var merged = offlineMessageFilterPresets
-        for preset in sanitizedOfflineMessageFilterPresets(imported) {
+        let selectedPresets = sanitizedOfflineMessageFilterPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         offlineMessageFilterPresets = sanitizedOfflineMessageFilterPresets(merged)
         saveOfflineMessageFilterPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func saveBanFilterPreset(name: String, banFilter: String, searchText: String) {

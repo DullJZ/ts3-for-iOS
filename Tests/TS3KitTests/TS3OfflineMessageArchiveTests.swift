@@ -242,4 +242,190 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
             "Read. From uid-only. Subject Pending. Message body not loaded"
         )
     }
+
+    func testOfflineMessageFilterPresetSummaryAndAccessibilityText() {
+        let preset = makeOfflineMessageFilterPreset(
+            id: UUID(),
+            name: "Unread Inbox",
+            readFilter: "unread",
+            contentFilter: "canReply",
+            sortMode: "sender",
+            sortAscending: true,
+            searchText: "ops"
+        )
+
+        XCTAssertEqual(
+            preset.clipboardSummary,
+            "name=Unread Inbox | readFilter=unread | contentFilter=canReply | sortMode=sender | sortAscending=true | search=ops"
+        )
+        XCTAssertEqual(
+            preset.accessibilityValue,
+            "Read filter unread. Content filter canReply. Sort by sender. Ascending. Search ops"
+        )
+    }
+
+    @MainActor
+    func testOfflineMessageFilterPresetImportPreviewSanitizesCandidates() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let invalidId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Inbox Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importOfflineMessageFilterPresets(from: encodedOfflineMessageFilterPresets([
+            makeOfflineMessageFilterPreset(
+                id: existingId,
+                name: existingName,
+                readFilter: "read",
+                contentFilter: "withBody",
+                sortMode: "sender",
+                sortAscending: true,
+                searchText: "keep"
+            )
+        ]))
+        let data = try encodedOfflineMessageFilterPresets([
+            makeOfflineMessageFilterPreset(
+                id: existingId,
+                name: " \(existingName) ",
+                readFilter: "invalidRead",
+                contentFilter: "invalidContent",
+                sortMode: "invalidSort",
+                sortAscending: false,
+                searchText: "  search value  "
+            ),
+            makeOfflineMessageFilterPreset(
+                id: newId,
+                name: " Reply Inbox \(suffix) ",
+                readFilter: "unread",
+                contentFilter: "canReply",
+                sortMode: "subject",
+                sortAscending: true,
+                searchText: String(repeating: "x", count: 140)
+            ),
+            makeOfflineMessageFilterPreset(
+                id: invalidId,
+                name: "   ",
+                readFilter: "read",
+                contentFilter: "withBody",
+                sortMode: "id",
+                sortAscending: true,
+                searchText: "ignored"
+            )
+        ])
+
+        let preview = try model.offlineMessageFilterPresetsImportPreview(from: data)
+
+        XCTAssertEqual(preview.importedPresetCount, 3)
+        XCTAssertEqual(preview.usablePresetCount, 2)
+        XCTAssertEqual(preview.newPresetCount, 1)
+        XCTAssertEqual(preview.replacedPresetCount, 1)
+        XCTAssertEqual(preview.skippedPresetCount, 1)
+        XCTAssertEqual(preview.candidates.map(\.id), [existingId, newId])
+        XCTAssertEqual(preview.presetSummaries, [
+            "name=\(existingName) | readFilter=all | contentFilter=all | sortMode=timestamp | sortAscending=false | search=search value",
+            "name=Reply Inbox \(suffix) | readFilter=unread | contentFilter=canReply | sortMode=subject | sortAscending=true | search=\(String(repeating: "x", count: 120))"
+        ])
+        XCTAssertTrue(preview.containsPreset(id: newId))
+        XCTAssertFalse(preview.containsPreset(id: invalidId))
+        XCTAssertTrue(preview.clipboardSummary.contains("Skipped offline message filter presets: 1"))
+    }
+
+    @MainActor
+    func testOfflineMessageFilterPresetImportRestoresOnlySelectedPresets() throws {
+        let existingId = UUID()
+        let selectedId = UUID()
+        let unselectedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Inbox Filter \(suffix)"
+        let selectedName = "Selected Inbox Filter \(suffix)"
+        let unselectedName = "Unselected Inbox Filter \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importOfflineMessageFilterPresets(from: encodedOfflineMessageFilterPresets([
+            makeOfflineMessageFilterPreset(
+                id: existingId,
+                name: existingName,
+                readFilter: "read",
+                contentFilter: "withBody",
+                sortMode: "sender",
+                sortAscending: true,
+                searchText: "keep"
+            )
+        ]))
+        let data = try encodedOfflineMessageFilterPresets([
+            makeOfflineMessageFilterPreset(
+                id: existingId,
+                name: existingName,
+                readFilter: "unread",
+                contentFilter: "canReply",
+                sortMode: "subject",
+                sortAscending: false,
+                searchText: "replace"
+            ),
+            makeOfflineMessageFilterPreset(
+                id: selectedId,
+                name: selectedName,
+                readFilter: "unread",
+                contentFilter: "unknownSender",
+                sortMode: "id",
+                sortAscending: true,
+                searchText: "ops"
+            ),
+            makeOfflineMessageFilterPreset(
+                id: unselectedId,
+                name: unselectedName,
+                readFilter: "all",
+                contentFilter: "bodyNotLoaded",
+                sortMode: "timestamp",
+                sortAscending: false,
+                searchText: "away"
+            )
+        ])
+
+        let restoredCount = try model.importOfflineMessageFilterPresets(
+            from: data,
+            selectedPresetIds: [selectedId]
+        )
+
+        XCTAssertEqual(restoredCount, 1)
+        let existing = try XCTUnwrap(model.offlineMessageFilterPresets.first { $0.name == existingName })
+        XCTAssertEqual(existing.readFilter, "read")
+        XCTAssertEqual(existing.contentFilter, "withBody")
+        XCTAssertEqual(existing.sortMode, "sender")
+        XCTAssertEqual(existing.sortAscending, true)
+        XCTAssertEqual(existing.searchText, "keep")
+        let selected = try XCTUnwrap(model.offlineMessageFilterPresets.first { $0.id == selectedId })
+        XCTAssertEqual(selected.name, selectedName)
+        XCTAssertEqual(selected.readFilter, "unread")
+        XCTAssertEqual(selected.contentFilter, "unknownSender")
+        XCTAssertEqual(selected.sortMode, "id")
+        XCTAssertEqual(selected.sortAscending, true)
+        XCTAssertEqual(selected.searchText, "ops")
+        XCTAssertFalse(model.offlineMessageFilterPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
+        XCTAssertEqual(model.lastError, nil)
+    }
+
+    private func encodedOfflineMessageFilterPresets(_ presets: [TS3OfflineMessageFilterPreset]) throws -> Data {
+        try JSONEncoder().encode(presets)
+    }
+
+    private func makeOfflineMessageFilterPreset(
+        id: UUID,
+        name: String,
+        readFilter: String,
+        contentFilter: String,
+        sortMode: String,
+        sortAscending: Bool,
+        searchText: String
+    ) -> TS3OfflineMessageFilterPreset {
+        TS3OfflineMessageFilterPreset(
+            id: id,
+            name: name,
+            readFilter: readFilter,
+            contentFilter: contentFilter,
+            sortMode: sortMode,
+            sortAscending: sortAscending,
+            searchText: searchText,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
 }
