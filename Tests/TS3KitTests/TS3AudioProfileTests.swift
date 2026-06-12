@@ -281,6 +281,17 @@ final class TS3AudioProfileTests: XCTestCase {
                 "key=uid:new | volume=25% | muted=false"
             ]
         )
+        XCTAssertEqual(preview.candidates.map(\.id), ["client:muted", "uid:existing", "uid:new"])
+        XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "key=client:muted | volume=100% | muted=true",
+                "key=uid:existing | volume=400% | muted=true",
+                "key=uid:new | volume=25% | muted=false"
+            ]
+        )
+        XCTAssertTrue(preview.containsPreference(id: "uid:existing"))
+        XCTAssertFalse(preview.containsPreference(id: "uid:default"))
         XCTAssertEqual(
             preview.clipboardSummary,
             """
@@ -309,5 +320,32 @@ final class TS3AudioProfileTests: XCTestCase {
         XCTAssertEqual(model.userPlaybackPreferences["uid:new"]?.volume, 0.25)
         XCTAssertEqual(model.userPlaybackPreferences["uid:new"]?.isMuted, false)
         XCTAssertNil(model.userPlaybackPreferences["uid:default"])
+    }
+
+    @MainActor
+    func testUserPlaybackImportCanRestoreSelectedPreferences() throws {
+        let model = TS3AppModel()
+        model.resetUserPlaybackPreferences()
+        model.userPlaybackPreferences = [
+            "uid:old": TS3UserPlaybackPreference(volume: 0.5, isMuted: false)
+        ]
+        let importedPreferences = [
+            "uid:first": TS3UserPlaybackPreference(volume: 0.25, isMuted: false),
+            "uid:second": TS3UserPlaybackPreference(volume: 2, isMuted: true),
+            "client:third": TS3UserPlaybackPreference(volume: 6, isMuted: true)
+        ]
+        let data = try JSONEncoder().encode(importedPreferences)
+
+        try model.importUserPlaybackPreferences(from: data, selectedPreferenceIds: ["uid:second", "client:third"])
+
+        XCTAssertEqual(Set(model.userPlaybackPreferences.keys), ["uid:second", "client:third"])
+        XCTAssertEqual(model.userPlaybackPreferences["uid:second"]?.volume, 2)
+        XCTAssertEqual(model.userPlaybackPreferences["uid:second"]?.isMuted, true)
+        XCTAssertEqual(model.userPlaybackPreferences["client:third"]?.volume, 4)
+        XCTAssertEqual(model.userPlaybackPreferences["client:third"]?.isMuted, true)
+        XCTAssertNil(model.userPlaybackPreferences["uid:first"])
+        XCTAssertNil(model.userPlaybackPreferences["uid:old"])
+        XCTAssertEqual(model.lastError, nil)
+        model.resetUserPlaybackPreferences()
     }
 }

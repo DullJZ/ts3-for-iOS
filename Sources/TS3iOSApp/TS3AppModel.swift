@@ -1307,6 +1307,11 @@ struct TS3UserPlaybackPreferenceSummary: Identifiable {
 }
 
 struct TS3UserPlaybackImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: String
+        let summary: String
+    }
+
     let importedPreferenceCount: Int
     let usablePreferenceCount: Int
     let newPreferenceCount: Int
@@ -1316,6 +1321,7 @@ struct TS3UserPlaybackImportPreview {
     let mutedPreferenceCount: Int
     let preferenceSummaries: [String]
     let adjustmentSummaries: [String]
+    let candidates: [Candidate]
 
     var hasPreferences: Bool {
         usablePreferenceCount > 0
@@ -1334,6 +1340,10 @@ struct TS3UserPlaybackImportPreview {
         lines.append(contentsOf: adjustmentSummaries)
         lines.append(contentsOf: preferenceSummaries)
         return lines.joined(separator: "\n")
+    }
+
+    func containsPreference(id: String) -> Bool {
+        candidates.contains { $0.id == id }
     }
 }
 
@@ -6349,6 +6359,14 @@ final class TS3AppModel: ObservableObject {
             .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
             .prefix(10)
             .map { Self.userPlaybackPreferenceSummary(key: $0.key, preference: $0.value) }
+        let candidates = sanitized
+            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+            .map { key, preference in
+                TS3UserPlaybackImportPreview.Candidate(
+                    id: key,
+                    summary: Self.userPlaybackPreferenceSummary(key: key, preference: preference)
+                )
+            }
         return TS3UserPlaybackImportPreview(
             importedPreferenceCount: decoded.count,
             usablePreferenceCount: sanitized.count,
@@ -6358,13 +6376,18 @@ final class TS3AppModel: ObservableObject {
             adjustedPreferenceCount: adjustmentSummaries.count,
             mutedPreferenceCount: sanitized.values.filter(\.isMuted).count,
             preferenceSummaries: Array(preferenceSummaries),
-            adjustmentSummaries: Array(adjustmentSummaries.prefix(10))
+            adjustmentSummaries: Array(adjustmentSummaries.prefix(10)),
+            candidates: candidates
         )
     }
 
-    func importUserPlaybackPreferences(from data: Data) throws {
+    func importUserPlaybackPreferences(from data: Data, selectedPreferenceIds: Set<String>? = nil) throws {
         let decoded = try JSONDecoder().decode([String: TS3UserPlaybackPreference].self, from: data)
-        userPlaybackPreferences = sanitizedUserPlaybackPreferences(decoded)
+        let sanitized = sanitizedUserPlaybackPreferences(decoded)
+        userPlaybackPreferences = sanitized.filter { key, _ in
+            guard let selectedPreferenceIds else { return true }
+            return selectedPreferenceIds.contains(key)
+        }
         saveUserPlaybackPreferences()
         applyOnlineUserPlaybackPreferences()
         syncBlockedContactPlayback()

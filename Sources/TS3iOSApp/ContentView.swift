@@ -25556,8 +25556,8 @@ struct AudioSettingsSheet: View {
             .sheet(item: $pendingUserPlaybackImport) { confirmation in
                 UserPlaybackImportPreviewSheet(
                     preview: confirmation.preview,
-                    importPreferences: {
-                        importUserPlayback(data: confirmation.data)
+                    importPreferences: { selectedPreferenceIds in
+                        importUserPlayback(data: confirmation.data, selectedPreferenceIds: selectedPreferenceIds)
                         pendingUserPlaybackImport = nil
                     },
                     cancel: {
@@ -25659,9 +25659,9 @@ struct AudioSettingsSheet: View {
         }
     }
 
-    private func importUserPlayback(data: Data) {
+    private func importUserPlayback(data: Data, selectedPreferenceIds: Set<String>) {
         do {
-            try model.importUserPlaybackPreferences(from: data)
+            try model.importUserPlaybackPreferences(from: data, selectedPreferenceIds: selectedPreferenceIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -25929,8 +25929,13 @@ private struct AudioProfileImportPreviewSheet: View {
 
 private struct UserPlaybackImportPreviewSheet: View {
     let preview: TS3UserPlaybackImportPreview
-    let importPreferences: () -> Void
+    let importPreferences: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedPreferenceIds: Set<String> = []
+
+    private var validSelectedPreferenceIds: Set<String> {
+        Set(selectedPreferenceIds.filter(preview.containsPreference))
+    }
 
     var body: some View {
         NavigationView {
@@ -25942,6 +25947,15 @@ private struct UserPlaybackImportPreviewSheet: View {
                     if preview.hasPreferences {
                         Button("Copy Playback Import Summary") {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                        }
+                        HStack {
+                            Button("Select All") {
+                                selectedPreferenceIds = Set(preview.candidates.map(\.id))
+                            }
+                            Button("Clear") {
+                                selectedPreferenceIds = []
+                            }
+                            .disabled(selectedPreferenceIds.isEmpty)
                         }
                     }
                 }
@@ -25960,23 +25974,39 @@ private struct UserPlaybackImportPreviewSheet: View {
 
                 if !preview.preferenceSummaries.isEmpty {
                     Section(header: Text("Preferences")) {
-                        ForEach(Array(preview.preferenceSummaries.enumerated()), id: \.offset) { _, summary in
-                            Text(summary)
-                                .font(.caption2)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedPreferenceIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPreferenceIds.insert(candidate.id)
+                                    } else {
+                                        selectedPreferenceIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                Text(candidate.summary)
+                                    .font(.caption2)
+                                    .lineLimit(2)
+                                    .truncationMode(.middle)
+                            }
                         }
                     }
                 }
 
                 Section(header: Text("Import Behavior")) {
-                    Text("Import replaces all local per-user playback overrides, clamps volume values to supported ranges, and skips blank or default unmuted preferences.")
+                    Text("Import replaces local per-user playback overrides with the selected preferences, clamps volume values to supported ranges, and skips blank or default unmuted preferences.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Import Playback")
             .ts3InlineNavigationTitle()
+            .onAppear {
+                if selectedPreferenceIds.isEmpty {
+                    selectedPreferenceIds = Set(preview.candidates.map(\.id))
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Button("Cancel") {
@@ -25985,9 +26015,9 @@ private struct UserPlaybackImportPreviewSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("Import") {
-                        importPreferences()
+                        importPreferences(validSelectedPreferenceIds)
                     }
-                    .disabled(!preview.hasPreferences)
+                    .disabled(!preview.hasPreferences || validSelectedPreferenceIds.isEmpty)
                 }
             }
         }
