@@ -21609,6 +21609,12 @@ struct WhisperSheet: View {
         }
     }
 
+    private struct WhisperPresetBackupImportConfirmation: Identifiable {
+        let data: Data
+        let preview: TS3WhisperPresetBackupPreview
+        let id = UUID()
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var groupWhisperType: TS3GroupWhisperType = .allClients
@@ -21629,6 +21635,7 @@ struct WhisperSheet: View {
     @State private var isExportingFilterPresets = false
     @State private var isImportingFilterPresets = false
     @State private var confirmation: WhisperConfirmation?
+    @State private var pendingPresetBackupImport: WhisperPresetBackupImportConfirmation?
     @State private var routeDocument = TS3TextFileDocument()
     @State private var activationLogDocument = TS3TextFileDocument()
     @State private var presetBackupDocument = TS3TextFileDocument()
@@ -22137,7 +22144,7 @@ struct WhisperSheet: View {
                 allowsMultipleSelection: false
             ) { result in
                 if case .success(let urls) = result, let url = urls.first {
-                    importPresetBackup(from: url)
+                    preparePresetBackupImport(from: url)
                 } else if case .failure(let error) = result {
                     model.lastError = error.localizedDescription
                 }
@@ -22192,6 +22199,26 @@ struct WhisperSheet: View {
                     )
                 }
             }
+            .sheet(
+                item: $pendingPresetBackupImport,
+                onDismiss: {
+                    pendingPresetBackupImport = nil
+                }
+            ) { confirmation in
+                WhisperPresetBackupImportSheet(
+                    preview: confirmation.preview,
+                    importPresets: { selectedPresetIds in
+                        importPresetBackup(
+                            from: confirmation.data,
+                            selectedPresetIds: selectedPresetIds
+                        )
+                        pendingPresetBackupImport = nil
+                    },
+                    cancel: {
+                        pendingPresetBackupImport = nil
+                    }
+                )
+            }
         }
     }
 
@@ -22204,7 +22231,7 @@ struct WhisperSheet: View {
         }
     }
 
-    private func importPresetBackup(from url: URL) {
+    private func preparePresetBackupImport(from url: URL) {
         let canAccess = url.startAccessingSecurityScopedResource()
         defer {
             if canAccess {
@@ -22212,7 +22239,17 @@ struct WhisperSheet: View {
             }
         }
         do {
-            try model.importWhisperPresetBackup(from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let preview = try model.whisperPresetBackupPreview(from: data)
+            pendingPresetBackupImport = WhisperPresetBackupImportConfirmation(data: data, preview: preview)
+        } catch {
+            model.lastError = error.localizedDescription
+        }
+    }
+
+    private func importPresetBackup(from data: Data, selectedPresetIds: Set<UUID>) {
+        do {
+            try model.importWhisperPresetBackup(from: data, selectedPresetIds: selectedPresetIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -22420,6 +22457,97 @@ struct WhisperSheet: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .medium
         return formatter.string(from: date)
+    }
+}
+
+private struct WhisperPresetBackupImportSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+
+    let preview: TS3WhisperPresetBackupPreview
+    let importPresets: (Set<UUID>) -> Void
+    let cancel: () -> Void
+    @State private var selectedPresetIds: Set<UUID>
+
+    init(
+        preview: TS3WhisperPresetBackupPreview,
+        importPresets: @escaping (Set<UUID>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importPresets = importPresets
+        self.cancel = cancel
+        _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
+
+    private var canImport: Bool {
+        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Preview")) {
+                    Text("Imported presets: \(preview.importedPresetCount)")
+                    Text("Usable presets: \(preview.usablePresetCount)")
+                    Text("New presets: \(preview.newPresetCount)")
+                    Text("Replacing presets: \(preview.replacedPresetCount)")
+                    Text("Skipped presets: \(preview.skippedPresetCount)")
+                    Button("Copy Backup Preview") {
+                        TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                Section(header: Text("Restore")) {
+                    HStack {
+                        Button("Select All") {
+                            selectedPresetIds = Set(preview.candidates.map(\.id))
+                        }
+                        Spacer()
+                        Button("Clear") {
+                            selectedPresetIds.removeAll()
+                        }
+                    }
+                    ForEach(preview.candidates) { candidate in
+                        Toggle(
+                            candidate.summary,
+                            isOn: Binding(
+                                get: { selectedPresetIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedPresetIds.insert(candidate.id)
+                                    } else {
+                                        selectedPresetIds.remove(candidate.id)
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+
+                Section {
+                    Text("Importing merges the selected whisper presets by name and leaves unselected presets unchanged.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Import Whisper Presets")
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button("Cancel") {
+                        cancel()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button("Import") {
+                        importPresets(selectedPresetIds)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(!canImport)
+                }
+            }
+        }
     }
 }
 

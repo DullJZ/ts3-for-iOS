@@ -4353,6 +4353,41 @@ struct TS3KeyboardShortcutImportPreview {
     }
 }
 
+struct TS3WhisperPresetBackupPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported whisper presets: \(importedPresetCount)",
+            "Usable whisper presets: \(usablePresetCount)",
+            "New whisper presets: \(newPresetCount)",
+            "Replacing whisper presets: \(replacedPresetCount)",
+            "Skipped whisper presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 private struct TS3NotificationSettings: Codable {
     var isEnabled: Bool
     var soundEnabled: Bool
@@ -17740,28 +17775,65 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(whisperPresets)
     }
 
+    func whisperPresetBackupPreview(from data: Data) throws -> TS3WhisperPresetBackupPreview {
+        let imported = try JSONDecoder().decode([TS3WhisperPreset].self, from: data)
+        let usable = imported.compactMap(sanitizedWhisperPreset)
+        let existingNames = Set(whisperPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3WhisperPresetBackupPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(whisperPresetBackupSummary),
+            candidates: usable.map { preset in
+                TS3WhisperPresetBackupPreview.Candidate(
+                    id: preset.id,
+                    summary: whisperPresetBackupSummary(preset)
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importWhisperPresetBackup(from data: Data) throws -> Int {
+    func importWhisperPresetBackup(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3WhisperPreset].self, from: data)
         var merged = whisperPresets
-        for preset in imported {
-            let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            let channelIds = Array(Set(preset.channelIds.filter { $0 > 0 })).sorted()
-            let clientIds = Array(Set(preset.clientIds.filter { $0 > 0 })).sorted()
-            guard !name.isEmpty, !channelIds.isEmpty || !clientIds.isEmpty else { continue }
-            merged.removeAll { $0.name.caseInsensitiveCompare(name) == .orderedSame }
-            merged.insert(TS3WhisperPreset(
-                id: preset.id,
-                name: name,
-                channelIds: channelIds,
-                clientIds: clientIds,
-                updatedAt: preset.updatedAt
-            ), at: 0)
+        let sanitized = imported.compactMap(sanitizedWhisperPreset).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in sanitized {
+            merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
+            merged.insert(preset, at: 0)
         }
         whisperPresets = merged.sorted { $0.updatedAt > $1.updatedAt }
         saveWhisperPresets()
         lastError = nil
         return imported.count
+    }
+
+    private func sanitizedWhisperPreset(_ preset: TS3WhisperPreset) -> TS3WhisperPreset? {
+        let name = preset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let channelIds = Array(Set(preset.channelIds.filter { $0 > 0 })).sorted()
+        let clientIds = Array(Set(preset.clientIds.filter { $0 > 0 })).sorted()
+        guard !name.isEmpty, !channelIds.isEmpty || !clientIds.isEmpty else { return nil }
+        return TS3WhisperPreset(
+            id: preset.id,
+            name: name,
+            channelIds: channelIds,
+            clientIds: clientIds,
+            updatedAt: preset.updatedAt
+        )
+    }
+
+    private func whisperPresetBackupSummary(_ preset: TS3WhisperPreset) -> String {
+        [
+            "name=\(preset.name)",
+            "channels=\(preset.channelIds.count)",
+            "clients=\(preset.clientIds.count)"
+        ].joined(separator: " | ")
     }
 
     func enableGroupWhisper(type: TS3GroupWhisperType, target: TS3GroupWhisperTarget, targetId: Int) {
