@@ -2562,12 +2562,6 @@ struct ChannelListView: View {
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button {
-                    isShowingServerTools = true
-                } label: {
-                    Label("Tools", systemImage: "slider.horizontal.3")
-                }
-                .buttonStyle(TS3BorderedButtonStyle())
-                Button {
                     isShowingEvents = true
                 } label: {
                     EventsButtonLabel(unreadCount: model.unreadPokeCount + model.unreadActivityCount)
@@ -2587,8 +2581,25 @@ struct ChannelListView: View {
                     }
                     .buttonStyle(TS3BorderedButtonStyle())
                 }
-                Button("Disconnect") {
-                    isShowingDisconnect = true
+                Menu {
+                    Button {
+                        isShowingServerTools = true
+                    } label: {
+                        Label("channels.tools", systemImage: "slider.horizontal.3")
+                    }
+                    Button {
+                        isShowingTalkRequests = true
+                    } label: {
+                        Label("channels.talkRequests", systemImage: "hand.raised")
+                    }
+                    .disabled(talkRequestUsers.isEmpty)
+                    Button {
+                        isShowingDisconnect = true
+                    } label: {
+                        Label("channels.disconnect", systemImage: "power")
+                    }
+                } label: {
+                    Label("home.menu.more", systemImage: "ellipsis.circle")
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
             }
@@ -2607,37 +2618,37 @@ struct ChannelListView: View {
                 .padding(.horizontal)
 
             HStack(spacing: 10) {
-                Picker("Filter", selection: $channelTreeFilter) {
+                Picker("channels.filter", selection: $channelTreeFilter) {
                     ForEach(ChannelTreeFilter.allCases) { filter in
                         Text(filter.title).tag(filter)
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
 
-                Picker("Sort", selection: $channelTreeSortMode) {
+                Picker("channels.sort", selection: $channelTreeSortMode) {
                     ForEach(ChannelTreeItem.SiblingSortMode.allCases) { sortMode in
                         Text(sortMode.title).tag(sortMode)
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
 
-                Toggle("Ascending", isOn: $channelTreeSortAscending)
+                Toggle("channels.ascending", isOn: $channelTreeSortAscending)
 
                 Menu {
-                    Picker("Sort Members", selection: $channelMemberSortMode) {
+                    Picker("channels.sortMembers", selection: $channelMemberSortMode) {
                         ForEach(ChannelMemberSortMode.allCases) { sortMode in
                             Text(sortMode.title).tag(sortMode)
                         }
                     }
-                    Toggle("Member Ascending", isOn: $channelMemberSortAscending)
-                    Toggle("Current User First", isOn: $channelCurrentUserFirst)
+                    Toggle("channels.memberAscending", isOn: $channelMemberSortAscending)
+                    Toggle("channels.currentUserFirst", isOn: $channelCurrentUserFirst)
                 } label: {
-                    Label("Members", systemImage: "person.2")
+                    Label("channels.members", systemImage: "person.2")
                 }
 
                 Menu {
-                    TextField("Preset Name", text: $channelTreePresetName)
-                    Button("Save Current Filters") {
+                    TextField("connect.presetName", text: $channelTreePresetName)
+                    Button("connect.saveCurrentFilters") {
                         model.saveChannelTreeFilterPreset(
                             name: channelTreePresetName,
                             treeFilter: channelTreeFilter.rawValue,
@@ -2652,17 +2663,17 @@ struct ChannelListView: View {
                     }
                     .disabled(channelTreePresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if model.channelTreeFilterPresets.isEmpty {
-                        Text("No saved channel tree filter presets")
+                        Text("channels.noSavedTreePresets")
                     } else {
                         ForEach(model.channelTreeFilterPresets) { preset in
                             Menu {
-                                Button("Apply Preset") {
+                                Button("connect.applyPreset") {
                                     applyChannelTreePreset(preset)
                                 }
-                                Button("Use Name") {
+                                Button("connect.useName") {
                                     channelTreePresetName = preset.name
                                 }
-                                Button("Delete Preset") {
+                                Button("connect.deletePreset") {
                                     model.deleteChannelTreeFilterPreset(preset)
                                 }
                             } label: {
@@ -2674,23 +2685,23 @@ struct ChannelListView: View {
                         }
                     }
                     Divider()
-                    Button("Export Presets") {
+                    Button("connect.exportPresets") {
                         exportChannelTreePresets()
                     }
                     .disabled(model.channelTreeFilterPresets.isEmpty)
-                    Button("Import Presets") {
+                    Button("connect.importPresets") {
                         isImportingChannelTreePresets = true
                     }
-                    Button("Delete All Presets") {
+                    Button("connect.deleteAllPresets") {
                         confirmation = .deleteAllFilterPresets
                     }
                     .disabled(model.channelTreeFilterPresets.isEmpty)
                 } label: {
-                    Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                    Label("connect.filterPresets", systemImage: "line.3.horizontal.decrease.circle")
                 }
 
                 if hasChannelTreeOptions {
-                    Button("Clear") {
+                    Button("connect.clear") {
                         channelTreeFilter = .all
                         channelTreeSortMode = .serverOrder
                         channelTreeSortAscending = true
@@ -2723,7 +2734,7 @@ struct ChannelListView: View {
                             .listRowBackground(item.channel.isCurrent ? Color.accentColor.opacity(0.08) : Color.clear)
                     }
                     if channelTree.isEmpty {
-                        Text("No matching channels or users")
+                        Text("channels.noMatchingChannelsUsers")
                             .foregroundColor(.secondary)
                     }
                 }
@@ -2732,61 +2743,61 @@ struct ChannelListView: View {
 
             TalkControlBar()
         }
-        .navigationTitle("Channels")
+        .navigationTitle("channels.title")
         .toolbar {
             ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                 Menu {
-                    Button("Copy Visible Channel Tree") {
+                    Button("channels.copyVisibleTree") {
                         TS3PlatformSupport.copyToPasteboard(channelTreeSnapshot)
                     }
                     .disabled(channelTree.isEmpty)
-                    Button("Export Visible Channel Tree") {
+                    Button("channels.exportVisibleTree") {
                         channelTreeDocument = TS3TextFileDocument(data: Data(channelTreeSnapshot.utf8))
                         isExportingChannelTree = true
                     }
                     .disabled(channelTree.isEmpty)
-                    Button("Expand Visible Channels") {
+                    Button("channels.expandVisible") {
                         model.expandChannels(visibleChannels)
                     }
                     .disabled(!canExpandVisibleChannels)
-                    Button("Collapse Visible Channels") {
+                    Button("channels.collapseVisible") {
                         model.collapseChannels(visibleBranchChannels)
                     }
                     .disabled(visibleBranchChannels.isEmpty)
-                    Button("Reset Channel Expansion") {
+                    Button("channels.resetExpansion") {
                         model.resetCollapsedChannels()
                     }
                     .disabled(model.collapsedChannelIds.isEmpty)
-                    Button("Subscribe Visible Channels") {
+                    Button("channels.subscribeVisible") {
                         model.setChannelsSubscribed(visibleChannels, isSubscribed: true)
                     }
                     .disabled(!canSubscribeVisibleChannels)
-                    Button("Unsubscribe Visible Channels") {
+                    Button("channels.unsubscribeVisible") {
                         model.setChannelsSubscribed(visibleChannels, isSubscribed: false)
                     }
                     .disabled(!canUnsubscribeVisibleChannels)
-                    Button("Subscribe All Channels") {
+                    Button("channels.subscribeAll") {
                         model.setAllChannelsSubscribed(true)
                     }
-                    Button("Unsubscribe All Channels") {
+                    Button("channels.unsubscribeAll") {
                         confirmation = .unsubscribeAll
                     }
-                    Button("Subscription Presets") {
+                    Button("channels.subscriptionPresets") {
                         isShowingSubscriptionPresets = true
                     }
-                    Button("Talk Requests") {
+                    Button("channels.talkRequests") {
                         isShowingTalkRequests = true
                     }
                     .disabled(talkRequestUsers.isEmpty)
                 } label: {
-                    Label("Channel Tools", systemImage: "list.bullet.rectangle")
+                    Label("channels.channelTools", systemImage: "list.bullet.rectangle")
                 }
             }
             ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                 Button {
                     isShowingCreateChannel = true
                 } label: {
-                    Label("New Channel", systemImage: "plus")
+                    Label("channels.newChannel", systemImage: "plus")
                 }
             }
         }
@@ -2869,18 +2880,18 @@ struct ChannelListView: View {
             switch confirmation {
             case .unsubscribeAll:
                 return Alert(
-                    title: Text("Unsubscribe All Channels?"),
-                    message: Text("This unsubscribes from every visible server channel."),
-                    primaryButton: .destructive(Text("Unsubscribe")) {
+                    title: Text("channels.unsubscribeAllAlert.title"),
+                    message: Text("channels.unsubscribeAllAlert.message"),
+                    primaryButton: .destructive(Text("channels.unsubscribe")) {
                         model.setAllChannelsSubscribed(false)
                     },
                     secondaryButton: .cancel()
                 )
             case .deleteAllFilterPresets:
                 return Alert(
-                    title: Text("Delete All Channel Tree Filter Presets?"),
-                    message: Text("This removes \(model.channelTreeFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text("channels.deleteAllTreePresetsAlert.title"),
+                    message: Text(String(format: NSLocalizedString("channels.deleteAllTreePresetsAlert.message", comment: ""), model.channelTreeFilterPresets.count)),
+                    primaryButton: .destructive(Text("connect.delete")) {
                         model.deleteAllChannelTreeFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -2930,7 +2941,9 @@ struct ChannelListView: View {
     }
 
     private var channelSectionTitle: String {
-        hasChannelTreeFilters ? "Filtered Channels" : "Channels"
+        hasChannelTreeFilters
+            ? NSLocalizedString("channels.filteredChannels", comment: "")
+            : NSLocalizedString("channels.channels", comment: "")
     }
 
     private var isSearching: Bool {
@@ -3662,7 +3675,7 @@ struct ChannelSearchField: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
-            TextField("Search channels or users", text: $text)
+            TextField("channels.searchPlaceholder", text: $text)
                 .ts3PlainTextField()
             if !text.isEmpty {
                 Button {
@@ -8080,9 +8093,9 @@ struct ChatButtonLabel: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "message")
-            Text("Chat")
+            Text("channels.chat")
             if unreadCount > 0 {
-                CountBadge(count: unreadCount, label: "unread messages")
+                CountBadge(count: unreadCount, label: NSLocalizedString("channels.unreadMessages", comment: ""))
             }
         }
     }
@@ -8094,9 +8107,9 @@ struct EventsButtonLabel: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "bell")
-            Text("Events")
+            Text("channels.events")
             if unreadCount > 0 {
-                CountBadge(count: unreadCount, label: "unread events")
+                CountBadge(count: unreadCount, label: NSLocalizedString("channels.unreadEvents", comment: ""))
             }
         }
     }
@@ -8108,7 +8121,7 @@ struct WhisperButtonLabel: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: isActive ? "wave.3.right.circle.fill" : "wave.3.right")
-            Text(isActive ? "Whispering" : "Whisper")
+            Text(isActive ? "channels.whispering" : "channels.whisper")
         }
     }
 }
