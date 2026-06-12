@@ -5993,6 +5993,55 @@ struct TS3ChannelSubscriptionPreset: Identifiable, Codable {
     }
 }
 
+extension TS3ChannelSubscriptionPreset {
+    var clipboardSummary: String {
+        [
+            "name=\(name)",
+            "channels=\(channelIds.count)",
+            "channelIds=\(channelIds.map(String.init).joined(separator: ","))"
+        ].joined(separator: " | ")
+    }
+
+    var accessibilityValue: String {
+        "\(channelIds.count) subscribed channel\(channelIds.count == 1 ? "" : "s"). Channel IDs \(channelIds.map(String.init).joined(separator: ", "))"
+    }
+}
+
+struct TS3ChannelSubscriptionPresetImportPreview {
+    struct Candidate: Identifiable, Equatable {
+        let id: UUID
+        let summary: String
+    }
+
+    let importedPresetCount: Int
+    let usablePresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let skippedPresetCount: Int
+    let presetSummaries: [String]
+    let candidates: [Candidate]
+
+    var hasPresets: Bool {
+        usablePresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        var lines = [
+            "Imported subscription presets: \(importedPresetCount)",
+            "Usable subscription presets: \(usablePresetCount)",
+            "New subscription presets: \(newPresetCount)",
+            "Replacing subscription presets: \(replacedPresetCount)",
+            "Skipped subscription presets: \(skippedPresetCount)"
+        ]
+        lines.append(contentsOf: presetSummaries)
+        return lines.joined(separator: "\n")
+    }
+
+    func containsPreset(id: UUID) -> Bool {
+        candidates.contains { $0.id == id }
+    }
+}
+
 struct TS3ChannelTreeFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -11731,18 +11780,43 @@ final class TS3AppModel: ObservableObject {
         return try encoder.encode(channelSubscriptionPresets)
     }
 
+    func channelSubscriptionPresetsImportPreview(from data: Data) throws -> TS3ChannelSubscriptionPresetImportPreview {
+        let imported = try JSONDecoder().decode([TS3ChannelSubscriptionPreset].self, from: data)
+        let usable = sanitizedChannelSubscriptionPresets(imported)
+        let existingNames = Set(channelSubscriptionPresets.map { $0.name.lowercased() })
+        let replacedCount = usable.filter { existingNames.contains($0.name.lowercased()) }.count
+        return TS3ChannelSubscriptionPresetImportPreview(
+            importedPresetCount: imported.count,
+            usablePresetCount: usable.count,
+            newPresetCount: usable.count - replacedCount,
+            replacedPresetCount: replacedCount,
+            skippedPresetCount: imported.count - usable.count,
+            presetSummaries: usable.map(\.clipboardSummary),
+            candidates: usable.map { preset in
+                TS3ChannelSubscriptionPresetImportPreview.Candidate(
+                    id: preset.id,
+                    summary: preset.clipboardSummary
+                )
+            }
+        )
+    }
+
     @discardableResult
-    func importChannelSubscriptionPresets(from data: Data) throws -> Int {
+    func importChannelSubscriptionPresets(from data: Data, selectedPresetIds: Set<UUID>? = nil) throws -> Int {
         let imported = try JSONDecoder().decode([TS3ChannelSubscriptionPreset].self, from: data)
         var merged = channelSubscriptionPresets
-        for preset in sanitizedChannelSubscriptionPresets(imported) {
+        let selectedPresets = sanitizedChannelSubscriptionPresets(imported).filter { preset in
+            guard let selectedPresetIds else { return true }
+            return selectedPresetIds.contains(preset.id)
+        }
+        for preset in selectedPresets {
             merged.removeAll { $0.name.caseInsensitiveCompare(preset.name) == .orderedSame }
             merged.insert(preset, at: 0)
         }
         channelSubscriptionPresets = sanitizedChannelSubscriptionPresets(merged)
         saveChannelSubscriptionPresets()
         lastError = nil
-        return imported.count
+        return selectedPresets.count
     }
 
     func saveChannelTreeFilterPreset(
