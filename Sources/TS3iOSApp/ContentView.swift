@@ -12623,27 +12623,27 @@ struct GroupManagementSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Target")) {
-                    Picker("Group Type", selection: $target) {
+                Section(header: Text(localized("groups.target"))) {
+                    Picker(localized("groups.groupType"), selection: $target) {
                         ForEach(TS3GroupManagementTarget.allCases) { target in
-                            Text(target.title).tag(target)
+                            Text(targetTitle(target)).tag(target)
                         }
                     }
                     .pickerStyle(SegmentedPickerStyle())
                 }
 
-                Section(header: Text("Create")) {
-                    TextField("Group Name", text: $newGroupName)
+                Section(header: Text(localized("groups.create"))) {
+                    TextField(localized("groups.groupName"), text: $newGroupName)
                         .ts3PlainTextField()
-                    Picker("Database Type", selection: $newGroupType) {
+                    Picker(localized("groups.databaseType"), selection: $newGroupType) {
                         ForEach(TS3PermissionGroupDatabaseType.allCases) { type in
-                            Text(type.title).tag(type)
+                            Text(databaseTypeTitle(type)).tag(type)
                         }
                     }
                     Text(newGroupDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Group Summary") {
+                    Button(localized("groups.copyGroupSummary")) {
                         TS3PlatformSupport.copyToPasteboard(newGroupDraftSummary)
                     }
                     ForEach(newGroupDraftValidationMessages, id: \.self) { message in
@@ -12651,29 +12651,29 @@ struct GroupManagementSheet: View {
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    Button("Create Group") {
+                    Button(localized("groups.createGroup")) {
                         createGroup()
                     }
                     .disabled(model.state != .connected || !newGroupDraftValidationMessages.isEmpty)
                 }
 
-                Section(header: Text("Filters")) {
-                    Picker("Type", selection: $groupTypeFilter) {
+                Section(header: Text(localized("groups.filters"))) {
+                    Picker(localized("groups.type"), selection: $groupTypeFilter) {
                         ForEach(GroupTypeFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(groupTypeFilterTitle(filter)).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("groups.sortBy"), selection: $sortMode) {
                         ForEach(GroupSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(sortModeTitle(mode)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search groups", text: $searchText)
+                    Toggle(localized("groups.ascending"), isOn: $sortAscending)
+                    TextField(localized("groups.searchGroups"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.saveGroupFilterPreset(
                                 name: presetName,
                                 target: target.rawValue,
@@ -12686,20 +12686,20 @@ struct GroupManagementSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.groupFilterPresets.isEmpty {
-                            Text("No saved group filter presets")
+                            Text(localized("groups.noSavedFilterPresets"))
                         } else {
                             ForEach(model.groupFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Copy Preset Summary") {
+                                    Button(localized("groups.copyPresetSummary")) {
                                         TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteGroupFilterPreset(preset)
                                     }
                                 } label: {
@@ -12709,60 +12709,60 @@ struct GroupManagementSheet: View {
                                     }
                                 }
                                 .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Group filter preset")
+                                .accessibilityLabel(localized("groups.filterPreset"))
                                 .accessibilityValue(preset.accessibilityValue)
-                                .accessibilityAction(named: "Copy Preset Summary") {
+                                .accessibilityAction(named: localized("groups.copyPresetSummary")) {
                                     TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
                                 }
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.groupFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.groupFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("groups.clearFilters")) {
                             groupTypeFilter = .all
                             sortMode = .name
                             sortAscending = true
                             searchText = ""
                         }
                     }
-                    Button("Copy Visible Groups") {
+                    Button(localized("groups.copyVisibleGroups")) {
                         TS3PlatformSupport.copyToPasteboard(visibleGroupsSnapshot)
                     }
                     .disabled(filteredGroups.isEmpty)
-                    Button("Export Visible Groups") {
+                    Button(localized("groups.exportVisibleGroups")) {
                         groupsExportDocument = TS3TextFileDocument(data: Data(visibleGroupsSnapshot.utf8))
                         isExportingGroups = true
                     }
                     .disabled(filteredGroups.isEmpty)
-                    Button("Export Group Archive") {
+                    Button(localized("groups.exportGroupArchive")) {
                         exportGroupArchive()
                     }
                     .disabled(model.serverGroups.isEmpty && model.channelGroups.isEmpty)
-                    Button("Import Group Archive") {
+                    Button(localized("groups.importGroupArchive")) {
                         isImportingGroupArchive = true
                     }
                 }
 
-                Section(header: Text(target.title)) {
+                Section(header: Text(targetTitle(target))) {
                     if groups.isEmpty {
-                        Text("No groups")
+                        Text(localized("groups.noGroups"))
                             .foregroundColor(.secondary)
                     } else if filteredGroups.isEmpty {
-                        Text("No matching groups")
+                        Text(localized("groups.noMatchingGroups"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredGroups) { group in
@@ -12772,7 +12772,7 @@ struct GroupManagementSheet: View {
                     }
                 }
             }
-            .navigationTitle("Permission Groups")
+            .navigationTitle(localized("groups.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if model.state == .connected {
@@ -12846,9 +12846,9 @@ struct GroupManagementSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Group Filter Presets?"),
-                    message: Text("This removes \(model.groupFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("groups.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.groupFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllGroupFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -12856,13 +12856,13 @@ struct GroupManagementSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.refreshGroups()
                     }
                     .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -12941,6 +12941,52 @@ struct GroupManagementSheet: View {
         preset.inlineSummary
     }
 
+    private func targetTitle(_ target: TS3GroupManagementTarget) -> String {
+        switch target {
+        case .server:
+            return localized("groups.target.server")
+        case .channel:
+            return localized("groups.target.channel")
+        }
+    }
+
+    private func groupTypeFilterTitle(_ filter: GroupTypeFilter) -> String {
+        switch filter {
+        case .all:
+            return localized("groups.filter.allGroups")
+        case .template:
+            return localized("groups.filter.template")
+        case .regular:
+            return localized("groups.filter.regular")
+        case .query:
+            return localized("groups.filter.query")
+        case .unknown:
+            return localized("common.unknown")
+        }
+    }
+
+    private func sortModeTitle(_ mode: GroupSortMode) -> String {
+        switch mode {
+        case .name:
+            return localized("groups.sort.name")
+        case .id:
+            return localized("groups.sort.id")
+        case .type:
+            return localized("groups.sort.type")
+        }
+    }
+
+    private func databaseTypeTitle(_ type: TS3PermissionGroupDatabaseType) -> String {
+        switch type {
+        case .template:
+            return localized("groups.filter.template")
+        case .regular:
+            return localized("groups.filter.regular")
+        case .query:
+            return localized("groups.filter.query")
+        }
+    }
+
     private func exportGroupArchive() {
         do {
             groupArchiveDocument = TS3TextFileDocument(data: try model.groupArchiveData())
@@ -12976,23 +13022,23 @@ struct GroupManagementSheet: View {
 
     private func groupArchivePreviewMessage(_ preview: TS3GroupArchivePreview) -> String {
         var lines = [
-            "Server groups: \(preview.serverGroupCount)",
-            "Channel groups: \(preview.channelGroupCount)",
-            "Template: \(preview.templateCount)",
-            "Regular: \(preview.regularCount)",
-            "Query: \(preview.queryCount)",
-            "Unknown type: \(preview.unknownTypeCount)"
+            localized("groups.archivePreview.serverGroupsFormat", preview.serverGroupCount),
+            localized("groups.archivePreview.channelGroupsFormat", preview.channelGroupCount),
+            localized("groups.archivePreview.templateFormat", preview.templateCount),
+            localized("groups.archivePreview.regularFormat", preview.regularCount),
+            localized("groups.archivePreview.queryFormat", preview.queryCount),
+            localized("groups.archivePreview.unknownTypeFormat", preview.unknownTypeCount)
         ]
         if preview.skippedGroupCount > 0 {
-            lines.append("Skipped invalid or duplicate groups: \(preview.skippedGroupCount)")
+            lines.append(localized("groups.archivePreview.skippedFormat", preview.skippedGroupCount))
         }
         if let firstServerGroupName = preview.firstServerGroupName {
-            lines.append("First server group: \(firstServerGroupName)")
+            lines.append(localized("groups.archivePreview.firstServerGroupFormat", firstServerGroupName))
         }
         if let firstChannelGroupName = preview.firstChannelGroupName {
-            lines.append("First channel group: \(firstChannelGroupName)")
+            lines.append(localized("groups.archivePreview.firstChannelGroupFormat", firstChannelGroupName))
         }
-        lines.append(preview.hasGroups ? "Import replaces the local cached group lists for offline review; it does not create, rename, or delete server groups." : "The archive has no usable groups.")
+        lines.append(preview.hasGroups ? localized("groups.archivePreview.importBehavior") : localized("groups.archivePreview.noUsableGroups"))
         return lines.joined(separator: "\n")
     }
 
@@ -13018,6 +13064,11 @@ struct GroupManagementSheet: View {
             model.lastError = error.localizedDescription
         }
     }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 private struct GroupArchiveImportSheet: View {
@@ -13034,19 +13085,19 @@ private struct GroupArchiveImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("groups.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasGroups {
-                        Button("Copy Group Summary") {
+                        Button(localized("groups.import.copyGroupSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("groups.import.selectAll")) {
                                 selectedGroupIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("groups.import.clear")) {
                                 selectedGroupIds = []
                             }
                             .disabled(selectedGroupIds.isEmpty)
@@ -13055,7 +13106,7 @@ private struct GroupArchiveImportSheet: View {
                 }
 
                 if !preview.serverGroupSummaries.isEmpty {
-                    Section(header: Text("Server Groups")) {
+                    Section(header: Text(localized("groups.import.serverGroups"))) {
                         ForEach(Array(preview.serverGroupTypeSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -13090,7 +13141,7 @@ private struct GroupArchiveImportSheet: View {
                 }
 
                 if !preview.channelGroupSummaries.isEmpty {
-                    Section(header: Text("Channel Groups")) {
+                    Section(header: Text(localized("groups.import.channelGroups"))) {
                         ForEach(Array(preview.channelGroupTypeSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -13124,13 +13175,13 @@ private struct GroupArchiveImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached group lists with the selected groups for offline review and does not create, rename, or delete server groups.")
+                Section(header: Text(localized("groups.import.behaviorTitle"))) {
+                    Text(localized("groups.import.archiveBehavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Groups")
+            .navigationTitle(localized("groups.import.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedGroupIds.isEmpty {
@@ -13139,18 +13190,23 @@ private struct GroupArchiveImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("groups.import.action")) {
                         importArchive(validSelectedGroupIds)
                     }
                     .disabled(!preview.hasGroups || validSelectedGroupIds.isEmpty)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -13182,36 +13238,36 @@ struct GroupManagementRow: View {
             }
             Spacer()
             Menu {
-                Button("View Members") {
+                Button(localized("groups.row.viewMembers")) {
                     refreshMembers()
                     isShowingMembers = true
                 }
                 .disabled(model.state != .connected)
-                Button("Edit Permissions") {
+                Button(localized("groups.row.editPermissions")) {
                     model.selectGroupPermissions(group, target: target)
                     isShowingPermissions = true
                 }
                 .disabled(model.state != .connected)
-                Button("Create Privilege Key") {
+                Button(localized("groups.row.createPrivilegeKey")) {
                     isShowingPrivilegeKeys = true
                 }
                 .disabled(model.state != .connected || (target == .channel && model.channels.isEmpty))
-                Button("Copy Summary") {
+                Button(localized("groups.row.copySummary")) {
                     TS3PlatformSupport.copyToPasteboard(group.clipboardSummary(target: target))
                 }
-                Button("Rename") {
+                Button(localized("groups.row.rename")) {
                     isShowingRename = true
                 }
                 .disabled(model.state != .connected)
-                Button("Copy") {
+                Button(localized("groups.row.copy")) {
                     isShowingCopy = true
                 }
                 .disabled(model.state != .connected)
-                Button("Delete") {
+                Button(localized("groups.row.delete")) {
                     isConfirmingDelete = true
                 }
                 .disabled(model.state != .connected)
-                Button("Force Delete") {
+                Button(localized("groups.row.forceDelete")) {
                     isConfirmingForcedDelete = true
                 }
                 .disabled(model.state != .connected)
@@ -13240,8 +13296,8 @@ struct GroupManagementRow: View {
         }
         .sheet(isPresented: $isShowingRename) {
             GroupNameSheet(
-                title: "Rename Group",
-                actionTitle: "Rename",
+                title: localized("groups.row.renameTitle"),
+                actionTitle: localized("groups.row.rename"),
                 initialName: group.name,
                 allowsTypeSelection: false,
                 initialType: group.type ?? .regular,
@@ -13255,9 +13311,9 @@ struct GroupManagementRow: View {
         }
         .sheet(isPresented: $isShowingCopy) {
             GroupNameSheet(
-                title: "Copy Group",
-                actionTitle: "Copy",
-                initialName: "\(group.name) Copy",
+                title: localized("groups.row.copyTitle"),
+                actionTitle: localized("groups.row.copy"),
+                initialName: localized("groups.row.copyNameFormat", group.name),
                 allowsTypeSelection: true,
                 initialType: group.type ?? .regular,
                 operation: .copy,
@@ -13270,9 +13326,9 @@ struct GroupManagementRow: View {
         }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Group?"),
+                title: Text(localized("groups.row.deleteAlert.title")),
                 message: Text(group.name),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("groups.row.delete"))) {
                     deleteGroup(force: false)
                 },
                 secondaryButton: .cancel()
@@ -13281,9 +13337,9 @@ struct GroupManagementRow: View {
         .background(
             EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
                 Alert(
-                    title: Text("Force Delete Group?"),
+                    title: Text(localized("groups.row.forceDeleteAlert.title")),
                     message: Text(group.name),
-                    primaryButton: .destructive(Text("Force Delete")) {
+                    primaryButton: .destructive(Text(localized("groups.row.forceDelete"))) {
                         deleteGroup(force: true)
                     },
                     secondaryButton: .cancel()
@@ -13293,15 +13349,15 @@ struct GroupManagementRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(group.name)
         .accessibilityValue(group.accessibilityValue(target: target))
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(group.clipboardSummary(target: target))
         }
-        .accessibilityAction(named: "View Members") {
+        .accessibilityAction(named: localized("groups.row.viewMembers")) {
             guard model.state == .connected else { return }
             refreshMembers()
             isShowingMembers = true
         }
-        .accessibilityAction(named: "Edit Permissions") {
+        .accessibilityAction(named: localized("groups.row.editPermissions")) {
             guard model.state == .connected else { return }
             model.selectGroupPermissions(group, target: target)
             isShowingPermissions = true
@@ -13360,6 +13416,11 @@ struct GroupManagementRow: View {
         case .channel:
             return model.channelGroups
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
