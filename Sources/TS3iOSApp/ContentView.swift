@@ -5932,6 +5932,11 @@ struct ContactsSheet: View {
     @State private var contactsDocument = TS3TextFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     private var notedContacts: [TS3ContactEntry] {
         model.contacts
             .filter { !$0.note.isEmpty && $0.status == .neutral }
@@ -6380,27 +6385,27 @@ struct ContactsSheet: View {
 
     private func contactImportPreviewMessage(_ preview: TS3ContactImportPreview) -> String {
         var lines = [
-            "Backup contacts: \(preview.importedCount)",
-            "Valid contacts: \(preview.validCount)"
+            localized("contacts.import.backupContactsFormat", preview.importedCount),
+            localized("contacts.import.validContactsFormat", preview.validCount)
         ]
         if preview.invalidCount > 0 {
-            lines.append("Invalid entries skipped: \(preview.invalidCount)")
+            lines.append(localized("contacts.import.invalidEntriesFormat", preview.invalidCount))
         }
         if preview.duplicateCount > 0 {
-            lines.append("Duplicate unique IDs: \(preview.duplicateCount) last value wins")
+            lines.append(localized("contacts.import.duplicateUniqueIdsFormat", preview.duplicateCount))
         }
-        lines.append("Will add \(preview.newCount), update \(preview.updatedCount), and leave \(preview.unchangedCount) unchanged.")
+        lines.append(localized("contacts.import.actionSummaryFormat", preview.newCount, preview.updatedCount, preview.unchangedCount))
         if !preview.statusSummaries.isEmpty {
-            lines.append("Statuses: \(preview.statusSummaries.joined(separator: " | "))")
+            lines.append(localized("contacts.import.statusesFormat", preview.statusSummaries.joined(separator: " | ")))
         }
         if !preview.newContactNames.isEmpty {
-            lines.append("Adding: \(contactNameSummary(preview.newContactNames))")
+            lines.append(localized("contacts.import.addingFormat", contactNameSummary(preview.newContactNames)))
         }
         if !preview.updatedContactNames.isEmpty {
-            lines.append("Updating: \(contactNameSummary(preview.updatedContactNames))")
+            lines.append(localized("contacts.import.updatingFormat", contactNameSummary(preview.updatedContactNames)))
         }
         if !preview.unchangedContactNames.isEmpty {
-            lines.append("Unchanged: \(contactNameSummary(preview.unchangedContactNames))")
+            lines.append(localized("contacts.import.unchangedFormat", contactNameSummary(preview.unchangedContactNames)))
         }
         return lines.joined(separator: "\n")
     }
@@ -6409,7 +6414,7 @@ struct ContactsSheet: View {
         let visible = names.prefix(6).joined(separator: ", ")
         let remainingCount = names.count - min(names.count, 6)
         guard remainingCount > 0 else { return visible }
-        return "\(visible), +\(remainingCount) more"
+        return localized("contacts.moreNamesFormat", visible, remainingCount)
     }
 
     private func applyPreset(_ preset: TS3ContactFilterPreset) {
@@ -6527,14 +6532,19 @@ private struct ContactImportSheet: View {
         options.hasSelectedEntries && selectedCount > 0
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("contacts.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Selected import entries: \(selectedCount)")
+                    Text(localized("contacts.import.selectedEntriesFormat", selectedCount))
                         .font(.caption.weight(.semibold))
                     ForEach(preview.statusSummaries, id: \.self) { summary in
                         Text(summary)
@@ -6543,28 +6553,28 @@ private struct ContactImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Entries")) {
-                    Toggle("New contacts", isOn: $options.newContacts)
+                Section(header: Text(localized("contacts.import.entries"))) {
+                    Toggle(localized("contacts.import.newContacts"), isOn: $options.newContacts)
                         .disabled(preview.newCount == 0)
-                    Toggle("Updated contacts", isOn: $options.updatedContacts)
+                    Toggle(localized("contacts.import.updatedContacts"), isOn: $options.updatedContacts)
                         .disabled(preview.updatedCount == 0)
                     if preview.unchangedCount > 0 {
-                        Text("\(preview.unchangedCount) unchanged contacts will be skipped.")
+                        Text(localized("contacts.import.unchangedSkippedFormat", preview.unchangedCount))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
             }
-            .navigationTitle("Import Contacts")
+            .navigationTitle(localized("contacts.import.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("contacts.import.action")) {
                         importContacts(options)
                     }
                     .disabled(!canImport)
@@ -6834,35 +6844,53 @@ struct ContactEditorSheet: View {
         _displayName = State(initialValue: nickname)
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func localizedStatusTitle(_ status: TS3ContactStatus) -> String {
+        switch status {
+        case .neutral:
+            return localized("contacts.status.neutral")
+        case .friend:
+            return localized("contacts.status.friend")
+        case .ignored:
+            return localized("contacts.status.ignored")
+        case .blocked:
+            return localized("contacts.status.blocked")
+        }
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text(displayName.isEmpty ? "Contact" : displayName)) {
-                    TextField("Unique ID", text: $identifier)
+                Section(header: Text(displayName.isEmpty ? localized("contacts.editor.contact") : displayName)) {
+                    TextField(localized("contacts.editor.uniqueId"), text: $identifier)
                         .ts3PlainTextField()
-                    TextField("Nickname", text: $displayName)
+                    TextField(localized("contacts.editor.nickname"), text: $displayName)
                         .ts3PlainTextField()
-                    Picker("Status", selection: $status) {
+                    Picker(localized("contacts.editor.status"), selection: $status) {
                         ForEach(TS3ContactStatus.allCases) { status in
-                            Text(status.title).tag(status)
+                            Text(localizedStatusTitle(status)).tag(status)
                         }
                     }
-                    TextField("Note", text: $note)
+                    TextField(localized("contacts.editor.note"), text: $note)
                         .ts3PlainTextField()
                 }
                 Section {
-                    Button("Save") {
+                    Button(localized("contacts.editor.save")) {
                         submit(identifier, displayName, status, note)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .navigationTitle(uniqueIdentifier.isEmpty ? "New Contact" : "Edit Contact")
+            .navigationTitle(uniqueIdentifier.isEmpty ? localized("contacts.editor.newTitle") : localized("contacts.editor.editTitle"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -6881,14 +6909,19 @@ private struct ContactBatchNoteSheet: View {
         TS3ContactNoteDraft(contacts: contacts, note: note)
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Visible Contacts")) {
-                    Text("Contacts: \(draft.uniqueContacts.count)")
+                Section(header: Text(localized("contacts.batchNote.visibleContacts"))) {
+                    Text(localized("contacts.batchNote.contactsFormat", draft.uniqueContacts.count))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    TextField("Note", text: $note)
+                    TextField(localized("contacts.batchNote.note"), text: $note)
                         .ts3PlainTextField()
                     if !draft.validationMessages.isEmpty {
                         ForEach(draft.validationMessages, id: \.self) { message in
@@ -6900,23 +6933,23 @@ private struct ContactBatchNoteSheet: View {
                     Text(draft.clipboardSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Note Draft") {
+                    Button(localized("contacts.batchNote.copyDraft")) {
                         TS3PlatformSupport.copyToPasteboard(draft.clipboardSummary)
                     }
                 }
                 Section {
-                    Button("Append Note") {
+                    Button(localized("contacts.batchNote.append")) {
                         submit(draft)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!draft.validationMessages.isEmpty)
                 }
             }
-            .navigationTitle("Append Contact Note")
+            .navigationTitle(localized("contacts.batchNote.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
