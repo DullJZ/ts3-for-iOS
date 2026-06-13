@@ -11225,7 +11225,7 @@ struct ServerLogsSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var fallbackTitle: String {
             switch self {
             case .all: return "All Levels"
             case .info: return "Info"
@@ -11281,31 +11281,36 @@ struct ServerLogsSheet: View {
     @State private var pendingPresetImport: ServerLogQueryPresetImportConfirmation?
     @State private var presetDocument = TS3BookmarkFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Controls")) {
-                    TextField("Lines", text: $lineLimit)
+                Section(header: Text(localized("serverLogs.controls"))) {
+                    TextField(localized("serverLogs.lines"), text: $lineLimit)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
-                    TextField("Begin Position", text: $beginPosition)
+                    TextField(localized("serverLogs.beginPosition"), text: $beginPosition)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
-                    Toggle("Reverse Order", isOn: $reverseOrder)
-                    Toggle("Instance Logs", isOn: $instanceLogs)
-                    Picker("Level Filter", selection: $levelFilter) {
+                    Toggle(localized("serverLogs.reverseOrder"), isOn: $reverseOrder)
+                    Toggle(localized("serverLogs.instanceLogs"), isOn: $instanceLogs)
+                    Picker(localized("serverLogs.levelFilter"), selection: $levelFilter) {
                         ForEach(LogLevelFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(levelFilterTitle(filter)).tag(filter)
                         }
                     }
-                    TextField("Log Channel", text: $channelFilter)
+                    TextField(localized("serverLogs.logChannel"), text: $channelFilter)
                         .ts3PlainTextField()
-                    TextField("Search logs", text: $searchText)
+                    TextField(localized("serverLogs.searchLogs"), text: $searchText)
                         .ts3PlainTextField()
                     Text(currentQueryDraft.inlineSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .accessibilityLabel("Current log query")
+                        .accessibilityLabel(localized("serverLogs.currentLogQuery"))
                         .accessibilityValue(currentQueryDraft.accessibilityValue)
                     ForEach(queryValidationMessages, id: \.self) { message in
                         Text(message)
@@ -11313,16 +11318,16 @@ struct ServerLogsSheet: View {
                             .foregroundColor(.red)
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("serverLogs.clearFilters")) {
                             levelFilter = .all
                             channelFilter = ""
                             searchText = ""
                         }
                     }
-                    Button("Copy Query Summary") {
+                    Button(localized("serverLogs.copyQuerySummary")) {
                         TS3PlatformSupport.copyToPasteboard(currentQueryDraft.clipboardSummary)
                     }
-                    Button("Refresh") {
+                    Button(localized("serverLogs.refresh")) {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
                             reverse: reverseOrder,
@@ -11331,45 +11336,45 @@ struct ServerLogsSheet: View {
                         )
                     }
                     .disabled(model.state != .connected || !canRunQuery)
-                    Button("Copy Visible Logs") {
+                    Button(localized("serverLogs.copyVisibleLogs")) {
                         TS3PlatformSupport.copyToPasteboard(filteredTranscript)
                     }
                     .disabled(filteredEntries.isEmpty)
-                    Button("Export Visible Logs") {
+                    Button(localized("serverLogs.exportVisibleLogs")) {
                         logExportDocument = TS3TextFileDocument(data: Data(filteredTranscript.utf8))
                         isExportingLogs = true
                     }
                     .disabled(filteredEntries.isEmpty)
-                    Button("Copy Snapshot") {
+                    Button(localized("serverLogs.copySnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(snapshot)
                     }
                     .disabled(model.serverLogEntries.isEmpty)
-                    Button("Export Snapshot") {
+                    Button(localized("serverLogs.exportSnapshot")) {
                         snapshotDocument = TS3TextFileDocument(data: Data(snapshot.utf8))
                         isExportingSnapshot = true
                     }
                     .disabled(model.serverLogEntries.isEmpty)
-                    Button("Export Log Archive") {
+                    Button(localized("serverLogs.exportLogArchive")) {
                         exportLogArchive()
                     }
                     .disabled(model.serverLogEntries.isEmpty)
-                    Button("Import Log Archive") {
+                    Button(localized("serverLogs.importLogArchive")) {
                         isImportingLogArchive = true
                     }
-                    Button("Clear Results") {
+                    Button(localized("serverLogs.clearResults")) {
                         confirmation = .clearAllResults
                     }
                     .disabled(model.serverLogEntries.isEmpty)
-                    Button("Clear Visible Results") {
+                    Button(localized("serverLogs.clearVisibleResults")) {
                         confirmation = .clearVisibleResults
                     }
                     .disabled(filteredEntries.isEmpty)
                 }
 
-                Section(header: Text("Query Presets")) {
-                    TextField("Preset Name", text: $presetName)
+                Section(header: Text(localized("serverLogs.queryPresets"))) {
+                    TextField(localized("serverLogs.presetName"), text: $presetName)
                         .ts3PlainTextField()
-                    Button("Save Current Query") {
+                    Button(localized("serverLogs.saveCurrentQuery")) {
                         model.saveServerLogQueryPreset(
                             name: presetName,
                             limit: parsedLineLimit,
@@ -11383,19 +11388,19 @@ struct ServerLogsSheet: View {
                         presetName = ""
                     }
                     .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canRunQuery)
-                    Button("Export Query Presets") {
+                    Button(localized("serverLogs.exportQueryPresets")) {
                         exportPresets()
                     }
                     .disabled(model.serverLogQueryPresets.isEmpty)
-                    Button("Import Query Presets") {
+                    Button(localized("serverLogs.importQueryPresets")) {
                         isImportingPresets = true
                     }
-                    Button("Delete All Query Presets") {
+                    Button(localized("serverLogs.deleteAllQueryPresets")) {
                         confirmation = .deleteAllPresets
                     }
                     .disabled(model.serverLogQueryPresets.isEmpty)
                     if model.serverLogQueryPresets.isEmpty {
-                        Text("No saved log query presets")
+                        Text(localized("serverLogs.noSavedQueryPresets"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.serverLogQueryPresets) { preset in
@@ -11410,16 +11415,16 @@ struct ServerLogsSheet: View {
                                     }
                                     Spacer()
                                     Menu {
-                                        Button("Apply and Refresh") {
+                                        Button(localized("serverLogs.applyAndRefresh")) {
                                             applyPreset(preset, refresh: true)
                                         }
-                                        Button("Apply Only") {
+                                        Button(localized("serverLogs.applyOnly")) {
                                             applyPreset(preset, refresh: false)
                                         }
-                                        Button("Copy Query Summary") {
+                                        Button(localized("serverLogs.copyQuerySummary")) {
                                             TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
                                         }
-                                        Button("Delete Preset") {
+                                        Button(localized("serverLogs.deletePreset")) {
                                             model.deleteServerLogQueryPreset(preset)
                                         }
                                     } label: {
@@ -11428,24 +11433,24 @@ struct ServerLogsSheet: View {
                                 }
                             }
                             .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Server log query preset")
+                            .accessibilityLabel(localized("serverLogs.queryPreset"))
                             .accessibilityValue(preset.accessibilityValue)
-                            .accessibilityAction(named: "Copy Query Summary") {
+                            .accessibilityAction(named: localized("serverLogs.copyQuerySummary")) {
                                 TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary)
                             }
                         }
                     }
                 }
 
-                Section(header: Text("Add Entry")) {
-                    Picker("Level", selection: $newLogLevel) {
+                Section(header: Text(localized("serverLogs.addEntry"))) {
+                    Picker(localized("serverLogs.level"), selection: $newLogLevel) {
                         ForEach(Self.logLevels, id: \.self) { level in
-                            Text(Self.logLevelTitle(level)).tag(level)
+                            Text(logLevelTitle(level)).tag(level)
                         }
                     }
-                    TextField("Message", text: $newLogMessage)
+                    TextField(localized("serverLogs.message"), text: $newLogMessage)
                         .ts3PlainTextField()
-                    Button("Write Server Log Entry") {
+                    Button(localized("serverLogs.writeServerLogEntry")) {
                         model.addServerLogEntry(
                             level: newLogLevel,
                             message: newLogMessage,
@@ -11459,9 +11464,9 @@ struct ServerLogsSheet: View {
                     .disabled(model.state != .connected || newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canRunQuery)
                 }
 
-                Section(header: Text("Server Log")) {
+                Section(header: Text(localized("serverLogs.serverLog"))) {
                     if filteredEntries.isEmpty {
-                        Text(isSearching ? "No matching log entries" : "No log entries")
+                        Text(isSearching ? localized("serverLogs.noMatchingEntries") : localized("serverLogs.noEntries"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredEntries) { entry in
@@ -11470,11 +11475,11 @@ struct ServerLogsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Server Logs")
+            .navigationTitle(localized("serverLogs.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("serverLogs.refresh")) {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
                             reverse: reverseOrder,
@@ -11485,7 +11490,7 @@ struct ServerLogsSheet: View {
                     .disabled(model.state != .connected || !canRunQuery)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -11591,27 +11596,27 @@ struct ServerLogsSheet: View {
                 switch confirmation {
                 case .clearAllResults:
                     return Alert(
-                        title: Text("Clear Log Results?"),
-                        message: Text("This removes \(model.serverLogEntries.count) server log results from the local view."),
-                        primaryButton: .destructive(Text("Clear")) {
+                        title: Text(localized("serverLogs.clearResultsAlert.title")),
+                        message: Text(localized("serverLogs.clearResultsAlert.messageFormat", model.serverLogEntries.count)),
+                        primaryButton: .destructive(Text(localized("serverLogs.clear"))) {
                             model.clearServerLogResults()
                         },
                         secondaryButton: .cancel()
                     )
                 case .clearVisibleResults:
                     return Alert(
-                        title: Text("Clear Visible Log Results?"),
-                        message: Text("This removes \(filteredEntries.count) currently visible server log results from the local view."),
-                        primaryButton: .destructive(Text("Clear")) {
+                        title: Text(localized("serverLogs.clearVisibleAlert.title")),
+                        message: Text(localized("serverLogs.clearVisibleAlert.messageFormat", filteredEntries.count)),
+                        primaryButton: .destructive(Text(localized("serverLogs.clear"))) {
                             model.clearServerLogResults(filteredEntries)
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllPresets:
                     return Alert(
-                        title: Text("Delete All Log Query Presets?"),
-                        message: Text("This removes \(model.serverLogQueryPresets.count) saved local query presets."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("serverLogs.deleteAllPresetsAlert.title")),
+                        message: Text(localized("serverLogs.deleteAllPresetsAlert.messageFormat", model.serverLogQueryPresets.count)),
+                        primaryButton: .destructive(Text(localized("common.delete"))) {
                             model.deleteAllServerLogQueryPresets()
                         },
                         secondaryButton: .cancel()
@@ -11756,33 +11761,33 @@ struct ServerLogsSheet: View {
 
     private func logArchivePreviewMessage(_ preview: TS3ServerLogArchivePreview) -> String {
         var lines = [
-            "Entries: \(preview.entryCount)",
-            "With level: \(preview.levelCount)",
-            "With channel: \(preview.channelCount)",
-            "With timestamp: \(preview.timestampCount)"
+            localized("serverLogs.archivePreview.entriesFormat", preview.entryCount),
+            localized("serverLogs.archivePreview.withLevelFormat", preview.levelCount),
+            localized("serverLogs.archivePreview.withChannelFormat", preview.channelCount),
+            localized("serverLogs.archivePreview.withTimestampFormat", preview.timestampCount)
         ]
         if preview.skippedEntryCount > 0 {
-            lines.append("Skipped invalid or duplicate entries: \(preview.skippedEntryCount)")
+            lines.append(localized("serverLogs.archivePreview.skippedFormat", preview.skippedEntryCount))
         }
         if !preview.levelSummaries.isEmpty {
-            lines.append("Levels: \(preview.levelSummaries.joined(separator: " | "))")
+            lines.append(localized("serverLogs.archivePreview.levelsFormat", preview.levelSummaries.joined(separator: " | ")))
         }
         if !preview.channelSummaries.isEmpty {
-            lines.append("Channels: \(preview.channelSummaries.joined(separator: " | "))")
+            lines.append(localized("serverLogs.archivePreview.channelsFormat", preview.channelSummaries.joined(separator: " | ")))
         }
         if let firstLevel = preview.firstLevel {
-            lines.append("First level: \(firstLevel)")
+            lines.append(localized("serverLogs.archivePreview.firstLevelFormat", firstLevel))
         }
         if let firstChannel = preview.firstChannel {
-            lines.append("First channel: \(firstChannel)")
+            lines.append(localized("serverLogs.archivePreview.firstChannelFormat", firstChannel))
         }
         if let firstMessage = preview.firstMessage {
-            lines.append("First message: \(firstMessage)")
+            lines.append(localized("serverLogs.archivePreview.firstMessageFormat", firstMessage))
         }
         if let firstTimestamp = preview.firstTimestamp {
-            lines.append("First date: \(ServerLogRow.dateText(firstTimestamp))")
+            lines.append(localized("serverLogs.archivePreview.firstDateFormat", ServerLogRow.dateText(firstTimestamp)))
         }
-        lines.append(preview.hasEntries ? "Import replaces the local cached server log results; it does not change server logs." : "The archive has no usable server log entries.")
+        lines.append(preview.hasEntries ? localized("serverLogs.archivePreview.importBehavior") : localized("serverLogs.archivePreview.noUsableEntries"))
         return lines.joined(separator: "\n")
     }
 
@@ -11825,12 +11830,22 @@ struct ServerLogsSheet: View {
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]
 
-    private static func logLevelTitle(_ level: TS3LogLevel) -> String {
+    private func levelFilterTitle(_ filter: LogLevelFilter) -> String {
+        switch filter {
+        case .all: return localized("serverLogs.level.all")
+        case .info: return localized("serverLogs.level.info")
+        case .warning: return localized("serverLogs.level.warning")
+        case .error: return localized("serverLogs.level.error")
+        case .debug: return localized("serverLogs.level.debug")
+        }
+    }
+
+    private func logLevelTitle(_ level: TS3LogLevel) -> String {
         switch level {
-        case .debug: return "Debug"
-        case .info: return "Info"
-        case .warning: return "Warning"
-        case .error: return "Error"
+        case .debug: return localized("serverLogs.level.debug")
+        case .info: return localized("serverLogs.level.info")
+        case .warning: return localized("serverLogs.level.warning")
+        case .error: return localized("serverLogs.level.error")
         }
     }
 
@@ -11850,22 +11865,27 @@ private struct ServerLogArchiveImportSheet: View {
         Set(selectedEntryIds.filter(preview.containsEntry))
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("serverLogs.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasEntries {
-                        Button("Copy Log Summary") {
+                        Button(localized("serverLogs.import.copyLogSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("serverLogs.import.selectAll")) {
                                 selectedEntryIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("serverLogs.import.clear")) {
                                 selectedEntryIds = []
                             }
                             .disabled(selectedEntryIds.isEmpty)
@@ -11906,13 +11926,13 @@ private struct ServerLogArchiveImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached server log results with the selected entries for offline review and does not change server-side logs.")
+                Section(header: Text(localized("serverLogs.import.behaviorTitle"))) {
+                    Text(localized("serverLogs.import.archiveBehavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Logs")
+            .navigationTitle(localized("serverLogs.import.archiveTitle"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedEntryIds.isEmpty {
@@ -11921,12 +11941,12 @@ private struct ServerLogArchiveImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("serverLogs.import.action")) {
                         importArchive(validSelectedEntryIds)
                     }
                     .disabled(!preview.hasEntries || validSelectedEntryIds.isEmpty)
@@ -11959,27 +11979,32 @@ private struct ServerLogQueryPresetImportSheet: View {
         preview.candidates.contains { selectedPresetIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("serverLogs.import.preview"))) {
+                    Text(localized("serverLogs.import.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("serverLogs.import.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("serverLogs.import.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("serverLogs.import.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("serverLogs.import.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("serverLogs.import.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("serverLogs.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("serverLogs.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("serverLogs.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -12005,22 +12030,22 @@ private struct ServerLogQueryPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected server log query presets by name and leaves unselected presets unchanged.")
+                    Text(localized("serverLogs.import.presetBehavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Log Presets")
+            .navigationTitle(localized("serverLogs.import.presetsTitle"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("serverLogs.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -12033,6 +12058,11 @@ private struct ServerLogQueryPresetImportSheet: View {
 
 struct ServerLogRow: View {
     let entry: TS3ServerLogSummary
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -12059,26 +12089,26 @@ struct ServerLogRow: View {
         }
         .padding(.vertical, 4)
         .contextMenu {
-            Button("Copy Message") {
+            Button(localized("serverLogs.copyMessage")) {
                 TS3PlatformSupport.copyToPasteboard(entry.message)
             }
-            Button("Copy Raw Line") {
+            Button(localized("serverLogs.copyRawLine")) {
                 TS3PlatformSupport.copyToPasteboard(entry.rawLine)
             }
-            Button("Copy Entry") {
+            Button(localized("serverLogs.copyEntry")) {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Server log")
+        .accessibilityLabel(localized("serverLogs.serverLog"))
         .accessibilityValue(entry.accessibilityValue)
-        .accessibilityAction(named: "Copy Entry") {
+        .accessibilityAction(named: localized("serverLogs.copyEntry")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
         }
-        .accessibilityAction(named: "Copy Message") {
+        .accessibilityAction(named: localized("serverLogs.copyMessage")) {
             TS3PlatformSupport.copyToPasteboard(entry.message)
         }
-        .accessibilityAction(named: "Copy Raw Line") {
+        .accessibilityAction(named: localized("serverLogs.copyRawLine")) {
             TS3PlatformSupport.copyToPasteboard(entry.rawLine)
         }
     }
