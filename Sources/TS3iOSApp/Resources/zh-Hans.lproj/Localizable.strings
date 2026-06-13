@@ -71,6 +71,7 @@
 "connect.bookmark" = "书签";
 "connect.bookmarkName" = "书签名称";
 "connect.folderOptional" = "文件夹（可选）";
+"connect.editBookmark" = "编辑书签";
 "connect.saveCurrentServer" = "保存当前服务器";
 "connect.copyInviteLink" = "复制邀请链接";
 "connect.importBookmarks" = "导入书签";
@@ -142,6 +143,9 @@
 "common.cancel" = "取消";
 "common.done" = "完成";
 "common.delete" = "删除";
+"common.apply" = "应用";
+"common.connect" = "连接";
+"common.save" = "保存";
 "common.copySummary" = "复制摘要";
 "common.yes" = "是";
 "common.no" = "否";

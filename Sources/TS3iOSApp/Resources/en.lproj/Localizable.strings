@@ -71,6 +71,7 @@
 "connect.bookmark" = "Bookmark";
 "connect.bookmarkName" = "Bookmark Name";
 "connect.folderOptional" = "Folder (optional)";
+"connect.editBookmark" = "Edit Bookmark";
 "connect.saveCurrentServer" = "Save Current Server";
 "connect.copyInviteLink" = "Copy Invite Link";
 "connect.importBookmarks" = "Import Bookmarks";
@@ -142,6 +143,9 @@
 "common.cancel" = "Cancel";
 "common.done" = "Done";
 "common.delete" = "Delete";
+"common.apply" = "Apply";
+"common.connect" = "Connect";
+"common.save" = "Save";
 "common.copySummary" = "Copy Summary";
 "common.yes" = "Yes";
 "common.no" = "No";

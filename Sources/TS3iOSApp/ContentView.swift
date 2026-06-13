@@ -2356,44 +2356,44 @@ struct BookmarkEditorSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Bookmark")) {
-                    TextField("Name", text: $bookmark.name)
+                Section(header: Text("connect.bookmark")) {
+                    TextField("connect.bookmarkName", text: $bookmark.name)
                         .ts3PlainTextField()
-                    TextField("Folder", text: $bookmark.folder)
+                    TextField("connect.folderOptional", text: $bookmark.folder)
                         .ts3PlainTextField()
-                    TextField("Note", text: $bookmark.note)
+                    TextField("connect.connectionNoteOptional", text: $bookmark.note)
                         .ts3PlainTextField()
-                    TextField("Host", text: $bookmark.host)
+                    TextField("connect.hostPlaceholder", text: $bookmark.host)
                         .ts3URLTextField()
-                    TextField("Port", text: $bookmark.port)
+                    TextField("connect.port", text: $bookmark.port)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
                 }
 
-                Section(header: Text("Profile")) {
-                    TextField("Nickname", text: $bookmark.nickname)
+                Section(header: Text("connect.profile")) {
+                    TextField("connect.nickname", text: $bookmark.nickname)
                         .ts3PlainTextField()
-                    TextField("Phonetic Nickname", text: $bookmark.phoneticNickname)
+                    TextField("connect.phoneticNicknameOptional", text: $bookmark.phoneticNickname)
                         .ts3PlainTextField()
-                    SecureField("Server Password", text: $bookmark.serverPassword)
-                    TextField("Default Channel", text: $bookmark.defaultChannel)
+                    SecureField("connect.serverPasswordOptional", text: $bookmark.serverPassword)
+                    TextField("connect.defaultChannelOptional", text: $bookmark.defaultChannel)
                         .ts3PlainTextField()
-                    SecureField("Channel Password", text: $bookmark.defaultChannelPassword)
-                    SecureField("Privilege Key", text: $bookmark.privilegeKey)
+                    SecureField("connect.channelPasswordOptional", text: $bookmark.defaultChannelPassword)
+                    SecureField("connect.privilegeKeyOptional", text: $bookmark.privilegeKey)
                 }
             }
-            .navigationTitle("Edit Bookmark")
+            .navigationTitle("connect.editBookmark")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Apply") {
+                    Button("common.apply") {
                         model.applyBookmark(bookmark)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!canSubmit)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Connect") {
+                    Button("common.connect") {
                         model.applyBookmark(bookmark)
                         model.connect()
                         presentationMode.wrappedValue.dismiss()
@@ -2401,14 +2401,14 @@ struct BookmarkEditorSheet: View {
                     .disabled(!canSubmit)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Save") {
+                    Button("common.save") {
                         model.updateBookmark(bookmark)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!canSubmit)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
