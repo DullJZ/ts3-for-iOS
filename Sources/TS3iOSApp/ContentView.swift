@@ -20508,32 +20508,32 @@ struct TemporaryServerPasswordsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Create")) {
-                    TextField("Password", text: $password)
+                Section(header: Text(localized("temporaryPasswords.create"))) {
+                    TextField(localized("temporaryPasswords.password"), text: $password)
                         .ts3PlainTextField()
-                    Picker("Duration", selection: $duration) {
+                    Picker(localized("temporaryPasswords.duration"), selection: $duration) {
                         ForEach(TS3TemporaryPasswordDuration.allCases) { duration in
-                            Text(duration.title).tag(duration)
+                            Text(durationTitle(duration)).tag(duration)
                         }
                     }
                     if duration == .custom {
-                        TextField("Minutes", text: $customMinutes)
+                        TextField(localized("temporaryPasswords.minutes"), text: $customMinutes)
                             .ts3PlainTextField()
                             .ts3NumericKeyboard()
                     }
-                    TextField("Description", text: $description)
+                    TextField(localized("temporaryPasswords.description"), text: $description)
                         .ts3PlainTextField()
-                    Picker("Target Channel", selection: $targetChannelId) {
-                        Text("Server Default").tag(0)
+                    Picker(localized("temporaryPasswords.targetChannel"), selection: $targetChannelId) {
+                        Text(localized("temporaryPasswords.serverDefault")).tag(0)
                         ForEach(model.channels) { channel in
                             Text(channel.name).tag(channel.id)
                         }
                     }
-                    SecureField("Target Channel Password", text: $targetChannelPassword)
+                    SecureField(localized("temporaryPasswords.targetChannelPassword"), text: $targetChannelPassword)
                     Text(temporaryPasswordDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Creation Summary") {
+                    Button(localized("temporaryPasswords.copyCreationSummary")) {
                         TS3PlatformSupport.copyToPasteboard(temporaryPasswordDraftSummary)
                     }
                     ForEach(temporaryPasswordDraftValidationMessages, id: \.self) { message in
@@ -20541,7 +20541,7 @@ struct TemporaryServerPasswordsSheet: View {
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    Button("Create Temporary Password") {
+                    Button(localized("temporaryPasswords.createTemporaryPassword")) {
                         model.addTemporaryServerPassword(
                             password: password,
                             durationSeconds: duration.seconds(customMinutes: customMinutes),
@@ -20554,23 +20554,23 @@ struct TemporaryServerPasswordsSheet: View {
                     .disabled(model.state != .connected || isCreateDisabled)
                 }
 
-                Section(header: Text("Passwords")) {
-                    Picker("Type", selection: $passwordFilter) {
+                Section(header: Text(localized("temporaryPasswords.passwords"))) {
+                    Picker(localized("groups.type"), selection: $passwordFilter) {
                         ForEach(PasswordFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(passwordFilterTitle(filter)).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("groups.sortBy"), selection: $sortMode) {
                         ForEach(PasswordSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(passwordSortModeTitle(mode)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search passwords", text: $searchText)
+                    Toggle(localized("groups.ascending"), isOn: $sortAscending)
+                    TextField(localized("temporaryPasswords.searchPasswords"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.saveTemporaryServerPasswordFilterPreset(
                                 name: presetName,
                                 passwordFilter: passwordFilter.rawValue,
@@ -20582,17 +20582,17 @@ struct TemporaryServerPasswordsSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.temporaryServerPasswordFilterPresets.isEmpty {
-                            Text("No saved temporary password filter presets")
+                            Text(localized("temporaryPasswords.noSavedFilterPresets"))
                         } else {
                             ForEach(model.temporaryServerPasswordFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteTemporaryServerPasswordFilterPreset(preset)
                                     }
                                 } label: {
@@ -20604,48 +20604,48 @@ struct TemporaryServerPasswordsSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.temporaryServerPasswordFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.temporaryServerPasswordFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("groups.clearFilters")) {
                             passwordFilter = .all
                             sortMode = .created
                             sortAscending = false
                             searchText = ""
                         }
                     }
-                    Button("Copy Visible Passwords") {
+                    Button(localized("temporaryPasswords.copyVisiblePasswords")) {
                         TS3PlatformSupport.copyToPasteboard(passwordsSnapshot)
                     }
                     .disabled(filteredPasswords.isEmpty)
-                    Button("Export Visible Passwords") {
+                    Button(localized("temporaryPasswords.exportVisiblePasswords")) {
                         passwordsDocument = TS3TextFileDocument(data: Data(passwordsSnapshot.utf8))
                         isExportingPasswords = true
                     }
                     .disabled(filteredPasswords.isEmpty)
-                    Button("Delete Visible Passwords") {
+                    Button(localized("temporaryPasswords.deleteVisiblePasswords")) {
                         isConfirmingDeleteVisible = true
                     }
                     .foregroundColor(.red)
                     .disabled(model.state != .connected || filteredPasswords.isEmpty)
 
                     if model.temporaryServerPasswords.isEmpty {
-                        Text("No temporary passwords")
+                        Text(localized("temporaryPasswords.noTemporaryPasswords"))
                             .foregroundColor(.secondary)
                     } else if filteredPasswords.isEmpty {
-                        Text("No matching temporary passwords")
+                        Text(localized("temporaryPasswords.noMatchingTemporaryPasswords"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredPasswords) { entry in
@@ -20655,7 +20655,7 @@ struct TemporaryServerPasswordsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Temporary Passwords")
+            .navigationTitle(localized("temporaryPasswords.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 normalizeChannelSelection()
@@ -20711,9 +20711,9 @@ struct TemporaryServerPasswordsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
-                    title: Text("Delete Visible Temporary Passwords?"),
-                    message: Text("This removes \(filteredPasswords.count) temporary passwords from the server."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("temporaryPasswords.deleteVisibleAlert.title")),
+                    message: Text(localized("temporaryPasswords.deleteVisibleAlert.messageFormat", filteredPasswords.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteTemporaryServerPasswords(filteredPasswords)
                     },
                     secondaryButton: .cancel()
@@ -20721,9 +20721,9 @@ struct TemporaryServerPasswordsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Temporary Password Filter Presets?"),
-                    message: Text("This removes \(model.temporaryServerPasswordFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("temporaryPasswords.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.temporaryServerPasswordFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllTemporaryServerPasswordFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -20731,13 +20731,13 @@ struct TemporaryServerPasswordsSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.refreshTemporaryServerPasswords()
                     }
                     .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -20873,9 +20873,9 @@ struct TemporaryServerPasswordsSheet: View {
 
     private func targetDisplayName(_ entry: TS3TemporaryServerPasswordSummary) -> String {
         guard let targetChannelId = entry.targetChannelId, targetChannelId > 0 else {
-            return "Server Default"
+            return localized("temporaryPasswords.serverDefault")
         }
-        return channelName(targetChannelId) ?? "Channel \(targetChannelId)"
+        return channelName(targetChannelId) ?? localized("groups.members.channelFallbackFormat", targetChannelId)
     }
 
     private func creatorDisplayName(_ entry: TS3TemporaryServerPasswordSummary) -> String {
@@ -20883,7 +20883,7 @@ struct TemporaryServerPasswordsSheet: View {
             return creatorName
         }
         if let creatorDatabaseId = entry.creatorDatabaseId {
-            return "Client DB \(creatorDatabaseId)"
+            return localized("temporaryPasswords.clientDbFormat", creatorDatabaseId)
         }
         return entry.creatorUniqueIdentifier ?? ""
     }
@@ -20898,14 +20898,14 @@ struct TemporaryServerPasswordsSheet: View {
 
     private func presetSummary(_ preset: TS3TemporaryServerPasswordFilterPreset) -> String {
         var parts = [
-            (PasswordFilter(rawValue: preset.passwordFilter) ?? .all).title,
-            "Sort \((PasswordSortMode(rawValue: preset.sortMode) ?? .created).title)"
+            passwordFilterTitle(PasswordFilter(rawValue: preset.passwordFilter) ?? .all),
+            localized("permissions.presetSummary.sortFormat", passwordSortModeTitle(PasswordSortMode(rawValue: preset.sortMode) ?? .created))
         ]
         if preset.sortAscending {
-            parts.append("Ascending")
+            parts.append(localized("groups.ascending"))
         }
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("temporaryPasswords.presetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -20949,6 +20949,60 @@ struct TemporaryServerPasswordsSheet: View {
         duration = .oneHour
         customMinutes = "60"
         targetChannelPassword = ""
+    }
+
+    private func durationTitle(_ duration: TS3TemporaryPasswordDuration) -> String {
+        switch duration {
+        case .tenMinutes:
+            return localized("temporaryPasswords.duration.tenMinutes")
+        case .oneHour:
+            return localized("temporaryPasswords.duration.oneHour")
+        case .oneDay:
+            return localized("temporaryPasswords.duration.oneDay")
+        case .oneWeek:
+            return localized("temporaryPasswords.duration.oneWeek")
+        case .custom:
+            return localized("temporaryPasswords.duration.custom")
+        }
+    }
+
+    private func passwordFilterTitle(_ filter: PasswordFilter) -> String {
+        switch filter {
+        case .all:
+            return localized("temporaryPasswords.filter.all")
+        case .serverDefault:
+            return localized("temporaryPasswords.filter.serverDefault")
+        case .channelTarget:
+            return localized("temporaryPasswords.filter.channelTarget")
+        case .withDescription:
+            return localized("temporaryPasswords.filter.withDescription")
+        case .withCreator:
+            return localized("temporaryPasswords.filter.withCreator")
+        case .withExpiration:
+            return localized("temporaryPasswords.filter.withExpiration")
+        }
+    }
+
+    private func passwordSortModeTitle(_ mode: PasswordSortMode) -> String {
+        switch mode {
+        case .created:
+            return localized("temporaryPasswords.sort.created")
+        case .password:
+            return localized("temporaryPasswords.sort.password")
+        case .target:
+            return localized("temporaryPasswords.sort.target")
+        case .duration:
+            return localized("temporaryPasswords.sort.duration")
+        case .creator:
+            return localized("temporaryPasswords.sort.creator")
+        case .description:
+            return localized("temporaryPasswords.sort.description")
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -21017,22 +21071,22 @@ private struct TemporaryServerPasswordFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected temporary password filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("temporaryPasswords.import.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Temporary Password Filters")
+            .navigationTitle(localized("temporaryPasswords.import.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("temporaryPasswords.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -21040,6 +21094,11 @@ private struct TemporaryServerPasswordFilterPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -21074,13 +21133,13 @@ struct TemporaryServerPasswordRow: View {
                 }
                 Spacer()
                 Menu {
-                    Button("Copy Password") {
+                    Button(localized("temporaryPasswords.row.copyPassword")) {
                         TS3PlatformSupport.copyToPasteboard(entry.password)
                     }
-                    Button("Copy Summary") {
+                    Button(localized("groups.row.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary(channels: model.channels))
                     }
-                    Button("Delete Password") {
+                    Button(localized("temporaryPasswords.row.deletePassword")) {
                         isConfirmingDelete = true
                     }
                     .disabled(model.state != .connected)
@@ -21092,23 +21151,23 @@ struct TemporaryServerPasswordRow: View {
         .padding(.vertical, 3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.password)
-        .accessibilityValue(entry.accessibilityValue(channels: model.channels))
-        .accessibilityAction(named: "Copy Password") {
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: localized("temporaryPasswords.row.copyPassword")) {
             TS3PlatformSupport.copyToPasteboard(entry.password)
         }
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary(channels: model.channels))
         }
-        .accessibilityAction(named: "Delete Password") {
+        .accessibilityAction(named: localized("temporaryPasswords.row.deletePassword")) {
             if model.state == .connected {
                 isConfirmingDelete = true
             }
         }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Temporary Password?"),
+                title: Text(localized("temporaryPasswords.row.deleteAlert.title")),
                 message: Text(entry.password),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deleteTemporaryServerPassword(entry)
                 },
                 secondaryButton: .cancel()
@@ -21117,22 +21176,64 @@ struct TemporaryServerPasswordRow: View {
     }
 
     private var targetText: String {
-        "Target: \(entry.targetText(channels: model.channels))"
+        localized("temporaryPasswords.row.targetFormat", localizedTargetText)
     }
 
     private var creatorText: String? {
-        entry.creatorText.map { "Creator: \($0)" }
+        localizedCreatorText.map { localized("temporaryPasswords.row.creatorFormat", $0) }
     }
 
     private var lifetimeText: String {
         var parts: [String] = []
         if let durationSeconds = entry.durationSeconds {
-            parts.append("Duration: \(TS3TemporaryServerPasswordSummary.durationText(durationSeconds))")
+            parts.append(localized("temporaryPasswords.row.durationFormat", TS3TemporaryServerPasswordSummary.durationText(durationSeconds)))
         }
         if let createdAt = entry.createdAt {
-            parts.append("Created: \(TS3TemporaryServerPasswordSummary.dateText(createdAt))")
+            parts.append(localized("temporaryPasswords.row.createdFormat", TS3TemporaryServerPasswordSummary.dateText(createdAt)))
         }
-        return parts.isEmpty ? "Lifetime: Unknown" : parts.joined(separator: " · ")
+        return parts.isEmpty ? localized("temporaryPasswords.row.lifetimeUnknown") : parts.joined(separator: " · ")
+    }
+
+    private var localizedTargetText: String {
+        guard let targetChannelId = entry.targetChannelId, targetChannelId > 0 else {
+            return localized("temporaryPasswords.serverDefault")
+        }
+        return model.channels.first { $0.id == targetChannelId }?.name ?? localized("groups.members.channelFallbackFormat", targetChannelId)
+    }
+
+    private var localizedCreatorText: String? {
+        if let creatorName = entry.creatorName, !creatorName.isEmpty {
+            return creatorName
+        }
+        if let creatorDatabaseId = entry.creatorDatabaseId {
+            return localized("temporaryPasswords.clientDbFormat", creatorDatabaseId)
+        }
+        return nil
+    }
+
+    private var accessibilityValue: String {
+        var parts = [
+            localized("temporaryPasswords.accessibility.temporaryPassword"),
+            localized("temporaryPasswords.accessibility.targetFormat", localizedTargetText)
+        ]
+        if let durationSeconds = entry.durationSeconds {
+            parts.append(localized("temporaryPasswords.accessibility.durationFormat", TS3TemporaryServerPasswordSummary.durationText(durationSeconds)))
+        }
+        if entry.createdAt != nil {
+            parts.append(localized("temporaryPasswords.accessibility.createdDateAvailable"))
+        }
+        if let description = entry.description, !description.isEmpty {
+            parts.append(localized("temporaryPasswords.accessibility.descriptionFormat", description))
+        }
+        if let localizedCreatorText {
+            parts.append(localized("temporaryPasswords.accessibility.creatorFormat", localizedCreatorText))
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
