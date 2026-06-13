@@ -15887,156 +15887,161 @@ struct ServerSettingsEditorSheet: View {
     @State private var draftDocument = TS3TextFileDocument()
     @State private var snapshotDocument = TS3TextFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Draft")) {
-                    Button("Copy Settings Snapshot") {
+                Section(header: Text(localized("serverSettings.draft"))) {
+                    Button(localized("serverSettings.copySnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(settingsSnapshot)
                     }
-                    Button("Export Settings Snapshot") {
+                    Button(localized("serverSettings.exportSnapshot")) {
                         snapshotDocument = TS3TextFileDocument(data: Data(settingsSnapshot.utf8))
                         isExportingSnapshot = true
                     }
-                    Button("Export Settings Draft") {
+                    Button(localized("serverSettings.exportDraft")) {
                         exportDraft()
                     }
-                    Button("Import Settings Draft") {
+                    Button(localized("serverSettings.importDraft")) {
                         isImportingDraft = true
                     }
                 }
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingGeneralSettings) {
-                        TextField("Server Name", text: $name)
+                        TextField(localized("serverSettings.serverName"), text: $name)
                             .ts3PlainTextField()
-                        TextField("Phonetic Name", text: $phoneticName)
+                        TextField(localized("serverSettings.phoneticName"), text: $phoneticName)
                             .ts3PlainTextField()
-                        TextField("Server Port", text: $port)
+                        TextField(localized("serverSettings.serverPort"), text: $port)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Machine ID", text: $machineId)
+                        TextField(localized("serverSettings.machineId"), text: $machineId)
                             .ts3PlainTextField()
-                        Picker("Autostart", selection: $autostart) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.autostart"), selection: $autostart) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
-                        TextField("Welcome Message", text: $welcomeMessage)
+                        TextField(localized("serverSettings.welcomeMessage"), text: $welcomeMessage)
                             .ts3PlainTextField()
-                        TextField("Max Clients", text: $maxClients)
+                        TextField(localized("serverSettings.maxClients"), text: $maxClients)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Reserved Slots", text: $reservedSlots)
+                        TextField(localized("serverSettings.reservedSlots"), text: $reservedSlots)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        Toggle("Clear Server Password", isOn: $clearPassword)
-                        SecureField("New Server Password", text: $password)
+                        Toggle(localized("serverSettings.clearPassword"), isOn: $clearPassword)
+                        SecureField(localized("serverSettings.newPassword"), text: $password)
                             .disabled(clearPassword)
-                        TextField("Icon ID", text: $iconId)
+                        TextField(localized("serverSettings.iconId"), text: $iconId)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
                         Button {
                             isShowingIconImporter = true
                         } label: {
-                            Label("Upload Icon", systemImage: "photo")
+                            Label(localized("serverSettings.uploadIcon"), systemImage: "photo")
                         }
-                        Picker("Server List", selection: $weblistEnabled) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Listed").tag(Optional(true))
-                            Text("Hidden").tag(Optional(false))
+                        Picker(localized("serverSettings.serverList"), selection: $weblistEnabled) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.listed")).tag(Optional(true))
+                            Text(localized("serverSettings.hidden")).tag(Optional(false))
                         }
                     } label: {
-                        Label("General", systemImage: "server.rack")
+                        Label(localized("serverSettings.general"), systemImage: "server.rack")
                     }
                 }
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingHostSettings) {
-                        Picker("Host Message Mode", selection: $hostMessageMode) {
+                        Picker(localized("serverSettings.hostMessageMode"), selection: $hostMessageMode) {
                             ForEach(TS3HostMessageMode.allCases) { mode in
-                                Text(mode.title).tag(String(mode.rawValue))
+                                Text(hostMessageModeTitle(mode.rawValue)).tag(String(mode.rawValue))
                             }
                             if let numericMode = Int(hostMessageMode.trimmingCharacters(in: .whitespacesAndNewlines)),
                                TS3HostMessageMode(rawValue: numericMode) == nil {
-                                Text(TS3HostMessageMode.title(for: numericMode)).tag(hostMessageMode)
+                                Text(hostMessageModeTitle(numericMode)).tag(hostMessageMode)
                             }
                         }
-                        TextField("Host Message", text: $hostMessage)
+                        TextField(localized("serverSettings.hostMessage"), text: $hostMessage)
                             .ts3PlainTextField()
-                        TextField("Banner Link URL", text: $hostBannerURL)
+                        TextField(localized("serverSettings.bannerLinkURL"), text: $hostBannerURL)
                             .ts3URLTextField()
-                        TextField("Banner Image URL", text: $hostBannerGraphicsURL)
+                        TextField(localized("serverSettings.bannerImageURL"), text: $hostBannerGraphicsURL)
                             .ts3URLTextField()
-                        Picker("Banner Mode", selection: $hostBannerMode) {
-                            Text("Unchanged").tag(Int?.none)
+                        Picker(localized("serverSettings.bannerMode"), selection: $hostBannerMode) {
+                            Text(localized("serverSettings.unchanged")).tag(Int?.none)
                             ForEach(TS3HostBannerMode.allCases) { mode in
-                                Text(mode.title).tag(Optional(mode.rawValue))
+                                Text(hostBannerModeTitle(mode.rawValue)).tag(Optional(mode.rawValue))
                             }
                             if let hostBannerMode,
                                TS3HostBannerMode(rawValue: hostBannerMode) == nil {
-                                Text(TS3HostBannerMode.title(for: hostBannerMode)).tag(Optional(hostBannerMode))
+                                Text(hostBannerModeTitle(hostBannerMode)).tag(Optional(hostBannerMode))
                             }
                         }
-                        TextField("Image Refresh Seconds", text: $hostBannerGraphicsInterval)
+                        TextField(localized("serverSettings.imageRefreshSeconds"), text: $hostBannerGraphicsInterval)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Button Tooltip", text: $hostButtonTooltip)
+                        TextField(localized("serverSettings.buttonTooltip"), text: $hostButtonTooltip)
                             .ts3PlainTextField()
-                        TextField("Button Link URL", text: $hostButtonURL)
+                        TextField(localized("serverSettings.buttonLinkURL"), text: $hostButtonURL)
                             .ts3URLTextField()
-                        TextField("Button Image URL", text: $hostButtonGraphicsURL)
+                        TextField(localized("serverSettings.buttonImageURL"), text: $hostButtonGraphicsURL)
                             .ts3URLTextField()
                     } label: {
-                        Label("Host Branding", systemImage: "rectangle.and.text.magnifyingglass")
+                        Label(localized("serverSettings.hostBranding"), systemImage: "rectangle.and.text.magnifyingglass")
                     }
                 }
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingLimitSettings) {
-                        TextField("Download Quota Bytes", text: $downloadQuota)
+                        TextField(localized("serverSettings.downloadQuotaBytes"), text: $downloadQuota)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Upload Quota Bytes", text: $uploadQuota)
+                        TextField(localized("serverSettings.uploadQuotaBytes"), text: $uploadQuota)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Max Download Bandwidth Bytes/s", text: $maxDownloadTotalBandwidth)
+                        TextField(localized("serverSettings.maxDownloadBandwidthBytes"), text: $maxDownloadTotalBandwidth)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Max Upload Bandwidth Bytes/s", text: $maxUploadTotalBandwidth)
+                        TextField(localized("serverSettings.maxUploadBandwidthBytes"), text: $maxUploadTotalBandwidth)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Needed Identity Security Level", text: $neededIdentitySecurityLevel)
+                        TextField(localized("serverSettings.neededIdentitySecurityLevel"), text: $neededIdentitySecurityLevel)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Minimum Client Version", text: $minClientVersion)
+                        TextField(localized("serverSettings.minimumClientVersion"), text: $minClientVersion)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Minimum Android Version", text: $minAndroidVersion)
+                        TextField(localized("serverSettings.minimumAndroidVersion"), text: $minAndroidVersion)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Minimum iOS Version", text: $minIOSVersion)
+                        TextField(localized("serverSettings.minimumIOSVersion"), text: $minIOSVersion)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        Picker("Codec Encryption", selection: $codecEncryptionMode) {
-                            Text("Unchanged").tag(Int?.none)
+                        Picker(localized("serverSettings.codecEncryption"), selection: $codecEncryptionMode) {
+                            Text(localized("serverSettings.unchanged")).tag(Int?.none)
                             ForEach(TS3CodecEncryptionMode.allCases) { mode in
-                                Text(mode.title).tag(Optional(mode.rawValue))
+                                Text(codecEncryptionModeTitle(mode.rawValue)).tag(Optional(mode.rawValue))
                             }
                             if let codecEncryptionMode,
                                TS3CodecEncryptionMode(rawValue: codecEncryptionMode) == nil {
-                                Text(TS3CodecEncryptionMode.title(for: codecEncryptionMode)).tag(Optional(codecEncryptionMode))
+                                Text(codecEncryptionModeTitle(codecEncryptionMode)).tag(Optional(codecEncryptionMode))
                             }
                         }
                     } label: {
-                        Label("Limits and Security", systemImage: "speedometer")
+                        Label(localized("serverSettings.limitsAndSecurity"), systemImage: "speedometer")
                     }
                 }
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingGroupSettings) {
-                        Picker("Server Group", selection: $defaultServerGroupId) {
-                            Text("Unchanged").tag("")
+                        Picker(localized("serverSettings.serverGroup"), selection: $defaultServerGroupId) {
+                            Text(localized("serverSettings.unchanged")).tag("")
                             ForEach(model.serverGroups) { group in
                                 Text(groupPickerTitle(group)).tag(String(group.id))
                             }
@@ -16044,11 +16049,11 @@ struct ServerSettingsEditorSheet: View {
                                 Text(groupDraftTitle(defaultServerGroupId)).tag(defaultServerGroupId)
                             }
                         }
-                        TextField("Server Group ID", text: $defaultServerGroupId)
+                        TextField(localized("serverSettings.serverGroupId"), text: $defaultServerGroupId)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        Picker("Channel Group", selection: $defaultChannelGroupId) {
-                            Text("Unchanged").tag("")
+                        Picker(localized("serverSettings.channelGroup"), selection: $defaultChannelGroupId) {
+                            Text(localized("serverSettings.unchanged")).tag("")
                             ForEach(model.channelGroups) { group in
                                 Text(groupPickerTitle(group)).tag(String(group.id))
                             }
@@ -16056,11 +16061,11 @@ struct ServerSettingsEditorSheet: View {
                                 Text(groupDraftTitle(defaultChannelGroupId)).tag(defaultChannelGroupId)
                             }
                         }
-                        TextField("Channel Group ID", text: $defaultChannelGroupId)
+                        TextField(localized("serverSettings.channelGroupId"), text: $defaultChannelGroupId)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        Picker("Channel Admin", selection: $defaultChannelAdminGroupId) {
-                            Text("Unchanged").tag("")
+                        Picker(localized("serverSettings.channelAdmin"), selection: $defaultChannelAdminGroupId) {
+                            Text(localized("serverSettings.unchanged")).tag("")
                             ForEach(model.channelGroups) { group in
                                 Text(groupPickerTitle(group)).tag(String(group.id))
                             }
@@ -16068,102 +16073,102 @@ struct ServerSettingsEditorSheet: View {
                                 Text(groupDraftTitle(defaultChannelAdminGroupId)).tag(defaultChannelAdminGroupId)
                             }
                         }
-                        TextField("Channel Admin Group ID", text: $defaultChannelAdminGroupId)
+                        TextField(localized("serverSettings.channelAdminGroupId"), text: $defaultChannelAdminGroupId)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
                     } label: {
-                        Label("Default Groups", systemImage: "person.3")
+                        Label(localized("serverSettings.defaultGroups"), systemImage: "person.3")
                     }
                 }
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingSafetySettings) {
-                        TextField("Auto-Ban Complaint Count", text: $complainAutoBanCount)
+                        TextField(localized("serverSettings.autoBanComplaintCount"), text: $complainAutoBanCount)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Auto-Ban Seconds", text: $complainAutoBanTime)
+                        TextField(localized("serverSettings.autoBanSeconds"), text: $complainAutoBanTime)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Complaint Remove Seconds", text: $complainRemoveTime)
+                        TextField(localized("serverSettings.complaintRemoveSeconds"), text: $complainRemoveTime)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Forced Silence Client Count", text: $minClientsInChannelBeforeForcedSilence)
+                        TextField(localized("serverSettings.forcedSilenceClientCount"), text: $minClientsInChannelBeforeForcedSilence)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Priority Speaker Dimming", text: $prioritySpeakerDimmModificator)
+                        TextField(localized("serverSettings.prioritySpeakerDimming"), text: $prioritySpeakerDimmModificator)
                             .ts3PlainTextField()
-                        TextField("Anti-Flood Tick Reduce", text: $antiFloodPointsTickReduce)
+                        TextField(localized("serverSettings.antiFloodTickReduce"), text: $antiFloodPointsTickReduce)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Anti-Flood Command Block", text: $antiFloodPointsNeededCommandBlock)
+                        TextField(localized("serverSettings.antiFloodCommandBlock"), text: $antiFloodPointsNeededCommandBlock)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Anti-Flood IP Block", text: $antiFloodPointsNeededIPBlock)
+                        TextField(localized("serverSettings.antiFloodIPBlock"), text: $antiFloodPointsNeededIPBlock)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
-                        TextField("Anti-Flood Plugin Block", text: $antiFloodPointsNeededPluginBlock)
+                        TextField(localized("serverSettings.antiFloodPluginBlock"), text: $antiFloodPointsNeededPluginBlock)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
                     } label: {
-                        Label("Anti-Flood and Complaints", systemImage: "shield")
+                        Label(localized("serverSettings.antiFloodAndComplaints"), systemImage: "shield")
                     }
                 }
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingLogSettings) {
-                        Picker("Client Log", selection: $logClient) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.clientLog"), selection: $logClient) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
-                        Picker("Query Log", selection: $logQuery) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.queryLog"), selection: $logQuery) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
-                        Picker("Channel Log", selection: $logChannel) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.channelLog"), selection: $logChannel) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
-                        Picker("Permission Log", selection: $logPermissions) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.permissionLog"), selection: $logPermissions) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
-                        Picker("Server Log", selection: $logServer) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.serverLog"), selection: $logServer) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
-                        Picker("File Transfer Log", selection: $logFileTransfer) {
-                            Text("Unchanged").tag(Bool?.none)
-                            Text("Enabled").tag(Optional(true))
-                            Text("Disabled").tag(Optional(false))
+                        Picker(localized("serverSettings.fileTransferLog"), selection: $logFileTransfer) {
+                            Text(localized("serverSettings.unchanged")).tag(Bool?.none)
+                            Text(localized("serverSettings.enabled")).tag(Optional(true))
+                            Text(localized("serverSettings.disabled")).tag(Optional(false))
                         }
                     } label: {
-                        Label("Server Log Options", systemImage: "doc.text.magnifyingglass")
+                        Label(localized("serverSettings.serverLogOptions"), systemImage: "doc.text.magnifyingglass")
                     }
                 }
             }
-            .navigationTitle("Server Settings")
+            .navigationTitle(localized("serverSettings.title"))
             .ts3InlineNavigationTitle()
             .onAppear(perform: loadCurrentValues)
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Reset") {
+                    Button(localized("serverSettings.reset")) {
                         loadCurrentValues()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Save") {
+                    Button(localized("serverSettings.save")) {
                         save()
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!isDraftValid)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -16220,7 +16225,8 @@ struct ServerSettingsEditorSheet: View {
                     },
                     cancel: {
                         pendingDraftImport = nil
-                    }
+                    },
+                    localized: localized
                 )
             }
         }
@@ -16231,35 +16237,36 @@ struct ServerSettingsEditorSheet: View {
         let canImport: Bool
         let importDraft: () -> Void
         let cancel: () -> Void
+        let localized: (String, CVarArg...) -> String
 
         var body: some View {
             NavigationView {
                 Form {
-                    Section(header: Text("Preview")) {
+                    Section(header: Text(localized("serverSettings.preview"))) {
                         Text(previewMessage)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Button("Copy Settings Summary") {
+                        Button(localized("serverSettings.copySummary")) {
                             TS3PlatformSupport.copyToPasteboard(previewMessage)
                         }
                     }
 
-                    Section(header: Text("Import Behavior")) {
-                        Text("Import fills the server settings editor with this draft when validation passes. It does not save changes to the server until Save is tapped.")
+                    Section(header: Text(localized("serverSettings.importBehavior"))) {
+                        Text(localized("serverSettings.importBehavior.summary"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-                .navigationTitle("Import Settings")
+                .navigationTitle(localized("serverSettings.importSettings"))
                 .ts3InlineNavigationTitle()
                 .toolbar {
                     ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                        Button("Cancel") {
+                        Button(localized("common.cancel")) {
                             cancel()
                         }
                     }
                     ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                        Button("Import") {
+                        Button(localized("serverSettings.import")) {
                             importDraft()
                         }
                         .disabled(!canImport)
@@ -16331,55 +16338,55 @@ struct ServerSettingsEditorSheet: View {
         validationMessages: [String]
     ) -> String {
         var rows: [(String, String)] = [
-            ("Server Name", draft.name),
-            ("Phonetic Name", draft.phoneticName ?? ""),
-            ("Server Port", draft.port ?? ""),
-            ("Machine ID", draft.machineId ?? ""),
-            ("Autostart", boolTitle(draft.autostart)),
-            ("Welcome Message", draft.welcomeMessage),
-            ("Max Clients", draft.maxClients),
-            ("Reserved Slots", draft.reservedSlots),
-            ("Password", draft.clearPassword ? "Clear Password" : (draft.password.isEmpty ? "Unchanged" : "New Password Set")),
-            ("Icon ID", draft.iconId),
-            ("Server List", weblistTitle(draft.weblistEnabled ?? "")),
-            ("Host Message Mode", hostMessageModeTitle(draft.hostMessageMode)),
-            ("Host Message", draft.hostMessage),
-            ("Banner Link URL", draft.hostBannerURL),
-            ("Banner Image URL", draft.hostBannerGraphicsURL),
-            ("Banner Mode", hostBannerModeTitle(draft.hostBannerMode ?? "")),
-            ("Banner Refresh Seconds", draft.hostBannerGraphicsInterval ?? ""),
-            ("Host Button Tooltip", draft.hostButtonTooltip),
-            ("Host Button URL", draft.hostButtonURL),
-            ("Host Button Image URL", draft.hostButtonGraphicsURL),
-            ("Download Quota Bytes", draft.downloadQuota),
-            ("Upload Quota Bytes", draft.uploadQuota),
-            ("Max Download Bandwidth Bytes/s", draft.maxDownloadTotalBandwidth ?? ""),
-            ("Max Upload Bandwidth Bytes/s", draft.maxUploadTotalBandwidth ?? ""),
-            ("Needed Identity Security Level", draft.neededIdentitySecurityLevel ?? ""),
-            ("Minimum Client Version", draft.minClientVersion ?? ""),
-            ("Minimum Android Version", draft.minAndroidVersion ?? ""),
-            ("Minimum iOS Version", draft.minIOSVersion ?? ""),
-            ("Codec Encryption Mode", codecEncryptionModeTitle(draft.codecEncryptionMode)),
-            ("Default Server Group", groupSnapshotTitle(draft.defaultServerGroupId ?? "", groups: model.serverGroups)),
-            ("Default Channel Group", groupSnapshotTitle(draft.defaultChannelGroupId ?? "", groups: model.channelGroups)),
-            ("Default Channel Admin", groupSnapshotTitle(draft.defaultChannelAdminGroupId ?? "", groups: model.channelGroups)),
-            ("Auto-Ban Complaint Count", draft.complainAutoBanCount),
-            ("Auto-Ban Seconds", draft.complainAutoBanTime),
-            ("Complaint Remove Seconds", draft.complainRemoveTime),
-            ("Forced Silence Client Count", draft.minClientsInChannelBeforeForcedSilence),
-            ("Priority Speaker Dimming", draft.prioritySpeakerDimmModificator),
-            ("Anti-Flood Tick Reduce", draft.antiFloodPointsTickReduce ?? ""),
-            ("Anti-Flood Command Block", draft.antiFloodPointsNeededCommandBlock ?? ""),
-            ("Anti-Flood IP Block", draft.antiFloodPointsNeededIPBlock ?? ""),
-            ("Anti-Flood Plugin Block", draft.antiFloodPointsNeededPluginBlock ?? ""),
-            ("Client Log", boolTitle(draft.logClient)),
-            ("Query Log", boolTitle(draft.logQuery)),
-            ("Channel Log", boolTitle(draft.logChannel)),
-            ("Permission Log", boolTitle(draft.logPermissions)),
-            ("Server Log", boolTitle(draft.logServer)),
-            ("File Transfer Log", boolTitle(draft.logFileTransfer))
+            (localized("serverSettings.serverName"), draft.name),
+            (localized("serverSettings.phoneticName"), draft.phoneticName ?? ""),
+            (localized("serverSettings.serverPort"), draft.port ?? ""),
+            (localized("serverSettings.machineId"), draft.machineId ?? ""),
+            (localized("serverSettings.autostart"), boolTitle(draft.autostart)),
+            (localized("serverSettings.welcomeMessage"), draft.welcomeMessage),
+            (localized("serverSettings.maxClients"), draft.maxClients),
+            (localized("serverSettings.reservedSlots"), draft.reservedSlots),
+            (localized("serverSettings.password"), draft.clearPassword ? localized("serverSettings.clearPassword") : (draft.password.isEmpty ? localized("serverSettings.unchanged") : localized("serverSettings.newPasswordSet"))),
+            (localized("serverSettings.iconId"), draft.iconId),
+            (localized("serverSettings.serverList"), weblistTitle(draft.weblistEnabled ?? "")),
+            (localized("serverSettings.hostMessageMode"), hostMessageModeTitle(draft.hostMessageMode)),
+            (localized("serverSettings.hostMessage"), draft.hostMessage),
+            (localized("serverSettings.bannerLinkURL"), draft.hostBannerURL),
+            (localized("serverSettings.bannerImageURL"), draft.hostBannerGraphicsURL),
+            (localized("serverSettings.bannerMode"), hostBannerModeTitle(draft.hostBannerMode ?? "")),
+            (localized("serverSettings.bannerRefreshSeconds"), draft.hostBannerGraphicsInterval ?? ""),
+            (localized("serverSettings.hostButtonTooltip"), draft.hostButtonTooltip),
+            (localized("serverSettings.hostButtonURL"), draft.hostButtonURL),
+            (localized("serverSettings.hostButtonImageURL"), draft.hostButtonGraphicsURL),
+            (localized("serverSettings.downloadQuotaBytes"), draft.downloadQuota),
+            (localized("serverSettings.uploadQuotaBytes"), draft.uploadQuota),
+            (localized("serverSettings.maxDownloadBandwidthBytes"), draft.maxDownloadTotalBandwidth ?? ""),
+            (localized("serverSettings.maxUploadBandwidthBytes"), draft.maxUploadTotalBandwidth ?? ""),
+            (localized("serverSettings.neededIdentitySecurityLevel"), draft.neededIdentitySecurityLevel ?? ""),
+            (localized("serverSettings.minimumClientVersion"), draft.minClientVersion ?? ""),
+            (localized("serverSettings.minimumAndroidVersion"), draft.minAndroidVersion ?? ""),
+            (localized("serverSettings.minimumIOSVersion"), draft.minIOSVersion ?? ""),
+            (localized("serverSettings.codecEncryptionMode"), codecEncryptionModeTitle(draft.codecEncryptionMode)),
+            (localized("serverSettings.defaultServerGroup"), groupSnapshotTitle(draft.defaultServerGroupId ?? "", groups: model.serverGroups)),
+            (localized("serverSettings.defaultChannelGroup"), groupSnapshotTitle(draft.defaultChannelGroupId ?? "", groups: model.channelGroups)),
+            (localized("serverSettings.defaultChannelAdmin"), groupSnapshotTitle(draft.defaultChannelAdminGroupId ?? "", groups: model.channelGroups)),
+            (localized("serverSettings.autoBanComplaintCount"), draft.complainAutoBanCount),
+            (localized("serverSettings.autoBanSeconds"), draft.complainAutoBanTime),
+            (localized("serverSettings.complaintRemoveSeconds"), draft.complainRemoveTime),
+            (localized("serverSettings.forcedSilenceClientCount"), draft.minClientsInChannelBeforeForcedSilence),
+            (localized("serverSettings.prioritySpeakerDimming"), draft.prioritySpeakerDimmModificator),
+            (localized("serverSettings.antiFloodTickReduce"), draft.antiFloodPointsTickReduce ?? ""),
+            (localized("serverSettings.antiFloodCommandBlock"), draft.antiFloodPointsNeededCommandBlock ?? ""),
+            (localized("serverSettings.antiFloodIPBlock"), draft.antiFloodPointsNeededIPBlock ?? ""),
+            (localized("serverSettings.antiFloodPluginBlock"), draft.antiFloodPointsNeededPluginBlock ?? ""),
+            (localized("serverSettings.clientLog"), boolTitle(draft.logClient)),
+            (localized("serverSettings.queryLog"), boolTitle(draft.logQuery)),
+            (localized("serverSettings.channelLog"), boolTitle(draft.logChannel)),
+            (localized("serverSettings.permissionLog"), boolTitle(draft.logPermissions)),
+            (localized("serverSettings.serverLog"), boolTitle(draft.logServer)),
+            (localized("serverSettings.fileTransferLog"), boolTitle(draft.logFileTransfer))
         ]
-        rows.append(("Draft Valid", validationMessages.isEmpty ? "Yes" : "No"))
+        rows.append((localized("serverSettings.draftValid"), validationMessages.isEmpty ? localized("serverSettings.yes") : localized("serverSettings.no")))
         let summary = rows.compactMap { label, value in
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
@@ -16671,22 +16678,69 @@ struct ServerSettingsEditorSheet: View {
 
     private func hostMessageModeTitle(_ value: String) -> String {
         guard let numericValue = TS3HostMessageMode.value(forDraft: value) else { return value }
-        return TS3HostMessageMode.title(for: numericValue)
+        return hostMessageModeTitle(numericValue)
+    }
+
+    private func hostMessageModeTitle(_ value: Int) -> String {
+        let title: String
+        switch TS3HostMessageMode(rawValue: value) {
+        case .some(.none):
+            title = localized("serverSettings.hostMessageMode.none")
+        case .some(.log):
+            title = localized("serverSettings.hostMessageMode.log")
+        case .some(.modal):
+            title = localized("serverSettings.hostMessageMode.modal")
+        case .some(.modalQuit):
+            title = localized("serverSettings.hostMessageMode.modalQuit")
+        case nil:
+            return localized("serverSettings.unknownValueFormat", value)
+        }
+        return localized("serverSettings.valueWithNumberFormat", title, value)
     }
 
     private func codecEncryptionModeTitle(_ value: String) -> String {
         guard let numericValue = TS3CodecEncryptionMode.value(forDraft: value) else { return value }
-        return TS3CodecEncryptionMode.title(for: numericValue)
+        return codecEncryptionModeTitle(numericValue)
+    }
+
+    private func codecEncryptionModeTitle(_ value: Int) -> String {
+        let title: String
+        switch TS3CodecEncryptionMode(rawValue: value) {
+        case .some(.individual):
+            title = localized("serverSettings.codecEncryption.individual")
+        case .some(.disabled):
+            title = localized("serverSettings.disabled")
+        case .some(.enabled):
+            title = localized("serverSettings.enabled")
+        case nil:
+            return localized("serverSettings.unknownValueFormat", value)
+        }
+        return localized("serverSettings.valueWithNumberFormat", title, value)
     }
 
     private func hostBannerModeTitle(_ value: String) -> String {
         guard let numericValue = TS3HostBannerMode.value(forDraft: value) else { return value }
-        return TS3HostBannerMode.title(for: numericValue)
+        return hostBannerModeTitle(numericValue)
+    }
+
+    private func hostBannerModeTitle(_ value: Int) -> String {
+        let title: String
+        switch TS3HostBannerMode(rawValue: value) {
+        case .some(.noAdjust):
+            title = localized("serverSettings.bannerMode.noAdjustment")
+        case .some(.ignoreAspect):
+            title = localized("serverSettings.bannerMode.ignoreAspect")
+        case .some(.keepAspect):
+            title = localized("serverSettings.bannerMode.keepAspect")
+        case nil:
+            return localized("serverSettings.unknownValueFormat", value)
+        }
+        return localized("serverSettings.valueWithNumberFormat", title, value)
     }
 
     private func weblistTitle(_ value: String) -> String {
-        guard let enabled = Self.boolDraftValue(value) else { return "Unchanged" }
-        return enabled ? "Listed" : "Hidden"
+        guard let enabled = Self.boolDraftValue(value) else { return localized("serverSettings.unchanged") }
+        return enabled ? localized("serverSettings.listed") : localized("serverSettings.hidden")
     }
 
     private func boolDraftText(_ value: Bool?) -> String {
@@ -16694,8 +16748,8 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private func boolTitle(_ value: String?) -> String {
-        guard let enabled = Self.boolDraftValue(value) else { return "Unchanged" }
-        return enabled ? "Enabled" : "Disabled"
+        guard let enabled = Self.boolDraftValue(value) else { return localized("serverSettings.unchanged") }
+        return enabled ? localized("serverSettings.enabled") : localized("serverSettings.disabled")
     }
 
     private func groupPickerTitle(_ group: TS3GroupSummary) -> String {
@@ -16704,12 +16758,12 @@ struct ServerSettingsEditorSheet: View {
 
     private func groupDraftTitle(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Unchanged" : "Group \(trimmed)"
+        return trimmed.isEmpty ? localized("serverSettings.unchanged") : localized("serverSettings.groupFormat", trimmed)
     }
 
     private func groupSnapshotTitle(_ value: String, groups: [TS3GroupSummary]) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let groupId = Int(trimmed) else { return "Unchanged" }
+        guard let groupId = Int(trimmed) else { return localized("serverSettings.unchanged") }
         return TS3GroupSummary.name(for: groupId, in: groups)
     }
 
