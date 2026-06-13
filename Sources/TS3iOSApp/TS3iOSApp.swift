@@ -58,6 +58,18 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("refresh-server", in: model)
                 .disabled(model.state != .connected)
 
+                Button("connect.reconnect") {
+                    model.reconnect()
+                }
+                .ts3KeyboardShortcut("reconnect-server", in: model)
+                .disabled(model.state == .connecting || model.lastConnectionSnapshot == nil)
+
+                Button("channels.disconnect") {
+                    model.disconnect()
+                }
+                .ts3KeyboardShortcut("disconnect-server", in: model)
+                .disabled(model.state != .connected)
+
                 Button("catalyst.saveCurrentServerBookmark") {
                     model.saveCurrentBookmark(name: model.serverHost)
                 }

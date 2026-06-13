@@ -63,6 +63,8 @@ final class TS3KeyboardShortcutTests: XCTestCase {
             "connection-manager",
             "client-migration",
             "notification-settings",
+            "reconnect-server",
+            "disconnect-server",
             "save-bookmark",
             "copy-invite",
             "copy-full-invite",

@@ -7019,6 +7019,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "start-whisper-activation", group: "Voice", action: "Start Temporary Whisper", defaultKeys: "Command-Option-H"),
         TS3KeyboardShortcutBinding(actionId: "stop-whisper-activation", group: "Voice", action: "Stop Temporary Whisper", defaultKeys: "Command-Option-Shift-H"),
         TS3KeyboardShortcutBinding(actionId: "refresh-server", group: "Server", action: "Refresh Channels and Clients", defaultKeys: "Command-Shift-R"),
+        TS3KeyboardShortcutBinding(actionId: "reconnect-server", group: "Server", action: "Reconnect", defaultKeys: "Command-Option-R"),
+        TS3KeyboardShortcutBinding(actionId: "disconnect-server", group: "Server", action: "Disconnect", defaultKeys: "Command-Option-Shift-D"),
         TS3KeyboardShortcutBinding(actionId: "save-bookmark", group: "Server", action: "Save Current Server as Bookmark", defaultKeys: "Command-Option-B"),
         TS3KeyboardShortcutBinding(actionId: "copy-invite", group: "Server", action: "Copy Invite Link", defaultKeys: "Command-Option-U"),
         TS3KeyboardShortcutBinding(actionId: "copy-full-invite", group: "Server", action: "Copy Full Invite Link", defaultKeys: "Command-Option-Shift-U"),
