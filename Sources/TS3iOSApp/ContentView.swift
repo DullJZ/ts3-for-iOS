@@ -27770,47 +27770,52 @@ struct AudioSettingsSheet: View {
         )
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Snapshot")) {
-                    Button("Copy Audio Snapshot") {
+                Section(header: Text(localized("audio.snapshot"))) {
+                    Button(localized("audio.copySnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(audioSettingsSnapshot)
                     }
-                    Button("Export Audio Snapshot") {
+                    Button(localized("audio.exportSnapshot")) {
                         audioSettingsDocument = TS3TextFileDocument(data: Data(audioSettingsSnapshot.utf8))
                         isExportingAudioSettings = true
                     }
-                    Button("Export Audio Settings") {
+                    Button(localized("audio.exportSettings")) {
                         exportAudioSettings()
                     }
-                    Button("Import Audio Settings") {
+                    Button(localized("audio.importSettings")) {
                         isImportingAudioSettings = true
                     }
                 }
 
-                Section(header: Text("Profiles")) {
-                    TextField("Profile Name", text: $audioProfileName)
+                Section(header: Text(localized("audio.profiles"))) {
+                    TextField(localized("audio.profileName"), text: $audioProfileName)
                         .ts3PlainTextField()
-                    Button("Save Current Profile") {
+                    Button(localized("audio.saveCurrentProfile")) {
                         model.saveCurrentAudioProfile(name: audioProfileName)
                         audioProfileName = ""
                     }
                     .disabled(audioProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Export Profile Backup") {
+                    Button(localized("audio.exportProfileBackup")) {
                         exportAudioProfiles()
                     }
                     .disabled(model.audioProfiles.isEmpty)
-                    Button("Import Profile Backup") {
+                    Button(localized("audio.importProfileBackup")) {
                         isImportingAudioProfiles = true
                     }
-                    Button("Delete All Profiles") {
+                    Button(localized("audio.deleteAllProfiles")) {
                         isConfirmingDeleteProfiles = true
                     }
                     .disabled(model.audioProfiles.isEmpty)
 
                     if model.audioProfiles.isEmpty {
-                        Text("No saved audio profiles")
+                        Text(localized("audio.noSavedProfiles"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.audioProfiles) { profile in
@@ -27824,16 +27829,16 @@ struct AudioSettingsSheet: View {
                                 }
                                 Spacer()
                                 Menu {
-                                    Button("Apply Profile") {
+                                    Button(localized("audio.applyProfile")) {
                                         model.applyAudioProfile(profile)
                                     }
-                                    Button("Rename From Profile") {
+                                    Button(localized("audio.renameFromProfile")) {
                                         audioProfileName = profile.name
                                     }
-                                    Button("Copy Summary") {
+                                    Button(localized("common.copySummary")) {
                                         TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
                                     }
-                                    Button("Delete Profile") {
+                                    Button(localized("audio.deleteProfile")) {
                                         model.deleteAudioProfile(profile)
                                     }
                                 } label: {
@@ -27843,23 +27848,23 @@ struct AudioSettingsSheet: View {
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(profile.name)
                             .accessibilityValue(profile.accessibilityValue)
-                            .accessibilityAction(named: "Apply Profile") {
+                            .accessibilityAction(named: localized("audio.applyProfile")) {
                                 model.applyAudioProfile(profile)
                             }
-                            .accessibilityAction(named: "Copy Summary") {
+                            .accessibilityAction(named: localized("common.copySummary")) {
                                 TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
                             }
                             .contextMenu {
-                                Button("Apply Profile") {
+                                Button(localized("audio.applyProfile")) {
                                     model.applyAudioProfile(profile)
                                 }
-                                Button("Rename From Profile") {
+                                Button(localized("audio.renameFromProfile")) {
                                     audioProfileName = profile.name
                                 }
-                                Button("Copy Summary") {
+                                Button(localized("common.copySummary")) {
                                     TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
                                 }
-                                Button("Delete Profile") {
+                                Button(localized("audio.deleteProfile")) {
                                     model.deleteAudioProfile(profile)
                                 }
                             }
@@ -27867,9 +27872,9 @@ struct AudioSettingsSheet: View {
                     }
                 }
 
-                Section(header: Text("Audio Device")) {
-                    audioRouteRow(title: "Input Route", value: model.audioInputRoute)
-                    audioRouteRow(title: "Output Route", value: model.audioOutputRoute)
+                Section(header: Text(localized("audio.device"))) {
+                    audioRouteRow(title: localized("audio.inputRoute"), value: model.audioInputRoute)
+                    audioRouteRow(title: localized("audio.outputRoute"), value: model.audioOutputRoute)
                     if !model.audioRouteAvailabilityNotes.isEmpty {
                         ForEach(model.audioRouteAvailabilityNotes, id: \.self) { note in
                             Text(note)
@@ -27877,9 +27882,9 @@ struct AudioSettingsSheet: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    Toggle("Default to Speaker", isOn: prefersSpeakerBinding)
-                    Picker("Input Device", selection: selectedInputDeviceBinding) {
-                        Text("System Default").tag("")
+                    Toggle(localized("audio.defaultToSpeaker"), isOn: prefersSpeakerBinding)
+                    Picker(localized("audio.inputDevice"), selection: selectedInputDeviceBinding) {
+                        Text(localized("audio.systemDefault")).tag("")
                         ForEach(model.audioInputDevices) { device in
                             Text(device.displayName).tag(device.id)
                         }
@@ -27890,50 +27895,50 @@ struct AudioSettingsSheet: View {
                             audioInputDeviceRow(device)
                         }
                     }
-                    Button("Refresh Audio Routes") {
+                    Button(localized("audio.refreshRoutes")) {
                         model.refreshAudioRoutes()
                     }
                 }
 
-                Section(header: Text("Diagnostics")) {
-                    ServerInfoDetailRow(label: "Transmit Mode", value: model.audioTransmitMode.title)
-                    ServerInfoDetailRow(label: "Voice Activation", value: voiceActivationDiagnosticText)
-                    ServerInfoDetailRow(label: "Input Level", value: model.inputLevelText)
-                    ServerInfoDetailRow(label: "Input Gain", value: model.inputGainPercentText)
-                    ServerInfoDetailRow(label: "Playback Volume", value: model.playbackVolumePercentText)
-                    ServerInfoDetailRow(label: "Input Devices", value: String(model.audioInputDevices.count))
-                    ServerInfoDetailRow(label: "Selected Input", value: selectedInputDeviceName)
-                    ServerInfoDetailRow(label: "Route Availability", value: audioRouteAvailabilityText)
-                    ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" })
-                    ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.lossText))
-                    ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.lossText))
-                    ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.byteText))
-                    Button("Copy Audio Diagnostics") {
+                Section(header: Text(localized("audio.diagnostics"))) {
+                    ServerInfoDetailRow(label: localized("audio.transmitMode"), value: transmitModeTitle(model.audioTransmitMode))
+                    ServerInfoDetailRow(label: localized("audio.voiceActivation"), value: voiceActivationDiagnosticText)
+                    ServerInfoDetailRow(label: localized("audio.inputLevel"), value: model.inputLevelText)
+                    ServerInfoDetailRow(label: localized("audio.inputGain"), value: model.inputGainPercentText)
+                    ServerInfoDetailRow(label: localized("audio.playbackVolume"), value: model.playbackVolumePercentText)
+                    ServerInfoDetailRow(label: localized("audio.inputDevices"), value: String(model.audioInputDevices.count))
+                    ServerInfoDetailRow(label: localized("audio.selectedInput"), value: selectedInputDeviceName)
+                    ServerInfoDetailRow(label: localized("audio.routeAvailability"), value: audioRouteAvailabilityText)
+                    ServerInfoDetailRow(label: localized("audio.ping"), value: model.connectionInfo.ping.map { localized("audio.millisecondsFormat", Self.decimalText($0)) })
+                    ServerInfoDetailRow(label: localized("audio.packetLoss"), value: model.connectionInfo.packetLossTotal.map(Self.lossText))
+                    ServerInfoDetailRow(label: localized("audio.speechLoss"), value: model.connectionInfo.packetLossSpeech.map(Self.lossText))
+                    ServerInfoDetailRow(label: localized("audio.sessionDownloaded"), value: model.connectionInfo.bytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("audio.sessionUploaded"), value: model.connectionInfo.bytesSent.map(Self.byteText))
+                    Button(localized("audio.copyDiagnostics")) {
                         TS3PlatformSupport.copyToPasteboard(audioDiagnosticsSnapshot)
                     }
-                    Button("Refresh Diagnostics") {
+                    Button(localized("audio.refreshDiagnostics")) {
                         model.refreshAudioRoutes()
                         model.refreshConnectionInfo()
                     }
                 }
 
-                Section(header: Text("Transmit Mode")) {
-                    Picker("Mode", selection: transmitModeBinding) {
+                Section(header: Text(localized("audio.transmitMode"))) {
+                    Picker(localized("audio.mode"), selection: transmitModeBinding) {
                         ForEach(TS3AudioTransmitMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(transmitModeTitle(mode)).tag(mode)
                         }
                     }
                     HStack(spacing: 10) {
-                        Button("PTT Preset") {
+                        Button(localized("audio.pttPreset")) {
                             model.applyAudioPreset(mode: .pushToTalk, inputGain: 1)
                         }
                         .buttonStyle(.borderless)
-                        Button("Voice Preset") {
+                        Button(localized("audio.voicePreset")) {
                             model.applyAudioPreset(mode: .voiceActivation, inputGain: 1, threshold: 0.03)
                         }
                         .buttonStyle(.borderless)
-                        Button("Continuous") {
+                        Button(localized("audio.continuousPreset")) {
                             model.applyAudioPreset(mode: .continuous, inputGain: 1)
                         }
                         .buttonStyle(.borderless)
@@ -27942,7 +27947,7 @@ struct AudioSettingsSheet: View {
                     if model.audioTransmitMode == .voiceActivation {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
-                                Text("Activation Threshold")
+                                Text(localized("audio.activationThreshold"))
                                 Spacer()
                                 Text(model.voiceActivationThresholdText)
                                     .foregroundColor(.secondary)
@@ -27953,10 +27958,10 @@ struct AudioSettingsSheet: View {
                     }
                 }
 
-                Section(header: Text("Input Calibration")) {
+                Section(header: Text(localized("audio.inputCalibration"))) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Input Level")
+                            Text(localized("audio.inputLevel"))
                             Spacer()
                             Text(model.inputLevelText)
                                 .foregroundColor(.secondary)
@@ -27964,22 +27969,22 @@ struct AudioSettingsSheet: View {
                         ProgressView(value: inputMeterProgress)
                             .progressViewStyle(.linear)
                         HStack {
-                            Text("Capture \(model.isTalking ? "Active" : "Stopped")")
+                            Text(localized("audio.captureFormat", model.isTalking ? localized("audio.active") : localized("audio.stopped")))
                             Spacer()
-                            Text("Voice Gate \(model.isVoiceActivationTriggered ? "Open" : "Closed")")
+                            Text(localized("audio.voiceGateFormat", model.isVoiceActivationTriggered ? localized("audio.open") : localized("audio.closed")))
                         }
                         .foregroundColor(.secondary)
                         .font(.caption)
                         if model.audioTransmitMode == .voiceActivation {
                             HStack {
-                                Text("Threshold")
+                                Text(localized("audio.threshold"))
                                 Spacer()
                                 Text(model.voiceActivationThresholdText)
                                     .foregroundColor(.secondary)
                             }
                             ProgressView(value: thresholdMeterProgress)
                                 .progressViewStyle(.linear)
-                            Button("Set Threshold From Current Input") {
+                            Button(localized("audio.setThresholdFromCurrentInput")) {
                                 model.calibrateVoiceActivationThresholdFromInput()
                             }
                             .disabled(!model.isTalking)
@@ -27988,10 +27993,10 @@ struct AudioSettingsSheet: View {
                     .padding(.vertical, 4)
                 }
 
-                Section(header: Text("Microphone")) {
+                Section(header: Text(localized("audio.microphone"))) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Input Gain")
+                            Text(localized("audio.inputGain"))
                             Spacer()
                             Text(model.inputGainPercentText)
                                 .foregroundColor(.secondary)
@@ -28015,10 +28020,10 @@ struct AudioSettingsSheet: View {
                     .padding(.vertical, 4)
                 }
 
-                Section(header: Text("Received Audio")) {
+                Section(header: Text(localized("audio.receivedAudio"))) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Playback Volume")
+                            Text(localized("audio.playbackVolume"))
                             Spacer()
                             Text(model.playbackVolumePercentText)
                                 .foregroundColor(.secondary)
@@ -28044,30 +28049,30 @@ struct AudioSettingsSheet: View {
                     .padding(.vertical, 4)
                 }
 
-                Section(header: Text("User Playback")) {
-                    Button("Copy User Playback Snapshot") {
+                Section(header: Text(localized("audio.userPlayback"))) {
+                    Button(localized("audio.copyUserPlaybackSnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(userPlaybackSnapshot)
                     }
                     .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
-                    Button("Export User Playback Snapshot") {
+                    Button(localized("audio.exportUserPlaybackSnapshot")) {
                         audioSettingsDocument = TS3TextFileDocument(data: Data(userPlaybackSnapshot.utf8))
                         isExportingAudioSettings = true
                     }
                     .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
-                    Button("Export User Playback Backup") {
+                    Button(localized("audio.exportUserPlaybackBackup")) {
                         exportUserPlayback()
                     }
                     .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
-                    Button("Import User Playback Backup") {
+                    Button(localized("audio.importUserPlaybackBackup")) {
                         isImportingUserPlayback = true
                     }
-                    Button("Reset User Playback") {
+                    Button(localized("audio.resetUserPlayback")) {
                         isConfirmingResetUserPlayback = true
                     }
                     .disabled(model.userPlaybackPreferenceSummaries.isEmpty)
 
                     if model.userPlaybackPreferenceSummaries.isEmpty {
-                        Text("No per-user playback preferences")
+                        Text(localized("audio.noUserPlaybackPreferences"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.userPlaybackPreferenceSummaries) { preference in
@@ -28076,7 +28081,7 @@ struct AudioSettingsSheet: View {
                                     Text(preference.displayName)
                                         .font(.subheadline.weight(.semibold))
                                     Spacer()
-                                    Text(preference.isOnline ? "Online" : "Saved")
+                                    Text(preference.isOnline ? localized("audio.online") : localized("audio.saved"))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -28089,11 +28094,11 @@ struct AudioSettingsSheet: View {
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(preference.displayName)
                             .accessibilityValue(preference.accessibilityValue)
-                            .accessibilityAction(named: "Copy Summary") {
+                            .accessibilityAction(named: localized("common.copySummary")) {
                                 TS3PlatformSupport.copyToPasteboard(preference.clipboardSummary)
                             }
                             .contextMenu {
-                                Button("Copy Summary") {
+                                Button(localized("common.copySummary")) {
                                     TS3PlatformSupport.copyToPasteboard(preference.clipboardSummary)
                                 }
                             }
@@ -28102,12 +28107,12 @@ struct AudioSettingsSheet: View {
                 }
 
                 Section {
-                    Button("Reset Audio Settings") {
+                    Button(localized("audio.resetSettings")) {
                         isConfirmingResetAudioSettings = true
                     }
                 }
             }
-            .navigationTitle("Audio Settings")
+            .navigationTitle(localized("audio.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshAudioRoutes()
@@ -28115,7 +28120,7 @@ struct AudioSettingsSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -28165,9 +28170,9 @@ struct AudioSettingsSheet: View {
             }
             .alert(isPresented: $isConfirmingResetUserPlayback) {
                 Alert(
-                    title: Text("Reset User Playback?"),
-                    message: Text("This clears all local per-user volume and mute overrides."),
-                    primaryButton: .destructive(Text("Reset")) {
+                    title: Text(localized("audio.resetUserPlaybackAlert.title")),
+                    message: Text(localized("audio.resetUserPlaybackAlert.message")),
+                    primaryButton: .destructive(Text(localized("audio.reset"))) {
                         model.resetUserPlaybackPreferences()
                     },
                     secondaryButton: .cancel()
@@ -28175,9 +28180,9 @@ struct AudioSettingsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteProfiles) {
                 Alert(
-                    title: Text("Delete All Audio Profiles?"),
-                    message: Text("This removes \(model.audioProfiles.count) saved local audio profiles."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("audio.deleteProfilesAlert.title")),
+                    message: Text(localized("audio.deleteProfilesAlert.messageFormat", model.audioProfiles.count)),
+                    primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                         model.deleteAudioProfiles(model.audioProfiles)
                     },
                     secondaryButton: .cancel()
@@ -28185,9 +28190,9 @@ struct AudioSettingsSheet: View {
             }
             .alert(isPresented: $isConfirmingResetAudioSettings) {
                 Alert(
-                    title: Text("Reset Audio Settings?"),
-                    message: Text("This restores the local audio settings to their defaults."),
-                    primaryButton: .destructive(Text("Reset")) {
+                    title: Text(localized("audio.resetSettingsAlert.title")),
+                    message: Text(localized("audio.resetSettingsAlert.message")),
+                    primaryButton: .destructive(Text(localized("audio.reset"))) {
                         model.resetAudioSettings()
                     },
                     secondaryButton: .cancel()
@@ -28333,65 +28338,65 @@ struct AudioSettingsSheet: View {
 
     private var audioSettingsSnapshot: String {
         var rows = [
-            "Transmit Mode: \(model.audioTransmitMode.title)",
-            "Input Level: \(model.inputLevelText)",
-            "Input Gain: \(model.inputGainPercentText)",
-            "Playback Volume: \(model.playbackVolumePercentText)",
-            "Input Route: \(model.audioInputRoute)",
-            "Output Route: \(model.audioOutputRoute)",
-            "Route Availability: \(audioRouteAvailabilityText)",
-            "Input Devices: \(model.audioInputDevices.count)",
-            "Selected Input: \(selectedInputDeviceName)",
-            "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
-            "Saved Profiles: \(model.audioProfiles.count)",
-            "User Playback Overrides: \(model.userPlaybackPreferenceSummaries.count)"
+            localized("audio.snapshot.transmitModeFormat", transmitModeTitle(model.audioTransmitMode)),
+            localized("audio.snapshot.inputLevelFormat", model.inputLevelText),
+            localized("audio.snapshot.inputGainFormat", model.inputGainPercentText),
+            localized("audio.snapshot.playbackVolumeFormat", model.playbackVolumePercentText),
+            localized("audio.snapshot.inputRouteFormat", model.audioInputRoute),
+            localized("audio.snapshot.outputRouteFormat", model.audioOutputRoute),
+            localized("audio.snapshot.routeAvailabilityFormat", audioRouteAvailabilityText),
+            localized("audio.snapshot.inputDevicesFormat", model.audioInputDevices.count),
+            localized("audio.snapshot.selectedInputFormat", selectedInputDeviceName),
+            localized("audio.snapshot.defaultToSpeakerFormat", model.prefersSpeakerOutput ? localized("common.yes") : localized("common.no")),
+            localized("audio.snapshot.savedProfilesFormat", model.audioProfiles.count),
+            localized("audio.snapshot.userPlaybackOverridesFormat", model.userPlaybackPreferenceSummaries.count)
         ]
         if model.audioTransmitMode == .voiceActivation {
-            rows.append("Voice Activation Threshold: \(model.voiceActivationThresholdText)")
+            rows.append(localized("audio.snapshot.voiceActivationThresholdFormat", model.voiceActivationThresholdText))
         }
-        rows.append("Ping: \(model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" } ?? "Unknown")")
-        rows.append("Packet Loss: \(model.connectionInfo.packetLossTotal.map(Self.lossText) ?? "Unknown")")
-        rows.append("Speech Loss: \(model.connectionInfo.packetLossSpeech.map(Self.lossText) ?? "Unknown")")
+        rows.append(localized("audio.snapshot.pingFormat", model.connectionInfo.ping.map { localized("audio.millisecondsFormat", Self.decimalText($0)) } ?? localized("common.unknown")))
+        rows.append(localized("audio.snapshot.packetLossFormat", model.connectionInfo.packetLossTotal.map(Self.lossText) ?? localized("common.unknown")))
+        rows.append(localized("audio.snapshot.speechLossFormat", model.connectionInfo.packetLossSpeech.map(Self.lossText) ?? localized("common.unknown")))
         return rows.joined(separator: "\n")
     }
 
     private var audioDiagnosticsSnapshot: String {
         [
-            "Transmit Mode: \(model.audioTransmitMode.title)",
-            "Voice Activation: \(voiceActivationDiagnosticText)",
-            "Input Level: \(model.inputLevelText)",
-            "Input Gain: \(model.inputGainPercentText)",
-            "Playback Volume: \(model.playbackVolumePercentText)",
-            "Input Route: \(model.audioInputRoute)",
-            "Output Route: \(model.audioOutputRoute)",
-            "Route Availability: \(audioRouteAvailabilityText)",
-            "Input Devices: \(model.audioInputDevices.count)",
-            "Selected Input: \(selectedInputDeviceName)",
-            "Default to Speaker: \(model.prefersSpeakerOutput ? "Yes" : "No")",
-            "Ping: \(model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" } ?? "Unknown")",
-            "Packet Loss: \(model.connectionInfo.packetLossTotal.map(Self.lossText) ?? "Unknown")",
-            "Speech Loss: \(model.connectionInfo.packetLossSpeech.map(Self.lossText) ?? "Unknown")",
-            "Keepalive Loss: \(model.connectionInfo.packetLossKeepalive.map(Self.lossText) ?? "Unknown")",
-            "Control Loss: \(model.connectionInfo.packetLossControl.map(Self.lossText) ?? "Unknown")",
-            "Session Downloaded: \(model.connectionInfo.bytesReceived.map(Self.byteText) ?? "Unknown")",
-            "Session Uploaded: \(model.connectionInfo.bytesSent.map(Self.byteText) ?? "Unknown")"
+            localized("audio.snapshot.transmitModeFormat", transmitModeTitle(model.audioTransmitMode)),
+            localized("audio.snapshot.voiceActivationFormat", voiceActivationDiagnosticText),
+            localized("audio.snapshot.inputLevelFormat", model.inputLevelText),
+            localized("audio.snapshot.inputGainFormat", model.inputGainPercentText),
+            localized("audio.snapshot.playbackVolumeFormat", model.playbackVolumePercentText),
+            localized("audio.snapshot.inputRouteFormat", model.audioInputRoute),
+            localized("audio.snapshot.outputRouteFormat", model.audioOutputRoute),
+            localized("audio.snapshot.routeAvailabilityFormat", audioRouteAvailabilityText),
+            localized("audio.snapshot.inputDevicesFormat", model.audioInputDevices.count),
+            localized("audio.snapshot.selectedInputFormat", selectedInputDeviceName),
+            localized("audio.snapshot.defaultToSpeakerFormat", model.prefersSpeakerOutput ? localized("common.yes") : localized("common.no")),
+            localized("audio.snapshot.pingFormat", model.connectionInfo.ping.map { localized("audio.millisecondsFormat", Self.decimalText($0)) } ?? localized("common.unknown")),
+            localized("audio.snapshot.packetLossFormat", model.connectionInfo.packetLossTotal.map(Self.lossText) ?? localized("common.unknown")),
+            localized("audio.snapshot.speechLossFormat", model.connectionInfo.packetLossSpeech.map(Self.lossText) ?? localized("common.unknown")),
+            localized("audio.snapshot.keepaliveLossFormat", model.connectionInfo.packetLossKeepalive.map(Self.lossText) ?? localized("common.unknown")),
+            localized("audio.snapshot.controlLossFormat", model.connectionInfo.packetLossControl.map(Self.lossText) ?? localized("common.unknown")),
+            localized("audio.snapshot.sessionDownloadedFormat", model.connectionInfo.bytesReceived.map(Self.byteText) ?? localized("common.unknown")),
+            localized("audio.snapshot.sessionUploadedFormat", model.connectionInfo.bytesSent.map(Self.byteText) ?? localized("common.unknown"))
         ].joined(separator: "\n")
     }
 
     private var voiceActivationDiagnosticText: String {
         if model.audioTransmitMode == .voiceActivation {
-            return "Enabled, threshold \(model.voiceActivationThresholdText)"
+            return localized("audio.voiceActivation.enabledFormat", model.voiceActivationThresholdText)
         }
-        return "Configured threshold \(model.voiceActivationThresholdText)"
+        return localized("audio.voiceActivation.configuredFormat", model.voiceActivationThresholdText)
     }
 
     private var selectedInputDeviceName: String {
-        model.audioInputDevices.first(where: { $0.isSelected })?.displayName ?? "System Default"
+        model.audioInputDevices.first(where: { $0.isSelected })?.displayName ?? localized("audio.systemDefault")
     }
 
     private var audioRouteAvailabilityText: String {
         model.audioRouteAvailabilityNotes.isEmpty
-            ? "No route limitations reported"
+            ? localized("audio.noRouteLimitations")
             : model.audioRouteAvailabilityNotes.joined(separator: " | ")
     }
 
@@ -28429,20 +28434,31 @@ struct AudioSettingsSheet: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
-            Text(device.isSelected ? "Selected" : "Available")
+            Text(device.isSelected ? localized("audio.selected") : localized("audio.available"))
                 .font(.caption)
                 .foregroundColor(device.isSelected ? .accentColor : .secondary)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(device.name)
         .accessibilityValue(device.accessibilityValue)
-        .accessibilityAction(named: "Copy Device Summary") {
+        .accessibilityAction(named: localized("audio.copyDeviceSummary")) {
             TS3PlatformSupport.copyToPasteboard(device.clipboardSummary)
         }
         .contextMenu {
-            Button("Copy Device Summary") {
+            Button(localized("audio.copyDeviceSummary")) {
                 TS3PlatformSupport.copyToPasteboard(device.clipboardSummary)
             }
+        }
+    }
+
+    private func transmitModeTitle(_ mode: TS3AudioTransmitMode) -> String {
+        switch mode {
+        case .pushToTalk:
+            return localized("audio.transmit.pushToTalk")
+        case .continuous:
+            return localized("audio.transmit.continuous")
+        case .voiceActivation:
+            return localized("audio.transmit.voiceActivation")
         }
     }
 
@@ -28478,20 +28494,25 @@ private struct AudioSettingsImportPreviewSheet: View {
     let importSettings: () -> Void
     let cancel: () -> Void
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("audio.import.preview"))) {
                     Text(preview.clipboardSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Settings Import Summary") {
+                    Button(localized("audio.import.copySettingsSummary")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
                 if !preview.adjustmentSummaries.isEmpty {
-                    Section(header: Text("Adjusted Settings")) {
+                    Section(header: Text(localized("audio.import.adjustedSettings"))) {
                         ForEach(preview.adjustmentSummaries, id: \.self) { summary in
                             Text(summary)
                                 .font(.caption2)
@@ -28500,22 +28521,22 @@ private struct AudioSettingsImportPreviewSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local audio settings, clamps gain and volume to supported ranges, and falls back to known transmit and whisper modes when imported values are not recognized.")
+                Section(header: Text(localized("audio.import.behaviorTitle"))) {
+                    Text(localized("audio.import.settingsBehavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Audio")
+            .navigationTitle(localized("audio.import.settingsTitle"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("audio.import.action")) {
                         importSettings()
                     }
                 }
@@ -28534,22 +28555,27 @@ private struct AudioProfileImportPreviewSheet: View {
         Set(selectedProfileIds.filter(preview.containsProfile))
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("audio.import.preview"))) {
                     Text(preview.clipboardSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasProfiles {
-                        Button("Copy Profile Import Summary") {
+                        Button(localized("audio.import.copyProfileSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("audio.import.selectAll")) {
                                 selectedProfileIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("audio.import.clear")) {
                                 selectedProfileIds = []
                             }
                             .disabled(selectedProfileIds.isEmpty)
@@ -28558,7 +28584,7 @@ private struct AudioProfileImportPreviewSheet: View {
                 }
 
                 if !preview.adjustmentSummaries.isEmpty {
-                    Section(header: Text("Adjusted Profiles")) {
+                    Section(header: Text(localized("audio.import.adjustedProfiles"))) {
                         ForEach(Array(preview.adjustmentSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -28570,7 +28596,7 @@ private struct AudioProfileImportPreviewSheet: View {
                 }
 
                 if !preview.profileSummaries.isEmpty {
-                    Section(header: Text("Profiles")) {
+                    Section(header: Text(localized("audio.profiles"))) {
                         ForEach(preview.candidates) { candidate in
                             Toggle(isOn: Binding(
                                 get: { selectedProfileIds.contains(candidate.id) },
@@ -28591,13 +28617,13 @@ private struct AudioProfileImportPreviewSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import merges the selected profiles by name, replaces existing profiles with matching names, clamps audio values to supported ranges, and skips blank profile names.")
+                Section(header: Text(localized("audio.import.behaviorTitle"))) {
+                    Text(localized("audio.import.profilesBehavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Profiles")
+            .navigationTitle(localized("audio.import.profilesTitle"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedProfileIds.isEmpty {
@@ -28606,12 +28632,12 @@ private struct AudioProfileImportPreviewSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("audio.import.action")) {
                         importProfiles(validSelectedProfileIds)
                     }
                     .disabled(!preview.hasProfiles || validSelectedProfileIds.isEmpty)
@@ -28631,22 +28657,27 @@ private struct UserPlaybackImportPreviewSheet: View {
         Set(selectedPreferenceIds.filter(preview.containsPreference))
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("audio.import.preview"))) {
                     Text(preview.clipboardSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasPreferences {
-                        Button("Copy Playback Import Summary") {
+                        Button(localized("audio.import.copyPlaybackSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("audio.import.selectAll")) {
                                 selectedPreferenceIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("audio.import.clear")) {
                                 selectedPreferenceIds = []
                             }
                             .disabled(selectedPreferenceIds.isEmpty)
@@ -28655,7 +28686,7 @@ private struct UserPlaybackImportPreviewSheet: View {
                 }
 
                 if !preview.adjustmentSummaries.isEmpty {
-                    Section(header: Text("Adjusted Preferences")) {
+                    Section(header: Text(localized("audio.import.adjustedPreferences"))) {
                         ForEach(Array(preview.adjustmentSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -28667,7 +28698,7 @@ private struct UserPlaybackImportPreviewSheet: View {
                 }
 
                 if !preview.preferenceSummaries.isEmpty {
-                    Section(header: Text("Preferences")) {
+                    Section(header: Text(localized("audio.import.preferences"))) {
                         ForEach(preview.candidates) { candidate in
                             Toggle(isOn: Binding(
                                 get: { selectedPreferenceIds.contains(candidate.id) },
@@ -28688,13 +28719,13 @@ private struct UserPlaybackImportPreviewSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces local per-user playback overrides with the selected preferences, clamps volume values to supported ranges, and skips blank or default unmuted preferences.")
+                Section(header: Text(localized("audio.import.behaviorTitle"))) {
+                    Text(localized("audio.import.playbackBehavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Playback")
+            .navigationTitle(localized("audio.import.playbackTitle"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedPreferenceIds.isEmpty {
@@ -28703,12 +28734,12 @@ private struct UserPlaybackImportPreviewSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("audio.import.action")) {
                         importPreferences(validSelectedPreferenceIds)
                     }
                     .disabled(!preview.hasPreferences || validSelectedPreferenceIds.isEmpty)
