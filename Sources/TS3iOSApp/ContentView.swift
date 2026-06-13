@@ -19467,27 +19467,27 @@ struct PermissionsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Permission Target")) {
-                    Picker("Target", selection: Binding(
+                Section(header: Text(localized("permissions.target"))) {
+                    Picker(localized("permissions.targetPicker"), selection: Binding(
                         get: { model.permissionEditScope },
                         set: { model.selectPermissionScope($0) }
                     )) {
                         ForEach(TS3PermissionEditScope.allCases) { scope in
-                            Text(scope.title).tag(scope)
+                            Text(scopeTitle(scope)).tag(scope)
                         }
                     }
                     if model.permissionEditScope == .ownClient, let databaseId = model.ownClientDatabaseId {
-                        Text("Database ID \(databaseId)")
+                        Text(localized("permissions.databaseIdFormat", databaseId))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     if model.permissionEditScope == .databaseClient {
                         if let databaseId = model.selectedDatabaseClientPermissionId {
-                            Text("Database ID \(databaseId)")
+                            Text(localized("permissions.databaseIdFormat", databaseId))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        Picker("Database Client", selection: Binding(
+                        Picker(localized("permissions.scope.databaseClient"), selection: Binding(
                             get: { model.selectedDatabaseClientPermissionId ?? model.selectedDatabaseClient?.id ?? model.databaseClients.first?.id ?? 0 },
                             set: {
                                 model.selectedDatabaseClientPermissionId = $0
@@ -19500,7 +19500,7 @@ struct PermissionsSheet: View {
                         }
                     }
                     if model.permissionEditScope == .serverGroup {
-                        Picker("Server Group", selection: Binding(
+                        Picker(localized("permissions.scope.serverGroup"), selection: Binding(
                             get: { model.selectedServerGroupPermissionId ?? model.serverGroups.first?.id ?? 0 },
                             set: {
                                 model.selectedServerGroupPermissionId = $0
@@ -19513,7 +19513,7 @@ struct PermissionsSheet: View {
                         }
                     }
                     if model.permissionEditScope == .channelGroup {
-                        Picker("Channel Group", selection: Binding(
+                        Picker(localized("permissions.scope.channelGroup"), selection: Binding(
                             get: { model.selectedChannelGroupPermissionId ?? model.channelGroups.first?.id ?? 0 },
                             set: {
                                 model.selectedChannelGroupPermissionId = $0
@@ -19526,7 +19526,7 @@ struct PermissionsSheet: View {
                         }
                     }
                     if model.permissionEditScope == .channel {
-                        Picker("Channel", selection: Binding(
+                        Picker(localized("permissions.scope.channel"), selection: Binding(
                             get: { model.selectedChannelPermissionId ?? model.currentChannel?.id ?? model.channels.first?.id ?? 0 },
                             set: {
                                 model.selectedChannelPermissionId = $0
@@ -19539,7 +19539,7 @@ struct PermissionsSheet: View {
                         }
                     }
                     if model.permissionEditScope == .channelClient {
-                        Picker("Channel", selection: Binding(
+                        Picker(localized("permissions.scope.channel"), selection: Binding(
                             get: { model.selectedChannelClientPermissionChannelId ?? model.currentChannel?.id ?? model.channels.first?.id ?? 0 },
                             set: {
                                 model.selectedChannelClientPermissionChannelId = $0
@@ -19551,7 +19551,7 @@ struct PermissionsSheet: View {
                                 Text(channel.name).tag(channel.id)
                             }
                         }
-                        Picker("Client", selection: Binding(
+                        Picker(localized("permissions.client"), selection: Binding(
                             get: { model.selectedChannelClientPermissionClientId ?? model.channelClientPermissionMembers().first?.id ?? 0 },
                             set: {
                                 model.selectedChannelClientPermissionClientId = $0
@@ -19565,50 +19565,50 @@ struct PermissionsSheet: View {
                     }
                 }
 
-                Section(header: Text("\(model.permissionEditScope.title) Permissions")) {
-                    Button("Copy Visible Permissions") {
+                Section(header: Text(localized("permissions.scopePermissionsFormat", scopeTitle(model.permissionEditScope)))) {
+                    Button(localized("permissions.copyVisible")) {
                         TS3PlatformSupport.copyToPasteboard(visiblePermissionsSnapshot)
                     }
                     .disabled(filteredDisplayedPermissions.isEmpty)
 
-                    Button("Export Visible Permissions") {
+                    Button(localized("permissions.exportVisible")) {
                         permissionExportDocument = TS3TextFileDocument(data: Data(visiblePermissionsSnapshot.utf8))
                         isExportingPermissionSnapshot = true
                     }
                     .disabled(filteredDisplayedPermissions.isEmpty)
 
-                    Button("Export Permission Backup") {
+                    Button(localized("permissions.exportBackup")) {
                         exportPermissionBackup()
                     }
                     .disabled(displayedPermissions.isEmpty)
 
-                    Button("Import Permission Backup") {
+                    Button(localized("permissions.importBackup")) {
                         isImportingPermissions = true
                     }
                     .disabled(model.state != .connected)
 
-                    Button("Delete Visible Permissions") {
+                    Button(localized("permissions.deleteVisible")) {
                         isConfirmingDeleteVisible = true
                     }
                     .disabled(model.state != .connected || filteredDisplayedPermissions.isEmpty)
                     .foregroundColor(.red)
 
-                    Picker("Filter", selection: $assignedFilter) {
+                    Picker(localized("permissions.filter"), selection: $assignedFilter) {
                         ForEach(AssignedPermissionFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(assignedFilterTitle(filter)).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $assignedSortMode) {
+                    Picker(localized("groups.sortBy"), selection: $assignedSortMode) {
                         ForEach(AssignedPermissionSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(assignedSortModeTitle(mode)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $assignedSortAscending)
-                    TextField("Search assigned permissions", text: $assignedSearchText)
+                    Toggle(localized("groups.ascending"), isOn: $assignedSortAscending)
+                    TextField(localized("permissions.searchAssigned"), text: $assignedSearchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.savePermissionFilterPreset(
                                 name: presetName,
                                 scope: model.permissionEditScope.rawValue,
@@ -19622,17 +19622,17 @@ struct PermissionsSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.permissionFilterPresets.isEmpty {
-                            Text("No saved permission filter presets")
+                            Text(localized("permissions.noSavedFilterPresets"))
                         } else {
                             ForEach(model.permissionFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deletePermissionFilterPreset(preset)
                                     }
                                 } label: {
@@ -19644,22 +19644,22 @@ struct PermissionsSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.permissionFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.permissionFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasAssignedPermissionOptions {
-                        Button("Clear Permission Filters") {
+                        Button(localized("permissions.clearFilters")) {
                             assignedFilter = .all
                             assignedSortMode = .name
                             assignedSortAscending = true
@@ -19668,10 +19668,10 @@ struct PermissionsSheet: View {
                     }
 
                     if displayedPermissions.isEmpty {
-                        Text("No permissions")
+                        Text(localized("permissions.noPermissions"))
                             .foregroundColor(.secondary)
                     } else if filteredDisplayedPermissions.isEmpty {
-                        Text("No matching permissions")
+                        Text(localized("permissions.noMatchingPermissions"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredDisplayedPermissions) { permission in
@@ -19687,20 +19687,20 @@ struct PermissionsSheet: View {
                     }
                 }
 
-                Section(header: Text("Add Permission")) {
-                    Text("Target: \(permissionDraft.target)")
+                Section(header: Text(localized("permissions.addPermission"))) {
+                    Text(localized("permissions.targetFormat", permissionDraft.target))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    TextField("Permission Name", text: $permissionName)
+                    TextField(localized("permissions.permissionName"), text: $permissionName)
                         .ts3PlainTextField()
-                    TextField("Value", text: $permissionValue)
+                    TextField(localized("permissions.value"), text: $permissionValue)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
-                    Toggle("Negated", isOn: $permissionNegated)
+                    Toggle(localized("permissions.flag.negated"), isOn: $permissionNegated)
                         .disabled(model.permissionEditScope == .ownClient || model.permissionEditScope == .databaseClient || model.permissionEditScope == .channel || model.permissionEditScope == .channelClient)
-                    Toggle("Skip", isOn: $permissionSkip)
+                    Toggle(localized("permissions.flag.skip"), isOn: $permissionSkip)
                         .disabled(model.permissionEditScope == .channel)
-                    Text(permissionDraft.inheritanceEffectDescription)
+                    Text(permissionEffectDescription(isNegated: permissionDraft.effectiveNegated, isSkipped: permissionDraft.effectiveSkip))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if !permissionDraftValidationMessages.isEmpty {
@@ -19713,20 +19713,20 @@ struct PermissionsSheet: View {
                     Text(permissionDraft.clipboardSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Permission Draft") {
+                    Button(localized("permissions.copyDraft")) {
                         TS3PlatformSupport.copyToPasteboard(permissionDraft.clipboardSummary)
                     }
-                    Button("Add or Update Permission") {
+                    Button(localized("permissions.addOrUpdate")) {
                         model.addSelectedPermission(permissionDraft)
                     }
                     .disabled(model.state != .connected || !permissionDraftValidationMessages.isEmpty)
                 }
 
-                Section(header: Text("Permission Directory")) {
-                    TextField("Search", text: $searchText)
+                Section(header: Text(localized("permissions.directory"))) {
+                    TextField(localized("permissions.search"), text: $searchText)
                         .ts3PlainTextField()
                     if filteredPermissionInfos.isEmpty {
-                        Text("No permissions")
+                        Text(localized("permissions.noPermissions"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredPermissionInfos) { permission in
@@ -19742,7 +19742,7 @@ struct PermissionsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Permissions")
+            .navigationTitle(localized("permissions.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshPermissionList()
@@ -19751,7 +19751,7 @@ struct PermissionsSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.refreshPermissionList()
                         model.refreshGroups()
                         model.refreshSelectedPermissions()
@@ -19759,7 +19759,7 @@ struct PermissionsSheet: View {
                     .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -19818,9 +19818,9 @@ struct PermissionsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
-                    title: Text("Delete Visible Permissions?"),
-                    message: Text("This removes \(filteredDisplayedPermissions.count) permission entries from the current target."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("permissions.deleteVisibleAlert.title")),
+                    message: Text(localized("permissions.deleteVisibleAlert.messageFormat", filteredDisplayedPermissions.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteSelectedPermissions(filteredDisplayedPermissions)
                     },
                     secondaryButton: .cancel()
@@ -19840,9 +19840,9 @@ struct PermissionsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Permission Filter Presets?"),
-                    message: Text("This removes \(model.permissionFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("permissions.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.permissionFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllPermissionFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -19900,12 +19900,12 @@ struct PermissionsSheet: View {
     private func flagText(_ permission: TS3PermissionSummary) -> String {
         var flags: [String] = []
         if permission.isNegated {
-            flags.append("Negated")
+            flags.append(localized("permissions.flag.negated"))
         }
         if permission.isSkipped {
-            flags.append("Skipped")
+            flags.append(localized("permissions.flag.skip"))
         }
-        return flags.isEmpty ? "Direct" : flags.joined(separator: " ")
+        return flags.isEmpty ? localized("permissions.filter.direct") : flags.joined(separator: " ")
     }
 
     private func applyPreset(_ preset: TS3PermissionFilterPreset) {
@@ -19922,18 +19922,18 @@ struct PermissionsSheet: View {
 
     private func presetSummary(_ preset: TS3PermissionFilterPreset) -> String {
         var parts = [
-            (TS3PermissionEditScope(rawValue: preset.scope) ?? .ownClient).title,
-            (AssignedPermissionFilter(rawValue: preset.assignedFilter) ?? .all).title,
-            "Sort \((AssignedPermissionSortMode(rawValue: preset.assignedSortMode) ?? .name).title)"
+            scopeTitle(TS3PermissionEditScope(rawValue: preset.scope) ?? .ownClient),
+            assignedFilterTitle(AssignedPermissionFilter(rawValue: preset.assignedFilter) ?? .all),
+            localized("permissions.presetSummary.sortFormat", assignedSortModeTitle(AssignedPermissionSortMode(rawValue: preset.assignedSortMode) ?? .name))
         ]
         if !preset.assignedSortAscending {
-            parts.append("Descending")
+            parts.append(localized("groups.members.descending"))
         }
         if !preset.assignedSearchText.isEmpty {
-            parts.append("Assigned \(preset.assignedSearchText)")
+            parts.append(localized("permissions.presetSummary.assignedFormat", preset.assignedSearchText))
         }
         if !preset.permissionSearchText.isEmpty {
-            parts.append("Directory \(preset.permissionSearchText)")
+            parts.append(localized("permissions.presetSummary.directoryFormat", preset.permissionSearchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -19979,36 +19979,36 @@ struct PermissionsSheet: View {
 
     private func permissionBackupPreviewMessage(_ preview: TS3PermissionBackupPreview) -> String {
         var lines = [
-            "Target: \(preview.scope.title) - \(preview.targetDescription)",
-            "Backup permissions: \(preview.permissionCount)"
+            localized("permissions.backupPreview.targetFormat", scopeTitle(preview.scope), preview.targetDescription),
+            localized("permissions.backupPreview.backupPermissionsFormat", preview.permissionCount)
         ]
         if let currentPermissionCount = preview.currentPermissionCount,
            let overwriteCount = preview.overwriteCount,
            let changedCount = preview.changedCount,
            let unchangedCount = preview.unchangedCount,
            let newPermissionCount = preview.newPermissionCount {
-            lines.append("Current permissions: \(currentPermissionCount)")
-            lines.append("Existing entries: \(overwriteCount) total, \(changedCount) changed, \(unchangedCount) unchanged.")
-            lines.append("Will update \(changedCount) existing and add \(newPermissionCount) new permission entries.")
+            lines.append(localized("permissions.backupPreview.currentPermissionsFormat", currentPermissionCount))
+            lines.append(localized("permissions.backupPreview.existingEntriesFormat", overwriteCount, changedCount, unchangedCount))
+            lines.append(localized("permissions.backupPreview.restorePlanFormat", changedCount, newPermissionCount))
             if !preview.changedPermissionNames.isEmpty {
-                lines.append("Changing: \(permissionNameSummary(preview.changedPermissionNames))")
+                lines.append(localized("permissions.backupPreview.changingFormat", permissionNameSummary(preview.changedPermissionNames)))
             }
             if !preview.changedPermissionDetails.isEmpty {
-                lines.append("Change details: \(permissionDetailSummary(preview.changedPermissionDetails))")
+                lines.append(localized("permissions.backupPreview.changeDetailsFormat", permissionDetailSummary(preview.changedPermissionDetails)))
             }
             if !preview.overwritePermissionNames.isEmpty {
-                lines.append("Existing: \(permissionNameSummary(preview.overwritePermissionNames))")
+                lines.append(localized("permissions.backupPreview.existingFormat", permissionNameSummary(preview.overwritePermissionNames)))
             }
             if !preview.unchangedPermissionNames.isEmpty {
-                lines.append("Unchanged: \(permissionNameSummary(preview.unchangedPermissionNames))")
+                lines.append(localized("permissions.backupPreview.unchangedFormat", permissionNameSummary(preview.unchangedPermissionNames)))
             }
             if !preview.newPermissionNames.isEmpty {
-                lines.append("Adding: \(permissionNameSummary(preview.newPermissionNames))")
+                lines.append(localized("permissions.backupPreview.addingFormat", permissionNameSummary(preview.newPermissionNames)))
             }
         } else {
-            lines.append("Current target is different or not loaded, so conflicts cannot be counted before restore.")
+            lines.append(localized("permissions.backupPreview.uncomparable"))
         }
-        lines.append("Restore updates matching permission names and does not delete permissions missing from the backup.")
+        lines.append(localized("permissions.backupPreview.restoreBehavior"))
         return lines.joined(separator: "\n")
     }
 
@@ -20016,14 +20016,14 @@ struct PermissionsSheet: View {
         let visible = names.prefix(6).joined(separator: ", ")
         let remainingCount = names.count - min(names.count, 6)
         guard remainingCount > 0 else { return visible }
-        return "\(visible), +\(remainingCount) more"
+        return localized("permissions.moreFormat", visible, remainingCount)
     }
 
     private func permissionDetailSummary(_ details: [String]) -> String {
         let visible = details.prefix(3).joined(separator: "; ")
         let remainingCount = details.count - min(details.count, 3)
         guard remainingCount > 0 else { return visible }
-        return "\(visible); +\(remainingCount) more"
+        return localized("permissions.moreSemicolonFormat", visible, remainingCount)
     }
 
     private func importPermissionBackup(data: Data, options: TS3PermissionBackupRestoreOptions) {
@@ -20032,6 +20032,71 @@ struct PermissionsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func scopeTitle(_ scope: TS3PermissionEditScope) -> String {
+        switch scope {
+        case .ownClient:
+            return localized("permissions.scope.ownClient")
+        case .databaseClient:
+            return localized("permissions.scope.databaseClient")
+        case .serverGroup:
+            return localized("permissions.scope.serverGroup")
+        case .channelGroup:
+            return localized("permissions.scope.channelGroup")
+        case .channel:
+            return localized("permissions.scope.channel")
+        case .channelClient:
+            return localized("permissions.scope.channelClient")
+        }
+    }
+
+    private func assignedFilterTitle(_ filter: AssignedPermissionFilter) -> String {
+        switch filter {
+        case .all:
+            return localized("permissions.filter.all")
+        case .negated:
+            return localized("permissions.filter.negated")
+        case .skipped:
+            return localized("permissions.filter.skipped")
+        case .direct:
+            return localized("permissions.filter.direct")
+        case .positiveValue:
+            return localized("permissions.filter.positiveValue")
+        case .zeroValue:
+            return localized("permissions.filter.zeroValue")
+        case .negativeValue:
+            return localized("permissions.filter.negativeValue")
+        }
+    }
+
+    private func assignedSortModeTitle(_ mode: AssignedPermissionSortMode) -> String {
+        switch mode {
+        case .name:
+            return localized("permissions.sort.name")
+        case .value:
+            return localized("permissions.sort.value")
+        case .flags:
+            return localized("permissions.sort.flags")
+        }
+    }
+
+    private func permissionEffectDescription(isNegated: Bool, isSkipped: Bool) -> String {
+        switch (isNegated, isSkipped) {
+        case (true, true):
+            return localized("permissions.effect.negatedSkipped")
+        case (true, false):
+            return localized("permissions.effect.negated")
+        case (false, true):
+            return localized("permissions.effect.skipped")
+        case (false, false):
+            return localized("permissions.effect.direct")
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -20060,21 +20125,21 @@ private struct PermissionBackupImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("permissions.restore.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Backup Preview") {
+                    Button(localized("permissions.restore.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(confirmation.preview.clipboardSummary)
                     }
                     if let plan {
-                        Text("Selected restore entries: \(plan.permissionCount)")
+                        Text(localized("permissions.restore.selectedEntriesFormat", plan.permissionCount))
                             .font(.caption.weight(.semibold))
                         if !plan.entries.isEmpty {
-                            Button("Copy Restore Plan") {
+                            Button(localized("permissions.restore.copyPlan")) {
                                 TS3PlatformSupport.copyToPasteboard(plan.auditSummary)
                             }
-                            Button("Export Restore Plan") {
+                            Button(localized("permissions.restore.exportPlan")) {
                                 restorePlanDocument = TS3TextFileDocument(data: Data(plan.auditSummary.utf8))
                                 isExportingRestorePlan = true
                             }
@@ -20084,7 +20149,12 @@ private struct PermissionBackupImportSheet: View {
                                         .font(.caption.weight(.semibold))
                                         .lineLimit(1)
                                         .truncationMode(.middle)
-                                    Text("Value \(entry.value) | Negated \(entry.isNegated ? "on" : "off") | Skip \(entry.isSkipped ? "on" : "off")")
+                                    Text(localized(
+                                        "permissions.restore.entryFlagsFormat",
+                                        entry.value,
+                                        boolText(entry.isNegated),
+                                        boolText(entry.isSkipped)
+                                    ))
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                     Text(entry.changeSummary ?? entry.restoreReason)
@@ -20093,7 +20163,7 @@ private struct PermissionBackupImportSheet: View {
                                 }
                             }
                             if plan.permissionCount > 6 {
-                                Text("+\(plan.permissionCount - 6) more")
+                                Text(localized("permissions.restore.moreFormat", plan.permissionCount - 6))
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
@@ -20101,27 +20171,27 @@ private struct PermissionBackupImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Restore Entries")) {
+                Section(header: Text(localized("permissions.restore.entries"))) {
                     if confirmation.preview.targetMatchesCurrentSelection {
                         Toggle(
-                            "Changed existing permissions",
+                            localized("permissions.restore.changedExisting"),
                             isOn: $options.changedExisting
                         )
                         .disabled((confirmation.preview.changedCount ?? 0) == 0)
                         Toggle(
-                            "New permissions",
+                            localized("permissions.restore.newPermissions"),
                             isOn: $options.newPermissions
                         )
                         .disabled((confirmation.preview.newPermissionCount ?? 0) == 0)
                     } else {
                         Toggle(
-                            "Restore without conflict comparison",
+                            localized("permissions.restore.withoutComparison"),
                             isOn: $options.restoreWhenTargetCannotBeCompared
                         )
                     }
                 }
             }
-            .navigationTitle("Restore Permissions")
+            .navigationTitle(localized("permissions.restore.title"))
             .ts3InlineNavigationTitle()
             .fileExporter(
                 isPresented: $isExportingRestorePlan,
@@ -20135,18 +20205,27 @@ private struct PermissionBackupImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Restore") {
+                    Button(localized("permissions.restore.action")) {
                         restore(options)
                     }
                     .disabled(!canRestore)
                 }
             }
         }
+    }
+
+    private func boolText(_ value: Bool) -> String {
+        localized(value ? "common.on" : "common.off")
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -20169,15 +20248,15 @@ struct PermissionRow: View {
                     .foregroundColor(.secondary)
             }
             HStack(spacing: 10) {
-                ForEach(permission.statusLabels, id: \.self) { label in
+                ForEach(statusLabels, id: \.self) { label in
                     Text(label)
                 }
                 Spacer()
-                Button("Edit") {
+                Button(localized("permissions.row.edit")) {
                     edit()
                 }
                 .buttonStyle(.borderless)
-                Button("Delete") {
+                Button(localized("common.delete")) {
                     isConfirmingDelete = true
                 }
                 .buttonStyle(.borderless)
@@ -20186,35 +20265,35 @@ struct PermissionRow: View {
             }
             .font(.caption)
             .foregroundColor(.secondary)
-            Text(permission.inheritanceEffectDescription)
+            Text(effectDescription)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 3)
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Permission?"),
+                title: Text(localized("permissions.row.deleteAlert.title")),
                 message: Text(permission.name),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("common.delete"))) {
                     delete()
                 },
                 secondaryButton: .cancel()
             )
         }
         .contextMenu {
-            Button("Edit Permission") {
+            Button(localized("permissions.row.editPermission")) {
                 edit()
             }
-            Button("Copy Name") {
+            Button(localized("permissions.row.copyName")) {
                 TS3PlatformSupport.copyToPasteboard(permission.name)
             }
-            Button("Copy Value") {
+            Button(localized("permissions.row.copyValue")) {
                 TS3PlatformSupport.copyToPasteboard("\(permission.value)")
             }
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
             }
-            Button("Delete") {
+            Button(localized("common.delete")) {
                 isConfirmingDelete = true
             }
             .disabled(!canDelete)
@@ -20222,18 +20301,55 @@ struct PermissionRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(permission.name)
-        .accessibilityValue(permission.accessibilityValue)
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
         }
-        .accessibilityAction(named: "Edit Permission") {
+        .accessibilityAction(named: localized("permissions.row.editPermission")) {
             edit()
         }
-        .accessibilityAction(named: "Delete Permission") {
+        .accessibilityAction(named: localized("permissions.row.deletePermission")) {
             if canDelete {
                 isConfirmingDelete = true
             }
         }
+    }
+
+    private var statusLabels: [String] {
+        var labels: [String] = []
+        if permission.isNegated {
+            labels.append(localized("permissions.filter.negated"))
+        }
+        if permission.isSkipped {
+            labels.append(localized("permissions.status.skipsInherited"))
+        }
+        return labels.isEmpty ? [localized("permissions.filter.direct")] : labels
+    }
+
+    private var effectDescription: String {
+        switch (permission.isNegated, permission.isSkipped) {
+        case (true, true):
+            return localized("permissions.effect.negatedSkipped")
+        case (true, false):
+            return localized("permissions.effect.negated")
+        case (false, true):
+            return localized("permissions.effect.skipped")
+        case (false, false):
+            return localized("permissions.effect.direct")
+        }
+    }
+
+    private var accessibilityValue: String {
+        [
+            localized("permissions.accessibility.valueFormat", permission.value),
+            statusLabels.joined(separator: ", "),
+            effectDescription
+        ].joined(separator: ". ")
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -20266,25 +20382,30 @@ struct PermissionInfoRow: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Use Permission") {
+            Button(localized("permissions.info.usePermission")) {
                 select()
             }
-            Button("Copy Name") {
+            Button(localized("permissions.row.copyName")) {
                 copyName()
             }
-            Button("Copy ID") {
+            Button(localized("permissions.info.copyId")) {
                 copyId()
             }
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
             }
         }
         .accessibilityLabel(permission.name)
         .accessibilityValue(permission.accessibilityValue)
-        .accessibilityHint("Selects this permission name for editing.")
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityHint(localized("permissions.info.accessibilityHint"))
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(permission.clipboardSummary)
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
