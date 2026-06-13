@@ -13553,14 +13553,14 @@ struct GroupClientListSheet: View {
 
     private var visibleMembersSnapshot: String {
         var lines = [
-            "Group: \(group.name) (\(group.id))",
-            "Target: \(target.title)",
-            "Status Filter: \(memberFilter.title)",
-            "Channel Filter: \(channelContextFilterTitle)",
-            "Sort: \(sortMode.title) \(sortAscending ? "Ascending" : "Descending")"
+            localized("groups.members.snapshot.groupFormat", group.name, group.id),
+            localized("groups.members.snapshot.targetFormat", targetTitle(target)),
+            localized("groups.members.snapshot.statusFilterFormat", memberFilterTitle(memberFilter)),
+            localized("groups.members.snapshot.channelFilterFormat", channelContextFilterTitle),
+            localized("groups.members.snapshot.sortFormat", memberSortModeTitle(sortMode), sortAscending ? localized("groups.ascending") : localized("groups.members.descending"))
         ]
         if isSearching {
-            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+            lines.append(localized("groups.members.snapshot.searchFormat", searchText.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
         lines.append("")
         lines += filteredClients.map { client in
@@ -13601,36 +13601,36 @@ struct GroupClientListSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Filters")) {
-                    Picker("Status", selection: $memberFilter) {
+                Section(header: Text(localized("groups.filters"))) {
+                    Picker(localized("groups.members.status"), selection: $memberFilter) {
                         ForEach(MemberFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(memberFilterTitle(filter)).tag(filter)
                         }
                     }
-                    Picker("Channel Context", selection: $channelContextFilter) {
+                    Picker(localized("groups.members.channelContext"), selection: $channelContextFilter) {
                         ForEach(ChannelContextFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(channelContextFilterTitle(filter)).tag(filter)
                         }
                     }
                     if channelContextFilter == .selectedChannel {
-                        Picker("Filter Channel", selection: selectedFilterChannelBinding) {
-                            Text("Select Channel").tag(0)
+                        Picker(localized("groups.members.filterChannel"), selection: selectedFilterChannelBinding) {
+                            Text(localized("groups.members.selectChannel")).tag(0)
                             ForEach(model.channels) { channel in
                                 Text(channel.name).tag(channel.id)
                             }
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("groups.sortBy"), selection: $sortMode) {
                         ForEach(MemberSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(memberSortModeTitle(mode)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search members", text: $searchText)
+                    Toggle(localized("groups.ascending"), isOn: $sortAscending)
+                    TextField(localized("groups.members.searchMembers"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.saveGroupClientFilterPreset(
                                 name: presetName,
                                 memberFilter: memberFilter.rawValue,
@@ -13644,20 +13644,20 @@ struct GroupClientListSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.groupClientFilterPresets.isEmpty {
-                            Text("No saved group member filter presets")
+                            Text(localized("groups.members.noSavedFilterPresets"))
                         } else {
                             ForEach(model.groupClientFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Copy Preset Summary") {
+                                    Button(localized("groups.copyPresetSummary")) {
                                         TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary(channelName: channelPresetName(preset)))
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteGroupClientFilterPreset(preset)
                                     }
                                 } label: {
@@ -13667,30 +13667,30 @@ struct GroupClientListSheet: View {
                                     }
                                 }
                                 .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Group member filter preset")
+                                .accessibilityLabel(localized("groups.members.filterPreset"))
                                 .accessibilityValue(preset.accessibilityValue(channelName: channelPresetName(preset)))
-                                .accessibilityAction(named: "Copy Preset Summary") {
+                                .accessibilityAction(named: localized("groups.copyPresetSummary")) {
                                     TS3PlatformSupport.copyToPasteboard(preset.clipboardSummary(channelName: channelPresetName(preset)))
                                 }
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.groupClientFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.groupClientFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("groups.clearFilters")) {
                             memberFilter = .all
                             channelContextFilter = .allChannels
                             selectedFilterChannelId = nil
@@ -13699,22 +13699,22 @@ struct GroupClientListSheet: View {
                             searchText = ""
                         }
                     }
-                    Button("Copy Visible Members") {
+                    Button(localized("groups.members.copyVisibleMembers")) {
                         TS3PlatformSupport.copyToPasteboard(visibleMembersSnapshot)
                     }
                     .disabled(filteredClients.isEmpty)
-                    Button("Export Visible Members") {
+                    Button(localized("groups.members.exportVisibleMembers")) {
                         membersExportDocument = TS3TextFileDocument(data: Data(visibleMembersSnapshot.utf8))
                         isExportingMembers = true
                     }
                     .disabled(filteredClients.isEmpty)
                     if target == .server {
-                        TextField("Client Database ID", text: $newMemberDatabaseId)
+                        TextField(localized("groups.members.clientDatabaseId"), text: $newMemberDatabaseId)
                             .ts3NumericKeyboard()
                         Text(memberDraftSummary)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Button("Copy Member Change Summary") {
+                        Button(localized("groups.members.copyMemberChangeSummary")) {
                             TS3PlatformSupport.copyToPasteboard(memberDraftSummary)
                         }
                         ForEach(memberDraftValidationMessages, id: \.self) { message in
@@ -13722,28 +13722,28 @@ struct GroupClientListSheet: View {
                                 .font(.caption)
                                 .foregroundColor(.red)
                         }
-                        Button("Add Member by Database ID") {
+                        Button(localized("groups.members.addByDatabaseId")) {
                             addMemberByDatabaseId()
                         }
                         .disabled(model.state != .connected || !memberDraftValidationMessages.isEmpty)
-                        Button("Remove Visible Members") {
+                        Button(localized("groups.members.removeVisibleMembers")) {
                             isConfirmingRemoveVisible = true
                         }
                         .disabled(model.state != .connected || filteredClients.isEmpty)
                         .foregroundColor(.red)
                     } else {
-                        Picker("Channel", selection: newMemberChannelBinding) {
-                            Text("Select Channel").tag(0)
+                        Picker(localized("groups.members.channel"), selection: newMemberChannelBinding) {
+                            Text(localized("groups.members.selectChannel")).tag(0)
                             ForEach(model.channels) { channel in
                                 Text(channel.name).tag(channel.id)
                             }
                         }
-                        TextField("Client Database ID", text: $newMemberDatabaseId)
+                        TextField(localized("groups.members.clientDatabaseId"), text: $newMemberDatabaseId)
                             .ts3NumericKeyboard()
                         Text(memberDraftSummary)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Button("Copy Member Change Summary") {
+                        Button(localized("groups.members.copyMemberChangeSummary")) {
                             TS3PlatformSupport.copyToPasteboard(memberDraftSummary)
                         }
                         ForEach(memberDraftValidationMessages, id: \.self) { message in
@@ -13751,7 +13751,7 @@ struct GroupClientListSheet: View {
                                 .font(.caption)
                                 .foregroundColor(.red)
                         }
-                        Button("Set Channel Group by Database ID") {
+                        Button(localized("groups.members.setChannelGroupByDatabaseId")) {
                             setChannelGroupByDatabaseId()
                         }
                         .disabled(model.state != .connected || !memberDraftValidationMessages.isEmpty)
@@ -13759,10 +13759,10 @@ struct GroupClientListSheet: View {
                 }
 
                 if model.groupClients.isEmpty {
-                    Text("No members")
+                    Text(localized("groups.members.noMembers"))
                         .foregroundColor(.secondary)
                 } else if filteredClients.isEmpty {
-                    Text("No matching members")
+                    Text(localized("groups.members.noMatchingMembers"))
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(filteredClients) { client in
@@ -13806,16 +13806,16 @@ struct GroupClientListSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
             .alert(isPresented: $isConfirmingRemoveVisible) {
                 Alert(
-                    title: Text("Remove Visible Members?"),
-                    message: Text("This removes \(filteredClients.count) members from \(group.name)."),
-                    primaryButton: .destructive(Text("Remove")) {
+                    title: Text(localized("groups.members.removeVisibleAlert.title")),
+                    message: Text(localized("groups.members.removeVisibleAlert.messageFormat", filteredClients.count, group.name)),
+                    primaryButton: .destructive(Text(localized("groups.members.remove"))) {
                         model.removeServerGroup(group, from: filteredClients)
                     },
                     secondaryButton: .cancel()
@@ -13823,9 +13823,9 @@ struct GroupClientListSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Group Member Filter Presets?"),
-                    message: Text("This removes \(model.groupClientFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("groups.members.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.groupClientFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllGroupClientFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -13929,18 +13929,18 @@ struct GroupClientListSheet: View {
 
     private func channelDisplayName(_ client: TS3GroupClientSummary) -> String {
         guard let channelId = client.channelId else { return "" }
-        return model.channelName(for: channelId) ?? "Channel \(channelId)"
+        return model.channelName(for: channelId) ?? localized("groups.members.channelFallbackFormat", channelId)
     }
 
     private var channelContextFilterTitle: String {
         switch channelContextFilter {
         case .allChannels, .withoutChannel:
-            return channelContextFilter.title
+            return channelContextFilterTitle(channelContextFilter)
         case .currentChannel:
-            return model.currentChannel.map { "\($0.name) (\($0.id))" } ?? "Current Channel Unavailable"
+            return model.currentChannel.map { "\($0.name) (\($0.id))" } ?? localized("groups.members.currentChannelUnavailable")
         case .selectedChannel:
-            guard let channelId = selectedFilterChannelId else { return "Selected Channel Unset" }
-            return "\(model.channelName(for: channelId) ?? "Channel \(channelId)") (\(channelId))"
+            guard let channelId = selectedFilterChannelId else { return localized("groups.members.selectedChannelUnset") }
+            return "\(model.channelName(for: channelId) ?? localized("groups.members.channelFallbackFormat", channelId)) (\(channelId))"
         }
     }
 
@@ -13962,10 +13962,10 @@ struct GroupClientListSheet: View {
         let filter = ChannelContextFilter(rawValue: preset.channelFilter) ?? .allChannels
         switch filter {
         case .allChannels, .currentChannel, .withoutChannel:
-            return filter.title
+            return channelContextFilterTitle(filter)
         case .selectedChannel:
-            guard let channelId = preset.channelId else { return "Selected Channel" }
-            return "\(model.channelName(for: channelId) ?? "Channel \(channelId)") (\(channelId))"
+            guard let channelId = preset.channelId else { return localized("groups.members.filter.selectedChannel") }
+            return "\(model.channelName(for: channelId) ?? localized("groups.members.channelFallbackFormat", channelId)) (\(channelId))"
         }
     }
 
@@ -13996,6 +13996,61 @@ struct GroupClientListSheet: View {
             model.lastError = error.localizedDescription
         }
     }
+
+    private func targetTitle(_ target: TS3GroupManagementTarget) -> String {
+        switch target {
+        case .server:
+            return localized("groups.target.server")
+        case .channel:
+            return localized("groups.target.channel")
+        }
+    }
+
+    private func memberFilterTitle(_ filter: MemberFilter) -> String {
+        switch filter {
+        case .all:
+            return localized("groups.members.filter.allMembers")
+        case .online:
+            return localized("groups.members.filter.online")
+        case .offline:
+            return localized("groups.members.filter.offline")
+        case .withUniqueId:
+            return localized("groups.members.filter.withUniqueId")
+        case .withoutUniqueId:
+            return localized("groups.members.filter.withoutUniqueId")
+        }
+    }
+
+    private func memberSortModeTitle(_ mode: MemberSortMode) -> String {
+        switch mode {
+        case .nickname:
+            return localized("groups.members.sort.nickname")
+        case .databaseId:
+            return localized("groups.members.sort.databaseId")
+        case .channel:
+            return localized("groups.members.sort.channel")
+        case .uniqueId:
+            return localized("groups.members.sort.uniqueId")
+        }
+    }
+
+    private func channelContextFilterTitle(_ filter: ChannelContextFilter) -> String {
+        switch filter {
+        case .allChannels:
+            return localized("groups.members.filter.allChannels")
+        case .currentChannel:
+            return localized("groups.members.filter.currentChannel")
+        case .selectedChannel:
+            return localized("groups.members.filter.selectedChannel")
+        case .withoutChannel:
+            return localized("groups.members.filter.noChannel")
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 struct GroupClientRow: View {
@@ -14014,9 +14069,9 @@ struct GroupClientRow: View {
                 Text(client.displayName)
                     .font(.subheadline.weight(.semibold))
                 HStack(spacing: 8) {
-                    Text("DB \(client.clientDatabaseId)")
+                    Text(localized("groups.members.databaseIdShortFormat", client.clientDatabaseId))
                     if let channelId = client.channelId {
-                        Text(model.channelName(for: channelId) ?? "Channel \(channelId)")
+                        Text(model.channelName(for: channelId) ?? localized("groups.members.channelFallbackFormat", channelId))
                     }
                 }
                 .font(.caption)
@@ -14031,73 +14086,73 @@ struct GroupClientRow: View {
             }
             Spacer()
             Menu {
-                Button("Info") {
+                Button(localized("groups.members.row.info")) {
                     isShowingInfo = true
                 }
-                Button("Copy Nickname") {
+                Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(client.displayName)
                 }
-                Button("Copy Summary") {
+                Button(localized("groups.row.copySummary")) {
                     TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                 }
-                Button("Copy Database ID") {
+                Button(localized("groups.members.row.copyDatabaseId")) {
                     TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
                 }
                 if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                    Button("Copy Unique ID") {
+                    Button(localized("contacts.row.copyUniqueId")) {
                         TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                     }
-                    Menu("Contact") {
-                        Button("Mark as Friend") {
+                    Menu(localized("groups.members.row.contact")) {
+                        Button(localized("groups.members.row.markFriend")) {
                             model.setContactStatus(.friend, for: databaseRecord)
                         }
                         .disabled(model.contactStatus(for: databaseRecord) == .friend)
-                        Button("Block Contact") {
+                        Button(localized("groups.members.row.blockContact")) {
                             model.setContactStatus(.blocked, for: databaseRecord)
                         }
                         .disabled(model.contactStatus(for: databaseRecord) == .blocked)
-                        Button("Ignore Contact") {
+                        Button(localized("groups.members.row.ignoreContact")) {
                             model.setContactStatus(.ignored, for: databaseRecord)
                         }
                         .disabled(model.contactStatus(for: databaseRecord) == .ignored)
-                        Button("Set Neutral") {
+                        Button(localized("groups.members.row.setNeutral")) {
                             model.setContactStatus(.neutral, for: databaseRecord)
                         }
                         .disabled(model.contactStatus(for: databaseRecord) == .neutral && model.contactNote(for: databaseRecord) == nil)
-                        Button("Edit Note") {
+                        Button(localized("groups.members.row.editNote")) {
                             actionMode = .contactNote
                         }
                     }
-                    Button("Send Offline Message") {
+                    Button(localized("groups.members.row.sendOfflineMessage")) {
                         actionMode = .offlineMessage
                     }
                     .disabled(!model.canSendOfflineMessage(to: databaseRecord))
-                    Button("Submit Complaint") {
+                    Button(localized("groups.members.row.submitComplaint")) {
                         actionMode = .complain
                     }
-                    Button("Ban Unique ID") {
+                    Button(localized("groups.members.row.banUniqueId")) {
                         actionMode = .ban
                     }
                     .disabled(!model.canBanDatabaseClient(databaseRecord))
                     if model.hasOnlineClientActions(for: databaseRecord) {
-                        Button("Poke Online Client") {
+                        Button(localized("groups.members.row.pokeOnlineClient")) {
                             onlineActionMode = .poke
                         }
-                        Button("Send Private Message") {
+                        Button(localized("contacts.row.sendPrivateMessage")) {
                             onlineActionMode = .privateMessage
                         }
                     }
                 }
-                Button("Load Database Details") {
+                Button(localized("groups.members.row.loadDatabaseDetails")) {
                     model.loadDatabaseClientDetails(databaseRecord)
                 }
                 if target == .server {
-                    Button("Remove From Group") {
+                    Button(localized("groups.members.row.removeFromGroup")) {
                         isConfirmingRemove = true
                     }
                     .disabled(model.state != .connected)
                 } else if memberCanChangeChannelGroup {
-                    Menu("Set Channel Group") {
+                    Menu(localized("groups.members.row.setChannelGroup")) {
                         ForEach(model.channelGroups) { channelGroup in
                             Button(channelGroup.name) {
                                 model.setChannelGroup(channelGroup, for: client)
@@ -14129,82 +14184,82 @@ struct GroupClientRow: View {
         }
         .alert(isPresented: $isConfirmingRemove) {
             Alert(
-                title: Text("Remove Member?"),
-                message: Text("\(client.displayName) from \(group.name)"),
-                primaryButton: .destructive(Text("Remove")) {
+                title: Text(localized("groups.members.row.removeAlert.title")),
+                message: Text(localized("groups.members.row.removeAlert.messageFormat", client.displayName, group.name)),
+                primaryButton: .destructive(Text(localized("groups.members.remove"))) {
                     model.removeServerGroup(group, from: client)
                 },
                 secondaryButton: .cancel()
             )
         }
         .contextMenu {
-            Button("Info") {
+            Button(localized("groups.members.row.info")) {
                 isShowingInfo = true
             }
-            Button("Copy Nickname") {
+            Button(localized("contacts.row.copyNickname")) {
                 TS3PlatformSupport.copyToPasteboard(client.displayName)
             }
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
-            Button("Copy Database ID") {
+            Button(localized("groups.members.row.copyDatabaseId")) {
                 TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
             }
             if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Button("Copy Unique ID") {
+                Button(localized("contacts.row.copyUniqueId")) {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                 }
-                Button("Mark as Friend") {
+                Button(localized("groups.members.row.markFriend")) {
                     model.setContactStatus(.friend, for: databaseRecord)
                 }
                 .disabled(model.contactStatus(for: databaseRecord) == .friend)
-                Button("Block Contact") {
+                Button(localized("groups.members.row.blockContact")) {
                     model.setContactStatus(.blocked, for: databaseRecord)
                 }
                 .disabled(model.contactStatus(for: databaseRecord) == .blocked)
-                Button("Ignore Contact") {
+                Button(localized("groups.members.row.ignoreContact")) {
                     model.setContactStatus(.ignored, for: databaseRecord)
                 }
                 .disabled(model.contactStatus(for: databaseRecord) == .ignored)
-                Button("Set Neutral") {
+                Button(localized("groups.members.row.setNeutral")) {
                     model.setContactStatus(.neutral, for: databaseRecord)
                 }
                 .disabled(model.contactStatus(for: databaseRecord) == .neutral && model.contactNote(for: databaseRecord) == nil)
-                Button("Edit Contact Note") {
+                Button(localized("groups.members.row.editContactNote")) {
                     actionMode = .contactNote
                 }
-                Button("Send Offline Message") {
+                Button(localized("groups.members.row.sendOfflineMessage")) {
                     actionMode = .offlineMessage
                 }
                 .disabled(!model.canSendOfflineMessage(to: databaseRecord))
-                Button("Submit Complaint") {
+                Button(localized("groups.members.row.submitComplaint")) {
                     actionMode = .complain
                 }
-                Button("Ban Unique ID") {
+                Button(localized("groups.members.row.banUniqueId")) {
                     actionMode = .ban
                 }
                 .disabled(!model.canBanDatabaseClient(databaseRecord))
                 if model.hasOnlineClientActions(for: databaseRecord) {
-                    Button("Poke Online Client") {
+                    Button(localized("groups.members.row.pokeOnlineClient")) {
                         onlineActionMode = .poke
                     }
-                    Button("Send Private Message") {
+                    Button(localized("contacts.row.sendPrivateMessage")) {
                         onlineActionMode = .privateMessage
                     }
                 }
             }
-            Button("Load Database Details") {
+            Button(localized("groups.members.row.loadDatabaseDetails")) {
                 model.loadDatabaseClientDetails(databaseRecord)
             }
             if target == .server {
-                Button("Remove From Group") {
+                Button(localized("groups.members.row.removeFromGroup")) {
                     isConfirmingRemove = true
                 }
                 .foregroundColor(.red)
                 .disabled(model.state != .connected)
             } else if memberCanChangeChannelGroup {
                 ForEach(model.channelGroups) { channelGroup in
-                    Button("Set Channel Group: \(channelGroup.name)") {
+                    Button(localized("groups.members.row.setChannelGroupFormat", channelGroup.name)) {
                         model.setChannelGroup(channelGroup, for: client)
                     }
                     .disabled(model.state != .connected || channelGroup.id == group.id)
@@ -14218,13 +14273,13 @@ struct GroupClientRow: View {
             target: target,
             channelName: client.channelId.flatMap { model.channelName(for: $0) }
         ))
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
         }
-        .accessibilityAction(named: "Member Info") {
+        .accessibilityAction(named: localized("groups.members.row.memberInfo")) {
             isShowingInfo = true
         }
-        .accessibilityAction(named: "Load Database Details") {
+        .accessibilityAction(named: localized("groups.members.row.loadDatabaseDetails")) {
             model.loadDatabaseClientDetails(databaseRecord)
         }
     }
@@ -14248,6 +14303,11 @@ struct GroupClientRow: View {
             channelName: client.channelId.flatMap { model.channelName(for: $0) }
         )
     }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 struct GroupClientInfoSheet: View {
@@ -14261,41 +14321,41 @@ struct GroupClientInfoSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(client.displayName)) {
-                    infoRow("Group", value: group.name)
-                    infoRow("Group Type", value: target.title)
-                    infoRow("Database ID", value: "\(client.clientDatabaseId)")
+                    infoRow(localized("groups.members.info.group"), value: group.name)
+                    infoRow(localized("groups.groupType"), value: targetTitle(target))
+                    infoRow(localized("groups.members.clientDatabaseId"), value: "\(client.clientDatabaseId)")
                     if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                        infoRow("Unique ID", value: uniqueIdentifier)
+                        infoRow(localized("serverInfo.uniqueId"), value: uniqueIdentifier)
                     }
                     if let channelId = client.channelId {
-                        infoRow("Channel", value: model.channelName(for: channelId) ?? "Channel \(channelId)")
+                        infoRow(localized("groups.members.channel"), value: model.channelName(for: channelId) ?? localized("groups.members.channelFallbackFormat", channelId))
                     }
                 }
                 Section {
-                    Button("Copy Nickname") {
+                    Button(localized("contacts.row.copyNickname")) {
                         TS3PlatformSupport.copyToPasteboard(client.displayName)
                     }
-                    Button("Copy Summary") {
+                    Button(localized("groups.row.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                     }
-                    Button("Copy Database ID") {
+                    Button(localized("groups.members.row.copyDatabaseId")) {
                         TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
                     }
                     if let uniqueIdentifier = client.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                        Button("Copy Unique ID") {
+                        Button(localized("contacts.row.copyUniqueId")) {
                             TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                         }
                     }
-                    Button("Load Database Details") {
+                    Button(localized("groups.members.row.loadDatabaseDetails")) {
                         model.loadDatabaseClientDetails(TS3DatabaseClientSummary(groupClient: client))
                     }
                 }
             }
-            .navigationTitle("Member Info")
+            .navigationTitle(localized("groups.members.row.memberInfo"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -14319,6 +14379,20 @@ struct GroupClientInfoSheet: View {
             target: target,
             channelName: client.channelId.flatMap { model.channelName(for: $0) }
         )
+    }
+
+    private func targetTitle(_ target: TS3GroupManagementTarget) -> String {
+        switch target {
+        case .server:
+            return localized("groups.target.server")
+        case .channel:
+            return localized("groups.target.channel")
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -14363,19 +14437,19 @@ struct GroupNameSheet: View {
         NavigationView {
             Form {
                 Section {
-                    TextField("Group Name", text: $name)
+                    TextField(localized("groups.groupName"), text: $name)
                         .ts3PlainTextField()
                     if allowsTypeSelection {
-                        Picker("Database Type", selection: $type) {
+                        Picker(localized("groups.databaseType"), selection: $type) {
                             ForEach(TS3PermissionGroupDatabaseType.allCases) { type in
-                                Text(type.title).tag(type)
+                                Text(databaseTypeTitle(type)).tag(type)
                             }
                         }
                     }
                     Text(groupDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Group Summary") {
+                    Button(localized("groups.copyGroupSummary")) {
                         TS3PlatformSupport.copyToPasteboard(groupDraftSummary)
                     }
                     ForEach(groupDraftValidationMessages, id: \.self) { message in
@@ -14389,7 +14463,7 @@ struct GroupNameSheet: View {
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -14423,6 +14497,22 @@ struct GroupNameSheet: View {
             type: type,
             sourceGroup: sourceGroup
         )
+    }
+
+    private func databaseTypeTitle(_ type: TS3PermissionGroupDatabaseType) -> String {
+        switch type {
+        case .template:
+            return localized("groups.filter.template")
+        case .regular:
+            return localized("groups.filter.regular")
+        case .query:
+            return localized("groups.filter.query")
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
