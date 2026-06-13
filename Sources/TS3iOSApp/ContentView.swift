@@ -4620,24 +4620,29 @@ struct MoveChannelSheet: View {
     @State private var selectedParentId: Int?
     @State private var selectedOrderId: Int?
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
-                    Picker("Parent", selection: $selectedParentId) {
-                        Text("Root").tag(Optional<Int>.none)
+                    Picker(localized("moveChannel.parent"), selection: $selectedParentId) {
+                        Text(localized("moveChannel.root")).tag(Optional<Int>.none)
                         ForEach(parentOptions) { parent in
                             Text(parent.name).tag(Optional(parent.id))
                         }
                     }
-                    Picker("Position", selection: $selectedOrderId) {
-                        Text("First").tag(Optional<Int>.none)
+                    Picker(localized("moveChannel.position"), selection: $selectedOrderId) {
+                        Text(localized("moveChannel.first")).tag(Optional<Int>.none)
                         ForEach(siblingOptions) { sibling in
-                            Text("After \(sibling.name)").tag(Optional(sibling.id))
+                            Text(localized("moveChannel.afterFormat", sibling.name)).tag(Optional(sibling.id))
                         }
                     }
                 }
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("moveChannel.preview"))) {
                     if let warning = moveWarning {
                         Text(warning)
                             .foregroundColor(.red)
@@ -4655,14 +4660,14 @@ struct MoveChannelSheet: View {
                     }
                 }
                 Section {
-                    Button("Move Channel") {
+                    Button(localized("moveChannel.move")) {
                         model.moveChannel(channel, toParentId: selectedParentId, order: selectedOrderId)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!canSubmit)
                 }
             }
-            .navigationTitle("Move Channel")
+            .navigationTitle(localized("moveChannel.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 selectedParentId = normalizedParentId(channel.parentId)
@@ -4673,7 +4678,7 @@ struct MoveChannelSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -4709,10 +4714,10 @@ struct MoveChannelSheet: View {
 
     private var moveWarning: String? {
         if let selectedParentId, !parentOptions.contains(where: { $0.id == selectedParentId }) {
-            return "Choose a valid parent channel."
+            return localized("moveChannel.invalidParent")
         }
         if isUnchangedMove {
-            return "Channel is already in this position."
+            return localized("moveChannel.unchangedPosition")
         }
         return nil
     }
@@ -4720,23 +4725,23 @@ struct MoveChannelSheet: View {
     private var movePreview: String {
         let parentName = selectedParentId.flatMap { id in
             model.channels.first { $0.id == id }?.name
-        } ?? "Root"
+        } ?? localized("moveChannel.root")
         let position = selectedOrderId.flatMap { id in
             model.channels.first { $0.id == id }?.name
-        }.map { "after \($0)" } ?? "first"
-        return "Move \(channel.name) to \(parentName), \(position)."
+        }.map { localized("moveChannel.afterLowerFormat", $0) } ?? localized("moveChannel.firstLower")
+        return localized("moveChannel.previewFormat", channel.name, parentName, position)
     }
 
     private var targetSiblingsPreview: [String] {
         var lines: [String] = []
         let siblings = siblingOptions
         if siblings.isEmpty {
-            lines.append("Target parent has no other visible channels.")
+            lines.append(localized("moveChannel.noVisibleSiblings"))
         } else {
             let names = siblings.prefix(5).map(\.name).joined(separator: ", ")
-            lines.append("Visible siblings: \(names)")
+            lines.append(localized("moveChannel.visibleSiblingsFormat", names))
             if siblings.count > 5 {
-                lines.append("And \(siblings.count - 5) more.")
+                lines.append(localized("moveChannel.moreSiblingsFormat", siblings.count - 5))
             }
         }
         return lines
@@ -4811,15 +4816,20 @@ struct ChannelInformationSheet: View {
     @State private var isExportingSnapshot = false
     @State private var snapshotDocument = TS3TextFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Snapshot")) {
-                    Button("Copy Channel Information") {
+                Section(header: Text(localized("channelInfo.snapshot"))) {
+                    Button(localized("channelInfo.copy")) {
                         TS3PlatformSupport.copyToPasteboard(informationSnapshot)
                     }
                     .disabled(informationSnapshot.isEmpty)
-                    Button("Export Channel Information") {
+                    Button(localized("channelInfo.export")) {
                         snapshotDocument = TS3TextFileDocument(data: Data(informationSnapshot.utf8))
                         isExportingSnapshot = true
                     }
@@ -4827,38 +4837,38 @@ struct ChannelInformationSheet: View {
                 }
 
                 Section(header: Text(channel.name)) {
-                    ServerInfoDetailRow(label: "Channel ID", value: String(channel.id))
-                    ServerInfoDetailRow(label: "Parent", value: parentName)
-                    ServerInfoDetailRow(label: "Order After", value: orderName)
-                    ServerInfoDetailRow(label: "Type", value: channelTypeText)
-                    ServerInfoDetailRow(label: "Default", value: yesNo(channel.isDefault))
-                    ServerInfoDetailRow(label: "Password", value: channel.isPasswordProtected ? "Protected" : "Not Protected")
-                    ServerInfoDetailRow(label: "Subscribed", value: channel.isSubscribed.map(yesNo))
-                    ServerInfoDetailRow(label: "Icon ID", value: channel.iconId.map(String.init))
-                    ServerInfoDetailRow(label: "Members", value: String(memberCount))
+                    ServerInfoDetailRow(label: localized("channelInfo.channelId"), value: String(channel.id))
+                    ServerInfoDetailRow(label: localized("channelInfo.parent"), value: parentName)
+                    ServerInfoDetailRow(label: localized("channelInfo.orderAfter"), value: orderName)
+                    ServerInfoDetailRow(label: localized("channelInfo.type"), value: channelTypeText)
+                    ServerInfoDetailRow(label: localized("channelInfo.defaultChannel"), value: yesNo(channel.isDefault))
+                    ServerInfoDetailRow(label: localized("channelInfo.password"), value: channel.isPasswordProtected ? localized("channelInfo.protected") : localized("channelInfo.notProtected"))
+                    ServerInfoDetailRow(label: localized("channelInfo.subscribed"), value: channel.isSubscribed.map(yesNo))
+                    ServerInfoDetailRow(label: localized("channelInfo.iconId"), value: channel.iconId.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.members"), value: String(memberCount))
                 }
 
-                Section(header: Text("Text")) {
-                    ServerInfoDetailRow(label: "Phonetic Name", value: channel.phoneticName)
-                    ServerInfoDetailRow(label: "Topic", value: channel.topic)
-                    ServerInfoDetailRow(label: "Description", value: channel.description)
+                Section(header: Text(localized("channelInfo.text"))) {
+                    ServerInfoDetailRow(label: localized("channelInfo.phoneticName"), value: channel.phoneticName)
+                    ServerInfoDetailRow(label: localized("channelInfo.topic"), value: channel.topic)
+                    ServerInfoDetailRow(label: localized("channelInfo.description"), value: channel.description)
                 }
 
-                Section(header: Text("Audio")) {
-                    ServerInfoDetailRow(label: "Codec", value: TS3ChannelCodec.title(for: channel.codec))
-                    ServerInfoDetailRow(label: "Codec Quality", value: TS3ChannelCodecQuality.title(for: channel.codecQuality))
-                    ServerInfoDetailRow(label: "Codec Latency Factor", value: channel.codecLatencyFactor.map(String.init))
-                    ServerInfoDetailRow(label: "Unencrypted Voice", value: channel.isCodecUnencrypted.map(yesNo))
-                    ServerInfoDetailRow(label: "Needed Talk Power", value: channel.neededTalkPower.map(String.init))
-                    ServerInfoDetailRow(label: "Needed Join Power", value: channel.neededJoinPower.map(String.init))
-                    ServerInfoDetailRow(label: "Needed Subscribe Power", value: channel.neededSubscribePower.map(String.init))
-                    ServerInfoDetailRow(label: "Needed Description View Power", value: channel.neededDescriptionViewPower.map(String.init))
+                Section(header: Text(localized("channelInfo.audio"))) {
+                    ServerInfoDetailRow(label: localized("channelInfo.codec"), value: codecText)
+                    ServerInfoDetailRow(label: localized("channelInfo.codecQuality"), value: codecQualityText)
+                    ServerInfoDetailRow(label: localized("channelInfo.codecLatencyFactor"), value: channel.codecLatencyFactor.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.unencryptedVoice"), value: channel.isCodecUnencrypted.map(yesNo))
+                    ServerInfoDetailRow(label: localized("channelInfo.neededTalkPower"), value: channel.neededTalkPower.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.neededJoinPower"), value: channel.neededJoinPower.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.neededSubscribePower"), value: channel.neededSubscribePower.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.neededDescriptionViewPower"), value: channel.neededDescriptionViewPower.map(String.init))
                 }
 
-                Section(header: Text("Limits")) {
-                    ServerInfoDetailRow(label: "Max Clients", value: maxClientsText)
-                    ServerInfoDetailRow(label: "Max Family Clients", value: maxFamilyClientsText)
-                    ServerInfoDetailRow(label: "Delete Delay", value: channel.deleteDelaySeconds.map { "\($0)s" })
+                Section(header: Text(localized("channelInfo.limits"))) {
+                    ServerInfoDetailRow(label: localized("channelInfo.maxClients"), value: maxClientsText)
+                    ServerInfoDetailRow(label: localized("channelInfo.maxFamilyClients"), value: maxFamilyClientsText)
+                    ServerInfoDetailRow(label: localized("channelInfo.deleteDelay"), value: channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) })
                 }
             }
             .fileExporter(
@@ -4871,11 +4881,11 @@ struct ChannelInformationSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .navigationTitle("Channel Info")
+            .navigationTitle(localized("channelInfo.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -4884,33 +4894,62 @@ struct ChannelInformationSheet: View {
     }
 
     private var parentName: String {
-        guard let parentId = normalizedId(channel.parentId) else { return "Root" }
-        return model.channels.first { $0.id == parentId }?.name ?? "Channel \(parentId)"
+        guard let parentId = normalizedId(channel.parentId) else { return localized("channelInfo.root") }
+        return model.channels.first { $0.id == parentId }?.name ?? localized("channelInfo.channelWithIdFormat", parentId)
     }
 
     private var orderName: String? {
-        guard let orderId = normalizedId(channel.order) else { return "First" }
-        return model.channels.first { $0.id == orderId }?.name ?? "Channel \(orderId)"
+        guard let orderId = normalizedId(channel.order) else { return localized("channelInfo.first") }
+        return model.channels.first { $0.id == orderId }?.name ?? localized("channelInfo.channelWithIdFormat", orderId)
     }
 
     private var channelTypeText: String {
         if channel.isPermanent {
-            return TS3ChannelType.permanent.title
+            return localized("channelInfo.channelType.permanent")
         }
         if channel.isSemiPermanent == true {
-            return TS3ChannelType.semiPermanent.title
+            return localized("channelInfo.channelType.semiPermanent")
         }
-        return TS3ChannelType.temporary.title
+        return localized("channelInfo.channelType.temporary")
+    }
+
+    private var codecText: String? {
+        guard let codec = channel.codec else { return nil }
+        let title: String
+        switch TS3ChannelCodec(rawValue: codec) {
+        case .some(.speexNarrowband):
+            title = localized("channelInfo.codec.speexNarrowband")
+        case .some(.speexWideband):
+            title = localized("channelInfo.codec.speexWideband")
+        case .some(.speexUltraWideband):
+            title = localized("channelInfo.codec.speexUltraWideband")
+        case .some(.celtMono):
+            title = localized("channelInfo.codec.celtMono")
+        case .some(.opusVoice):
+            title = localized("channelInfo.codec.opusVoice")
+        case .some(.opusMusic):
+            title = localized("channelInfo.codec.opusMusic")
+        case nil:
+            return localized("channelInfo.unknownValueFormat", codec)
+        }
+        return localized("channelInfo.valueWithNumberFormat", title, codec)
+    }
+
+    private var codecQualityText: String? {
+        guard let quality = channel.codecQuality else { return nil }
+        return TS3ChannelCodecConstraints.qualityRange.contains(quality)
+            ? localized("channelInfo.qualityFormat", quality)
+            : localized("channelInfo.unknownValueFormat", quality)
     }
 
     private var maxClientsText: String? {
-        if channel.maxClientsUnlimited == true { return "Unlimited" }
+        if channel.maxClientsUnlimited == true { return localized("channelInfo.unlimited") }
         return channel.maxClients.map(String.init)
     }
 
     private var maxFamilyClientsText: String? {
-        if channel.maxFamilyClientsInherited == true { return "Inherited" }
-        if channel.maxFamilyClientsUnlimited == true { return "Unlimited" }
+        if channel.maxFamilyClientsInherited == true { return localized("channelInfo.inherited") }
+        if channel.maxFamilyClientsUnlimited == true { return localized("channelInfo.unlimited") }
         return channel.maxFamilyClients.map(String.init)
     }
 
@@ -4920,36 +4959,36 @@ struct ChannelInformationSheet: View {
     }
 
     private func yesNo(_ value: Bool) -> String {
-        value ? "Yes" : "No"
+        value ? localized("channelInfo.yes") : localized("channelInfo.no")
     }
 
     private var informationSnapshot: String {
         let rows: [(String, String?)] = [
-            ("Channel ID", String(channel.id)),
-            ("Name", channel.name),
-            ("Path", model.channelPath(for: channel)),
-            ("Parent", parentName),
-            ("Order After", orderName),
-            ("Type", channelTypeText),
-            ("Default", yesNo(channel.isDefault)),
-            ("Password", channel.isPasswordProtected ? "Protected" : "Not Protected"),
-            ("Subscribed", channel.isSubscribed.map(yesNo)),
-            ("Icon ID", channel.iconId.map(String.init)),
-            ("Members", String(memberCount)),
-            ("Phonetic Name", channel.phoneticName),
-            ("Topic", channel.topic),
-            ("Description", channel.description),
-            ("Codec", TS3ChannelCodec.title(for: channel.codec)),
-            ("Codec Quality", TS3ChannelCodecQuality.title(for: channel.codecQuality)),
-            ("Codec Latency Factor", channel.codecLatencyFactor.map(String.init)),
-            ("Unencrypted Voice", channel.isCodecUnencrypted.map(yesNo)),
-            ("Needed Talk Power", channel.neededTalkPower.map(String.init)),
-            ("Needed Join Power", channel.neededJoinPower.map(String.init)),
-            ("Needed Subscribe Power", channel.neededSubscribePower.map(String.init)),
-            ("Needed Description View Power", channel.neededDescriptionViewPower.map(String.init)),
-            ("Max Clients", maxClientsText),
-            ("Max Family Clients", maxFamilyClientsText),
-            ("Delete Delay", channel.deleteDelaySeconds.map { "\($0)s" })
+            (localized("channelInfo.channelId"), String(channel.id)),
+            (localized("channelInfo.name"), channel.name),
+            (localized("channelInfo.path"), model.channelPath(for: channel)),
+            (localized("channelInfo.parent"), parentName),
+            (localized("channelInfo.orderAfter"), orderName),
+            (localized("channelInfo.type"), channelTypeText),
+            (localized("channelInfo.defaultChannel"), yesNo(channel.isDefault)),
+            (localized("channelInfo.password"), channel.isPasswordProtected ? localized("channelInfo.protected") : localized("channelInfo.notProtected")),
+            (localized("channelInfo.subscribed"), channel.isSubscribed.map(yesNo)),
+            (localized("channelInfo.iconId"), channel.iconId.map(String.init)),
+            (localized("channelInfo.members"), String(memberCount)),
+            (localized("channelInfo.phoneticName"), channel.phoneticName),
+            (localized("channelInfo.topic"), channel.topic),
+            (localized("channelInfo.description"), channel.description),
+            (localized("channelInfo.codec"), codecText),
+            (localized("channelInfo.codecQuality"), codecQualityText),
+            (localized("channelInfo.codecLatencyFactor"), channel.codecLatencyFactor.map(String.init)),
+            (localized("channelInfo.unencryptedVoice"), channel.isCodecUnencrypted.map(yesNo)),
+            (localized("channelInfo.neededTalkPower"), channel.neededTalkPower.map(String.init)),
+            (localized("channelInfo.neededJoinPower"), channel.neededJoinPower.map(String.init)),
+            (localized("channelInfo.neededSubscribePower"), channel.neededSubscribePower.map(String.init)),
+            (localized("channelInfo.neededDescriptionViewPower"), channel.neededDescriptionViewPower.map(String.init)),
+            (localized("channelInfo.maxClients"), maxClientsText),
+            (localized("channelInfo.maxFamilyClients"), maxFamilyClientsText),
+            (localized("channelInfo.deleteDelay"), channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) })
         ]
         return rows
             .compactMap { label, value in
