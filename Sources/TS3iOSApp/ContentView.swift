@@ -2233,27 +2233,32 @@ private struct ConnectionFilterPresetImportSheet: View {
         preview.candidates.contains { selectedPresetIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("connect.filterImport.preview"))) {
+                    Text(localized("connect.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("connect.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("connect.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("connect.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("connect.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("connect.filterImport.copyPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("connect.filterImport.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("connect.filterImport.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("connect.filterImport.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -2275,22 +2280,22 @@ private struct ConnectionFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected connection filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("connect.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Filters")
+            .navigationTitle(localized("connect.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("connect.filterImport.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -23565,12 +23570,12 @@ struct WhisperSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .all: return "All Presets"
-            case .channels: return "Channels"
-            case .users: return "Users"
-            case .mixed: return "Mixed"
+            case .all: return "whisper.filter.all"
+            case .channels: return "whisper.filter.channels"
+            case .users: return "whisper.filter.users"
+            case .mixed: return "whisper.filter.mixed"
             }
         }
 
@@ -23595,11 +23600,11 @@ struct WhisperSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .updated: return "Recent"
-            case .name: return "Name"
-            case .targets: return "Targets"
+            case .updated: return "whisper.sort.recent"
+            case .name: return "whisper.sort.name"
+            case .targets: return "whisper.sort.targets"
             }
         }
     }
@@ -23712,28 +23717,28 @@ struct WhisperSheet: View {
 
     private var whisperRouteSnapshot: String {
         var rows = [
-            "Route: \(model.whisperRouteDescription)",
-            "Mode: \(model.whisperRoute == .none ? "Voice" : "Whisper")",
-            "Activation Mode: \(model.whisperActivationMode.title)",
-            "Activation: \(model.whisperActivationStatus)",
-            "Microphone: \(model.isTalking ? "Live" : "Idle")",
-            "Activation Events: \(model.whisperActivationLog.count)",
-            "Preset Filter: \(presetFilter.title)",
-            "Preset Sort: \(presetSort.title)",
-            "Group Type: \(groupWhisperType.title)",
-            "Group Scope: \(groupWhisperTarget.title)",
-            "Selected Channels: \(selectedWhisperChannelIds.count)",
-            "Selected Users: \(selectedWhisperClientIds.count)",
-            "Presets: \(filteredWhisperPresets.count)",
-            "Server Groups: \(filteredServerGroups.count)",
-            "Channel Groups: \(filteredChannelGroups.count)",
-            "Channels: \(filteredChannels.count)",
-            "Users: \(filteredUsers.count)"
+            localized("whisper.snapshot.routeFormat", model.whisperRouteDescription),
+            localized("whisper.snapshot.modeFormat", model.whisperRoute == .none ? localized("whisper.mode.voice") : localized("whisper.mode.whisper")),
+            localized("whisper.snapshot.activationModeFormat", activationModeTitle(model.whisperActivationMode)),
+            localized("whisper.snapshot.activationFormat", model.whisperActivationStatus),
+            localized("whisper.snapshot.microphoneFormat", model.isTalking ? localized("whisper.microphone.live") : localized("whisper.microphone.idle")),
+            localized("whisper.snapshot.activationEventsFormat", model.whisperActivationLog.count),
+            localized("whisper.snapshot.presetFilterFormat", presetFilterTitle(presetFilter)),
+            localized("whisper.snapshot.presetSortFormat", presetSortTitle(presetSort)),
+            localized("whisper.snapshot.groupTypeFormat", groupWhisperTypeTitle(groupWhisperType)),
+            localized("whisper.snapshot.groupScopeFormat", groupWhisperTargetTitle(groupWhisperTarget)),
+            localized("whisper.snapshot.selectedChannelsFormat", selectedWhisperChannelIds.count),
+            localized("whisper.snapshot.selectedUsersFormat", selectedWhisperClientIds.count),
+            localized("whisper.snapshot.presetsFormat", filteredWhisperPresets.count),
+            localized("whisper.snapshot.serverGroupsFormat", filteredServerGroups.count),
+            localized("whisper.snapshot.channelGroupsFormat", filteredChannelGroups.count),
+            localized("whisper.snapshot.channelsFormat", filteredChannels.count),
+            localized("whisper.snapshot.usersFormat", filteredUsers.count)
         ]
         if let logText = String(data: model.whisperActivationLogData(), encoding: .utf8),
            !logText.isEmpty {
             rows.append("")
-            rows.append("Recent Activation Log")
+            rows.append(localized("whisper.snapshot.recentActivationLog"))
             rows.append(logText)
         }
         return rows.joined(separator: "\n")
@@ -23746,25 +23751,30 @@ struct WhisperSheet: View {
         )
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Search")) {
-                    TextField("Search whisper targets", text: $searchText)
+                Section(header: Text(localized("whisper.search"))) {
+                    TextField(localized("whisper.searchTargets"), text: $searchText)
                         .ts3PlainTextField()
-                    Picker("Preset Filter", selection: $presetFilter) {
+                    Picker(localized("whisper.presetFilter"), selection: $presetFilter) {
                         ForEach(WhisperPresetFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(presetFilterTitle(filter)).tag(filter)
                         }
                     }
-                    Picker("Preset Sort", selection: $presetSort) {
+                    Picker(localized("whisper.presetSort"), selection: $presetSort) {
                         ForEach(WhisperPresetSort.allCases) { sort in
-                            Text(sort.title).tag(sort)
+                            Text(presetSortTitle(sort)).tag(sort)
                         }
                     }
                     Menu {
-                        TextField("Preset Name", text: $filterPresetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("whisper.presetName"), text: $filterPresetName)
+                        Button(localized("whisper.saveCurrentFilters")) {
                             model.saveWhisperFilterPreset(
                                 name: filterPresetName,
                                 presetFilter: presetFilter.rawValue,
@@ -23775,17 +23785,17 @@ struct WhisperSheet: View {
                         }
                         .disabled(filterPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.whisperFilterPresets.isEmpty {
-                            Text("No saved whisper filter presets")
+                            Text(localized("whisper.noSavedFilterPresets"))
                         } else {
                             ForEach(model.whisperFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("whisper.applyPreset")) {
                                         applyFilterPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("whisper.useName")) {
                                         filterPresetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("whisper.deletePreset")) {
                                         model.deleteWhisperFilterPreset(preset)
                                     }
                                 } label: {
@@ -23797,52 +23807,52 @@ struct WhisperSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("whisper.exportPresets")) {
                             exportFilterPresets()
                         }
                         .disabled(model.whisperFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("whisper.importPresets")) {
                             isImportingFilterPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("whisper.deleteAllPresets")) {
                             confirmation = .deleteAllFilterPresets
                         }
                         .disabled(model.whisperFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("whisper.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("whisper.clearFilters")) {
                             searchText = ""
                             presetFilter = .all
                             presetSort = .updated
                         }
                     }
-                    Button("Copy Route Snapshot") {
+                    Button(localized("whisper.copyRouteSnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(whisperRouteSnapshot)
                     }
-                    Button("Export Route Snapshot") {
+                    Button(localized("whisper.exportRouteSnapshot")) {
                         routeDocument = TS3TextFileDocument(data: Data(whisperRouteSnapshot.utf8))
                         isExportingRoute = true
                     }
                 }
 
-                Section(header: Text("Current Route")) {
+                Section(header: Text(localized("whisper.currentRoute"))) {
                     Text(model.whisperRouteDescription)
                         .foregroundColor(.secondary)
                     Text(model.whisperActivationStatus)
                         .font(.caption)
                         .foregroundColor(model.isWhisperActivationActive ? .accentColor : .secondary)
-                    Picker("Activation Mode", selection: whisperActivationModeBinding) {
+                    Picker(localized("whisper.activationMode"), selection: whisperActivationModeBinding) {
                         ForEach(TS3WhisperActivationMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(activationModeTitle(mode)).tag(mode)
                         }
                     }
-                    Text(model.whisperActivationMode.detail)
+                    Text(activationModeDetail(model.whisperActivationMode))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if model.whisperActivationMode == .tapToToggle {
-                        Button(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper") {
+                        Button(model.isWhisperActivationActive ? localized("whisper.stopTemporary") : localized("whisper.startTemporary")) {
                             model.toggleCurrentWhisperActivation()
                         }
                         .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
@@ -23853,13 +23863,13 @@ struct WhisperSheet: View {
                             .disabled(model.state != .connected || model.whisperRoute == .none)
                     }
                     HStack(spacing: 12) {
-                        Button("Start Temporary Whisper") {
+                        Button(localized("whisper.startTemporary")) {
                             model.beginCurrentWhisperActivation()
                         }
                         .buttonStyle(.borderless)
                         .ts3KeyboardShortcut("start-whisper-activation", in: model)
                         .disabled(model.state != .connected || model.whisperRoute == .none || model.isWhisperActivationActive)
-                        Button("Stop Temporary Whisper") {
+                        Button(localized("whisper.stopTemporary")) {
                             model.endWhisperActivation()
                         }
                         .buttonStyle(.borderless)
@@ -23869,9 +23879,9 @@ struct WhisperSheet: View {
                     .font(.caption)
                 }
 
-                Section(header: Text("Activation Log")) {
+                Section(header: Text(localized("whisper.activationLog"))) {
                     if model.whisperActivationLog.isEmpty {
-                        Text("No whisper activation events")
+                        Text(localized("whisper.noActivationEvents"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.whisperActivationLog.prefix(6)) { entry in
@@ -23881,67 +23891,67 @@ struct WhisperSheet: View {
                                 Text("\(Self.dateText(entry.timestamp)) | \(entry.routeDescription)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                Text("\(entry.activationStatus) | \(entry.isTalking ? "talking" : "idle")")
+                                Text("\(entry.activationStatus) | \(entry.isTalking ? localized("whisper.talking") : localized("whisper.idle"))")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                         }
                     }
-                    Button("Copy Activation Log") {
+                    Button(localized("whisper.copyActivationLog")) {
                         TS3PlatformSupport.copyToPasteboard(String(data: model.whisperActivationLogData(), encoding: .utf8) ?? "")
                     }
                     .disabled(model.whisperActivationLog.isEmpty)
-                    Button("Export Activation Log") {
+                    Button(localized("whisper.exportActivationLog")) {
                         activationLogDocument = TS3TextFileDocument(data: model.whisperActivationLogData())
                         isExportingActivationLog = true
                     }
                     .disabled(model.whisperActivationLog.isEmpty)
-                    Button("Clear Activation Log") {
+                    Button(localized("whisper.clearActivationLog")) {
                         model.clearWhisperActivationLog()
                     }
                     .disabled(model.whisperActivationLog.isEmpty)
                 }
 
-                Section(header: Text("Quick Actions")) {
-                    Button("Whisper to Current Channel") {
+                Section(header: Text(localized("whisper.quickActions"))) {
+                    Button(localized("whisper.toCurrentChannel")) {
                         model.enableWhisperToCurrentChannel()
                     }
                     .disabled(model.currentChannel == nil)
-                    Button("Whisper to Server") {
+                    Button(localized("whisper.toServer")) {
                         model.enableWhisperToServer()
                     }
-                    Button("Voice to Current Channel") {
+                    Button(localized("whisper.voiceToCurrentChannel")) {
                         model.disableWhisper()
                     }
                 }
 
-                Section(header: Text("Whisper List")) {
-                    TextField("Preset Name", text: $whisperPresetName)
+                Section(header: Text(localized("whisper.whisperList"))) {
+                    TextField(localized("whisper.presetName"), text: $whisperPresetName)
                         .ts3PlainTextField()
-                    Button("Enable Selected Targets") {
+                    Button(localized("whisper.enableSelectedTargets")) {
                         model.enableWhisperList(
                             channelIds: selectedWhisperChannelIds,
                             clientIds: selectedWhisperClientIds
                         )
                     }
                     .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
-                    Button("Start Temporary Whisper to Selected Targets") {
+                    Button(localized("whisper.startTemporarySelectedTargets")) {
                         model.beginWhisperActivation(route: .list(
                             channelIds: selectedWhisperChannelIds.sorted(),
                             clientIds: selectedWhisperClientIds.sorted()
                         ))
                     }
                     .disabled(model.state != .connected || (selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty))
-                    Button("Select Current Route") {
+                    Button(localized("whisper.selectCurrentRoute")) {
                         selectCurrentWhisperRoute()
                     }
                     .disabled(!canSelectCurrentWhisperRoute)
-                    Button("Clear Selected Targets") {
+                    Button(localized("whisper.clearSelectedTargets")) {
                         selectedWhisperChannelIds = []
                         selectedWhisperClientIds = []
                     }
                     .disabled(selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty)
-                    Button("Save Selected Targets") {
+                    Button(localized("whisper.saveSelectedTargets")) {
                         model.saveWhisperPreset(
                             name: whisperPresetName,
                             channelIds: selectedWhisperChannelIds,
@@ -23951,33 +23961,33 @@ struct WhisperSheet: View {
                     }
                     .disabled(whisperPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         || (selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty))
-                    Button("Export Preset Backup") {
+                    Button(localized("whisper.exportPresetBackup")) {
                         exportPresetBackup()
                     }
                     .disabled(model.whisperPresets.isEmpty)
-                    Button("Import Preset Backup") {
+                    Button(localized("whisper.importPresetBackup")) {
                         isImportingPresetBackup = true
                     }
                     Menu {
-                        Button("Select Visible Presets") {
+                        Button(localized("whisper.selectVisiblePresets")) {
                             selectVisibleWhisperPresets()
                         }
                         .disabled(filteredWhisperPresets.isEmpty)
-                        Button("Delete Visible Presets") {
+                        Button(localized("whisper.deleteVisiblePresets")) {
                             confirmation = .deleteVisiblePresets
                         }
                         .disabled(filteredWhisperPresets.isEmpty)
                     } label: {
-                        Label("Visible Presets", systemImage: "checklist")
+                        Label(localized("whisper.visiblePresets"), systemImage: "checklist")
                     }
                 }
 
-                Section(header: Text("Presets")) {
+                Section(header: Text(localized("whisper.presets"))) {
                     if model.whisperPresets.isEmpty {
-                        Text("No saved whisper presets")
+                        Text(localized("whisper.noSavedPresets"))
                             .foregroundColor(.secondary)
                     } else if filteredWhisperPresets.isEmpty {
-                        Text("No matching whisper presets")
+                        Text(localized("whisper.noMatchingPresets"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredWhisperPresets) { preset in
@@ -23992,21 +24002,21 @@ struct WhisperSheet: View {
                                     }
                                     Spacer()
                                     Menu {
-                                        Button("Enable Preset") {
+                                        Button(localized("whisper.enablePreset")) {
                                             model.enableWhisperPreset(preset)
                                         }
-                                        Button("Start Temporary Whisper") {
+                                        Button(localized("whisper.startTemporary")) {
                                             model.beginWhisperActivation(route: .list(
                                                 channelIds: preset.channelIds,
                                                 clientIds: preset.clientIds
                                             ))
                                         }
-                                        Button("Select Targets") {
+                                        Button(localized("whisper.selectTargets")) {
                                             selectedWhisperChannelIds = Set(preset.channelIds)
                                             selectedWhisperClientIds = Set(preset.clientIds)
                                             whisperPresetName = preset.name
                                         }
-                                        Button("Delete Preset") {
+                                        Button(localized("whisper.deletePreset")) {
                                             model.deleteWhisperPreset(preset)
                                         }
                                     } label: {
@@ -24018,19 +24028,19 @@ struct WhisperSheet: View {
                     }
                 }
 
-                Section(header: Text("Group Whisper")) {
-                    Picker("Type", selection: $groupWhisperType) {
+                Section(header: Text(localized("whisper.groupWhisper"))) {
+                    Picker(localized("whisper.type"), selection: $groupWhisperType) {
                         ForEach(Self.groupWhisperTypes, id: \.rawValue) { type in
-                            Text(type.title).tag(type)
+                            Text(groupWhisperTypeTitle(type)).tag(type)
                         }
                     }
-                    Picker("Scope", selection: $groupWhisperTarget) {
+                    Picker(localized("whisper.scope"), selection: $groupWhisperTarget) {
                         ForEach(Self.groupWhisperTargets, id: \.rawValue) { target in
-                            Text(target.title).tag(target)
+                            Text(groupWhisperTargetTitle(target)).tag(target)
                         }
                     }
                     if groupWhisperType == .serverGroup {
-                        Picker("Server Group", selection: $selectedServerGroupId) {
+                        Picker(localized("whisper.serverGroup"), selection: $selectedServerGroupId) {
                             ForEach(filteredServerGroups) { group in
                                 Text(group.name).tag(group.id)
                             }
@@ -24038,14 +24048,14 @@ struct WhisperSheet: View {
                         .disabled(filteredServerGroups.isEmpty)
                     }
                     if groupWhisperType == .channelGroup {
-                        Picker("Channel Group", selection: $selectedChannelGroupId) {
+                        Picker(localized("whisper.channelGroup"), selection: $selectedChannelGroupId) {
                             ForEach(filteredChannelGroups) { group in
                                 Text(group.name).tag(group.id)
                             }
                         }
                         .disabled(filteredChannelGroups.isEmpty)
                     }
-                    Button("Enable Group Whisper") {
+                    Button(localized("whisper.enableGroupWhisper")) {
                         model.enableGroupWhisper(
                             type: groupWhisperType,
                             target: groupWhisperTarget,
@@ -24053,7 +24063,7 @@ struct WhisperSheet: View {
                         )
                     }
                     .disabled(!canEnableGroupWhisper)
-                    Button("Start Temporary Group Whisper") {
+                    Button(localized("whisper.startTemporaryGroupWhisper")) {
                         model.beginWhisperActivation(route: .group(
                             type: groupWhisperType,
                             target: groupWhisperTarget,
@@ -24064,9 +24074,9 @@ struct WhisperSheet: View {
                 }
 
                 if !model.channels.isEmpty {
-                    Section(header: Text("Channels")) {
+                    Section(header: Text(localized("whisper.channels"))) {
                         if filteredChannels.isEmpty {
-                            Text("No matching channels")
+                            Text(localized("whisper.noMatchingChannels"))
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(filteredChannels) { channel in
@@ -24084,9 +24094,9 @@ struct WhisperSheet: View {
                 }
 
                 if !model.clients.isEmpty {
-                    Section(header: Text("Users")) {
+                    Section(header: Text(localized("whisper.users"))) {
                         if filteredUsers.isEmpty {
-                            Text("No matching users")
+                            Text(localized("whisper.noMatchingUsers"))
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(filteredUsers) { user in
@@ -24103,7 +24113,7 @@ struct WhisperSheet: View {
                     }
                 }
             }
-            .navigationTitle("Whisper")
+            .navigationTitle(localized("whisper.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshGroups()
@@ -24179,7 +24189,7 @@ struct WhisperSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -24188,18 +24198,18 @@ struct WhisperSheet: View {
                 switch confirmation {
                 case .deleteVisiblePresets:
                     return Alert(
-                        title: Text("Delete Visible Whisper Presets?"),
-                        message: Text("This removes \(filteredWhisperPresets.count) saved whisper presets."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("whisper.deleteVisibleAlert.title")),
+                        message: Text(localized("whisper.deleteVisibleAlert.messageFormat", filteredWhisperPresets.count)),
+                        primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                             model.deleteWhisperPresets(filteredWhisperPresets)
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllFilterPresets:
                     return Alert(
-                        title: Text("Delete All Whisper Filter Presets?"),
-                        message: Text("This removes \(model.whisperFilterPresets.count) saved local filter presets."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("whisper.deleteAllFilterPresetsAlert.title")),
+                        message: Text(localized("whisper.deleteAllFilterPresetsAlert.messageFormat", model.whisperFilterPresets.count)),
+                        primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                             model.deleteAllWhisperFilterPresets()
                         },
                         secondaryButton: .cancel()
@@ -24271,11 +24281,11 @@ struct WhisperSheet: View {
 
     private func filterPresetSummary(_ preset: TS3WhisperFilterPreset) -> String {
         var parts = [
-            (WhisperPresetFilter(rawValue: preset.presetFilter) ?? .all).title,
-            "Sort \((WhisperPresetSort(rawValue: preset.presetSort) ?? .updated).title)"
+            presetFilterTitle(WhisperPresetFilter(rawValue: preset.presetFilter) ?? .all),
+            localized("whisper.filterPresetSummary.sortFormat", presetSortTitle(WhisperPresetSort(rawValue: preset.presetSort) ?? .updated))
         ]
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("whisper.filterPresetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -24422,8 +24432,8 @@ struct WhisperSheet: View {
     }
 
     private func presetSummary(_ preset: TS3WhisperPreset) -> String {
-        let channelText = preset.channelIds.count == 1 ? "1 channel" : "\(preset.channelIds.count) channels"
-        let userText = preset.clientIds.count == 1 ? "1 user" : "\(preset.clientIds.count) users"
+        let channelText = localized("whisper.presetSummary.channelsFormat", preset.channelIds.count)
+        let userText = localized("whisper.presetSummary.usersFormat", preset.clientIds.count)
         if preset.channelIds.isEmpty {
             return userText
         }
@@ -24431,6 +24441,64 @@ struct WhisperSheet: View {
             return channelText
         }
         return "\(channelText), \(userText)"
+    }
+
+    private func presetFilterTitle(_ filter: WhisperPresetFilter) -> String {
+        localized(filter.titleKey)
+    }
+
+    private func presetSortTitle(_ sort: WhisperPresetSort) -> String {
+        localized(sort.titleKey)
+    }
+
+    private func activationModeTitle(_ mode: TS3WhisperActivationMode) -> String {
+        switch mode {
+        case .holdToWhisper:
+            return localized("whisper.activationMode.holdToWhisper")
+        case .tapToToggle:
+            return localized("whisper.activationMode.tapToToggle")
+        }
+    }
+
+    private func activationModeDetail(_ mode: TS3WhisperActivationMode) -> String {
+        switch mode {
+        case .holdToWhisper:
+            return localized("whisper.activationMode.holdDetail")
+        case .tapToToggle:
+            return localized("whisper.activationMode.toggleDetail")
+        }
+    }
+
+    private func groupWhisperTypeTitle(_ type: TS3GroupWhisperType) -> String {
+        switch type {
+        case .serverGroup:
+            return localized("whisper.groupType.serverGroup")
+        case .channelGroup:
+            return localized("whisper.groupType.channelGroup")
+        case .channelCommander:
+            return localized("whisper.groupType.channelCommander")
+        case .allClients:
+            return localized("whisper.groupType.allClients")
+        }
+    }
+
+    private func groupWhisperTargetTitle(_ target: TS3GroupWhisperTarget) -> String {
+        switch target {
+        case .allChannels:
+            return localized("whisper.groupTarget.allChannels")
+        case .currentChannel:
+            return localized("whisper.groupTarget.currentChannel")
+        case .parentChannel:
+            return localized("whisper.groupTarget.parentChannel")
+        case .allParentChannels:
+            return localized("whisper.groupTarget.allParentChannels")
+        case .channelFamily:
+            return localized("whisper.groupTarget.channelFamily")
+        case .completeChannelFamily:
+            return localized("whisper.groupTarget.completeChannelFamily")
+        case .subchannels:
+            return localized("whisper.groupTarget.subchannels")
+        }
     }
 
     private func channelSelectionBinding(for channelId: Int) -> Binding<Bool> {
@@ -24490,27 +24558,32 @@ private struct WhisperPresetBackupImportSheet: View {
         preview.candidates.contains { selectedPresetIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("whisper.import.preview"))) {
+                    Text(localized("whisper.import.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("whisper.import.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("whisper.import.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("whisper.import.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("whisper.import.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("whisper.import.copyPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("whisper.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("whisper.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("whisper.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -24532,22 +24605,22 @@ private struct WhisperPresetBackupImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected whisper presets by name and leaves unselected presets unchanged.")
+                    Text(localized("whisper.import.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Whisper Presets")
+            .navigationTitle(localized("whisper.import.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("whisper.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
