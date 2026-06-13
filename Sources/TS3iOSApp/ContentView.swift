@@ -21382,73 +21382,79 @@ struct PrivilegeKeysSheet: View {
         NavigationView {
             List {
                 if let key = model.generatedPrivilegeKey {
-                    Section(header: Text("Generated Key")) {
+                    Section(header: Text(localized("privilegeKeys.generatedKey"))) {
                         Text(key)
                             .font(.system(.footnote, design: .monospaced))
                             .lineLimit(3)
-                        Button("Use Generated Key") {
+                        Button(localized("privilegeKeys.useGeneratedKey")) {
                             model.usePrivilegeKey(key)
                         }
                         .disabled(model.state != .connected)
-                        Button("Copy Generated Key") {
+                        Button(localized("privilegeKeys.copyGeneratedKey")) {
                             TS3PlatformSupport.copyToPasteboard(key)
                         }
-                        Button("Copy Generated Key Summary") {
+                        Button(localized("privilegeKeys.copyGeneratedKeySummary")) {
                             TS3PlatformSupport.copyToPasteboard(generatedKeySnapshot(key))
                         }
-                        Button("Copy Full Invite Link With Key") {
+                        Button(localized("privilegeKeys.copyFullInviteLinkWithKey")) {
                             model.copyCurrentFullInviteLink(privilegeKey: key)
                         }
-                        Button("Save as Connection Privilege Key") {
+                        Button(localized("privilegeKeys.saveAsConnectionKey")) {
                             model.saveCurrentConnectionPrivilegeKey(key)
                         }
-                        Button("Export Generated Key") {
+                        Button(localized("privilegeKeys.exportGeneratedKey")) {
                             generatedKeyDocument = TS3TextFileDocument(data: Data(generatedKeySnapshot(key).utf8))
                             isExportingGeneratedKey = true
                         }
                     }
                 }
 
-                Section(header: Text("Create")) {
-                    Picker("Type", selection: $targetType) {
+                Section(header: Text(localized("privilegeKeys.create"))) {
+                    Picker(localized("groups.type"), selection: $targetType) {
                         ForEach(TS3PrivilegeKeyTargetType.allCases) { type in
-                            Text(type.title).tag(type)
+                            Text(targetTypeTitle(type)).tag(type)
                         }
                     }
 
                     if targetType == .serverGroup {
-                        Picker("Server Group", selection: $selectedServerGroupId) {
+                        Picker(localized("privilegeKeys.serverGroup"), selection: $selectedServerGroupId) {
                             ForEach(model.serverGroups) { group in
                                 Text(group.name).tag(group.id)
                             }
                         }
-                        Text("Target: \(serverGroupName(selectedServerGroupId)) (\(selectedServerGroupId))")
+                        Text(localized("privilegeKeys.targetFormat", serverGroupName(selectedServerGroupId), selectedServerGroupId))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
-                        Picker("Channel Group", selection: $selectedChannelGroupId) {
+                        Picker(localized("privilegeKeys.channelGroup"), selection: $selectedChannelGroupId) {
                             ForEach(model.channelGroups) { group in
                                 Text(group.name).tag(group.id)
                             }
                         }
-                        Picker("Channel", selection: $selectedChannelId) {
+                        Picker(localized("privilegeKeys.channel"), selection: $selectedChannelId) {
                             ForEach(model.channels) { channel in
                                 Text(channel.name).tag(channel.id)
                             }
                         }
-                        Text("Target: \(channelGroupName(selectedChannelGroupId)) (\(selectedChannelGroupId)) in \(channelName(selectedChannelId)) (\(selectedChannelId))")
+                        Text(localized(
+                            "privilegeKeys.channelTargetFormat",
+                            channelGroupName(selectedChannelGroupId),
+                            selectedChannelGroupId,
+                            channelName(selectedChannelId),
+                            selectedChannelId
+                        ))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
 
-                    TextField("Description", text: $description)
+                    TextField(localized("temporaryPasswords.description"), text: $description)
                         .ts3PlainTextField()
-                    TextField("Custom Set", text: $customSet)
+                    TextField(localized("privilegeKeys.customSet"), text: $customSet)
                         .ts3PlainTextField()
                     Text(privilegeKeyDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Creation Summary") {
+                    Button(localized("temporaryPasswords.copyCreationSummary")) {
                         TS3PlatformSupport.copyToPasteboard(privilegeKeyDraftSummary)
                     }
                     ForEach(privilegeKeyDraftValidationMessages, id: \.self) { message in
@@ -21456,7 +21462,7 @@ struct PrivilegeKeysSheet: View {
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    Button("Create Privilege Key") {
+                    Button(localized("privilegeKeys.createPrivilegeKey")) {
                         model.createPrivilegeKey(
                             targetType: targetType,
                             groupId: selectedGroupId,
@@ -21470,23 +21476,23 @@ struct PrivilegeKeysSheet: View {
                     .disabled(model.state != .connected || !canCreate)
                 }
 
-                Section(header: Text("Existing Keys")) {
-                    Picker("Type", selection: $keyFilter) {
+                Section(header: Text(localized("privilegeKeys.existingKeys"))) {
+                    Picker(localized("groups.type"), selection: $keyFilter) {
                         ForEach(KeyFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(keyFilterTitle(filter)).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("groups.sortBy"), selection: $sortMode) {
                         ForEach(KeySortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(keySortModeTitle(mode)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search keys", text: $searchText)
+                    Toggle(localized("groups.ascending"), isOn: $sortAscending)
+                    TextField(localized("privilegeKeys.searchKeys"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.savePrivilegeKeyFilterPreset(
                                 name: presetName,
                                 keyFilter: keyFilter.rawValue,
@@ -21498,17 +21504,17 @@ struct PrivilegeKeysSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.privilegeKeyFilterPresets.isEmpty {
-                            Text("No saved privilege key filter presets")
+                            Text(localized("privilegeKeys.noSavedFilterPresets"))
                         } else {
                             ForEach(model.privilegeKeyFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deletePrivilegeKeyFilterPreset(preset)
                                     }
                                 } label: {
@@ -21520,22 +21526,22 @@ struct PrivilegeKeysSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.privilegeKeyFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.privilegeKeyFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("groups.clearFilters")) {
                             keyFilter = .all
                             sortMode = .created
                             sortAscending = false
@@ -21543,37 +21549,37 @@ struct PrivilegeKeysSheet: View {
                         }
                     }
 
-                    Button("Copy Visible Keys") {
+                    Button(localized("privilegeKeys.copyVisibleKeys")) {
                         TS3PlatformSupport.copyToPasteboard(privilegeKeysSnapshot)
                     }
                     .disabled(filteredPrivilegeKeys.isEmpty)
 
-                    Button("Export Visible Keys") {
+                    Button(localized("privilegeKeys.exportVisibleKeys")) {
                         keysExportDocument = TS3TextFileDocument(data: Data(privilegeKeysSnapshot.utf8))
                         isExportingKeys = true
                     }
                     .disabled(filteredPrivilegeKeys.isEmpty)
 
-                    Button("Export Privilege Key Backup") {
+                    Button(localized("privilegeKeys.exportBackup")) {
                         exportPrivilegeKeyBackup()
                     }
                     .disabled(model.privilegeKeys.isEmpty)
 
-                    Button("Import Privilege Key Backup") {
+                    Button(localized("privilegeKeys.importBackup")) {
                         isImportingKeyBackup = true
                     }
 
-                    Button("Delete Visible Keys") {
+                    Button(localized("privilegeKeys.deleteVisibleKeys")) {
                         isConfirmingDeleteAll = true
                     }
                     .disabled(model.state != .connected || filteredPrivilegeKeys.isEmpty)
                     .foregroundColor(.red)
 
                     if model.privilegeKeys.isEmpty {
-                        Text("No privilege keys")
+                        Text(localized("privilegeKeys.noKeys"))
                             .foregroundColor(.secondary)
                     } else if filteredPrivilegeKeys.isEmpty {
-                        Text("No matching privilege keys")
+                        Text(localized("privilegeKeys.noMatchingKeys"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredPrivilegeKeys) { key in
@@ -21647,9 +21653,9 @@ struct PrivilegeKeysSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
-                    title: Text("Delete Visible Privilege Keys?"),
-                    message: Text("This removes \(filteredPrivilegeKeys.count) privilege keys from the server."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("privilegeKeys.deleteVisibleAlert.title")),
+                    message: Text(localized("privilegeKeys.deleteVisibleAlert.messageFormat", filteredPrivilegeKeys.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deletePrivilegeKeys(filteredPrivilegeKeys)
                     },
                     secondaryButton: .cancel()
@@ -21670,15 +21676,15 @@ struct PrivilegeKeysSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Privilege Key Filter Presets?"),
-                    message: Text("This removes \(model.privilegeKeyFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("privilegeKeys.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.privilegeKeyFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllPrivilegeKeyFilterPresets()
                     },
                     secondaryButton: .cancel()
                 )
             }
-            .navigationTitle("Privilege Keys")
+            .navigationTitle(localized("privilegeKeys.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 applyInitialSelection()
@@ -21699,14 +21705,14 @@ struct PrivilegeKeysSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.refreshGroups()
                         model.refreshPrivilegeKeys()
                     }
                     .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -21837,7 +21843,7 @@ struct PrivilegeKeysSheet: View {
     }
 
     private func typeText(_ key: TS3PrivilegeKeySummary) -> String {
-        key.type?.title ?? "Unknown"
+        key.type.map(typeTitle) ?? localized("common.unknown")
     }
 
     private func normalizeSelections() {
@@ -21902,38 +21908,38 @@ struct PrivilegeKeysSheet: View {
 
     private func privilegeKeyBackupPreviewMessage(_ preview: TS3PrivilegeKeyBackupPreview) -> String {
         var lines = [
-            "Keys: \(preview.keyCount)",
-            "Server group keys: \(preview.serverGroupCount)",
-            "Channel group keys: \(preview.channelGroupCount)"
+            localized("privilegeKeys.backupPreview.keysFormat", preview.keyCount),
+            localized("privilegeKeys.backupPreview.serverGroupKeysFormat", preview.serverGroupCount),
+            localized("privilegeKeys.backupPreview.channelGroupKeysFormat", preview.channelGroupCount)
         ]
         if preview.unknownTypeCount > 0 {
-            lines.append("Unknown type keys: \(preview.unknownTypeCount)")
+            lines.append(localized("privilegeKeys.backupPreview.unknownTypeKeysFormat", preview.unknownTypeCount))
         }
         if !preview.typeSummaries.isEmpty {
-            lines.append("Types: \(preview.typeSummaries.joined(separator: " | "))")
+            lines.append(localized("privilegeKeys.backupPreview.typesFormat", preview.typeSummaries.joined(separator: " | ")))
         }
         if !preview.targetSummaries.isEmpty {
-            lines.append("Targets: \(preview.targetSummaries.joined(separator: " | "))")
+            lines.append(localized("privilegeKeys.backupPreview.targetsFormat", preview.targetSummaries.joined(separator: " | ")))
         }
         if let firstKey = preview.firstKey {
-            lines.append("First key: \(firstKey)")
+            lines.append(localized("privilegeKeys.backupPreview.firstKeyFormat", firstKey))
         }
         if let firstType = preview.firstType {
-            lines.append("First target type: \(firstType.title)")
+            lines.append(localized("privilegeKeys.backupPreview.firstTargetTypeFormat", typeTitle(firstType)))
         }
         if let groupId = preview.firstGroupId {
-            lines.append("First group: \(selectedBackupGroupName(type: preview.firstType, groupId: groupId)) (\(groupId))")
+            lines.append(localized("privilegeKeys.backupPreview.firstGroupFormat", selectedBackupGroupName(type: preview.firstType, groupId: groupId), groupId))
         }
         if let channelId = preview.firstChannelId {
-            lines.append("First channel: \(channelName(channelId)) (\(channelId))")
+            lines.append(localized("privilegeKeys.backupPreview.firstChannelFormat", channelName(channelId), channelId))
         }
         if let description = preview.firstDescription, !description.isEmpty {
-            lines.append("First description: \(description)")
+            lines.append(localized("privilegeKeys.backupPreview.firstDescriptionFormat", description))
         }
         if let customSet = preview.firstCustomSet, !customSet.isEmpty {
-            lines.append("First custom set: \(customSet)")
+            lines.append(localized("privilegeKeys.backupPreview.firstCustomSetFormat", customSet))
         }
-        lines.append(preview.hasKeys ? "Import loads the first key into the generated key area for copying or use." : "The backup has no usable keys.")
+        lines.append(preview.hasKeys ? localized("privilegeKeys.backupPreview.hasKeys") : localized("privilegeKeys.backupPreview.noUsableKeys"))
         return lines.joined(separator: "\n")
     }
 
@@ -21944,7 +21950,7 @@ struct PrivilegeKeysSheet: View {
         case .channelGroup:
             return channelGroupName(groupId)
         case nil:
-            return "Group \(groupId)"
+            return localized("groups.groupFallbackFormat", groupId)
         }
     }
 
@@ -21958,14 +21964,14 @@ struct PrivilegeKeysSheet: View {
 
     private func presetSummary(_ preset: TS3PrivilegeKeyFilterPreset) -> String {
         var parts = [
-            (KeyFilter(rawValue: preset.keyFilter) ?? .all).title,
-            "Sort \((KeySortMode(rawValue: preset.sortMode) ?? .created).title)"
+            keyFilterTitle(KeyFilter(rawValue: preset.keyFilter) ?? .all),
+            localized("permissions.presetSummary.sortFormat", keySortModeTitle(KeySortMode(rawValue: preset.sortMode) ?? .created))
         ]
         if preset.sortAscending {
-            parts.append("Ascending")
+            parts.append(localized("groups.ascending"))
         }
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("temporaryPasswords.presetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -22018,7 +22024,7 @@ struct PrivilegeKeysSheet: View {
     }
 
     private var selectedChannelText: String {
-        targetType == .channelGroup ? "\(channelName(selectedChannelId)) (\(selectedChannelId))" : "None"
+        targetType == .channelGroup ? "\(channelName(selectedChannelId)) (\(selectedChannelId))" : localized("common.none")
     }
 
     private func serverGroupName(_ id: Int) -> String {
@@ -22030,7 +22036,62 @@ struct PrivilegeKeysSheet: View {
     }
 
     private func channelName(_ id: Int) -> String {
-        model.channels.first { $0.id == id }?.name ?? "Channel \(id)"
+        model.channels.first { $0.id == id }?.name ?? localized("groups.members.channelFallbackFormat", id)
+    }
+
+    private func targetTypeTitle(_ type: TS3PrivilegeKeyTargetType) -> String {
+        switch type {
+        case .serverGroup:
+            return localized("privilegeKeys.serverGroup")
+        case .channelGroup:
+            return localized("privilegeKeys.channelGroup")
+        }
+    }
+
+    private func typeTitle(_ type: TS3PrivilegeKeyType) -> String {
+        switch type {
+        case .serverGroup:
+            return localized("privilegeKeys.serverGroup")
+        case .channelGroup:
+            return localized("privilegeKeys.channelGroup")
+        }
+    }
+
+    private func keyFilterTitle(_ filter: KeyFilter) -> String {
+        switch filter {
+        case .all:
+            return localized("privilegeKeys.filter.all")
+        case .serverGroup:
+            return localized("privilegeKeys.serverGroup")
+        case .channelGroup:
+            return localized("privilegeKeys.channelGroup")
+        case .unknown:
+            return localized("privilegeKeys.filter.unknown")
+        case .withDescription:
+            return localized("privilegeKeys.filter.withDescription")
+        case .withCustomSet:
+            return localized("privilegeKeys.filter.withCustomSet")
+        }
+    }
+
+    private func keySortModeTitle(_ mode: KeySortMode) -> String {
+        switch mode {
+        case .created:
+            return localized("privilegeKeys.sort.created")
+        case .type:
+            return localized("groups.type")
+        case .group:
+            return localized("privilegeKeys.sort.group")
+        case .channel:
+            return localized("privilegeKeys.channel")
+        case .description:
+            return localized("temporaryPasswords.description")
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 
 }
@@ -22053,15 +22114,15 @@ private struct PrivilegeKeyBackupImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("privilegeKeys.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasKeys {
-                        Button("Copy Key Summary") {
+                        Button(localized("privilegeKeys.copyKeySummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
-                        Picker("Key", selection: $selectedKey) {
+                        Picker(localized("privilegeKeys.key"), selection: $selectedKey) {
                             ForEach(preview.candidates) { candidate in
                                 Text(candidate.key)
                                     .tag(candidate.key)
@@ -22093,13 +22154,13 @@ private struct PrivilegeKeyBackupImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import loads the selected usable key into the generated key area for copying, using, saving, or exporting.")
+                Section(header: Text(localized("privilegeKeys.import.behavior"))) {
+                    Text(localized("privilegeKeys.import.behaviorSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Key Backup")
+            .navigationTitle(localized("privilegeKeys.import.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedKey.isEmpty {
@@ -22108,18 +22169,23 @@ private struct PrivilegeKeyBackupImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("privilegeKeys.import.action")) {
                         importBackup(selectedKeyOrFirst)
                     }
                     .disabled(!preview.hasKeys || selectedKeyOrFirst.isEmpty)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -22152,23 +22218,23 @@ struct PrivilegeKeyRow: View {
                 }
                 Spacer()
                 Menu {
-                    Button("Use Key") {
+                    Button(localized("privilegeKeys.useKey")) {
                         model.usePrivilegeKey(key.key)
                     }
                     .disabled(model.state != .connected)
-                    Button("Copy Full Invite Link With Key") {
+                    Button(localized("privilegeKeys.copyFullInviteLinkWithKey")) {
                         model.copyCurrentFullInviteLink(privilegeKey: key.key)
                     }
-                    Button("Save as Connection Privilege Key") {
+                    Button(localized("privilegeKeys.saveAsConnectionKey")) {
                         model.saveCurrentConnectionPrivilegeKey(key.key)
                     }
-                    Button("Copy Key") {
+                    Button(localized("privilegeKeys.copyKey")) {
                         TS3PlatformSupport.copyToPasteboard(key.key)
                     }
-                    Button("Copy Summary") {
+                    Button(localized("groups.row.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                     }
-                    Button("Delete Key") {
+                    Button(localized("privilegeKeys.deleteKey")) {
                         isConfirmingDelete = true
                     }
                     .disabled(model.state != .connected)
@@ -22185,56 +22251,56 @@ struct PrivilegeKeyRow: View {
         .padding(.vertical, 3)
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Privilege Key?"),
+                title: Text(localized("privilegeKeys.deleteKeyAlert.title")),
                 message: Text(key.key),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deletePrivilegeKey(key)
                 },
                 secondaryButton: .cancel()
             )
         }
         .contextMenu {
-            Button("Use Key") {
+            Button(localized("privilegeKeys.useKey")) {
                 model.usePrivilegeKey(key.key)
             }
             .disabled(model.state != .connected)
-            Button("Copy Full Invite Link With Key") {
+            Button(localized("privilegeKeys.copyFullInviteLinkWithKey")) {
                 model.copyCurrentFullInviteLink(privilegeKey: key.key)
             }
-            Button("Save as Connection Privilege Key") {
+            Button(localized("privilegeKeys.saveAsConnectionKey")) {
                 model.saveCurrentConnectionPrivilegeKey(key.key)
             }
-            Button("Copy Key") {
+            Button(localized("privilegeKeys.copyKey")) {
                 TS3PlatformSupport.copyToPasteboard(key.key)
             }
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
-            Button("Delete Key") {
+            Button(localized("privilegeKeys.deleteKey")) {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
             .disabled(model.state != .connected)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Privilege key")
+        .accessibilityLabel(localized("privilegeKeys.accessibility.privilegeKey"))
         .accessibilityValue(key.accessibilityValue(
             serverGroups: model.serverGroups,
             channelGroups: model.channelGroups,
             channels: model.channels
         ))
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
         }
-        .accessibilityAction(named: "Use Key") {
+        .accessibilityAction(named: localized("privilegeKeys.useKey")) {
             if model.state == .connected {
                 model.usePrivilegeKey(key.key)
             }
         }
-        .accessibilityAction(named: "Save as Connection Privilege Key") {
+        .accessibilityAction(named: localized("privilegeKeys.saveAsConnectionKey")) {
             model.saveCurrentConnectionPrivilegeKey(key.key)
         }
-        .accessibilityAction(named: "Delete Key") {
+        .accessibilityAction(named: localized("privilegeKeys.deleteKey")) {
             if model.state == .connected {
                 isConfirmingDelete = true
             }
@@ -22262,6 +22328,11 @@ struct PrivilegeKeyRow: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
