@@ -11126,25 +11126,30 @@ private struct NotificationSettingsImportSheet: View {
         preview.candidates.contains { selectedSettingIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("notifications.import.preview"))) {
                     ForEach(preview.lines, id: \.self) { line in
                         Text(line)
                     }
-                    Button("Copy Notification Summary") {
+                    Button(localized("notifications.import.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(previewSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("notifications.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("notifications.import.selectAll")) {
                             selectedSettingIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("notifications.import.clear")) {
                             selectedSettingIds.removeAll()
                         }
                     }
@@ -11172,22 +11177,22 @@ private struct NotificationSettingsImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing replaces only the selected notification preference groups with values from the settings file.")
+                    Text(localized("notifications.import.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Notification Settings")
+            .navigationTitle(localized("notifications.import.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("notifications.import.action")) {
                         importSettings(selectedSettingIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -25534,55 +25539,60 @@ struct NotificationSettingsSheet: View {
         )
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Notifications")) {
-                    Toggle("Enable Notifications", isOn: notificationsBinding)
-                    Toggle("Sound", isOn: notificationSoundBinding)
+                Section(header: Text(localized("notifications.section"))) {
+                    Toggle(localized("notifications.enable"), isOn: notificationsBinding)
+                    Toggle(localized("notifications.sound"), isOn: notificationSoundBinding)
                         .disabled(!model.notificationsEnabled)
-                    Toggle("Private Messages", isOn: privateMessageNotificationsBinding)
+                    Toggle(localized("notifications.privateMessages"), isOn: privateMessageNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
-                    Toggle("Pokes", isOn: pokeNotificationsBinding)
+                    Toggle(localized("notifications.pokes"), isOn: pokeNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
-                    Toggle("Server Activity", isOn: activityNotificationsBinding)
+                    Toggle(localized("notifications.serverActivity"), isOn: activityNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
-                    Text("Notifications are shown when the app is not active.")
+                    Text(localized("notifications.backgroundNote"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Presets")) {
-                    Button("Direct Messages Preset") {
+                Section(header: Text(localized("notifications.presets"))) {
+                    Button(localized("notifications.directPreset")) {
                         model.applyDirectNotificationPreset()
                     }
-                    Button("Silent Direct Messages Preset") {
+                    Button(localized("notifications.silentDirectPreset")) {
                         model.applyDirectNotificationPreset(soundEnabled: false)
                     }
-                    Button("All Events Preset") {
+                    Button(localized("notifications.allEventsPreset")) {
                         model.applyAllEventsNotificationPreset()
                     }
-                    Button("Reset Notification Settings") {
+                    Button(localized("notifications.resetSettings")) {
                         isConfirmingResetNotificationSettings = true
                     }
                 }
 
                 NotificationRulesSection()
 
-                Section(header: Text("Backup")) {
-                    Button("Export Notification Settings") {
+                Section(header: Text(localized("notifications.backup"))) {
+                    Button(localized("notifications.exportSettings")) {
                         exportNotificationSettings()
                     }
-                    Button("Import Notification Settings") {
+                    Button(localized("notifications.importSettings")) {
                         isImportingNotificationSettings = true
                     }
                 }
             }
-            .navigationTitle("Notification Settings")
+            .navigationTitle(localized("notifications.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -25610,9 +25620,9 @@ struct NotificationSettingsSheet: View {
             }
             .alert(isPresented: $isConfirmingResetNotificationSettings) {
                 Alert(
-                    title: Text("Reset Notification Settings?"),
-                    message: Text("This restores local notification preferences to their default values."),
-                    primaryButton: .destructive(Text("Reset")) {
+                    title: Text(localized("notifications.resetAlert.title")),
+                    message: Text(localized("notifications.resetAlert.message")),
+                    primaryButton: .destructive(Text(localized("notifications.reset"))) {
                         model.resetNotificationSettings()
                     },
                     secondaryButton: .cancel()
@@ -25720,28 +25730,33 @@ struct NotificationRulesSection: View {
         )
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
-        Section(header: Text("Rules")) {
-            Toggle("Mute Current Server", isOn: Binding(
+        Section(header: Text(localized("notifications.rules"))) {
+            Toggle(localized("notifications.muteCurrentServer"), isOn: Binding(
                 get: { model.isCurrentServerNotificationsMuted() },
                 set: { model.setCurrentServerNotificationsMuted($0) }
             ))
             .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-            Toggle("Quiet Hours", isOn: quietHoursEnabledBinding)
-            DatePicker("Start", selection: quietHoursStartBinding, displayedComponents: .hourAndMinute)
+            Toggle(localized("notifications.quietHours"), isOn: quietHoursEnabledBinding)
+            DatePicker(localized("notifications.start"), selection: quietHoursStartBinding, displayedComponents: .hourAndMinute)
                 .disabled(!model.notificationQuietHoursEnabled)
-            DatePicker("End", selection: quietHoursEndBinding, displayedComponents: .hourAndMinute)
+            DatePicker(localized("notifications.end"), selection: quietHoursEndBinding, displayedComponents: .hourAndMinute)
                 .disabled(!model.notificationQuietHoursEnabled)
 
             HStack {
-                Text("Muted Servers")
+                Text(localized("notifications.mutedServers"))
                 Spacer()
                 Text("\(model.mutedNotificationServerKeys.count)")
                     .foregroundColor(.secondary)
             }
             HStack {
-                Text("Muted Contacts")
+                Text(localized("notifications.mutedContacts"))
                 Spacer()
                 Text("\(model.mutedNotificationContactUniqueIdentifiers.count)")
                     .foregroundColor(.secondary)
@@ -25756,7 +25771,7 @@ struct NotificationRulesSection: View {
                 }
             }
 
-            Button("Clear Notification Rules") {
+            Button(localized("notifications.clearRules")) {
                 model.clearNotificationRules()
             }
             .disabled(!hasRules)
