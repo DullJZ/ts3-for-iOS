@@ -7639,6 +7639,14 @@ final class TS3AppModel: ObservableObject {
         return clients.first { $0.uniqueIdentifier == uniqueIdentifier }
     }
 
+    func onlineUser(for message: TS3ChatMessageSummary) -> TS3UserSummary? {
+        guard !message.isOwnMessage,
+              let senderId = message.senderId else {
+            return nil
+        }
+        return clients.first { $0.id == senderId }
+    }
+
     func setContactStatus(_ status: TS3ContactStatus, for record: TS3DatabaseClientSummary) {
         updateContact(for: record, status: status, note: contactNote(for: record) ?? "")
     }
@@ -7733,6 +7741,14 @@ final class TS3AppModel: ObservableObject {
             status: status,
             note: note
         )
+    }
+
+    func addContact(from message: TS3ChatMessageSummary, status: TS3ContactStatus = .friend, note: String = "") {
+        guard let sender = onlineUser(for: message) else {
+            lastError = "The chat sender is no longer online."
+            return
+        }
+        updateContact(for: sender, status: status, note: note)
     }
 
     func updateContact(_ contact: TS3ContactEntry, status: TS3ContactStatus, note: String) {

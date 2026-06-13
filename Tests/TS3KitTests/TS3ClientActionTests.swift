@@ -260,6 +260,40 @@ final class TS3ClientActionTests: XCTestCase {
     }
 
     @MainActor
+    func testPrivateChatMessageCanCreateContactFromOnlineSender() throws {
+        let model = TS3AppModel()
+        model.contacts = []
+        model.clients = [
+            makeUser(id: 21, uniqueIdentifier: "chat-uid", nickname: "Chat Sender")
+        ]
+        let message = makeChatMessage(senderId: 21, senderName: "Old Chat Sender")
+
+        let sender = try XCTUnwrap(model.onlineUser(for: message))
+        XCTAssertEqual(sender.uniqueIdentifier, "chat-uid")
+
+        model.addContact(from: message, status: .ignored, note: "from chat")
+
+        let contact = try XCTUnwrap(model.contacts.first)
+        XCTAssertEqual(contact.uniqueIdentifier, "chat-uid")
+        XCTAssertEqual(contact.nickname, "Chat Sender")
+        XCTAssertEqual(contact.status, .ignored)
+        XCTAssertEqual(contact.note, "from chat")
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testPrivateChatContactActionRequiresOnlineSenderIdentity() {
+        let model = TS3AppModel()
+        model.contacts = []
+        model.clients = []
+
+        model.addContact(from: makeChatMessage(senderId: 21))
+
+        XCTAssertTrue(model.contacts.isEmpty)
+        XCTAssertEqual(model.lastError, "The chat sender is no longer online.")
+    }
+
+    @MainActor
     func testOfflineEventContactActionsRequireUniqueIdentifier() {
         let model = TS3AppModel()
         model.contacts = []
@@ -354,5 +388,22 @@ final class TS3ClientActionTests: XCTestCase {
             message: "Complaint",
             timestamp: nil
         ))
+    }
+
+    private func makeChatMessage(
+        senderId: Int?,
+        senderName: String = "Chat Sender",
+        isOwnMessage: Bool = false
+    ) -> TS3ChatMessageSummary {
+        TS3ChatMessageSummary(
+            id: UUID(),
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            targetMode: .client,
+            targetId: 1,
+            senderId: senderId,
+            senderName: senderName,
+            message: "hello",
+            isOwnMessage: isOwnMessage
+        )
     }
 }

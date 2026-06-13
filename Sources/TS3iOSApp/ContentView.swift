@@ -7619,12 +7619,10 @@ struct ChatSheet: View {
     }
 
     private func replyUser(for item: TS3ChatMessageSummary) -> TS3UserSummary? {
-        guard item.targetMode == .client,
-              !item.isOwnMessage,
-              let senderId = item.senderId else {
+        guard item.targetMode == .client else {
             return nil
         }
-        return model.clients.first { $0.id == senderId }
+        return model.onlineUser(for: item)
     }
 
     private func selectDefaultPrivateClientIfNeeded() {
@@ -7864,6 +7862,11 @@ struct ChatMessageRow: View {
             }
             Button("Copy Sender") {
                 TS3PlatformSupport.copyToPasteboard(item.senderName)
+            }
+            if let replyUser, replyUser.uniqueIdentifier?.isEmpty == false {
+                Button("Add Sender to Contacts") {
+                    model.addContact(from: item)
+                }
             }
             Button("Copy Entry") {
                 TS3PlatformSupport.copyToPasteboard(clipboardText)
