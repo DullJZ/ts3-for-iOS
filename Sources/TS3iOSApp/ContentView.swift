@@ -3203,27 +3203,27 @@ struct ChannelSubscriptionPresetsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Current Subscriptions")) {
-                    Text("Subscribed Channels: \(subscribedChannelCount)")
+                Section(header: Text("channels.currentSubscriptions")) {
+                    Text(localized("channels.subscribedChannelsFormat", subscribedChannelCount))
                         .foregroundColor(.secondary)
-                    TextField("Preset Name", text: $presetName)
+                    TextField("connect.presetName", text: $presetName)
                         .ts3PlainTextField()
-                    Button("Save Current Subscriptions") {
+                    Button("channels.saveCurrentSubscriptions") {
                         model.saveCurrentChannelSubscriptionPreset(name: presetName)
                         presetName = ""
                     }
                     .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Subscribe All Channels") {
+                    Button("channels.subscribeAll") {
                         model.setAllChannelsSubscribed(true)
                     }
-                    Button("Unsubscribe All Channels") {
+                    Button("channels.unsubscribeAll") {
                         confirmation = .unsubscribeAll
                     }
                 }
 
-                Section(header: Text("Presets")) {
+                Section(header: Text("channels.presets")) {
                     if model.channelSubscriptionPresets.isEmpty {
-                        Text("No saved subscription presets")
+                        Text("channels.noSavedSubscriptionPresets")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.channelSubscriptionPresets) { preset in
@@ -3237,13 +3237,13 @@ struct ChannelSubscriptionPresetsSheet: View {
                                 }
                                 Spacer()
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button("connect.applyPreset") {
                                         model.applyChannelSubscriptionPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button("connect.useName") {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button("connect.deletePreset") {
                                         model.deleteChannelSubscriptionPreset(preset)
                                     }
                                 } label: {
@@ -3254,25 +3254,25 @@ struct ChannelSubscriptionPresetsSheet: View {
                     }
                 }
 
-                Section(header: Text("Backup")) {
-                    Button("Export Presets") {
+                Section(header: Text("channels.backup")) {
+                    Button("connect.exportPresets") {
                         exportPresets()
                     }
                     .disabled(model.channelSubscriptionPresets.isEmpty)
-                    Button("Import Presets") {
+                    Button("connect.importPresets") {
                         isImportingPresets = true
                     }
-                    Button("Delete All Presets") {
+                    Button("connect.deleteAllPresets") {
                         confirmation = .deleteAllPresets
                     }
                     .disabled(model.channelSubscriptionPresets.isEmpty)
                 }
             }
-            .navigationTitle("Subscription Presets")
+            .navigationTitle("channels.subscriptionPresets")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button("common.done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -3314,18 +3314,18 @@ struct ChannelSubscriptionPresetsSheet: View {
                 switch confirmation {
                 case .unsubscribeAll:
                     return Alert(
-                        title: Text("Unsubscribe All Channels?"),
-                        message: Text("This unsubscribes from every visible server channel."),
-                        primaryButton: .destructive(Text("Unsubscribe")) {
+                        title: Text("channels.unsubscribeAllAlert.title"),
+                        message: Text("channels.unsubscribeAllAlert.message"),
+                        primaryButton: .destructive(Text("channels.unsubscribe")) {
                             model.setAllChannelsSubscribed(false)
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllPresets:
                     return Alert(
-                        title: Text("Delete All Subscription Presets?"),
-                        message: Text("This removes \(model.channelSubscriptionPresets.count) saved local subscription presets."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text("channels.deleteAllSubscriptionPresetsAlert.title"),
+                        message: Text(localized("channels.deleteAllSubscriptionPresetsAlert.message", model.channelSubscriptionPresets.count)),
+                        primaryButton: .destructive(Text("common.delete")) {
                             model.deleteAllChannelSubscriptionPresets()
                         },
                         secondaryButton: .cancel()
@@ -3343,7 +3343,12 @@ struct ChannelSubscriptionPresetsSheet: View {
         let availableCount = preset.channelIds.filter { id in
             model.channels.contains { $0.id == id }
         }.count
-        return "\(preset.channelIds.count) channels · \(availableCount) available"
+        return localized("channels.subscriptionPresetSummaryFormat", preset.channelIds.count, availableCount)
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 
     private func exportPresets() {
@@ -3406,24 +3411,24 @@ private struct ChannelSubscriptionPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text("channels.presetImport.preview")) {
+                    Text(localized("channels.presetImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("channels.presetImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("channels.presetImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("channels.presetImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("channels.presetImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button("channels.presetImport.copyBackupPreview") {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text("channels.presetImport.restore")) {
                     HStack {
-                        Button("Select All") {
+                        Button("channels.presetImport.selectAll") {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button("channels.presetImport.clear") {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -3445,22 +3450,22 @@ private struct ChannelSubscriptionPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected subscription presets by name and leaves unselected presets unchanged.")
+                    Text("channels.subscriptionImport.behavior")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Subscriptions")
+            .navigationTitle("channels.subscriptionImport.title")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button("channels.presetImport.action") {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -3468,6 +3473,11 @@ private struct ChannelSubscriptionPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -3497,24 +3507,24 @@ private struct ChannelTreeFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text("channels.presetImport.preview")) {
+                    Text(localized("channels.presetImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("channels.presetImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("channels.presetImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("channels.presetImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("channels.presetImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button("channels.presetImport.copyBackupPreview") {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text("channels.presetImport.restore")) {
                     HStack {
-                        Button("Select All") {
+                        Button("channels.presetImport.selectAll") {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button("channels.presetImport.clear") {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -3536,22 +3546,22 @@ private struct ChannelTreeFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected channel tree filter presets by name and leaves unselected presets unchanged.")
+                    Text("channels.treeFilterImport.behavior")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Filters")
+            .navigationTitle("channels.treeFilterImport.title")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button("channels.presetImport.action") {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -3559,6 +3569,11 @@ private struct ChannelTreeFilterPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
