@@ -25646,99 +25646,104 @@ struct ChannelEditorSheet: View {
     @State private var draftDocument = TS3TextFileDocument()
     @State private var snapshotDocument = TS3TextFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var title: String {
         switch mode {
-        case .create: return "New Channel"
-        case .edit: return "Edit Channel"
+        case .create: return localized("channelEditor.newChannel")
+        case .edit: return localized("channelEditor.editChannel")
         }
     }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Draft")) {
-                    Button("Copy Channel Snapshot") {
+                Section(header: Text(localized("channelEditor.draft"))) {
+                    Button(localized("channelEditor.copySnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(channelDraftSnapshot)
                     }
-                    Button("Export Channel Snapshot") {
+                    Button(localized("channelEditor.exportSnapshot")) {
                         snapshotDocument = TS3TextFileDocument(data: Data(channelDraftSnapshot.utf8))
                         isExportingSnapshot = true
                     }
-                    Button("Export Channel Draft") {
+                    Button(localized("channelEditor.exportDraft")) {
                         exportDraft()
                     }
-                    Button("Import Channel Draft") {
+                    Button(localized("channelEditor.importDraft")) {
                         isImportingDraft = true
                     }
                 }
 
-                Section(header: Text("Channel")) {
-                    TextField("Name", text: $name)
-                    TextField("Phonetic Name", text: $phoneticName)
-                    TextField("Topic", text: $topic)
-                    TextField("Description", text: $description)
+                Section(header: Text(localized("channelEditor.channel"))) {
+                    TextField(localized("channelEditor.name"), text: $name)
+                    TextField(localized("channelEditor.phoneticName"), text: $phoneticName)
+                    TextField(localized("channelEditor.topic"), text: $topic)
+                    TextField(localized("channelEditor.description"), text: $description)
                     if case .edit = mode {
-                        Toggle("Clear Password", isOn: $clearPassword)
+                        Toggle(localized("channelEditor.clearPassword"), isOn: $clearPassword)
                     }
-                    SecureField("Password", text: $password)
+                    SecureField(localized("channelEditor.password"), text: $password)
                         .disabled(clearPassword)
-                    Picker("Type", selection: $channelType) {
+                    Picker(localized("channelEditor.type"), selection: $channelType) {
                         ForEach(TS3ChannelType.allCases) { type in
-                            Text(type.title).tag(type)
+                            Text(channelTypeTitle(type)).tag(type)
                         }
                     }
-                    Picker("Position", selection: $selectedOrderId) {
-                        Text("First").tag(Optional<Int>.none)
+                    Picker(localized("channelEditor.position"), selection: $selectedOrderId) {
+                        Text(localized("channelEditor.first")).tag(Optional<Int>.none)
                         ForEach(positionSiblingOptions) { sibling in
-                            Text("After \(sibling.name)").tag(Optional(sibling.id))
+                            Text(localized("channelEditor.afterFormat", sibling.name)).tag(Optional(sibling.id))
                         }
                     }
                     if case .edit = mode {
-                        Toggle("Default Channel", isOn: $isDefault)
+                        Toggle(localized("channelEditor.defaultChannel"), isOn: $isDefault)
                     }
-                    TextField("Icon ID", text: $iconId)
+                    TextField(localized("channelEditor.iconId"), text: $iconId)
                         .ts3NumericKeyboard()
                     Button {
                         isShowingIconImporter = true
                     } label: {
-                        Label("Upload Icon", systemImage: "photo")
+                        Label(localized("channelEditor.uploadIcon"), systemImage: "photo")
                     }
                 }
 
-                Section(header: Text("Voice")) {
+                Section(header: Text(localized("channelEditor.voice"))) {
                     Menu {
                         ForEach(TS3ChannelCodecPreset.allPresets) { preset in
-                            Button(preset.title) {
+                            Button(codecPresetTitle(preset)) {
                                 applyCodecPreset(preset)
                             }
                         }
                     } label: {
-                        Label("Codec Presets", systemImage: "waveform")
+                        Label(localized("channelEditor.codecPresets"), systemImage: "waveform")
                     }
                     if !codecProfileSummary.isEmpty {
                         Text(codecProfileSummary)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    Picker("Codec", selection: $codec) {
-                        Text("Unchanged").tag(Int?.none)
+                    Picker(localized("channelEditor.codec"), selection: $codec) {
+                        Text(localized("channelEditor.unchanged")).tag(Int?.none)
                         ForEach(TS3ChannelCodec.allCases) { codec in
-                            Text(codec.title).tag(Optional(codec.rawValue))
+                            Text(codecTitle(for: codec.rawValue)).tag(Optional(codec.rawValue))
                         }
                     }
-                    Picker("Codec Quality", selection: $codecQuality) {
-                        Text("Unchanged").tag("")
+                    Picker(localized("channelEditor.codecQuality"), selection: $codecQuality) {
+                        Text(localized("channelEditor.unchanged")).tag("")
                         ForEach(TS3ChannelCodecQuality.allCases) { quality in
-                            Text(quality.title).tag(String(quality.value))
+                            Text(codecQualityTitle(for: String(quality.value))).tag(String(quality.value))
                         }
                         if let numericQuality = Int(codecQuality.trimmingCharacters(in: .whitespacesAndNewlines)),
                            TS3ChannelCodecQuality.title(for: numericQuality) == "Unknown (\(numericQuality))" {
-                            Text(TS3ChannelCodecQuality.title(for: numericQuality) ?? String(numericQuality)).tag(codecQuality)
+                            Text(codecQualityTitle(for: String(numericQuality))).tag(codecQuality)
                         }
                     }
-                    TextField("Codec Latency Factor", text: $codecLatencyFactor)
+                    TextField(localized("channelEditor.codecLatencyFactor"), text: $codecLatencyFactor)
                         .ts3NumericKeyboard()
-                    Toggle("Unencrypted Voice", isOn: $isCodecUnencrypted)
+                    Toggle(localized("channelEditor.unencryptedVoice"), isOn: $isCodecUnencrypted)
                     if !codecValidationMessages.isEmpty {
                         ForEach(codecValidationMessages, id: \.self) { message in
                             Text(message)
@@ -25753,29 +25758,29 @@ struct ChannelEditorSheet: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    TextField("Needed Talk Power", text: $neededTalkPower)
+                    TextField(localized("channelEditor.neededTalkPower"), text: $neededTalkPower)
                         .ts3NumericKeyboard()
-                    TextField("Needed Join Power", text: $neededJoinPower)
+                    TextField(localized("channelEditor.neededJoinPower"), text: $neededJoinPower)
                         .ts3NumericKeyboard()
-                    TextField("Needed Subscribe Power", text: $neededSubscribePower)
+                    TextField(localized("channelEditor.neededSubscribePower"), text: $neededSubscribePower)
                         .ts3NumericKeyboard()
-                    TextField("Needed Description View Power", text: $neededDescriptionViewPower)
+                    TextField(localized("channelEditor.neededDescriptionViewPower"), text: $neededDescriptionViewPower)
                         .ts3NumericKeyboard()
-                    TextField("Delete Delay Seconds", text: $deleteDelaySeconds)
+                    TextField(localized("channelEditor.deleteDelaySeconds"), text: $deleteDelaySeconds)
                         .ts3NumericKeyboard()
                 }
 
-                Section(header: Text("Limits")) {
-                    Toggle("Unlimited Clients", isOn: $maxClientsUnlimited)
+                Section(header: Text(localized("channelEditor.limits"))) {
+                    Toggle(localized("channelEditor.unlimitedClients"), isOn: $maxClientsUnlimited)
                     if !maxClientsUnlimited {
-                        TextField("Max Clients", text: $maxClients)
+                        TextField(localized("channelEditor.maxClients"), text: $maxClients)
                             .ts3NumericKeyboard()
                     }
-                    Toggle("Inherit Family Limit", isOn: $maxFamilyClientsInherited)
+                    Toggle(localized("channelEditor.inheritFamilyLimit"), isOn: $maxFamilyClientsInherited)
                     if !maxFamilyClientsInherited {
-                        Toggle("Unlimited Family Clients", isOn: $maxFamilyClientsUnlimited)
+                        Toggle(localized("channelEditor.unlimitedFamilyClients"), isOn: $maxFamilyClientsUnlimited)
                         if !maxFamilyClientsUnlimited {
-                            TextField("Max Family Clients", text: $maxFamilyClients)
+                            TextField(localized("channelEditor.maxFamilyClients"), text: $maxFamilyClients)
                                 .ts3NumericKeyboard()
                         }
                     }
@@ -25873,7 +25878,7 @@ struct ChannelEditorSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -25937,7 +25942,8 @@ struct ChannelEditorSheet: View {
                     },
                     cancel: {
                         pendingDraftImport = nil
-                    }
+                    },
+                    localized: localized
                 )
             }
         }
@@ -25948,35 +25954,36 @@ struct ChannelEditorSheet: View {
         let canImport: Bool
         let importDraft: () -> Void
         let cancel: () -> Void
+        let localized: (String, CVarArg...) -> String
 
         var body: some View {
             NavigationView {
                 Form {
-                    Section(header: Text("Preview")) {
+                    Section(header: Text(localized("channelEditor.preview"))) {
                         Text(previewMessage)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Button("Copy Channel Summary") {
+                        Button(localized("channelEditor.copySummary")) {
                             TS3PlatformSupport.copyToPasteboard(previewMessage)
                         }
                     }
 
-                    Section(header: Text("Import Behavior")) {
-                        Text("Import fills the channel editor with this draft. It does not create or edit a channel until the final channel action is tapped.")
+                    Section(header: Text(localized("channelEditor.importBehavior"))) {
+                        Text(localized("channelEditor.importBehavior.summary"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-                .navigationTitle("Import Channel")
+                .navigationTitle(localized("channelEditor.importChannel"))
                 .ts3InlineNavigationTitle()
                 .toolbar {
                     ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                        Button("Cancel") {
+                        Button(localized("common.cancel")) {
                             cancel()
                         }
                     }
                     ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                        Button("Import") {
+                        Button(localized("channelEditor.import")) {
                             importDraft()
                         }
                         .disabled(!canImport)
@@ -26018,32 +26025,32 @@ struct ChannelEditorSheet: View {
     private var channelDraftSnapshot: String {
         let draft = currentDraft
         var rows: [(String, String)] = [
-            ("Mode", title),
-            ("Name", draft.name),
-            ("Phonetic Name", draft.phoneticName),
-            ("Topic", draft.topic),
-            ("Description", draft.description),
-            ("Password", draft.clearPassword ? "Clear Password" : (draft.password.isEmpty ? "Unchanged" : "New Password Set")),
-            ("Type", channelTypeTitle(draft.channelType)),
-            ("Default", draft.isDefault ? "Yes" : "No"),
-            ("Needed Talk Power", draft.neededTalkPower),
-            ("Needed Join Power", draft.neededJoinPower ?? ""),
-            ("Needed Subscribe Power", draft.neededSubscribePower),
-            ("Needed Description View Power", draft.neededDescriptionViewPower ?? ""),
-            ("Codec", codecTitle(for: draft.codec)),
-            ("Codec Quality", codecQualityTitle(for: draft.codecQuality)),
-            ("Codec Latency Factor", draft.codecLatencyFactor ?? ""),
-            ("Codec Profile", codecProfileSummary),
-            ("Codec Validation", codecValidationMessages.joined(separator: "; ")),
-            ("Codec Diagnostics", codecDiagnosticMessages.joined(separator: "; ")),
-            ("Unencrypted Voice", draft.isCodecUnencrypted == true ? "Yes" : "No"),
-            ("Position", positionTitle(for: draft.order ?? "")),
-            ("Delete Delay Seconds", draft.deleteDelaySeconds),
-            ("Max Clients", draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients),
-            ("Max Family Clients", draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)),
-            ("Icon ID", draft.iconId)
+            (localized("channelEditor.mode"), title),
+            (localized("channelEditor.name"), draft.name),
+            (localized("channelEditor.phoneticName"), draft.phoneticName),
+            (localized("channelEditor.topic"), draft.topic),
+            (localized("channelEditor.description"), draft.description),
+            (localized("channelEditor.password"), draft.clearPassword ? localized("channelEditor.clearPassword") : (draft.password.isEmpty ? localized("channelEditor.unchanged") : localized("channelEditor.newPasswordSet"))),
+            (localized("channelEditor.type"), channelTypeTitle(draft.channelType)),
+            (localized("channelEditor.defaultChannel"), draft.isDefault ? localized("channelEditor.yes") : localized("channelEditor.no")),
+            (localized("channelEditor.neededTalkPower"), draft.neededTalkPower),
+            (localized("channelEditor.neededJoinPower"), draft.neededJoinPower ?? ""),
+            (localized("channelEditor.neededSubscribePower"), draft.neededSubscribePower),
+            (localized("channelEditor.neededDescriptionViewPower"), draft.neededDescriptionViewPower ?? ""),
+            (localized("channelEditor.codec"), codecTitle(for: draft.codec)),
+            (localized("channelEditor.codecQuality"), codecQualityTitle(for: draft.codecQuality)),
+            (localized("channelEditor.codecLatencyFactor"), draft.codecLatencyFactor ?? ""),
+            (localized("channelEditor.codecProfile"), codecProfileSummary),
+            (localized("channelEditor.codecValidation"), codecValidationMessages.joined(separator: "; ")),
+            (localized("channelEditor.codecDiagnostics"), codecDiagnosticMessages.joined(separator: "; ")),
+            (localized("channelEditor.unencryptedVoice"), draft.isCodecUnencrypted == true ? localized("channelEditor.yes") : localized("channelEditor.no")),
+            (localized("channelEditor.position"), positionTitle(for: draft.order ?? "")),
+            (localized("channelEditor.deleteDelaySeconds"), draft.deleteDelaySeconds),
+            (localized("channelEditor.maxClients"), draft.maxClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxClients),
+            (localized("channelEditor.maxFamilyClients"), draft.maxFamilyClientsInherited ? localized("channelEditor.inherited") : (draft.maxFamilyClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxFamilyClients)),
+            (localized("channelEditor.iconId"), draft.iconId)
         ]
-        rows.append(("Draft Valid", canSubmit ? "Yes" : "No"))
+        rows.append((localized("channelEditor.draftValid"), canSubmit ? localized("channelEditor.yes") : localized("channelEditor.no")))
         return rows.compactMap { label, value in
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
@@ -26088,6 +26095,19 @@ struct ChannelEditorSheet: View {
         isCodecUnencrypted = preset.isCodecUnencrypted
     }
 
+    private func codecPresetTitle(_ preset: TS3ChannelCodecPreset) -> String {
+        switch preset.id {
+        case TS3ChannelCodecPreset.voice.id:
+            return localized("channelEditor.codecPreset.voice")
+        case TS3ChannelCodecPreset.music.id:
+            return localized("channelEditor.codecPreset.music")
+        case TS3ChannelCodecPreset.compatibilityVoice.id:
+            return localized("channelEditor.codecPreset.compatibilityVoice")
+        default:
+            return preset.title
+        }
+    }
+
     private func exportDraft() {
         do {
             let encoder = JSONEncoder()
@@ -26126,36 +26146,36 @@ struct ChannelEditorSheet: View {
         let quality = codecQualityTitle(for: draft.codecQuality)
         let latency = draft.codecLatencyFactor?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let position = positionTitle(for: draft.order ?? "")
-        let maxClients = draft.maxClientsUnlimited ? "Unlimited" : draft.maxClients
-        let maxFamilyClients = draft.maxFamilyClientsInherited ? "Inherited" : (draft.maxFamilyClientsUnlimited ? "Unlimited" : draft.maxFamilyClients)
+        let maxClients = draft.maxClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxClients
+        let maxFamilyClients = draft.maxFamilyClientsInherited ? localized("channelEditor.inherited") : (draft.maxFamilyClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxFamilyClients)
         var lines = [
-            "Name: \(name.isEmpty ? "Missing" : name)",
-            "Type: \(type)",
-            "Position: \(position)",
-            "Max Clients: \(maxClients)",
-            "Max Family Clients: \(maxFamilyClients)"
+            "\(localized("channelEditor.name")): \(name.isEmpty ? localized("channelEditor.missing") : name)",
+            "\(localized("channelEditor.type")): \(type)",
+            "\(localized("channelEditor.position")): \(position)",
+            "\(localized("channelEditor.maxClients")): \(maxClients)",
+            "\(localized("channelEditor.maxFamilyClients")): \(maxFamilyClients)"
         ]
         if !codec.isEmpty {
-            lines.append("Codec: \(codec)")
+            lines.append("\(localized("channelEditor.codec")): \(codec)")
         }
         if !quality.isEmpty {
-            lines.append("Codec Quality: \(quality)")
+            lines.append("\(localized("channelEditor.codecQuality")): \(quality)")
         }
         if !latency.isEmpty {
-            lines.append("Codec Latency Factor: \(latency)")
+            lines.append("\(localized("channelEditor.codecLatencyFactor")): \(latency)")
         }
         if draft.isCodecUnencrypted == true {
-            lines.append("Voice Encryption: Disabled")
+            lines.append("\(localized("channelEditor.voiceEncryption")): \(localized("channelEditor.disabled"))")
         }
         if draft.clearPassword {
-            lines.append("Password: Clear existing password")
+            lines.append("\(localized("channelEditor.password")): \(localized("channelEditor.clearExistingPassword"))")
         } else if !draft.password.isEmpty {
-            lines.append("Password: New password set")
+            lines.append("\(localized("channelEditor.password")): \(localized("channelEditor.newPasswordSet"))")
         }
         if validationMessages.isEmpty {
-            lines.append("Draft Valid: Yes")
+            lines.append("\(localized("channelEditor.draftValid")): \(localized("channelEditor.yes"))")
         } else {
-            lines.append("Draft Valid: No")
+            lines.append("\(localized("channelEditor.draftValid")): \(localized("channelEditor.no"))")
             lines.append(contentsOf: validationMessages)
         }
         return lines.joined(separator: "\n")
@@ -26211,27 +26231,62 @@ struct ChannelEditorSheet: View {
     }
 
     private func channelTypeTitle(_ rawValue: String) -> String {
-        (TS3ChannelType.value(forDraft: rawValue) ?? .permanent).title
+        channelTypeTitle(TS3ChannelType.value(forDraft: rawValue) ?? .permanent)
+    }
+
+    private func channelTypeTitle(_ type: TS3ChannelType) -> String {
+        switch type {
+        case .temporary:
+            return localized("channelEditor.channelType.temporary")
+        case .semiPermanent:
+            return localized("channelEditor.channelType.semiPermanent")
+        case .permanent:
+            return localized("channelEditor.channelType.permanent")
+        }
     }
 
     private func codecTitle(for rawValue: String) -> String {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
-        return TS3ChannelCodec.title(for: parsedOptionalCodec(trimmed)) ?? trimmed
+        guard let codec = parsedOptionalCodec(trimmed) else { return trimmed }
+        return codecTitle(for: codec)
+    }
+
+    private func codecTitle(for rawValue: Int) -> String {
+        let title: String
+        switch TS3ChannelCodec(rawValue: rawValue) {
+        case .some(.speexNarrowband):
+            title = localized("channelEditor.codec.speexNarrowband")
+        case .some(.speexWideband):
+            title = localized("channelEditor.codec.speexWideband")
+        case .some(.speexUltraWideband):
+            title = localized("channelEditor.codec.speexUltraWideband")
+        case .some(.celtMono):
+            title = localized("channelEditor.codec.celtMono")
+        case .some(.opusVoice):
+            title = localized("channelEditor.codec.opusVoice")
+        case .some(.opusMusic):
+            title = localized("channelEditor.codec.opusMusic")
+        case nil:
+            return localized("channelEditor.unknownValueFormat", rawValue)
+        }
+        return localized("channelEditor.valueWithNumberFormat", title, rawValue)
     }
 
     private func codecQualityTitle(for rawValue: String) -> String {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let numericValue = Int(trimmed) else { return trimmed }
-        return TS3ChannelCodecQuality.title(for: numericValue) ?? trimmed
+        return TS3ChannelCodecConstraints.qualityRange.contains(numericValue)
+            ? localized("channelEditor.qualityFormat", numericValue)
+            : localized("channelEditor.unknownValueFormat", numericValue)
     }
 
     private var codecProfileSummary: String {
         let parts = [
-            codec.map { TS3ChannelCodec.title(for: $0) ?? "Codec \($0)" },
-            parsedOptionalInt(codecQuality).map { "quality \($0)" },
-            parsedOptionalInt(codecLatencyFactor).map { "latency \($0)" },
-            isCodecUnencrypted ? "unencrypted" : nil
+            codec.map { codecTitle(for: $0) },
+            parsedOptionalInt(codecQuality).map { localized("channelEditor.qualityInlineFormat", $0) },
+            parsedOptionalInt(codecLatencyFactor).map { localized("channelEditor.latencyInlineFormat", $0) },
+            isCodecUnencrypted ? localized("channelEditor.unencrypted") : nil
         ].compactMap { $0 }
         return parts.joined(separator: " | ")
     }
@@ -26239,19 +26294,31 @@ struct ChannelEditorSheet: View {
     private var codecValidationMessages: [String] {
         var messages: [String] = []
         if !isCodecQualityValid {
-            messages.append("Codec quality must be between \(TS3ChannelCodecConstraints.qualityRange.lowerBound) and \(TS3ChannelCodecConstraints.qualityRange.upperBound).")
+            messages.append(localized(
+                "channelEditor.codecQualityRangeError",
+                TS3ChannelCodecConstraints.qualityRange.lowerBound,
+                TS3ChannelCodecConstraints.qualityRange.upperBound
+            ))
         }
         if !isCodecLatencyFactorValid {
-            messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
+            messages.append(localized(
+                "channelEditor.codecLatencyRangeError",
+                TS3ChannelCodecConstraints.latencyFactorRange.lowerBound,
+                TS3ChannelCodecConstraints.latencyFactorRange.upperBound
+            ))
         }
         return messages
     }
 
     private var codecDiagnosticMessages: [String] {
-        TS3ChannelCodecConstraints.diagnosticMessages(
-            codec: codec,
-            isCodecUnencrypted: isCodecUnencrypted
-        )
+        var messages: [String] = []
+        if let codec, TS3ChannelCodecConstraints.legacyCodecIds.contains(codec) {
+            messages.append(localized("channelEditor.legacyCodecWarning"))
+        }
+        if isCodecUnencrypted {
+            messages.append(localized("channelEditor.voiceEncryptionDisabledWarning"))
+        }
+        return messages
     }
 
     private var positionSiblingOptions: [TS3ChannelSummary] {
@@ -26286,10 +26353,10 @@ struct ChannelEditorSheet: View {
 
     private func positionTitle(for rawValue: String) -> String {
         guard let orderId = Int(rawValue.trimmingCharacters(in: .whitespacesAndNewlines)) else {
-            return "First"
+            return localized("channelEditor.first")
         }
-        let channelName = model.channels.first { $0.id == orderId }?.name ?? "Channel \(orderId)"
-        return "After \(channelName)"
+        let channelName = model.channels.first { $0.id == orderId }?.name ?? localized("channelEditor.channelWithIdFormat", orderId)
+        return localized("channelEditor.afterFormat", channelName)
     }
 
     private func normalizedParentId(_ parentId: Int?) -> Int? {
