@@ -27172,11 +27172,11 @@ struct JoinChannelPasswordSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
-                    SecureField("Password", text: $password)
+                    SecureField("channelActions.password", text: $password)
                         .ts3PlainTextField()
-                    Toggle("Remember password for this channel", isOn: $rememberPassword)
+                    Toggle("channelActions.rememberPassword", isOn: $rememberPassword)
                     if model.hasSavedChannelPassword(for: channel) {
-                        Button("Forget Saved Password") {
+                        Button("channelActions.forgetSavedPassword") {
                             model.forgetSavedChannelPassword(for: channel)
                             rememberPassword = false
                             password = ""
@@ -27184,13 +27184,13 @@ struct JoinChannelPasswordSheet: View {
                     }
                 }
                 Section {
-                    Button("Join") {
+                    Button("channelActions.join") {
                         model.joinChannel(channel, password: password, rememberPassword: rememberPassword)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            .navigationTitle("Channel Password")
+            .navigationTitle("channelActions.channelPassword")
             .ts3InlineNavigationTitle()
             .onAppear {
                 if let savedPassword = model.savedChannelPassword(for: channel) {
@@ -27200,7 +27200,7 @@ struct JoinChannelPasswordSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -27219,22 +27219,22 @@ struct ChannelMessageSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
-                    TextField("Message", text: $message)
+                    TextField("channelActions.message", text: $message)
                         .ts3PlainTextField()
                 }
                 Section {
-                    Button("Send Message") {
+                    Button("channelActions.sendMessage") {
                         model.sendChannelMessage(message, to: channel)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .navigationTitle("Channel Message")
+            .navigationTitle("channelActions.channelMessage")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -27253,21 +27253,21 @@ struct FullChannelInvitePasswordSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
-                    SecureField("Channel Password", text: $password)
+                    SecureField("connect.channelPasswordOptional", text: $password)
                         .ts3PlainTextField()
                 }
                 Section {
-                    Button("Copy Full Invite Link") {
+                    Button("connect.copyFullInviteLink") {
                         model.copyFullInviteLink(for: channel, channelPassword: password)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            .navigationTitle("Full Invite Link")
+            .navigationTitle("channelActions.fullInviteLink")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -27287,23 +27287,23 @@ struct DefaultChannelPasswordSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
-                    SecureField("Password", text: $password)
+                    SecureField("channelActions.password", text: $password)
                         .ts3PlainTextField()
-                    Toggle("Remember password for this channel", isOn: $rememberPassword)
+                    Toggle("channelActions.rememberPassword", isOn: $rememberPassword)
                     if model.hasSavedChannelPassword(for: channel) {
-                        Button("Forget Saved Password") {
+                        Button("channelActions.forgetSavedPassword") {
                             model.forgetSavedChannelPassword(for: channel)
                             rememberPassword = false
                             password = ""
                         }
                     }
-                    Button("Set Default Channel") {
+                    Button("channelActions.setDefaultChannel") {
                         model.setDefaultChannel(channel, password: password, rememberPassword: rememberPassword)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            .navigationTitle("Default Channel")
+            .navigationTitle("channelActions.defaultChannel")
             .ts3InlineNavigationTitle()
             .onAppear {
                 if let savedPassword = model.savedChannelPassword(for: channel) {
@@ -27313,7 +27313,7 @@ struct DefaultChannelPasswordSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -27334,11 +27334,11 @@ struct MoveUserPasswordSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(channel.name)) {
-                    SecureField("Password", text: $password)
+                    SecureField("channelActions.password", text: $password)
                         .ts3PlainTextField()
-                    Toggle("Remember password for this channel", isOn: $rememberPassword)
+                    Toggle("channelActions.rememberPassword", isOn: $rememberPassword)
                     if model.hasSavedChannelPassword(for: channel) {
-                        Button("Forget Saved Password") {
+                        Button("channelActions.forgetSavedPassword") {
                             model.forgetSavedChannelPassword(for: channel)
                             rememberPassword = false
                             password = ""
@@ -27346,13 +27346,13 @@ struct MoveUserPasswordSheet: View {
                     }
                 }
                 Section {
-                    Button("Move User") {
+                    Button("channelActions.moveUser") {
                         model.moveUser(user, to: channel, password: password, rememberPassword: rememberPassword)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            .navigationTitle("Channel Password")
+            .navigationTitle("channelActions.channelPassword")
             .ts3InlineNavigationTitle()
             .onAppear {
                 if let savedPassword = model.savedChannelPassword(for: channel) {
@@ -27362,7 +27362,7 @@ struct MoveUserPasswordSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
