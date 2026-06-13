@@ -238,6 +238,14 @@
 "channels.backup" = "备份";
 "channels.subscriptionPresetSummaryFormat" = "%d 个频道 · %d 个可用";
 "channels.talkRequests" = "发言请求";
+"channels.talkRequests.queue" = "队列";
+"channels.talkRequests.empty" = "没有活跃的发言权限请求";
+"channels.talkRequests.grant" = "允许";
+"channels.talkRequests.deny" = "拒绝";
+"channels.talkRequests.batchActions" = "批量操作";
+"channels.talkRequests.grantAll" = "允许所有请求";
+"channels.talkRequests.denyAll" = "拒绝所有请求";
+"channels.talkRequests.copyQueue" = "复制请求队列";
 "channels.channelTools" = "频道工具";
 "channels.newChannel" = "新建频道";
 "channels.searchPlaceholder" = "搜索频道或用户";

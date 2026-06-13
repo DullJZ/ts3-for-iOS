@@ -3584,9 +3584,9 @@ struct TalkRequestsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Queue")) {
+                Section(header: Text("channels.talkRequests.queue")) {
                     if requestUsers.isEmpty {
-                        Text("No active talk power requests")
+                        Text("channels.talkRequests.empty")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(requestUsers) { user in
@@ -3607,11 +3607,11 @@ struct TalkRequestsSheet: View {
                                             .foregroundColor(.secondary)
                                     }
                                     HStack(spacing: 8) {
-                                        Button("Grant") {
+                                        Button("channels.talkRequests.grant") {
                                             model.setTalker(true, for: user)
                                         }
                                         .buttonStyle(TS3BorderedButtonStyle(isProminent: true))
-                                        Button("Deny") {
+                                        Button("channels.talkRequests.deny") {
                                             model.denyTalkRequest(for: user)
                                         }
                                         .buttonStyle(TS3BorderedButtonStyle())
@@ -3624,26 +3624,26 @@ struct TalkRequestsSheet: View {
                     }
                 }
 
-                Section(header: Text("Batch Actions")) {
-                    Button("Grant All Requests") {
+                Section(header: Text("channels.talkRequests.batchActions")) {
+                    Button("channels.talkRequests.grantAll") {
                         requestUsers.forEach { model.setTalker(true, for: $0) }
                     }
                     .disabled(requestUsers.isEmpty)
-                    Button("Deny All Requests") {
+                    Button("channels.talkRequests.denyAll") {
                         requestUsers.forEach { model.denyTalkRequest(for: $0) }
                     }
                     .disabled(requestUsers.isEmpty)
-                    Button("Copy Request Queue") {
+                    Button("channels.talkRequests.copyQueue") {
                         TS3PlatformSupport.copyToPasteboard(queueSnapshot)
                     }
                     .disabled(requestUsers.isEmpty)
                 }
             }
-            .navigationTitle("Talk Requests")
+            .navigationTitle("channels.talkRequests")
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button("common.done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -3682,9 +3682,14 @@ struct TalkRequestsSheet: View {
 
     private func channelName(for user: TS3UserSummary) -> String {
         guard let channel = model.channels.first(where: { $0.id == user.channelId }) else {
-            return "Channel \(user.channelId)"
+            return localized("groups.members.channelFallbackFormat", user.channelId)
         }
         return model.channelPath(for: channel)
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 

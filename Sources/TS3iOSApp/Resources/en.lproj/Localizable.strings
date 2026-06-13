@@ -238,6 +238,14 @@
 "channels.backup" = "Backup";
 "channels.subscriptionPresetSummaryFormat" = "%d channels · %d available";
 "channels.talkRequests" = "Talk Requests";
+"channels.talkRequests.queue" = "Queue";
+"channels.talkRequests.empty" = "No active talk power requests";
+"channels.talkRequests.grant" = "Grant";
+"channels.talkRequests.deny" = "Deny";
+"channels.talkRequests.batchActions" = "Batch Actions";
+"channels.talkRequests.grantAll" = "Grant All Requests";
+"channels.talkRequests.denyAll" = "Deny All Requests";
+"channels.talkRequests.copyQueue" = "Copy Request Queue";
 "channels.channelTools" = "Channel Tools";
 "channels.newChannel" = "New Channel";
 "channels.searchPlaceholder" = "Search channels or users";
