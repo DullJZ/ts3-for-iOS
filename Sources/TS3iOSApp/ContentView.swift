@@ -9527,13 +9527,13 @@ struct OfflineMessagesSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .all: return "All Messages"
-            case .withBody: return "With Body"
-            case .bodyNotLoaded: return "Body Not Loaded"
-            case .canReply: return "Can Reply"
-            case .unknownSender: return "Unknown Sender"
+            case .all: return "offline.contentFilter.all"
+            case .withBody: return "offline.contentFilter.withBody"
+            case .bodyNotLoaded: return "offline.contentFilter.bodyNotLoaded"
+            case .canReply: return "offline.contentFilter.canReply"
+            case .unknownSender: return "offline.contentFilter.unknownSender"
             }
         }
 
@@ -9561,12 +9561,12 @@ struct OfflineMessagesSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .timestamp: return "Timestamp"
-            case .sender: return "Sender"
-            case .subject: return "Subject"
-            case .id: return "Message ID"
+            case .timestamp: return "offline.sort.timestamp"
+            case .sender: return "offline.sort.sender"
+            case .subject: return "offline.sort.subject"
+            case .id: return "offline.sort.messageId"
             }
         }
     }
@@ -9578,11 +9578,11 @@ struct OfflineMessagesSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .all: return "All Messages"
-            case .unread: return "Unread"
-            case .read: return "Read"
+            case .all: return "offline.readFilter.all"
+            case .unread: return "offline.readFilter.unread"
+            case .read: return "offline.readFilter.read"
             }
         }
 
@@ -9631,6 +9631,11 @@ struct OfflineMessagesSheet: View {
     @State private var pendingInboxArchiveImport: OfflineMessageArchiveImportConfirmation?
     @State private var pendingPresetImport: OfflineMessageFilterPresetImportConfirmation?
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     private var canUseServerInboxActions: Bool {
         model.state == .connected
     }
@@ -9643,7 +9648,7 @@ struct OfflineMessagesSheet: View {
                     || containsSearch(message.senderName)
                     || containsSearch(message.senderUniqueIdentifier)
                     || containsSearch(message.message)
-                    || containsSearch(message.isRead ? "read" : "unread")
+                    || containsSearch(localized(message.isRead ? "offline.readFilter.read" : "offline.readFilter.unread"))
             )
         }
         return sortedMessages(messages)
@@ -9661,19 +9666,19 @@ struct OfflineMessagesSheet: View {
 
         return filteredMessages.map { message in
             var rows = [
-                "Message ID: \(message.id)",
-                "Read: \(message.isRead ? "Yes" : "No")",
-                "Sender: \(message.senderName ?? message.senderUniqueIdentifier ?? "Unknown sender")",
-                "Subject: \(message.subject)"
+                localized("offline.snapshot.messageIdFormat", message.id),
+                localized("offline.snapshot.readFormat", message.isRead ? localized("offline.yes") : localized("offline.no")),
+                localized("offline.snapshot.senderFormat", message.senderName ?? message.senderUniqueIdentifier ?? localized("offline.unknownSender")),
+                localized("offline.snapshot.subjectFormat", message.subject)
             ]
             if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
-                rows.append("Sender UID: \(senderUniqueIdentifier)")
+                rows.append(localized("offline.snapshot.senderUidFormat", senderUniqueIdentifier))
             }
             if let timestamp = dateText(message.timestamp) {
-                rows.append("Timestamp: \(timestamp)")
+                rows.append(localized("offline.snapshot.timestampFormat", timestamp))
             }
             if let body = message.message, !body.isEmpty {
-                rows.append("Message: \(body)")
+                rows.append(localized("offline.snapshot.messageFormat", body))
             }
             return rows.joined(separator: "\n")
         }
@@ -9683,28 +9688,28 @@ struct OfflineMessagesSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Search")) {
-                    Picker("Status", selection: $readFilter) {
+                Section(header: Text(localized("offline.section.search"))) {
+                    Picker(localized("offline.status"), selection: $readFilter) {
                         ForEach(ReadFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(localized(filter.titleKey)).tag(filter)
                         }
                     }
-                    Picker("Content", selection: $contentFilter) {
+                    Picker(localized("offline.content"), selection: $contentFilter) {
                         ForEach(OfflineContentFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
+                            Text(localized(filter.titleKey)).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("offline.sortBy"), selection: $sortMode) {
                         ForEach(OfflineSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(localized(mode.titleKey)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search inbox", text: $searchText)
+                    Toggle(localized("offline.ascending"), isOn: $sortAscending)
+                    TextField(localized("offline.searchInbox"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("offline.presetName"), text: $presetName)
+                        Button(localized("offline.saveCurrentFilters")) {
                             model.saveOfflineMessageFilterPreset(
                                 name: presetName,
                                 readFilter: readFilter.rawValue,
@@ -9717,17 +9722,17 @@ struct OfflineMessagesSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.offlineMessageFilterPresets.isEmpty {
-                            Text("No saved inbox filter presets")
+                            Text(localized("offline.noSavedFilterPresets"))
                         } else {
                             ForEach(model.offlineMessageFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("offline.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("offline.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("offline.deletePreset")) {
                                         model.deleteOfflineMessageFilterPreset(preset)
                                     }
                                 } label: {
@@ -9739,22 +9744,22 @@ struct OfflineMessagesSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("offline.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.offlineMessageFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("offline.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("offline.deleteAllPresets")) {
                             deleteConfirmation = .deleteAllFilterPresets
                         }
                         .disabled(model.offlineMessageFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("offline.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("offline.clearFilters")) {
                             readFilter = .all
                             contentFilter = .all
                             sortMode = .timestamp
@@ -9766,17 +9771,17 @@ struct OfflineMessagesSheet: View {
 
                 if !canUseServerInboxActions {
                     Section {
-                        Text("Showing locally cached offline messages. Connect to refresh, load message bodies, reply, mark read, or delete from the server.")
+                        Text(localized("offline.cachedOnlyNotice"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
 
                 if model.offlineMessages.isEmpty {
-                    Text("No offline messages")
+                    Text(localized("offline.noMessages"))
                         .foregroundColor(.secondary)
                 } else if filteredMessages.isEmpty {
-                    Text("No matching messages")
+                    Text(localized("offline.noMatchingMessages"))
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(filteredMessages) { message in
@@ -9785,7 +9790,7 @@ struct OfflineMessagesSheet: View {
                     }
                 }
             }
-            .navigationTitle("Inbox")
+            .navigationTitle(localized("offline.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if canUseServerInboxActions {
@@ -9794,63 +9799,63 @@ struct OfflineMessagesSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("offline.refresh")) {
                         model.refreshOfflineMessages()
                     }
                     .disabled(!canUseServerInboxActions)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
-                        Button("Copy Inbox Snapshot") {
+                        Button(localized("offline.copySnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(visibleInboxSnapshot)
                         }
                         .disabled(filteredMessages.isEmpty)
-                        Button("Export Inbox Snapshot") {
+                        Button(localized("offline.exportSnapshot")) {
                             inboxDocument = TS3TextFileDocument(data: Data(visibleInboxSnapshot.utf8))
                             isExportingInbox = true
                         }
                         .disabled(filteredMessages.isEmpty)
-                        Button("Export Inbox Archive") {
+                        Button(localized("offline.exportArchive")) {
                             exportInboxArchive()
                         }
                         .disabled(model.offlineMessages.isEmpty)
-                        Button("Import Inbox Archive") {
+                        Button(localized("offline.importArchive")) {
                             isImportingInboxArchive = true
                         }
                         Divider()
-                        Button("Load Visible Message Bodies") {
+                        Button(localized("offline.loadVisibleBodies")) {
                             model.loadOfflineMessageBodies(filteredMessages)
                         }
                         .disabled(!canUseServerInboxActions || !hasBodyPlaceholders)
-                        Button("Mark All Read") {
+                        Button(localized("offline.markAllRead")) {
                             model.markAllOfflineMessagesRead()
                         }
                         .disabled(!canUseServerInboxActions || filteredMessages.allSatisfy(\.isRead))
-                        Button("Mark Visible Read") {
+                        Button(localized("offline.markVisibleRead")) {
                             model.markOfflineMessages(filteredMessages, read: true)
                         }
                         .disabled(!canUseServerInboxActions || !filteredMessages.contains { !$0.isRead })
-                        Button("Mark Visible Unread") {
+                        Button(localized("offline.markVisibleUnread")) {
                             model.markOfflineMessages(filteredMessages, read: false)
                         }
                         .disabled(!canUseServerInboxActions || !filteredMessages.contains { $0.isRead })
-                        Button("Delete Visible Messages") {
+                        Button(localized("offline.deleteVisibleMessages")) {
                             deleteConfirmation = .visible
                         }
                         .disabled(!canUseServerInboxActions || filteredMessages.isEmpty)
-                        Button("Delete Read Messages") {
+                        Button(localized("offline.deleteReadMessages")) {
                             deleteConfirmation = .read
                         }
                         .disabled(!canUseServerInboxActions || readMessages.isEmpty)
-                        Button("Clear Local Inbox History") {
+                        Button(localized("offline.clearLocalHistory")) {
                             deleteConfirmation = .localHistory
                         }
                         .disabled(model.offlineMessages.isEmpty)
-                        Button("Export Filter Presets") {
+                        Button(localized("offline.exportFilterPresets")) {
                             exportPresets()
                         }
                         .disabled(model.offlineMessageFilterPresets.isEmpty)
-                        Button("Delete All Filter Presets") {
+                        Button(localized("offline.deleteAllFilterPresets")) {
                             deleteConfirmation = .deleteAllFilterPresets
                         }
                         .disabled(model.offlineMessageFilterPresets.isEmpty)
@@ -9859,7 +9864,7 @@ struct OfflineMessagesSheet: View {
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -9945,36 +9950,36 @@ struct OfflineMessagesSheet: View {
                 switch confirmation {
                 case .visible:
                     return Alert(
-                        title: Text("Delete Visible Messages?"),
-                        message: Text("This removes \(filteredMessages.count) offline messages from the server."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("offline.deleteVisibleAlert.title")),
+                        message: Text(localized("offline.deleteVisibleAlert.messageFormat", filteredMessages.count)),
+                        primaryButton: .destructive(Text(localized("offline.delete"))) {
                             model.deleteOfflineMessages(filteredMessages)
                         },
                         secondaryButton: .cancel()
                     )
                 case .read:
                     return Alert(
-                        title: Text("Delete Read Messages?"),
-                        message: Text("This removes \(readMessages.count) read offline messages from the server."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("offline.deleteReadAlert.title")),
+                        message: Text(localized("offline.deleteReadAlert.messageFormat", readMessages.count)),
+                        primaryButton: .destructive(Text(localized("offline.delete"))) {
                             model.deleteOfflineMessages(readMessages)
                         },
                         secondaryButton: .cancel()
                     )
                 case .localHistory:
                     return Alert(
-                        title: Text("Clear Local Inbox History?"),
-                        message: Text("This clears cached offline messages on this device. Server messages are not deleted."),
-                        primaryButton: .destructive(Text("Clear")) {
+                        title: Text(localized("offline.clearLocalHistoryAlert.title")),
+                        message: Text(localized("offline.clearLocalHistoryAlert.message")),
+                        primaryButton: .destructive(Text(localized("offline.clear"))) {
                             model.clearOfflineMessageHistory()
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllFilterPresets:
                     return Alert(
-                        title: Text("Delete All Inbox Filter Presets?"),
-                        message: Text("This removes \(model.offlineMessageFilterPresets.count) saved local filter presets."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("offline.deleteAllPresetsAlert.title")),
+                        message: Text(localized("offline.deleteAllPresetsAlert.messageFormat", model.offlineMessageFilterPresets.count)),
+                        primaryButton: .destructive(Text(localized("offline.delete"))) {
                             model.deleteAllOfflineMessageFilterPresets()
                         },
                         secondaryButton: .cancel()
@@ -10069,13 +10074,13 @@ struct OfflineMessagesSheet: View {
 
     private func presetSummary(_ preset: TS3OfflineMessageFilterPreset) -> String {
         var parts = [
-            (ReadFilter(rawValue: preset.readFilter) ?? .all).title,
-            (OfflineContentFilter(rawValue: preset.contentFilter) ?? .all).title,
-            (OfflineSortMode(rawValue: preset.sortMode) ?? .timestamp).title,
-            preset.sortAscending ? "Ascending" : "Descending"
+            localized((ReadFilter(rawValue: preset.readFilter) ?? .all).titleKey),
+            localized((OfflineContentFilter(rawValue: preset.contentFilter) ?? .all).titleKey),
+            localized((OfflineSortMode(rawValue: preset.sortMode) ?? .timestamp).titleKey),
+            localized(preset.sortAscending ? "offline.ascending" : "offline.descending")
         ]
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("offline.presetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -10148,33 +10153,33 @@ struct OfflineMessagesSheet: View {
 
     private func inboxArchivePreviewMessage(_ preview: TS3OfflineMessageArchivePreview) -> String {
         var lines = [
-            "Messages: \(preview.messageCount)",
-            "Unread: \(preview.unreadCount)",
-            "With body: \(preview.withBodyCount)",
-            "Replyable: \(preview.replyableCount)",
-            "Unknown sender: \(preview.unknownSenderCount)"
+            localized("offline.archive.messagesFormat", preview.messageCount),
+            localized("offline.archive.unreadFormat", preview.unreadCount),
+            localized("offline.archive.withBodyFormat", preview.withBodyCount),
+            localized("offline.archive.replyableFormat", preview.replyableCount),
+            localized("offline.archive.unknownSenderFormat", preview.unknownSenderCount)
         ]
         if preview.skippedMessageCount > 0 {
-            lines.append("Skipped invalid or duplicate messages: \(preview.skippedMessageCount)")
+            lines.append(localized("offline.archive.skippedFormat", preview.skippedMessageCount))
         }
         if !preview.readStateSummaries.isEmpty {
-            lines.append("Read states: \(preview.readStateSummaries.joined(separator: " | "))")
+            lines.append(localized("offline.archive.readStatesFormat", preview.readStateSummaries.joined(separator: " | ")))
         }
         if !preview.senderSummaries.isEmpty {
-            lines.append("Senders: \(preview.senderSummaries.joined(separator: " | "))")
+            lines.append(localized("offline.archive.sendersFormat", preview.senderSummaries.joined(separator: " | ")))
         }
         if let senderName = preview.firstSenderName {
-            lines.append("First sender: \(senderName)")
+            lines.append(localized("offline.archive.firstSenderFormat", senderName))
         } else if let senderUniqueIdentifier = preview.firstSenderUniqueIdentifier {
-            lines.append("First sender UID: \(senderUniqueIdentifier)")
+            lines.append(localized("offline.archive.firstSenderUidFormat", senderUniqueIdentifier))
         }
         if let firstSubject = preview.firstSubject {
-            lines.append("First subject: \(firstSubject)")
+            lines.append(localized("offline.archive.firstSubjectFormat", firstSubject))
         }
         if let firstTimestamp = preview.firstTimestamp {
-            lines.append("First date: \(OfflineMessageRow.dateText(firstTimestamp))")
+            lines.append(localized("offline.archive.firstDateFormat", OfflineMessageRow.dateText(firstTimestamp)))
         }
-        lines.append(preview.hasMessages ? "Import replaces the local cached inbox for offline review; it does not mark, send, or delete server messages." : "The archive has no usable offline messages.")
+        lines.append(preview.hasMessages ? localized("offline.archive.importBehavior") : localized("offline.archive.noUsableMessages"))
         return lines.joined(separator: "\n")
     }
 }
@@ -10190,22 +10195,27 @@ private struct OfflineMessageArchiveImportSheet: View {
         Set(selectedMessageIds.filter(preview.containsMessage))
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("offline.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasMessages {
-                        Button("Copy Message Summary") {
+                        Button(localized("offline.import.copyMessageSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("offline.import.selectAll")) {
                                 selectedMessageIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("offline.import.clear")) {
                                 selectedMessageIds = []
                             }
                             .disabled(selectedMessageIds.isEmpty)
@@ -10246,13 +10256,13 @@ private struct OfflineMessageArchiveImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached inbox with the selected messages for offline review and does not mark, send, or delete server messages.")
+                Section(header: Text(localized("offline.import.behaviorTitle"))) {
+                    Text(localized("offline.import.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Inbox")
+            .navigationTitle(localized("offline.import.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedMessageIds.isEmpty {
@@ -10261,12 +10271,12 @@ private struct OfflineMessageArchiveImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("offline.import.action")) {
                         importArchive(validSelectedMessageIds)
                     }
                     .disabled(!preview.hasMessages || validSelectedMessageIds.isEmpty)
@@ -10299,27 +10309,32 @@ private struct OfflineMessageFilterPresetImportSheet: View {
         preview.candidates.contains { selectedPresetIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("offline.filterImport.preview"))) {
+                    Text(localized("offline.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("offline.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("offline.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("offline.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("offline.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("offline.filterImport.copyPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("offline.filterImport.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("offline.filterImport.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("offline.filterImport.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -10341,22 +10356,22 @@ private struct OfflineMessageFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected inbox filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("offline.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Filters")
+            .navigationTitle(localized("offline.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("offline.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -10372,6 +10387,11 @@ struct OfflineMessageRow: View {
     let message: TS3OfflineMessageSummary
     @State private var isShowingReply = false
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
@@ -10380,7 +10400,7 @@ struct OfflineMessageRow: View {
                         Text(message.subject)
                             .font(.subheadline.weight(message.isRead ? .regular : .semibold))
                         if !message.isRead {
-                            Text("Unread")
+                            Text(localized("offline.readFilter.unread"))
                                 .font(.caption.weight(.semibold))
                                 .foregroundColor(.accentColor)
                         }
@@ -10401,7 +10421,7 @@ struct OfflineMessageRow: View {
                 Text(body)
                     .font(.body)
             } else {
-                Button("Open Message") {
+                Button(localized("offline.row.openMessage")) {
                     model.openOfflineMessage(message)
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
@@ -10410,29 +10430,29 @@ struct OfflineMessageRow: View {
 
             HStack {
                 if canReply {
-                    Button("Reply") {
+                    Button(localized("offline.row.reply")) {
                         isShowingReply = true
                     }
                     .buttonStyle(.borderless)
                     .disabled(!canUseServerActions)
-                    Button("Add Contact") {
+                    Button(localized("offline.row.addContact")) {
                         model.addContact(from: message)
                     }
                     .buttonStyle(.borderless)
                 }
-                Button(message.isRead ? "Mark Unread" : "Mark Read") {
+                Button(localized(message.isRead ? "offline.row.markUnread" : "offline.row.markRead")) {
                     model.markOfflineMessage(message, read: !message.isRead)
                 }
                 .buttonStyle(.borderless)
                 .disabled(!canUseServerActions)
                 if canCopyBody {
-                    Button("Copy") {
+                    Button(localized("offline.row.copy")) {
                         TS3PlatformSupport.copyToPasteboard(message.message ?? "")
                     }
                     .buttonStyle(.borderless)
                 }
                 Spacer()
-                Button("Delete") {
+                Button(localized("offline.delete")) {
                     model.deleteOfflineMessage(message)
                 }
                 .buttonStyle(.borderless)
@@ -10447,43 +10467,43 @@ struct OfflineMessageRow: View {
                 .environmentObject(model)
         }
         .contextMenu {
-            Button("Copy Subject") {
+            Button(localized("offline.row.copySubject")) {
                 TS3PlatformSupport.copyToPasteboard(message.subject)
             }
             if let body = message.message, !body.isEmpty {
-                Button("Copy Message") {
+                Button(localized("offline.row.copyMessage")) {
                     TS3PlatformSupport.copyToPasteboard(body)
                 }
             }
             if let sender = message.senderName ?? message.senderUniqueIdentifier, !sender.isEmpty {
-                Button("Copy Sender") {
+                Button(localized("offline.row.copySender")) {
                     TS3PlatformSupport.copyToPasteboard(sender)
                 }
             }
             if canReply {
-                Button("Add Contact") {
+                Button(localized("offline.row.addContact")) {
                     model.addContact(from: message)
                 }
             }
-            Button("Copy Summary") {
+            Button(localized("offline.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(message.clipboardSummary)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(message.subject)
         .accessibilityValue(message.accessibilityValue)
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("offline.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(message.clipboardSummary)
         }
-        .accessibilityAction(named: message.isRead ? "Mark Unread" : "Mark Read") {
+        .accessibilityAction(named: localized(message.isRead ? "offline.row.markUnread" : "offline.row.markRead")) {
             guard canUseServerActions else { return }
             model.markOfflineMessage(message, read: !message.isRead)
         }
-        .accessibilityAction(named: "Delete Message") {
+        .accessibilityAction(named: localized("offline.row.deleteMessage")) {
             guard canUseServerActions else { return }
             model.deleteOfflineMessage(message)
         }
-        .accessibilityAction(named: "Add Contact") {
+        .accessibilityAction(named: localized("offline.row.addContact")) {
             guard canReply else { return }
             model.addContact(from: message)
         }
@@ -10521,18 +10541,23 @@ struct OfflineMessageReplySheet: View {
         _subject = State(initialValue: Self.replySubject(for: message.subject))
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text(message.senderName ?? "Recipient")) {
-                    TextField("Subject", text: $subject)
+                Section(header: Text(message.senderName ?? localized("offline.reply.recipient"))) {
+                    TextField(localized("offline.reply.subject"), text: $subject)
                         .ts3PlainTextField()
-                    TextField("Message", text: $replyText)
+                    TextField(localized("offline.reply.message"), text: $replyText)
                         .ts3PlainTextField()
                     Text(offlineMessageDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Offline Reply Summary") {
+                    Button(localized("offline.reply.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
                     }
                     ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
@@ -10542,16 +10567,16 @@ struct OfflineMessageReplySheet: View {
                     }
                 }
             }
-            .navigationTitle("Reply")
+            .navigationTitle(localized("offline.reply.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Send") {
+                    Button(localized("offline.reply.send")) {
                         if let uniqueIdentifier = message.senderUniqueIdentifier {
                             model.sendOfflineMessage(
                                 toUniqueIdentifier: uniqueIdentifier,
@@ -10594,7 +10619,7 @@ struct OfflineMessageReplySheet: View {
     private func saveOfflineDraft() {
         model.saveOfflineMessageDraft(
             id: offlineDraftId,
-            recipientName: message.senderName ?? message.senderUniqueIdentifier ?? "Recipient",
+            recipientName: message.senderName ?? message.senderUniqueIdentifier ?? localized("offline.reply.recipient"),
             subject: subject,
             message: replyText
         )
