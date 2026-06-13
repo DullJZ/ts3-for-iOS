@@ -8353,20 +8353,20 @@ struct EventsSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "Clear Events?"
-            case .activity: return "Clear Activity?"
-            case .pokes: return "Clear Pokes?"
+            case .all: return NSLocalizedString("events.clearAllAlert.title", comment: "")
+            case .activity: return NSLocalizedString("events.clearActivityAlert.title", comment: "")
+            case .pokes: return NSLocalizedString("events.clearPokesAlert.title", comment: "")
             }
         }
 
         func message(activityCount: Int, pokeCount: Int) -> String {
             switch self {
             case .all:
-                return "This removes \(activityCount) activity events and \(pokeCount) pokes from local history."
+                return String(format: NSLocalizedString("events.clearAllAlert.messageFormat", comment: ""), activityCount, pokeCount)
             case .activity:
-                return "This removes \(activityCount) activity events from local history."
+                return String(format: NSLocalizedString("events.clearActivityAlert.messageFormat", comment: ""), activityCount)
             case .pokes:
-                return "This removes \(pokeCount) pokes from local history."
+                return String(format: NSLocalizedString("events.clearPokesAlert.messageFormat", comment: ""), pokeCount)
             }
         }
     }
@@ -8380,9 +8380,9 @@ struct EventsSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "All Sources"
-            case .own: return "My Events"
-            case .others: return "Other Users"
+            case .all: return NSLocalizedString("events.source.all", comment: "")
+            case .own: return NSLocalizedString("events.source.own", comment: "")
+            case .others: return NSLocalizedString("events.source.others", comment: "")
             }
         }
 
@@ -8420,11 +8420,11 @@ struct EventsSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "All"
-            case .activity: return "Activity"
-            case .pokes: return "Pokes"
-            case .clientMovement: return "Client Movement"
-            case .channelChanges: return "Channel Changes"
+            case .all: return NSLocalizedString("events.filter.all", comment: "")
+            case .activity: return NSLocalizedString("events.activity", comment: "")
+            case .pokes: return NSLocalizedString("events.pokes", comment: "")
+            case .clientMovement: return NSLocalizedString("events.filter.clientMovement", comment: "")
+            case .channelChanges: return NSLocalizedString("events.filter.channelChanges", comment: "")
             }
         }
 
@@ -8552,22 +8552,22 @@ struct EventsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Filters")) {
-                    Picker("Type", selection: $eventFilter) {
+                Section(header: Text(localized("events.filters"))) {
+                    Picker(localized("groups.type"), selection: $eventFilter) {
                         ForEach(EventFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
                         }
                     }
-                    Picker("Source", selection: $sourceFilter) {
+                    Picker(localized("events.source"), selection: $sourceFilter) {
                         ForEach(EventSourceFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
                         }
                     }
-                    Toggle("Newest First", isOn: $newestFirst)
-                    TextField("Search events", text: $searchText)
+                    Toggle(localized("events.newestFirst"), isOn: $newestFirst)
+                    TextField(localized("events.searchEvents"), text: $searchText)
                         .ts3PlainTextField()
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("events.clearFilters")) {
                             eventFilter = .all
                             sourceFilter = .all
                             newestFirst = true
@@ -8576,10 +8576,10 @@ struct EventsSheet: View {
                     }
                 }
 
-                Section(header: Text("Filter Presets")) {
-                    TextField("Preset Name", text: $presetName)
+                Section(header: Text(localized("groups.filterPresets"))) {
+                    TextField(localized("groups.presetName"), text: $presetName)
                         .ts3PlainTextField()
-                    Button("Save Current Filters") {
+                    Button(localized("groups.saveCurrentFilters")) {
                         model.saveEventFilterPreset(
                             name: presetName,
                             eventFilter: eventFilter.rawValue,
@@ -8591,7 +8591,7 @@ struct EventsSheet: View {
                     }
                     .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if model.eventFilterPresets.isEmpty {
-                        Text("No saved event filter presets")
+                        Text(localized("events.noSavedFilterPresets"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.eventFilterPresets) { preset in
@@ -8605,13 +8605,13 @@ struct EventsSheet: View {
                                 }
                                 Spacer()
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteEventFilterPreset(preset)
                                     }
                                 } label: {
@@ -8620,25 +8620,25 @@ struct EventsSheet: View {
                             }
                         }
                     }
-                    Button("Export Presets") {
+                    Button(localized("groups.exportPresets")) {
                         exportPresets()
                     }
                     .disabled(model.eventFilterPresets.isEmpty)
-                    Button("Import Presets") {
+                    Button(localized("groups.importPresets")) {
                         isImportingPresets = true
                     }
-                    Button("Delete All Presets") {
+                    Button(localized("groups.deleteAllPresets")) {
                         isConfirmingDeletePresets = true
                     }
                     .disabled(model.eventFilterPresets.isEmpty)
                 }
 
-                Section(header: Text("Activity")) {
+                Section(header: Text(localized("events.activity"))) {
                     if model.activityEvents.isEmpty {
-                        Text("No activity")
+                        Text(localized("events.noActivity"))
                             .foregroundColor(.secondary)
                     } else if visibleActivityEvents.isEmpty {
-                        Text("No matching activity")
+                        Text(localized("events.noMatchingActivity"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(visibleActivityEvents) { event in
@@ -8647,12 +8647,12 @@ struct EventsSheet: View {
                         }
                     }
                 }
-                Section(header: Text("Pokes")) {
+                Section(header: Text(localized("events.pokes"))) {
                     if model.pokeEvents.isEmpty {
-                        Text("No pokes")
+                        Text(localized("events.noPokes"))
                             .foregroundColor(.secondary)
                     } else if visiblePokeEvents.isEmpty {
-                        Text("No matching pokes")
+                        Text(localized("events.noMatchingPokes"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(visiblePokeEvents) { poke in
@@ -8662,48 +8662,48 @@ struct EventsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Events")
+            .navigationTitle(localized("events.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.markEventsRead()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.markEventsRead()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
-                        Button("Copy Event Snapshot") {
+                        Button(localized("events.copySnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(visibleEventsSnapshot)
                         }
                         .disabled(!hasVisibleEvents)
-                        Button("Export Event Snapshot") {
+                        Button(localized("events.exportSnapshot")) {
                             eventsDocument = TS3TextFileDocument(data: Data(visibleEventsSnapshot.utf8))
                             isExportingEvents = true
                         }
                         .disabled(!hasVisibleEvents)
-                        Button("Export Event Archive") {
+                        Button(localized("events.exportArchive")) {
                             exportEventArchive()
                         }
                         .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
-                        Button("Import Event Archive") {
+                        Button(localized("events.importArchive")) {
                             isImportingEventArchive = true
                         }
-                        Button("Clear Events") {
+                        Button(localized("events.clearEvents")) {
                             cleanupConfirmation = .all
                         }
                         .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
-                        Button("Clear Activity") {
+                        Button(localized("events.clearActivity")) {
                             cleanupConfirmation = .activity
                         }
                         .disabled(model.activityEvents.isEmpty)
-                        Button("Clear Pokes") {
+                        Button(localized("events.clearPokes")) {
                             cleanupConfirmation = .pokes
                         }
                         .disabled(model.pokeEvents.isEmpty)
-                        Button("Export Filter Presets") {
+                        Button(localized("events.exportFilterPresets")) {
                             exportPresets()
                         }
                         .disabled(model.eventFilterPresets.isEmpty)
@@ -8712,7 +8712,7 @@ struct EventsSheet: View {
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -8771,9 +8771,9 @@ struct EventsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Event Filter Presets?"),
-                    message: Text("This removes \(model.eventFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("events.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.eventFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllEventFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -8783,7 +8783,7 @@ struct EventsSheet: View {
                 Alert(
                     title: Text(confirmation.title),
                     message: Text(confirmation.message(activityCount: model.activityEvents.count, pokeCount: model.pokeEvents.count)),
-                    primaryButton: .destructive(Text("Clear")) {
+                    primaryButton: .destructive(Text(localized("events.clear"))) {
                         switch confirmation {
                         case .all:
                             model.clearEventHistory()
@@ -8877,10 +8877,10 @@ struct EventsSheet: View {
         var parts = [
             (EventFilter(rawValue: preset.eventFilter) ?? .all).title,
             (EventSourceFilter(rawValue: preset.sourceFilter) ?? .all).title,
-            preset.newestFirst ? "Newest" : "Oldest"
+            preset.newestFirst ? localized("events.newest") : localized("events.oldest")
         ]
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("events.searchPresetSummaryFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -8921,13 +8921,13 @@ struct EventsSheet: View {
 
     private func eventArchivePreviewMessage(_ preview: TS3EventHistoryArchivePreview) -> String {
         [
-            "Archive events: \(preview.totalCount)",
-            "Archive activity: \(preview.activityCount)",
-            "Archive pokes: \(preview.pokeCount)",
-            "Current events: \(preview.currentTotalCount)",
-            "Current activity: \(preview.currentActivityCount)",
-            "Current pokes: \(preview.currentPokeCount)",
-            "Restore replaces the local event archive with the selected events and marks restored events as read."
+            localized("events.archivePreview.eventsFormat", preview.totalCount),
+            localized("events.archivePreview.activityFormat", preview.activityCount),
+            localized("events.archivePreview.pokesFormat", preview.pokeCount),
+            localized("events.archivePreview.currentEventsFormat", preview.currentTotalCount),
+            localized("events.archivePreview.currentActivityFormat", preview.currentActivityCount),
+            localized("events.archivePreview.currentPokesFormat", preview.currentPokeCount),
+            localized("events.archivePreview.restoreBehavior")
         ].joined(separator: "\n")
     }
 
@@ -8962,6 +8962,11 @@ struct EventsSheet: View {
             model.lastError = error.localizedDescription
         }
     }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 private struct EventArchiveImportSheet: View {
@@ -8978,19 +8983,19 @@ private struct EventArchiveImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("events.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasEvents {
-                        Button("Copy Event Summary") {
+                        Button(localized("events.import.copyEventSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("events.import.selectAll")) {
                                 selectedEventIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("events.import.clear")) {
                                 selectedEventIds = []
                             }
                             .disabled(selectedEventIds.isEmpty)
@@ -8999,7 +9004,7 @@ private struct EventArchiveImportSheet: View {
                 }
 
                 if !preview.activitySummaries.isEmpty {
-                    Section(header: Text("Activity")) {
+                    Section(header: Text(localized("events.activity"))) {
                         ForEach(Array(preview.activityKindSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -9028,7 +9033,7 @@ private struct EventArchiveImportSheet: View {
                 }
 
                 if !preview.pokeSummaries.isEmpty {
-                    Section(header: Text("Pokes")) {
+                    Section(header: Text(localized("events.pokes"))) {
                         ForEach(Array(preview.pokeDirectionSummaries.enumerated()), id: \.offset) { _, summary in
                             Text(summary)
                                 .font(.caption2)
@@ -9056,13 +9061,13 @@ private struct EventArchiveImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Restore Behavior")) {
-                    Text("Restore replaces the local event archive with the selected events for offline review and marks restored activity and pokes as read.")
+                Section(header: Text(localized("events.import.restoreBehavior"))) {
+                    Text(localized("events.import.restoreBehaviorSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Restore Events")
+            .navigationTitle(localized("events.import.restoreEventsTitle"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedEventIds.isEmpty {
@@ -9071,18 +9076,23 @@ private struct EventArchiveImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Restore") {
+                    Button(localized("events.import.restore")) {
                         restoreArchive(validSelectedEventIds)
                     }
                     .disabled(!preview.hasEvents || validSelectedEventIds.isEmpty)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -9112,24 +9122,24 @@ private struct EventFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("events.import.preview"))) {
+                    Text(localized("events.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("events.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("events.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("events.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("events.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("events.filterImport.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("events.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("events.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("events.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -9151,22 +9161,22 @@ private struct EventFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected event filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("events.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Filters")
+            .navigationTitle(localized("events.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("events.filterImport.import")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -9174,6 +9184,11 @@ private struct EventFilterPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
