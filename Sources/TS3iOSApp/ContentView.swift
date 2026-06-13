@@ -26894,7 +26894,10 @@ struct TalkControlBar: View {
                 Button {
                     model.isShowingSelfStatus = true
                 } label: {
-                    Label(model.isAway ? "Away" : "Self", systemImage: model.isAway ? "moon.zzz" : "person.crop.circle")
+                    Label(
+                        model.isAway ? NSLocalizedString("selfStatus.awayShort", comment: "") : NSLocalizedString("selfStatus.selfShort", comment: ""),
+                        systemImage: model.isAway ? "moon.zzz" : "person.crop.circle"
+                    )
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 Button {
@@ -27055,50 +27058,59 @@ struct SelfStatusSheet: View {
     @State private var statusDocument = TS3TextFileDocument()
     @State private var statusBackupDocument = TS3TextFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        localized(value ? "common.yes" : "common.no")
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Snapshot")) {
-                    Button("Copy Status Snapshot") {
+                Section(header: Text(localized("selfStatus.snapshot"))) {
+                    Button(localized("selfStatus.copySnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(statusSnapshot)
                     }
-                    Button("Export Status Snapshot") {
+                    Button(localized("selfStatus.exportSnapshot")) {
                         statusDocument = TS3TextFileDocument(data: Data(statusSnapshot.utf8))
                         isExportingStatus = true
                     }
-                    Button("Export Status Backup") {
+                    Button(localized("selfStatus.exportStatusBackup")) {
                         exportStatusBackup()
                     }
-                    Button("Import Status Backup") {
+                    Button(localized("selfStatus.importStatusBackup")) {
                         isImportingStatus = true
                     }
-                    Button("Import and Apply Status") {
+                    Button(localized("selfStatus.importAndApplyStatus")) {
                         isImportingAppliedStatus = true
                     }
-                    Button("Export Profile Backup") {
+                    Button(localized("selfStatus.exportProfileBackup")) {
                         exportStatusProfiles()
                     }
                     .disabled(model.selfStatusProfiles.isEmpty)
-                    Button("Import Profile Backup") {
+                    Button(localized("selfStatus.importProfileBackup")) {
                         isImportingStatusProfiles = true
                     }
                     if let currentUser {
-                        Menu("Copy Identifiers") {
-                            Button("Copy Client ID") {
+                        Menu(localized("selfStatus.copyIdentifiers")) {
+                            Button(localized("selfStatus.copyClientId")) {
                                 TS3PlatformSupport.copyToPasteboard("\(currentUser.id)")
                             }
                             if let databaseId = currentUser.databaseId {
-                                Button("Copy Database ID") {
+                                Button(localized("selfStatus.copyDatabaseId")) {
                                     TS3PlatformSupport.copyToPasteboard("\(databaseId)")
                                 }
                             }
                             if let uniqueIdentifier = currentUser.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                                Button("Copy Unique ID") {
+                                Button(localized("selfStatus.copyUniqueId")) {
                                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                                 }
                             }
                             if let avatarHash = currentUser.avatarHash, !avatarHash.isEmpty {
-                                Button("Copy Avatar Hash") {
+                                Button(localized("selfStatus.copyAvatarHash")) {
                                     TS3PlatformSupport.copyToPasteboard(avatarHash)
                                 }
                             }
@@ -27106,21 +27118,21 @@ struct SelfStatusSheet: View {
                     }
                 }
 
-                Section(header: Text("Profiles")) {
-                    TextField("Profile Name", text: $statusProfileName)
+                Section(header: Text(localized("selfStatus.profiles"))) {
+                    TextField(localized("selfStatus.profileName"), text: $statusProfileName)
                         .ts3PlainTextField()
-                    Button("Save Current Profile") {
+                    Button(localized("selfStatus.saveCurrentProfile")) {
                         model.saveCurrentSelfStatusProfile(name: statusProfileName)
                         statusProfileName = ""
                     }
                     .disabled(statusProfileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button("Delete All Profiles") {
+                    Button(localized("selfStatus.deleteAllProfiles")) {
                         confirmation = .deleteAllProfiles
                     }
                     .disabled(model.selfStatusProfiles.isEmpty)
 
                     if model.selfStatusProfiles.isEmpty {
-                        Text("No saved status profiles")
+                        Text(localized("selfStatus.noSavedProfiles"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.selfStatusProfiles) { profile in
@@ -27134,17 +27146,17 @@ struct SelfStatusSheet: View {
                                 }
                                 Spacer()
                                 Menu {
-                                    Button("Apply Profile") {
+                                    Button(localized("selfStatus.applyProfile")) {
                                         model.applySelfStatusProfile(profile)
                                         refreshDraft()
                                     }
-                                    Button("Rename From Profile") {
+                                    Button(localized("selfStatus.renameFromProfile")) {
                                         statusProfileName = profile.name
                                     }
-                                    Button("Copy Summary") {
+                                    Button(localized("common.copySummary")) {
                                         TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
                                     }
-                                    Button("Delete Profile") {
+                                    Button(localized("selfStatus.deleteProfile")) {
                                         model.deleteSelfStatusProfile(profile)
                                     }
                                 } label: {
@@ -27154,25 +27166,25 @@ struct SelfStatusSheet: View {
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(profile.name)
                             .accessibilityValue(profile.accessibilityValue)
-                            .accessibilityAction(named: "Apply Profile") {
+                            .accessibilityAction(named: localized("selfStatus.applyProfile")) {
                                 model.applySelfStatusProfile(profile)
                                 refreshDraft()
                             }
-                            .accessibilityAction(named: "Copy Summary") {
+                            .accessibilityAction(named: localized("common.copySummary")) {
                                 TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
                             }
                             .contextMenu {
-                                Button("Apply Profile") {
+                                Button(localized("selfStatus.applyProfile")) {
                                     model.applySelfStatusProfile(profile)
                                     refreshDraft()
                                 }
-                                Button("Rename From Profile") {
+                                Button(localized("selfStatus.renameFromProfile")) {
                                     statusProfileName = profile.name
                                 }
-                                Button("Copy Summary") {
+                                Button(localized("common.copySummary")) {
                                     TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
                                 }
-                                Button("Delete Profile") {
+                                Button(localized("selfStatus.deleteProfile")) {
                                     model.deleteSelfStatusProfile(profile)
                                 }
                             }
@@ -27180,28 +27192,28 @@ struct SelfStatusSheet: View {
                     }
                 }
 
-                Section(header: Text("Profile")) {
-                    TextField("Nickname", text: $nickname)
+                Section(header: Text(localized("selfStatus.profile"))) {
+                    TextField(localized("selfStatus.nickname"), text: $nickname)
                         .ts3PlainTextField()
-                    Button("Update Nickname") {
+                    Button(localized("selfStatus.updateNickname")) {
                         model.updateNickname(to: nickname)
                     }
                     .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     TextEditor(text: $descriptionText)
                         .frame(minHeight: 88)
-                    Button("Update Description") {
+                    Button(localized("selfStatus.updateDescription")) {
                         if let currentUser {
                             model.editUserDescription(currentUser, description: descriptionText)
                         }
                     }
                     .disabled(currentUser == nil)
-                    Button("Refresh Self Details") {
+                    Button(localized("selfStatus.refreshSelfDetails")) {
                         if let currentUser {
                             model.refreshUserDetails(currentUser)
                         }
                     }
                     .disabled(currentUser == nil)
-                    Button("Download Avatar") {
+                    Button(localized("selfStatus.downloadAvatar")) {
                         if let currentUser {
                             model.refreshUserAvatar(currentUser)
                         }
@@ -27209,94 +27221,94 @@ struct SelfStatusSheet: View {
                     .disabled(currentUser == nil)
                 }
 
-                Section(header: Text("Status")) {
-                    Toggle("Away", isOn: $isAway)
+                Section(header: Text(localized("selfStatus.status"))) {
+                    Toggle(localized("selfStatus.away"), isOn: $isAway)
                     if isAway {
-                        TextField("Away Message", text: $awayMessage)
+                        TextField(localized("selfStatus.awayMessage"), text: $awayMessage)
                             .ts3PlainTextField()
                     }
-                    Button(isAway ? "Set Away" : "Clear Away") {
+                    Button(isAway ? localized("selfStatus.setAway") : localized("selfStatus.clearAway")) {
                         model.setAway(isAway, message: awayMessage)
                     }
                 }
 
-                Section(header: Text("Mute")) {
-                    Toggle("Microphone Muted", isOn: inputMutedBinding)
-                    Toggle("Output Muted", isOn: outputMutedBinding)
+                Section(header: Text(localized("selfStatus.mute"))) {
+                    Toggle(localized("selfStatus.microphoneMuted"), isOn: inputMutedBinding)
+                    Toggle(localized("selfStatus.outputMuted"), isOn: outputMutedBinding)
                 }
 
-                Section(header: Text("Role")) {
-                    Toggle("Channel Commander", isOn: channelCommanderBinding)
-                    TextField("Icon ID", text: $selfIconId)
+                Section(header: Text(localized("selfStatus.role"))) {
+                    Toggle(localized("selfStatus.channelCommander"), isOn: channelCommanderBinding)
+                    TextField(localized("selfStatus.iconId"), text: $selfIconId)
                         .ts3NumericKeyboard()
-                    Button("Set Client Icon") {
+                    Button(localized("selfStatus.setClientIcon")) {
                         model.setSelfIcon(iconId: Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)))
                     }
                     .disabled(!selfIconId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && Int(selfIconId.trimmingCharacters(in: .whitespacesAndNewlines)) == nil)
-                    Button("Clear Client Icon") {
+                    Button(localized("selfStatus.clearClientIcon")) {
                         isConfirmingClearIcon = true
                     }
                     .disabled((currentUser?.iconId ?? 0) == 0)
                     Button {
                         isShowingIconImporter = true
                     } label: {
-                        Label("Upload Client Icon", systemImage: "photo")
+                        Label(localized("selfStatus.uploadClientIcon"), systemImage: "photo")
                     }
                     Button {
                         isShowingAvatarImporter = true
                     } label: {
-                        Label("Upload Avatar", systemImage: "person.crop.square")
+                        Label(localized("selfStatus.uploadAvatar"), systemImage: "person.crop.square")
                     }
-                    Button("Clear Avatar") {
+                    Button(localized("selfStatus.clearAvatar")) {
                         isConfirmingClearAvatar = true
                     }
                     .disabled(currentUser?.avatarHash?.isEmpty ?? true)
                 }
 
-                Section(header: Text("Voice Status")) {
+                Section(header: Text(localized("selfStatus.voiceStatus"))) {
                     if let currentUser {
-                        Button(currentUser.isPrioritySpeaker ? "Remove Priority Speaker" : "Grant Priority Speaker") {
+                        Button(currentUser.isPrioritySpeaker ? localized("selfStatus.removePrioritySpeaker") : localized("selfStatus.grantPrioritySpeaker")) {
                             model.setPrioritySpeaker(!currentUser.isPrioritySpeaker, for: currentUser)
                         }
-                        Button(currentUser.isTalker ? "Remove Talker" : "Mark As Talker") {
+                        Button(currentUser.isTalker ? localized("selfStatus.removeTalker") : localized("selfStatus.markAsTalker")) {
                             model.setTalker(!currentUser.isTalker, for: currentUser)
                         }
                     } else {
-                        Text("Current client unavailable")
+                        Text(localized("selfStatus.currentClientUnavailable"))
                             .foregroundColor(.secondary)
                     }
                 }
 
                 Section {
-                    Button("Reset Presence State") {
+                    Button(localized("selfStatus.resetPresenceState")) {
                         confirmation = .resetPresence
                     }
                 }
 
-                Section(header: Text("Talk Power")) {
-                    TextField("Request Message", text: $talkRequestMessage)
+                Section(header: Text(localized("selfStatus.talkPower"))) {
+                    TextField(localized("selfStatus.requestMessage"), text: $talkRequestMessage)
                         .ts3PlainTextField()
                         .disabled(model.isRequestingTalkPower)
                     if model.isRequestingTalkPower {
-                        Button("Cancel Talk Request") {
+                        Button(localized("selfStatus.cancelTalkRequest")) {
                             model.setTalkRequest(false, message: "")
                         }
                     } else {
-                        Button("Request Talk Power") {
+                        Button(localized("selfStatus.requestTalkPower")) {
                             model.setTalkRequest(true, message: talkRequestMessage)
                         }
                         .disabled(talkRequestMessage.count > 50)
                     }
                 }
             }
-            .navigationTitle("Self Status")
+            .navigationTitle(localized("selfStatus.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 refreshDraft()
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -27314,9 +27326,9 @@ struct SelfStatusSheet: View {
             }
             .alert(isPresented: $isConfirmingClearIcon) {
                 Alert(
-                    title: Text("Clear Client Icon"),
-                    message: Text("Remove the icon from your current client on this server."),
-                    primaryButton: .destructive(Text("Clear")) {
+                    title: Text(localized("selfStatus.clearClientIcon")),
+                    message: Text(localized("selfStatus.clearClientIconAlert.message")),
+                    primaryButton: .destructive(Text(localized("selfStatus.clear"))) {
                         model.clearSelfIcon()
                         selfIconId = ""
                     },
@@ -27334,9 +27346,9 @@ struct SelfStatusSheet: View {
             }
             .alert(isPresented: $isConfirmingClearAvatar) {
                 Alert(
-                    title: Text("Clear Avatar"),
-                    message: Text("Remove the avatar from your current client identity on this server."),
-                    primaryButton: .destructive(Text("Clear")) {
+                    title: Text(localized("selfStatus.clearAvatar")),
+                    message: Text(localized("selfStatus.clearAvatarAlert.message")),
+                    primaryButton: .destructive(Text(localized("selfStatus.clear"))) {
                         model.clearSelfAvatar()
                     },
                     secondaryButton: .cancel()
@@ -27399,27 +27411,27 @@ struct SelfStatusSheet: View {
                 switch confirmation {
                 case .importBackup(let url, let applyToServer):
                     return Alert(
-                        title: Text(applyToServer ? "Import and Apply Status?" : "Import Status Backup?"),
-                        message: Text(applyToServer ? "This replaces local self status settings and applies them to the current server." : "This replaces local self status settings with the selected backup."),
-                        primaryButton: .destructive(Text("Import")) {
+                        title: Text(applyToServer ? localized("selfStatus.importAndApplyAlert.title") : localized("selfStatus.importBackupAlert.title")),
+                        message: Text(applyToServer ? localized("selfStatus.importAndApplyAlert.message") : localized("selfStatus.importBackupAlert.message")),
+                        primaryButton: .destructive(Text(localized("selfStatus.import"))) {
                             importStatusBackup(from: url, applyToServer: applyToServer)
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllProfiles:
                     return Alert(
-                        title: Text("Delete All Status Profiles?"),
-                        message: Text("This removes \(model.selfStatusProfiles.count) saved local status profiles."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("selfStatus.deleteAllProfilesAlert.title")),
+                        message: Text(localized("selfStatus.deleteAllProfilesAlert.messageFormat", model.selfStatusProfiles.count)),
+                        primaryButton: .destructive(Text(localized("common.delete"))) {
                             model.deleteSelfStatusProfiles(model.selfStatusProfiles)
                         },
                         secondaryButton: .cancel()
                     )
                 case .resetPresence:
                     return Alert(
-                        title: Text("Reset Presence State?"),
-                        message: Text("This clears away, talk request, channel commander, priority speaker, and talker state where available."),
-                        primaryButton: .destructive(Text("Reset")) {
+                        title: Text(localized("selfStatus.resetPresenceAlert.title")),
+                        message: Text(localized("selfStatus.resetPresenceAlert.message")),
+                        primaryButton: .destructive(Text(localized("selfStatus.reset"))) {
                             resetPresenceState()
                         },
                         secondaryButton: .cancel()
@@ -27451,49 +27463,49 @@ struct SelfStatusSheet: View {
 
     private var statusSnapshot: String {
         var rows = [
-            "Nickname: \(model.nickname)",
-            "Away: \(model.isAway ? "Yes" : "No")",
-            "Microphone Muted: \(model.isInputMuted ? "Yes" : "No")",
-            "Output Muted: \(model.isOutputMuted ? "Yes" : "No")",
-            "Channel Commander: \(model.isChannelCommander ? "Yes" : "No")",
-            "Requesting Talk Power: \(model.isRequestingTalkPower ? "Yes" : "No")"
+            localized("selfStatus.snapshot.nicknameFormat", model.nickname),
+            localized("selfStatus.snapshot.awayFormat", yesNo(model.isAway)),
+            localized("selfStatus.snapshot.microphoneMutedFormat", yesNo(model.isInputMuted)),
+            localized("selfStatus.snapshot.outputMutedFormat", yesNo(model.isOutputMuted)),
+            localized("selfStatus.snapshot.channelCommanderFormat", yesNo(model.isChannelCommander)),
+            localized("selfStatus.snapshot.requestingTalkPowerFormat", yesNo(model.isRequestingTalkPower))
         ]
         if !model.awayMessage.isEmpty {
-            rows.append("Away Message: \(model.awayMessage)")
+            rows.append(localized("selfStatus.snapshot.awayMessageFormat", model.awayMessage))
         }
         if !model.talkRequestMessage.isEmpty {
-            rows.append("Talk Request Message: \(model.talkRequestMessage)")
+            rows.append(localized("selfStatus.snapshot.talkRequestMessageFormat", model.talkRequestMessage))
         }
-        rows.append("Saved Profiles: \(model.selfStatusProfiles.count)")
+        rows.append(localized("selfStatus.snapshot.savedProfilesFormat", model.selfStatusProfiles.count))
         if let selfUser = model.clients.first(where: { $0.isCurrentUser }) {
-            rows.append("Client ID: \(selfUser.id)")
+            rows.append(localized("selfStatus.snapshot.clientIdFormat", selfUser.id))
             if let databaseId = selfUser.databaseId {
-                rows.append("Database ID: \(databaseId)")
+                rows.append(localized("selfStatus.snapshot.databaseIdFormat", databaseId))
             }
             if let uniqueIdentifier = selfUser.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                rows.append("Unique ID: \(uniqueIdentifier)")
+                rows.append(localized("selfStatus.snapshot.uniqueIdFormat", uniqueIdentifier))
             }
             if let channel = model.channelName(for: selfUser.channelId) {
-                rows.append("Channel: \(channel)")
+                rows.append(localized("selfStatus.snapshot.channelFormat", channel))
             }
             if let iconId = selfUser.iconId {
-                rows.append("Icon ID: \(iconId)")
+                rows.append(localized("selfStatus.snapshot.iconIdFormat", iconId))
             }
             if let avatarHash = selfUser.avatarHash, !avatarHash.isEmpty {
-                rows.append("Avatar Hash: \(avatarHash)")
+                rows.append(localized("selfStatus.snapshot.avatarHashFormat", avatarHash))
             }
             if let avatarURL = selfUser.avatarURL {
-                rows.append("Avatar Path: \(avatarURL.path)")
+                rows.append(localized("selfStatus.snapshot.avatarPathFormat", avatarURL.path))
             }
-            rows.append("Priority Speaker: \(selfUser.isPrioritySpeaker ? "Yes" : "No")")
-            rows.append("Talker: \(selfUser.isTalker ? "Yes" : "No")")
+            rows.append(localized("selfStatus.snapshot.prioritySpeakerFormat", yesNo(selfUser.isPrioritySpeaker)))
+            rows.append(localized("selfStatus.snapshot.talkerFormat", yesNo(selfUser.isTalker)))
         }
         if !model.identitySummary.uid.isEmpty {
-            rows.append("Identity UID: \(model.identitySummary.uid)")
-            rows.append("Identity Security Level: \(model.identitySummary.securityLevel)")
+            rows.append(localized("selfStatus.snapshot.identityUidFormat", model.identitySummary.uid))
+            rows.append(localized("selfStatus.snapshot.identitySecurityLevelFormat", model.identitySummary.securityLevel))
         }
         if let currentUserDescription = currentUser?.description, !currentUserDescription.isEmpty {
-            rows.append("Description: \(currentUserDescription)")
+            rows.append(localized("selfStatus.snapshot.descriptionFormat", currentUserDescription))
         }
         return rows.joined(separator: "\n")
     }
@@ -27641,27 +27653,32 @@ private struct SelfStatusProfileImportSheet: View {
         preview.candidates.contains { selectedProfileIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported profiles: \(preview.importedProfileCount)")
-                    Text("Usable profiles: \(preview.usableProfileCount)")
-                    Text("New profiles: \(preview.newProfileCount)")
-                    Text("Replacing profiles: \(preview.replacedProfileCount)")
-                    Text("Skipped profiles: \(preview.skippedProfileCount)")
-                    Button("Copy Profile Backup Preview") {
+                Section(header: Text(localized("selfStatus.import.preview"))) {
+                    Text(localized("selfStatus.import.importedProfilesFormat", preview.importedProfileCount))
+                    Text(localized("selfStatus.import.usableProfilesFormat", preview.usableProfileCount))
+                    Text(localized("selfStatus.import.newProfilesFormat", preview.newProfileCount))
+                    Text(localized("selfStatus.import.replacingProfilesFormat", preview.replacedProfileCount))
+                    Text(localized("selfStatus.import.skippedProfilesFormat", preview.skippedProfileCount))
+                    Button(localized("selfStatus.import.copyPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("selfStatus.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("selfStatus.import.selectAll")) {
                             selectedProfileIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("selfStatus.import.clear")) {
                             selectedProfileIds.removeAll()
                         }
                     }
@@ -27683,22 +27700,22 @@ private struct SelfStatusProfileImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected status profiles by name and leaves unselected profiles unchanged.")
+                    Text(localized("selfStatus.import.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Status Profiles")
+            .navigationTitle(localized("selfStatus.import.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("selfStatus.import.action")) {
                         importProfiles(selectedProfileIds)
                         presentationMode.wrappedValue.dismiss()
                     }
