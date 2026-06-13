@@ -5903,12 +5903,12 @@ struct ContactsSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .nickname: return "Nickname"
-            case .status: return "Status"
-            case .updated: return "Updated"
-            case .note: return "Note"
+            case .nickname: return "contacts.sort.nickname"
+            case .status: return "contacts.sort.status"
+            case .updated: return "contacts.sort.updated"
+            case .note: return "contacts.sort.note"
             }
         }
     }
@@ -5935,6 +5935,19 @@ struct ContactsSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func localizedStatusTitle(_ status: TS3ContactStatus) -> String {
+        switch status {
+        case .neutral:
+            return localized("contacts.status.neutral")
+        case .friend:
+            return localized("contacts.status.friend")
+        case .ignored:
+            return localized("contacts.status.ignored")
+        case .blocked:
+            return localized("contacts.status.blocked")
+        }
     }
 
     private var notedContacts: [TS3ContactEntry] {
@@ -6009,24 +6022,24 @@ struct ContactsSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Add")) {
-                    Button("New Contact") {
+                Section(header: Text(localized("contacts.section.add"))) {
+                    Button(localized("contacts.newContact")) {
                         isShowingNewContact = true
                     }
                 }
 
-                Section(header: Text("Filters")) {
-                    Picker("Sort By", selection: $sortMode) {
+                Section(header: Text(localized("contacts.section.filters"))) {
+                    Picker(localized("contacts.sortBy"), selection: $sortMode) {
                         ForEach(ContactSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(localized(mode.titleKey)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search contacts", text: $searchText)
+                    Toggle(localized("contacts.ascending"), isOn: $sortAscending)
+                    TextField(localized("contacts.search"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("contacts.presetName"), text: $presetName)
+                        Button(localized("contacts.saveCurrentFilters")) {
                             model.saveContactFilterPreset(
                                 name: presetName,
                                 sortMode: sortMode.rawValue,
@@ -6037,17 +6050,17 @@ struct ContactsSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.contactFilterPresets.isEmpty {
-                            Text("No saved contact filter presets")
+                            Text(localized("contacts.noSavedFilterPresets"))
                         } else {
                             ForEach(model.contactFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("contacts.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("contacts.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("contacts.deletePreset")) {
                                         model.deleteContactFilterPreset(preset)
                                     }
                                 } label: {
@@ -6059,22 +6072,22 @@ struct ContactsSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("contacts.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.contactFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("contacts.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("contacts.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.contactFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("contacts.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("contacts.clearFilters")) {
                             sortMode = .nickname
                             sortAscending = true
                             searchText = ""
@@ -6082,97 +6095,97 @@ struct ContactsSheet: View {
                     }
                 }
 
-                contactSection(title: "Friends", contacts: filteredFriends)
-                contactSection(title: "Blocked", contacts: filteredBlocked)
-                contactSection(title: "Ignored", contacts: filteredIgnored)
-                contactSection(title: "Notes", contacts: filteredNotes)
+                contactSection(title: localized("contacts.section.friends"), contacts: filteredFriends)
+                contactSection(title: localized("contacts.section.blocked"), contacts: filteredBlocked)
+                contactSection(title: localized("contacts.section.ignored"), contacts: filteredIgnored)
+                contactSection(title: localized("contacts.section.notes"), contacts: filteredNotes)
             }
-            .navigationTitle("Contacts")
+            .navigationTitle(localized("contacts.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Menu {
-                        Button("Copy Contact Snapshot") {
+                        Button(localized("contacts.copySnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(contactSnapshot)
                         }
                         .disabled(model.contacts.isEmpty)
-                        Button("Export Contact Snapshot") {
+                        Button(localized("contacts.exportSnapshot")) {
                             contactsDocument = TS3TextFileDocument(data: Data(contactSnapshot.utf8))
                             isExportingContacts = true
                         }
                         .disabled(model.contacts.isEmpty)
-                        Button("Export Contacts Backup") {
+                        Button(localized("contacts.exportBackup")) {
                             exportContacts()
                         }
                         .disabled(model.contacts.isEmpty)
-                        Button("Export Visible Contacts Backup") {
+                        Button(localized("contacts.exportVisibleBackup")) {
                             exportVisibleContacts()
                         }
                         .disabled(visibleContacts.isEmpty)
-                        Button("Import Contacts Backup") {
+                        Button(localized("contacts.importBackup")) {
                             isImportingContacts = true
                         }
                         Divider()
-                        Button("Mark Online Users as Friends") {
+                        Button(localized("contacts.markOnlineFriends")) {
                             model.updateOnlineContacts(status: .friend)
                         }
                         .disabled(model.onlineContactCandidates.isEmpty)
-                        Button("Block Online Users") {
+                        Button(localized("contacts.blockOnlineUsers")) {
                             model.updateOnlineContacts(status: .blocked)
                         }
                         .disabled(model.onlineContactCandidates.isEmpty)
-                        Button("Ignore Online Users") {
+                        Button(localized("contacts.ignoreOnlineUsers")) {
                             model.updateOnlineContacts(status: .ignored)
                         }
                         .disabled(model.onlineContactCandidates.isEmpty)
                         Divider()
-                        Button("Mark Visible Friends") {
+                        Button(localized("contacts.markVisibleFriends")) {
                             applyVisibleContactStatus(.friend)
                         }
                         .disabled(!canMarkVisibleFriends)
-                        Button("Copy Mark Friends Draft") {
+                        Button(localized("contacts.copyMarkFriendsDraft")) {
                             copyVisibleContactStatusDraft(.friend)
                         }
                         .disabled(visibleContacts.isEmpty)
-                        Button("Block Visible Contacts") {
+                        Button(localized("contacts.blockVisibleContacts")) {
                             applyVisibleContactStatus(.blocked)
                         }
                         .disabled(!canBlockVisibleContacts)
-                        Button("Copy Block Draft") {
+                        Button(localized("contacts.copyBlockDraft")) {
                             copyVisibleContactStatusDraft(.blocked)
                         }
                         .disabled(visibleContacts.isEmpty)
-                        Button("Ignore Visible Contacts") {
+                        Button(localized("contacts.ignoreVisibleContacts")) {
                             applyVisibleContactStatus(.ignored)
                         }
                         .disabled(!canIgnoreVisibleContacts)
-                        Button("Copy Ignore Draft") {
+                        Button(localized("contacts.copyIgnoreDraft")) {
                             copyVisibleContactStatusDraft(.ignored)
                         }
                         .disabled(visibleContacts.isEmpty)
-                        Button("Set Visible Neutral") {
+                        Button(localized("contacts.setVisibleNeutral")) {
                             applyVisibleContactStatus(.neutral)
                         }
                         .disabled(!canSetVisibleNeutral)
-                        Button("Copy Neutral Draft") {
+                        Button(localized("contacts.copyNeutralDraft")) {
                             copyVisibleContactStatusDraft(.neutral)
                         }
                         .disabled(visibleContacts.isEmpty)
-                        Button("Append Note to Visible Contacts") {
+                        Button(localized("contacts.appendNoteVisible")) {
                             isShowingVisibleNoteSheet = true
                         }
                         .disabled(visibleContacts.isEmpty)
-                        Button("Delete Visible Contacts") {
+                        Button(localized("contacts.deleteVisible")) {
                             isConfirmingDeleteVisibleContacts = true
                         }
                         .disabled(visibleContacts.isEmpty)
                         .foregroundColor(.red)
                     } label: {
-                        Label("Contacts", systemImage: "ellipsis.circle")
+                        Label(localized("contacts.title"), systemImage: "ellipsis.circle")
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -6221,9 +6234,9 @@ struct ContactsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Contact Filter Presets?"),
-                    message: Text("This removes \(model.contactFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("contacts.deleteAllPresetsAlert.title")),
+                    message: Text(localized("contacts.deleteAllPresetsAlert.messageFormat", model.contactFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("contacts.delete"))) {
                         model.deleteAllContactFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -6231,9 +6244,9 @@ struct ContactsSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteVisibleContacts) {
                 Alert(
-                    title: Text("Delete Visible Contacts?"),
-                    message: Text("This removes \(visibleContacts.count) contacts matching the current filters."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("contacts.deleteVisibleAlert.title")),
+                    message: Text(localized("contacts.deleteVisibleAlert.messageFormat", visibleContacts.count)),
+                    primaryButton: .destructive(Text(localized("contacts.delete"))) {
                         model.deleteContacts(visibleContacts)
                     },
                     secondaryButton: .cancel()
@@ -6298,7 +6311,7 @@ struct ContactsSheet: View {
                 || containsSearch(contact.nickname)
                 || containsSearch(contact.uniqueIdentifier)
                 || containsSearch(contact.note)
-                || containsSearch(contact.status.title)
+                || containsSearch(localizedStatusTitle(contact.status))
         }
         return sortedContacts(entries)
     }
@@ -6322,7 +6335,7 @@ struct ContactsSheet: View {
             case .nickname:
                 comparison = lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname)
             case .status:
-                comparison = lhs.status.title.localizedCaseInsensitiveCompare(rhs.status.title)
+                comparison = localizedStatusTitle(lhs.status).localizedCaseInsensitiveCompare(localizedStatusTitle(rhs.status))
             case .updated:
                 comparison = lhs.updatedAt.compare(rhs.updatedAt)
             case .note:
@@ -6426,13 +6439,16 @@ struct ContactsSheet: View {
 
     private func presetSummary(_ preset: TS3ContactFilterPreset) -> String {
         var parts = [
-            "Sort \((ContactSortMode(rawValue: preset.sortMode) ?? .nickname).title)"
+            localized(
+                "contacts.presetSummary.sortFormat",
+                localized((ContactSortMode(rawValue: preset.sortMode) ?? .nickname).titleKey)
+            )
         ]
         if !preset.sortAscending {
-            parts.append("Descending")
+            parts.append(localized("contacts.presetSummary.descending"))
         }
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("contacts.presetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -6482,17 +6498,17 @@ struct ContactsSheet: View {
         return model.contacts
             .sorted { lhs, rhs in
                 if lhs.status != rhs.status {
-                    return lhs.status.title < rhs.status.title
+                    return localizedStatusTitle(lhs.status) < localizedStatusTitle(rhs.status)
                 }
                 return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
             }
             .map { contact in
                 [
-                    "Nickname: \(contact.nickname)",
-                    "Unique ID: \(contact.uniqueIdentifier)",
-                    "Status: \(contact.status.title)",
-                    "Note: \(contact.note.isEmpty ? "-" : contact.note)",
-                    "Updated: \(dateText(contact.updatedAt))"
+                    localized("contacts.snapshot.nicknameFormat", contact.nickname),
+                    localized("contacts.snapshot.uniqueIdFormat", contact.uniqueIdentifier),
+                    localized("contacts.snapshot.statusFormat", localizedStatusTitle(contact.status)),
+                    localized("contacts.snapshot.noteFormat", contact.note.isEmpty ? "-" : contact.note),
+                    localized("contacts.snapshot.updatedFormat", dateText(contact.updatedAt))
                 ]
                 .joined(separator: "\n")
             }
@@ -6503,7 +6519,7 @@ struct ContactsSheet: View {
     private func contactSection(title: String, contacts: [TS3ContactEntry]) -> some View {
         Section(header: Text(title)) {
             if contacts.isEmpty {
-                Text(isSearching ? "No matching contacts" : "No contacts")
+                Text(isSearching ? localized("contacts.noMatchingContacts") : localized("contacts.noContacts"))
                     .foregroundColor(.secondary)
             } else {
                 ForEach(contacts) { contact in
@@ -6607,27 +6623,32 @@ private struct ContactFilterPresetImportSheet: View {
         preview.candidates.contains { selectedPresetIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("contacts.filterImport.preview"))) {
+                    Text(localized("contacts.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("contacts.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("contacts.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("contacts.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("contacts.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("contacts.filterImport.copyPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("contacts.filterImport.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("contacts.filterImport.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("contacts.filterImport.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -6649,22 +6670,22 @@ private struct ContactFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected contact filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("contacts.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Filters")
+            .navigationTitle(localized("contacts.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("contacts.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -6685,13 +6706,31 @@ struct ContactRow: View {
         model.onlineUser(for: contact)
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func localizedStatusTitle(_ status: TS3ContactStatus) -> String {
+        switch status {
+        case .neutral:
+            return localized("contacts.status.neutral")
+        case .friend:
+            return localized("contacts.status.friend")
+        case .ignored:
+            return localized("contacts.status.ignored")
+        case .blocked:
+            return localized("contacts.status.blocked")
+        }
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(contact.nickname)
                         .font(.subheadline.weight(.semibold))
-                    Text(contact.status.title)
+                    Text(localizedStatusTitle(contact.status))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -6706,7 +6745,7 @@ struct ContactRow: View {
                         .lineLimit(2)
                 }
                 if let onlineUser {
-                    Text("Online as \(onlineUser.nickname)")
+                    Text(localized("contacts.row.onlineAsFormat", onlineUser.nickname))
                         .font(.caption)
                         .foregroundColor(.accentColor)
                         .lineLimit(1)
@@ -6715,36 +6754,36 @@ struct ContactRow: View {
             Spacer()
             Menu {
                 if onlineUser != nil {
-                    Button("Send Private Message") {
+                    Button(localized("contacts.row.sendPrivateMessage")) {
                         onlineActionMode = .privateMessage
                     }
-                    Button("Poke") {
+                    Button(localized("contacts.row.poke")) {
                         onlineActionMode = .poke
                     }
-                    Button("Client Info") {
+                    Button(localized("contacts.row.clientInfo")) {
                         onlineActionMode = .info
                     }
                     Divider()
                 }
-                Button("Edit Contact") {
+                Button(localized("contacts.row.editContact")) {
                     isEditing = true
                 }
-                Button("Copy Nickname") {
+                Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(contact.nickname)
                 }
-                Button("Copy Unique ID") {
+                Button(localized("contacts.row.copyUniqueId")) {
                     TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
                 }
-                Button("Copy Summary") {
+                Button(localized("contacts.row.copySummary")) {
                     TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                 }
                 ForEach(TS3ContactStatus.allCases) { status in
-                    Button("Set \(status.title)") {
+                    Button(localized("contacts.row.setStatusFormat", localizedStatusTitle(status))) {
                         model.updateContact(contact, status: status, note: contact.note)
                     }
                     .disabled(contact.status == status)
                 }
-                Button("Delete Contact") {
+                Button(localized("contacts.row.deleteContact")) {
                     model.deleteContact(contact)
                 }
             } label: {
@@ -6776,39 +6815,39 @@ struct ContactRow: View {
         }
         .contextMenu {
             if onlineUser != nil {
-                Button("Send Private Message") {
+                Button(localized("contacts.row.sendPrivateMessage")) {
                     onlineActionMode = .privateMessage
                 }
-                Button("Poke") {
+                Button(localized("contacts.row.poke")) {
                     onlineActionMode = .poke
                 }
             }
-            Button("Copy Nickname") {
+            Button(localized("contacts.row.copyNickname")) {
                 TS3PlatformSupport.copyToPasteboard(contact.nickname)
             }
-            Button("Copy Unique ID") {
+            Button(localized("contacts.row.copyUniqueId")) {
                 TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
             }
-            Button("Copy Summary") {
+            Button(localized("contacts.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
-            Button("Edit Contact") {
+            Button(localized("contacts.row.editContact")) {
                 isEditing = true
             }
-            Button("Delete Contact") {
+            Button(localized("contacts.row.deleteContact")) {
                 model.deleteContact(contact)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(contact.nickname)
         .accessibilityValue(contact.accessibilityValue(onlineNickname: onlineUser?.nickname))
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("contacts.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
         }
-        .accessibilityAction(named: "Edit Contact") {
+        .accessibilityAction(named: localized("contacts.row.editContact")) {
             isEditing = true
         }
-        .accessibilityAction(named: "Delete Contact") {
+        .accessibilityAction(named: localized("contacts.row.deleteContact")) {
             model.deleteContact(contact)
         }
     }
