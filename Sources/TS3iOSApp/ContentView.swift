@@ -7148,9 +7148,9 @@ struct ChatSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "All Senders"
-            case .own: return "My Messages"
-            case .others: return "Other Users"
+            case .all: return NSLocalizedString("chat.sender.all", comment: "")
+            case .own: return NSLocalizedString("chat.sender.own", comment: "")
+            case .others: return NSLocalizedString("chat.sender.others", comment: "")
             }
         }
 
@@ -7192,25 +7192,30 @@ struct ChatSheet: View {
     @State private var chatHistoryDocument = TS3BookmarkFileDocument()
     @State private var presetsDocument = TS3BookmarkFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 VStack(spacing: 8) {
-                    Picker("Target", selection: $target) {
-                        Text("Channel").tag(TS3TextMessageTargetMode.channel)
-                        Text("Server").tag(TS3TextMessageTargetMode.server)
-                        Text("Private").tag(TS3TextMessageTargetMode.client)
+                    Picker(localized("chat.target"), selection: $target) {
+                        Text("chat.mode.channel").tag(TS3TextMessageTargetMode.channel)
+                        Text("chat.mode.server").tag(TS3TextMessageTargetMode.server)
+                        Text("chat.mode.private").tag(TS3TextMessageTargetMode.client)
                     }
                     .pickerStyle(.segmented)
 
                     if target == .client {
                         if privateMessageTargets.isEmpty {
-                            Text("No other users")
+                            Text(localized("chat.noOtherUsers"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
-                            Picker("User", selection: $selectedPrivateClientId) {
+                            Picker(localized("chat.user"), selection: $selectedPrivateClientId) {
                                 ForEach(privateMessageTargets) { user in
                                     Text(user.nickname).tag(user.id)
                                 }
@@ -7218,33 +7223,33 @@ struct ChatSheet: View {
                         }
                     }
 
-                    Picker("Filter", selection: $filter) {
+                    Picker(localized("chat.filter"), selection: $filter) {
                         ForEach(ChatMessageFilter.allCases) { item in
                             Text(item.title).tag(item)
                         }
                     }
                     .pickerStyle(.segmented)
 
-                    Picker("Conversation", selection: $selectedConversationId) {
+                    Picker(localized("chat.conversation"), selection: $selectedConversationId) {
                         ForEach(chatConversationOptions) { conversation in
                             Text(conversationPickerTitle(conversation)).tag(conversation.id)
                         }
                     }
 
-                    Picker("Sender", selection: $senderFilter) {
+                    Picker(localized("chat.sender"), selection: $senderFilter) {
                         ForEach(ChatSenderFilter.allCases) { item in
                             Text(item.title).tag(item)
                         }
                     }
 
-                    Toggle("Newest First", isOn: $newestFirst)
+                    Toggle(localized("chat.newestFirst"), isOn: $newestFirst)
 
-                    TextField("Search chat", text: $searchText)
+                    TextField(localized("chat.searchPlaceholder"), text: $searchText)
                         .textFieldStyle(.roundedBorder)
 
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("chat.presetName"), text: $presetName)
+                        Button(localized("chat.saveCurrentFilters")) {
                             model.saveChatFilterPreset(
                                 name: presetName,
                                 messageFilter: filter.rawValue,
@@ -7256,17 +7261,17 @@ struct ChatSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.chatFilterPresets.isEmpty {
-                            Text("No saved chat filter presets")
+                            Text(localized("chat.noSavedFilterPresets"))
                         } else {
                             ForEach(model.chatFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("chat.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("chat.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("chat.deletePreset")) {
                                         model.deleteChatFilterPreset(preset)
                                     }
                                 } label: {
@@ -7278,23 +7283,23 @@ struct ChatSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("chat.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.chatFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("chat.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("chat.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.chatFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("chat.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
 
                     if hasChatFilters {
-                        Button("Clear Chat Filters") {
+                        Button(localized("chat.clearFilters")) {
                             filter = .all
                             senderFilter = .all
                             selectedConversationId = "all"
@@ -7319,9 +7324,9 @@ struct ChatSheet: View {
                 }
 
                 HStack(spacing: 8) {
-                    TextField("Message", text: $message)
+                    TextField(localized("chat.message"), text: $message)
                         .textFieldStyle(.roundedBorder)
-                    Button("Send") {
+                    Button(localized("chat.send")) {
                         switch target {
                         case .server:
                             model.sendServerMessage(message)
@@ -7339,21 +7344,21 @@ struct ChatSheet: View {
                 }
                 .padding()
             }
-            .navigationTitle("Chat")
+            .navigationTitle(localized("chat.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItemGroup(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Inbox") {
+                    Button(localized("chat.inbox")) {
                         model.refreshOfflineMessages()
                         isShowingOfflineMessages = true
                     }
                     .disabled(model.state != .connected)
-                    Button("Clear") {
+                    Button(localized("chat.clear")) {
                         isConfirmingClearHistory = true
                     }
                     .disabled(model.chatMessages.isEmpty)
                     Menu {
-                        Button("Export Transcript") {
+                        Button(localized("chat.exportTranscript")) {
                             transcriptDocument = TS3TextFileDocument(data: model.chatTranscriptData(
                                 messages: filteredMessages,
                                 title: selectedConversation.title,
@@ -7362,27 +7367,27 @@ struct ChatSheet: View {
                             isExportingTranscript = true
                         }
                         .disabled(filteredMessages.isEmpty)
-                        Button("Export History Backup") {
+                        Button(localized("chat.exportHistoryBackup")) {
                             exportChatHistory()
                         }
                         .disabled(model.chatMessages.isEmpty)
-                        Button("Import History Backup") {
+                        Button(localized("chat.importHistoryBackup")) {
                             isImportingChatHistory = true
                         }
-                        Button("History Settings") {
+                        Button(localized("chat.historySettings")) {
                             isShowingHistorySettings = true
                         }
                         Divider()
-                        Button("Clear Visible History") {
+                        Button(localized("chat.clearVisibleHistory")) {
                             isConfirmingClearVisibleHistory = true
                         }
                         .disabled(filteredMessages.isEmpty)
                     } label: {
-                        Label("History", systemImage: "ellipsis.circle")
+                        Label(localized("chat.history"), systemImage: "ellipsis.circle")
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -7477,9 +7482,9 @@ struct ChatSheet: View {
             }
             .alert(isPresented: $isConfirmingClearHistory) {
                 Alert(
-                    title: Text("Clear chat history?"),
-                    message: Text("This removes locally saved chat messages from this device."),
-                    primaryButton: .destructive(Text("Clear History")) {
+                    title: Text(localized("chat.clearHistoryAlert.title")),
+                    message: Text(localized("chat.clearHistoryAlert.message")),
+                    primaryButton: .destructive(Text(localized("chat.clearHistory"))) {
                         model.clearChatHistory()
                     },
                     secondaryButton: .cancel()
@@ -7487,9 +7492,9 @@ struct ChatSheet: View {
             }
             .alert(isPresented: $isConfirmingClearVisibleHistory) {
                 Alert(
-                    title: Text("Clear visible chat history?"),
-                    message: Text("This removes \(filteredMessages.count) locally saved messages matching the current filters."),
-                    primaryButton: .destructive(Text("Clear Visible")) {
+                    title: Text(localized("chat.clearVisibleHistoryAlert.title")),
+                    message: Text(localized("chat.clearVisibleHistoryAlert.message", filteredMessages.count)),
+                    primaryButton: .destructive(Text(localized("chat.clearVisible"))) {
                         model.clearChatMessages(filteredMessages)
                     },
                     secondaryButton: .cancel()
@@ -7497,9 +7502,9 @@ struct ChatSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Chat Filter Presets?"),
-                    message: Text("This removes \(model.chatFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("chat.deleteAllPresetsAlert.title")),
+                    message: Text(localized("chat.deleteAllPresetsAlert.message", model.chatFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("connect.delete"))) {
                         model.deleteAllChatFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -7539,11 +7544,11 @@ struct ChatSheet: View {
         })
 
         var options = [
-            ChatConversationFilter(scope: .all, title: "All Conversations", messageCount: messages.count)
+            ChatConversationFilter(scope: .all, title: localized("chat.allConversations"), messageCount: messages.count)
         ]
 
         if !serverMessages.isEmpty {
-            options.append(ChatConversationFilter(scope: .server, title: "Server", messageCount: serverMessages.count))
+            options.append(ChatConversationFilter(scope: .server, title: localized("chat.mode.server"), messageCount: serverMessages.count))
         }
 
         let channelOptions = channelIds.map { id in
@@ -7594,7 +7599,7 @@ struct ChatSheet: View {
     }
 
     private var emptyMessageText: String {
-        model.chatMessages.isEmpty ? "No chat messages" : "No matching messages"
+        model.chatMessages.isEmpty ? localized("chat.noMessages") : localized("chat.noMatchingMessages")
     }
 
     private var hasChatFilters: Bool {
@@ -7609,11 +7614,11 @@ struct ChatSheet: View {
         var parts = [
             filter.title,
             senderFilter.title,
-            newestFirst ? "Newest first" : "Oldest first"
+            newestFirst ? localized("chat.newestFirstSummary") : localized("chat.oldestFirstSummary")
         ]
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty {
-            parts.append("Search: \(query)")
+            parts.append(localized("chat.searchSummary", query))
         }
         return parts.joined(separator: " | ")
     }
@@ -7643,19 +7648,19 @@ struct ChatSheet: View {
     }
 
     private func channelTitle(for id: Int?) -> String {
-        guard let id else { return "Unknown Channel" }
-        return model.channels.first { $0.id == id }?.name ?? "Channel \(id)"
+        guard let id else { return localized("chat.unknownChannel") }
+        return model.channels.first { $0.id == id }?.name ?? localized("chat.channelFormat", id)
     }
 
     private func clientTitle(for id: Int?, in messages: [TS3ChatMessageSummary]) -> String {
-        guard let id else { return "Unknown User" }
+        guard let id else { return localized("chat.unknownUser") }
         if let nickname = model.clients.first(where: { $0.id == id })?.nickname {
             return nickname
         }
         if let message = messages.last(where: { !$0.isOwnMessage && $0.senderId == id }) {
             return message.senderName
         }
-        return "Client \(id)"
+        return localized("chat.clientFormat", id)
     }
 
     private func exportChatHistory() {
@@ -7693,10 +7698,10 @@ struct ChatSheet: View {
         var parts = [
             (ChatMessageFilter(rawValue: preset.messageFilter) ?? .all).title,
             (ChatSenderFilter(rawValue: preset.senderFilter) ?? .all).title,
-            preset.newestFirst ? "Newest" : "Oldest"
+            preset.newestFirst ? localized("chat.newest") : localized("chat.oldest")
         ]
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("chat.searchPresetSummary", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -7761,24 +7766,24 @@ private struct ChatFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text("chat.importPreview")) {
+                    Text(String(format: NSLocalizedString("chat.importedPresetsFormat", comment: ""), preview.importedPresetCount))
+                    Text(String(format: NSLocalizedString("chat.usablePresetsFormat", comment: ""), preview.usablePresetCount))
+                    Text(String(format: NSLocalizedString("chat.newPresetsFormat", comment: ""), preview.newPresetCount))
+                    Text(String(format: NSLocalizedString("chat.replacingPresetsFormat", comment: ""), preview.replacedPresetCount))
+                    Text(String(format: NSLocalizedString("chat.skippedPresetsFormat", comment: ""), preview.skippedPresetCount))
+                    Button("chat.copyBackupPreview") {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text("chat.restore")) {
                     HStack {
-                        Button("Select All") {
+                        Button("chat.selectAll") {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button("connect.clear") {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -7800,22 +7805,22 @@ private struct ChatFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected chat filter presets by name and leaves unselected presets unchanged.")
+                    Text("chat.importBehavior.summary")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Filters")
+            .navigationTitle(Text("chat.importFilters"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button("chat.import") {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -7848,27 +7853,27 @@ struct ChatMessageRow: View {
             Text(item.message)
                 .font(.body)
             if let replyUser {
-                Button("Reply") {
+                Button("chat.reply") {
                     replyTarget = replyUser
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
-                .accessibilityLabel("Reply to \(replyUser.nickname)")
+                .accessibilityLabel(String(format: NSLocalizedString("chat.replyToFormat", comment: ""), replyUser.nickname))
             }
         }
         .contextMenu {
-            Button("Copy Message") {
+            Button("chat.copyMessage") {
                 TS3PlatformSupport.copyToPasteboard(item.message)
             }
-            Button("Copy Sender") {
+            Button("chat.copySender") {
                 TS3PlatformSupport.copyToPasteboard(item.senderName)
             }
             if let replyUser, replyUser.uniqueIdentifier?.isEmpty == false {
-                Button("Add Sender to Contacts") {
+                Button("chat.addSenderToContacts") {
                     model.addContact(from: item)
                 }
             }
-            Button("Copy Entry") {
+            Button("chat.copyEntry") {
                 TS3PlatformSupport.copyToPasteboard(clipboardText)
             }
         }
@@ -7881,11 +7886,11 @@ struct ChatMessageRow: View {
     private func targetModeText(_ mode: TS3TextMessageTargetMode) -> String {
         switch mode {
         case .server:
-            return "Server"
+            return NSLocalizedString("chat.mode.server", comment: "")
         case .channel:
-            return "Channel"
+            return NSLocalizedString("chat.mode.channel", comment: "")
         case .client:
-            return "Private"
+            return NSLocalizedString("chat.mode.private", comment: "")
         }
     }
 
@@ -7919,53 +7924,53 @@ struct ChatHistorySettingsSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Retention")) {
-                    TextField("Message Limit", text: $messageLimitText)
+                Section(header: Text("chat.retention")) {
+                    TextField(NSLocalizedString("chat.messageLimit", comment: ""), text: $messageLimitText)
                         .ts3PlainTextField()
-                    Text("Keep between 50 and 5000 local chat messages. Lowering the limit trims saved history immediately.")
+                    Text("chat.historyLimitHelp")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Apply Limit") {
+                    Button("chat.applyLimit") {
                         applyLimit()
                     }
                     .disabled(parsedLimit == nil)
-                    Menu("Presets") {
-                        Button("Keep 100 Messages") {
+                    Menu("chat.presets") {
+                        Button(String(format: NSLocalizedString("chat.keepMessagesFormat", comment: ""), 100)) {
                             setLimit(100)
                         }
-                        Button("Keep 500 Messages") {
+                        Button(String(format: NSLocalizedString("chat.keepMessagesFormat", comment: ""), 500)) {
                             setLimit(500)
                         }
-                        Button("Keep 1000 Messages") {
+                        Button(String(format: NSLocalizedString("chat.keepMessagesFormat", comment: ""), 1000)) {
                             setLimit(1000)
                         }
-                        Button("Keep 5000 Messages") {
+                        Button(String(format: NSLocalizedString("chat.keepMessagesFormat", comment: ""), 5000)) {
                             setLimit(5000)
                         }
                     }
                 }
 
-                Section(header: Text("Backup")) {
-                    Button("Export History Settings") {
+                Section(header: Text("chat.backup")) {
+                    Button("chat.exportHistorySettings") {
                         exportSettings()
                     }
-                    Button("Import History Settings") {
+                    Button("chat.importHistorySettings") {
                         isImportingSettings = true
                     }
-                    Button("Reset History Settings") {
+                    Button("chat.resetHistorySettings") {
                         isConfirmingReset = true
                     }
                     .foregroundColor(.red)
                 }
             }
-            .navigationTitle("History Settings")
+            .navigationTitle(Text("chat.historySettings"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 messageLimitText = "\(model.chatHistoryMessageLimit)"
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button("common.done") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -7993,9 +7998,9 @@ struct ChatHistorySettingsSheet: View {
             }
             .alert(isPresented: $isConfirmingReset) {
                 Alert(
-                    title: Text("Reset History Settings?"),
-                    message: Text("This restores the local chat history limit to 500 messages."),
-                    primaryButton: .destructive(Text("Reset")) {
+                    title: Text("chat.resetHistorySettingsAlert.title"),
+                    message: Text("chat.resetHistorySettingsAlert.message"),
+                    primaryButton: .destructive(Text("shortcuts.reset")) {
                         model.resetChatHistorySettings()
                         messageLimitText = "\(model.chatHistoryMessageLimit)"
                     },
@@ -8004,9 +8009,9 @@ struct ChatHistorySettingsSheet: View {
             }
             .alert(item: $pendingImport) { confirmation in
                 Alert(
-                    title: Text("Import History Settings?"),
-                    message: Text("This replaces the local chat history retention settings."),
-                    primaryButton: .destructive(Text("Import")) {
+                    title: Text("chat.importHistorySettingsAlert.title"),
+                    message: Text("chat.importHistorySettingsAlert.message"),
+                    primaryButton: .destructive(Text("chat.import")) {
                         importSettings(from: confirmation.url)
                     },
                     secondaryButton: .cancel()
@@ -8066,22 +8071,22 @@ struct ChatPrivateReplySheet: View {
         NavigationView {
             Form {
                 Section(header: Text(user.nickname)) {
-                    TextField("Message", text: $message)
+                    TextField(NSLocalizedString("chat.message", comment: ""), text: $message)
                         .ts3PlainTextField()
                 }
                 Section {
-                    Button("Send") {
+                    Button("chat.send") {
                         model.sendPrivateMessage(message, to: user)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .navigationTitle("Private Reply")
+            .navigationTitle(Text("chat.privateReply"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -8160,13 +8165,13 @@ enum ChatMessageFilter: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .all:
-            return "All"
+            return NSLocalizedString("chat.filter.all", comment: "")
         case .channel:
-            return "Channel"
+            return NSLocalizedString("chat.mode.channel", comment: "")
         case .server:
-            return "Server"
+            return NSLocalizedString("chat.mode.server", comment: "")
         case .privateMessage:
-            return "Private"
+            return NSLocalizedString("chat.mode.private", comment: "")
         }
     }
 
