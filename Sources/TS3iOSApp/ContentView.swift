@@ -16987,7 +16987,7 @@ struct FileBrowserSheet: View {
 
         var id: String { rawValue }
 
-        var title: String {
+        var fallbackTitle: String {
             switch self {
             case .name: return "Name"
             case .type: return "Type"
@@ -17030,6 +17030,11 @@ struct FileBrowserSheet: View {
     @State private var isMovingSelectedEntries = false
     @State private var selectedMoveDestinationDirectory = "/"
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var selectedChannel: TS3ChannelSummary? {
         guard let channelId = model.fileBrowserChannelId else { return nil }
         return model.channels.first { $0.id == channelId }
@@ -17039,58 +17044,58 @@ struct FileBrowserSheet: View {
         NavigationView {
             List {
                 if !model.channels.isEmpty {
-                    Section(header: Text("Channel")) {
-                        Picker("Channel", selection: channelSelection) {
+                    Section(header: Text(localized("files.channel"))) {
+                        Picker(localized("files.channel"), selection: channelSelection) {
                             ForEach(model.channels) { channel in
                                 Text(channel.name).tag(channel.id)
                             }
                         }
-                        SecureField("File Password", text: $model.fileBrowserPassword)
+                        SecureField(localized("files.filePassword"), text: $model.fileBrowserPassword)
                             .ts3PlainTextField()
                     }
                 }
 
-                Section(header: Text("Server File Status")) {
-                    fileStatusRow("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init))
-                    fileStatusRow("File Base", model.serverInfo.fileBase)
-                    fileStatusRow("Download Quota", model.serverInfo.downloadQuota.map(Self.sizeText))
-                    fileStatusRow("Upload Quota", model.serverInfo.uploadQuota.map(Self.sizeText))
-                    fileStatusRow("Downloaded This Month", model.serverInfo.monthlyBytesDownloaded.map(Self.sizeText))
-                    fileStatusRow("Uploaded This Month", model.serverInfo.monthlyBytesUploaded.map(Self.sizeText))
-                    fileStatusRow("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.sizeText))
-                    fileStatusRow("Total Uploaded", model.serverInfo.totalBytesUploaded.map(Self.sizeText))
-                    Button("Copy File Status") {
+                Section(header: Text(localized("files.serverFileStatus"))) {
+                    fileStatusRow(localized("files.fileTransferPort"), model.serverInfo.fileTransferPort.map(String.init))
+                    fileStatusRow(localized("files.fileBase"), model.serverInfo.fileBase)
+                    fileStatusRow(localized("files.downloadQuota"), model.serverInfo.downloadQuota.map(Self.sizeText))
+                    fileStatusRow(localized("files.uploadQuota"), model.serverInfo.uploadQuota.map(Self.sizeText))
+                    fileStatusRow(localized("files.downloadedThisMonth"), model.serverInfo.monthlyBytesDownloaded.map(Self.sizeText))
+                    fileStatusRow(localized("files.uploadedThisMonth"), model.serverInfo.monthlyBytesUploaded.map(Self.sizeText))
+                    fileStatusRow(localized("files.totalDownloaded"), model.serverInfo.totalBytesDownloaded.map(Self.sizeText))
+                    fileStatusRow(localized("files.totalUploaded"), model.serverInfo.totalBytesUploaded.map(Self.sizeText))
+                    Button(localized("files.copyFileStatus")) {
                         TS3PlatformSupport.copyToPasteboard(fileStatusSnapshot)
                     }
                     .disabled(fileStatusSnapshot.isEmpty)
                 }
 
-                Section(header: Text("Path")) {
+                Section(header: Text(localized("files.path"))) {
                     HStack {
                         TextField("/", text: $pathText)
                             .ts3PlainTextField()
-                        Button("Go") {
+                        Button(localized("files.go")) {
                             model.jumpToFileDirectory(pathText)
                             pathText = model.fileBrowserPath
                         }
                         .buttonStyle(.borderless)
                         .disabled(pathText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    Button("Copy Current Path") {
+                    Button(localized("files.copyCurrentPath")) {
                         TS3PlatformSupport.copyToPasteboard(model.fileBrowserPath)
                     }
                 }
 
-                Section(header: Text("File Bookmarks")) {
-                    TextField("Bookmark Name", text: $bookmarkName)
+                Section(header: Text(localized("files.bookmarks"))) {
+                    TextField(localized("files.bookmarkName"), text: $bookmarkName)
                         .ts3PlainTextField()
-                    Button("Save Current Location") {
+                    Button(localized("files.saveCurrentLocation")) {
                         model.saveCurrentFileBrowserBookmark(name: bookmarkName)
                         bookmarkName = ""
                     }
                     .disabled(bookmarkName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if model.fileBrowserBookmarks.isEmpty {
-                        Text("No saved file bookmarks")
+                        Text(localized("files.noSavedBookmarks"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.fileBrowserBookmarks) { bookmark in
@@ -17104,13 +17109,13 @@ struct FileBrowserSheet: View {
                                 }
                                 Spacer()
                                 Menu {
-                                    Button("Open Bookmark") {
+                                    Button(localized("files.openBookmark")) {
                                         model.applyFileBrowserBookmark(bookmark)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("files.useName")) {
                                         bookmarkName = bookmark.name
                                     }
-                                    Button("Delete Bookmark") {
+                                    Button(localized("files.deleteBookmark")) {
                                         model.deleteFileBrowserBookmark(bookmark)
                                     }
                                 } label: {
@@ -17119,32 +17124,32 @@ struct FileBrowserSheet: View {
                             }
                         }
                     }
-                    Button("Export Bookmarks") {
+                    Button(localized("files.exportBookmarks")) {
                         exportBookmarks()
                     }
                     .disabled(model.fileBrowserBookmarks.isEmpty)
-                    Button("Import Bookmarks") {
+                    Button(localized("files.importBookmarks")) {
                         isImportingBookmarks = true
                     }
-                    Button("Delete All Bookmarks") {
+                    Button(localized("files.deleteAllBookmarks")) {
                         transferConfirmation = .deleteAllBookmarks
                     }
                     .foregroundColor(.red)
                     .disabled(model.fileBrowserBookmarks.isEmpty)
                 }
 
-                Section(header: Text("Search")) {
-                    Picker("Sort By", selection: $sortMode) {
+                Section(header: Text(localized("files.search"))) {
+                    Picker(localized("files.sortBy"), selection: $sortMode) {
                         ForEach(FileSortMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
+                            Text(sortTitle(mode)).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search files", text: $searchText)
+                    Toggle(localized("files.ascending"), isOn: $sortAscending)
+                    TextField(localized("files.searchFiles"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("files.presetName"), text: $presetName)
+                        Button(localized("files.saveCurrentFilters")) {
                             model.saveFileBrowserFilterPreset(
                                 name: presetName,
                                 sortMode: sortMode.rawValue,
@@ -17155,17 +17160,17 @@ struct FileBrowserSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.fileBrowserFilterPresets.isEmpty {
-                            Text("No saved file filter presets")
+                            Text(localized("files.noSavedFilterPresets"))
                         } else {
                             ForEach(model.fileBrowserFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("files.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("files.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("files.deletePreset")) {
                                         model.deleteFileBrowserFilterPreset(preset)
                                     }
                                 } label: {
@@ -17177,22 +17182,22 @@ struct FileBrowserSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("files.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.fileBrowserFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("files.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("files.deleteAllPresets")) {
                             transferConfirmation = .deleteAllFilterPresets
                         }
                         .disabled(model.fileBrowserFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("files.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("files.clearFilters")) {
                             sortMode = .name
                             sortAscending = true
                             searchText = ""
@@ -17202,54 +17207,54 @@ struct FileBrowserSheet: View {
 
                 Section(header: Text(model.fileBrowserPath)) {
                     if model.fileBrowserPath != "/" {
-                        Button("Parent Directory") {
+                        Button(localized("files.parentDirectory")) {
                             model.leaveFileDirectory()
                         }
                     }
 
                     if !visibleFileEntries.isEmpty {
                         Menu {
-                            Button("Select Visible Files") {
+                            Button(localized("files.selectVisibleFiles")) {
                                 selectedEntryIDs.formUnion(visibleFiles.map(\.id))
                             }
                             .disabled(visibleFiles.isEmpty)
-                            Button("Select Visible Entries") {
+                            Button(localized("files.selectVisibleEntries")) {
                                 selectedEntryIDs.formUnion(visibleFileEntries.map(\.id))
                             }
-                            Button("Deselect Visible Entries") {
+                            Button(localized("files.deselectVisibleEntries")) {
                                 selectedEntryIDs.subtract(visibleFileEntries.map(\.id))
                             }
                             .disabled(selectedEntries.isEmpty)
                         } label: {
-                            Label("Visible Selection", systemImage: "checklist")
+                            Label(localized("files.visibleSelection"), systemImage: "checklist")
                         }
                     }
 
                     if hasSelection {
                         HStack {
-                            Text("\(selectedEntries.count) selected")
+                            Text(localized("files.selectedFormat", selectedEntries.count))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Button("Clear") {
+                            Button(localized("files.clear")) {
                                 selectedEntryIDs.removeAll()
                             }
                             .buttonStyle(.borderless)
                         }
 
                         HStack(spacing: 12) {
-                            Button("Download Selected") {
+                            Button(localized("files.downloadSelected")) {
                                 model.downloadFileEntries(selectedEntries)
                             }
                             .buttonStyle(.borderless)
                             .disabled(selectedEntries.allSatisfy(\.isDirectory))
-                            Button("Move Selected") {
+                            Button(localized("files.moveSelected")) {
                                 selectedMoveDestinationDirectory = model.fileBrowserPath
                                 isMovingSelectedEntries = true
                             }
                             .buttonStyle(.borderless)
                             .disabled(selectedEntries.isEmpty)
-                            Button("Delete Selected") {
+                            Button(localized("files.deleteSelected")) {
                                 isConfirmingSelectedDelete = true
                             }
                             .buttonStyle(.borderless)
@@ -17260,7 +17265,7 @@ struct FileBrowserSheet: View {
                     }
 
                     if visibleFileEntries.isEmpty {
-                        Text(isSearching ? "No matching files" : "No files")
+                        Text(isSearching ? localized("files.noMatchingFiles") : localized("files.noFiles"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(visibleFileEntries) { entry in
@@ -17283,19 +17288,19 @@ struct FileBrowserSheet: View {
                     }
                 }
 
-                Section(header: Text("New Directory")) {
-                    TextField("Directory Name", text: $directoryName)
+                Section(header: Text(localized("files.newDirectory"))) {
+                    TextField(localized("files.directoryName"), text: $directoryName)
                         .ts3PlainTextField()
-                    Button("Create Directory") {
+                    Button(localized("files.createDirectory")) {
                         model.createFileDirectory(named: directoryName)
                         directoryName = ""
                     }
                     .disabled(directoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
-                Section(header: Text("Transfer")) {
+                Section(header: Text(localized("files.transfer"))) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Downloads Folder")
+                        Text(localized("files.downloadsFolder"))
                             .font(.caption.weight(.semibold))
                         Text(model.downloadsDirectoryURL.path)
                             .font(.system(.caption2, design: .monospaced))
@@ -17303,20 +17308,20 @@ struct FileBrowserSheet: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                         if !model.downloadedFiles.isEmpty {
-                            Text("\(model.downloadedFilesExistingCount) available, \(model.downloadedFilesMissingCount) missing")
+                            Text(localized("files.downloadsAvailabilityFormat", model.downloadedFilesExistingCount, model.downloadedFilesMissingCount))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                         HStack {
-                            Button("Open Folder") {
+                            Button(localized("files.openFolder")) {
                                 model.openDownloadsDirectory()
                             }
                             .buttonStyle(.borderless)
-                            Button("Copy Folder Path") {
+                            Button(localized("files.copyFolderPath")) {
                                 TS3PlatformSupport.copyToPasteboard(model.downloadsDirectoryURL.path)
                             }
                             .buttonStyle(.borderless)
-                            Button("Remove Missing") {
+                            Button(localized("files.removeMissing")) {
                                 model.pruneMissingDownloadedFiles()
                             }
                             .buttonStyle(.borderless)
@@ -17329,7 +17334,7 @@ struct FileBrowserSheet: View {
                     Button {
                         isShowingFileImporter = true
                     } label: {
-                        Label("Upload Files", systemImage: "square.and.arrow.up")
+                        Label(localized("files.uploadFiles"), systemImage: "square.and.arrow.up")
                     }
                     .disabled(model.fileBrowserChannelId == nil)
 
@@ -17344,21 +17349,21 @@ struct FileBrowserSheet: View {
 
                     if !model.fileTransfers.isEmpty {
                         HStack(spacing: 12) {
-                            Button("Copy Queue") {
+                            Button(localized("files.copyQueue")) {
                                 TS3PlatformSupport.copyToPasteboard(transferQueueSnapshot)
                             }
                             .buttonStyle(.borderless)
-                            Button("Export Queue") {
+                            Button(localized("files.exportQueue")) {
                                 transferSnapshotDocument = TS3TextFileDocument(data: Data(transferQueueSnapshot.utf8))
                                 isExportingTransferSnapshot = true
                             }
                             .buttonStyle(.borderless)
-                            Button("Retry Failed") {
+                            Button(localized("files.retryFailed")) {
                                 model.retryFailedFileTransfers()
                             }
                             .buttonStyle(.borderless)
                             .disabled(!model.fileTransfers.contains { $0.canRetry })
-                            Button("Cancel Active") {
+                            Button(localized("files.cancelActive")) {
                                 transferConfirmation = .cancelActive
                             }
                             .buttonStyle(.borderless)
@@ -17366,16 +17371,16 @@ struct FileBrowserSheet: View {
                             .disabled(!model.fileTransfers.contains { $0.canCancel })
                         }
                         .font(.caption)
-                        Menu("Clear Transfers") {
-                            Button("Clear Completed") {
+                        Menu(localized("files.clearTransfers")) {
+                            Button(localized("files.clearCompleted")) {
                                 transferConfirmation = .clearCompleted
                             }
                             .disabled(!model.fileTransfers.contains { $0.state == .completed })
-                            Button("Clear Failed or Cancelled") {
+                            Button(localized("files.clearFailedOrCancelled")) {
                                 transferConfirmation = .clearFailed
                             }
                             .disabled(!model.fileTransfers.contains { $0.state == .failed || $0.state == .cancelled })
-                            Button("Clear All Inactive") {
+                            Button(localized("files.clearAllInactive")) {
                                 transferConfirmation = .clearInactive
                             }
                             .disabled(!model.fileTransfers.contains { !$0.canCancel })
@@ -17389,15 +17394,15 @@ struct FileBrowserSheet: View {
                     if !model.downloadedFiles.isEmpty {
                         Divider()
                         HStack {
-                            Text("Recent Downloads")
+                            Text(localized("files.recentDownloads"))
                                 .font(.caption.weight(.semibold))
                             Spacer()
-                            Button("Clear") {
+                            Button(localized("files.clear")) {
                                 model.clearDownloadedFileHistory()
                             }
                             .buttonStyle(.borderless)
                         }
-                        Text("History persists across launches. Removing a row keeps the local file.")
+                        Text(localized("files.downloadHistoryNote"))
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         ForEach(model.downloadedFiles.prefix(10)) { downloadedFile in
@@ -17412,19 +17417,19 @@ struct FileBrowserSheet: View {
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                 HStack {
-                                    Button("Open") {
+                                    Button(localized("files.open")) {
                                         model.openDownloadedFile(downloadedFile)
                                     }
                                     .buttonStyle(.borderless)
-                                    Button("Copy Path") {
+                                    Button(localized("files.copyPath")) {
                                         TS3PlatformSupport.copyToPasteboard(downloadedFile.url.path)
                                     }
                                     .buttonStyle(.borderless)
-                                    Button("Export") {
+                                    Button(localized("files.export")) {
                                         exportDownloadedFile(downloadedFile)
                                     }
                                     .buttonStyle(.borderless)
-                                    Button("Remove") {
+                                    Button(localized("files.remove")) {
                                         model.removeDownloadedFileHistory(downloadedFile)
                                     }
                                     .buttonStyle(.borderless)
@@ -17436,7 +17441,7 @@ struct FileBrowserSheet: View {
                     }
                 }
             }
-            .navigationTitle(selectedChannel?.name ?? "Files")
+            .navigationTitle(selectedChannel?.name ?? localized("files.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if model.fileBrowserChannelId == nil {
@@ -17453,28 +17458,28 @@ struct FileBrowserSheet: View {
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
                     Menu {
-                        Button("Copy Directory Snapshot") {
+                        Button(localized("files.copyDirectorySnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(directorySnapshot)
                         }
                         .disabled(visibleFileEntries.isEmpty)
-                        Button("Export Directory Snapshot") {
+                        Button(localized("files.exportDirectorySnapshot")) {
                             directorySnapshotDocument = TS3TextFileDocument(data: Data(directorySnapshot.utf8))
                             isExportingDirectorySnapshot = true
                         }
                         .disabled(visibleFileEntries.isEmpty)
-                        Button("Refresh") {
+                        Button(localized("files.refresh")) {
                             model.refreshFileList()
                         }
-                        Button("Export File Bookmarks") {
+                        Button(localized("files.exportFileBookmarks")) {
                             exportBookmarks()
                         }
                         .disabled(model.fileBrowserBookmarks.isEmpty)
                     } label: {
-                        Label("Directory", systemImage: "ellipsis.circle")
+                        Label(localized("files.directory"), systemImage: "ellipsis.circle")
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -17591,9 +17596,9 @@ struct FileBrowserSheet: View {
             }
             .alert(isPresented: $isConfirmingSelectedDelete) {
                 Alert(
-                    title: Text("Delete Selected Entries?"),
-                    message: Text("\(selectedEntries.count) selected entries will be deleted from the server."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("files.deleteSelectedAlert.title")),
+                    message: Text(localized("files.deleteSelectedAlert.messageFormat", selectedEntries.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteFileEntries(selectedEntries)
                         selectedEntryIDs.removeAll()
                     },
@@ -17616,54 +17621,54 @@ struct FileBrowserSheet: View {
                 switch confirmation {
                 case .cancelActive:
                     return Alert(
-                        title: Text("Cancel Active Transfers?"),
-                        message: Text("Active uploads and downloads will be stopped."),
-                        primaryButton: .destructive(Text("Cancel Transfers")) {
+                        title: Text(localized("files.cancelActiveAlert.title")),
+                        message: Text(localized("files.cancelActiveAlert.message")),
+                        primaryButton: .destructive(Text(localized("files.cancelTransfers"))) {
                             model.cancelActiveFileTransfers()
                         },
                         secondaryButton: .cancel()
                     )
                 case .clearCompleted:
                     return Alert(
-                        title: Text("Clear Completed Transfers?"),
-                        message: Text("Completed transfer records will be removed from the queue."),
-                        primaryButton: .destructive(Text("Clear")) {
+                        title: Text(localized("files.clearCompletedAlert.title")),
+                        message: Text(localized("files.clearCompletedAlert.message")),
+                        primaryButton: .destructive(Text(localized("files.clear"))) {
                             model.clearSuccessfulFileTransfers()
                         },
                         secondaryButton: .cancel()
                     )
                 case .clearFailed:
                     return Alert(
-                        title: Text("Clear Failed Transfers?"),
-                        message: Text("Failed and cancelled transfer records will be removed from the queue."),
-                        primaryButton: .destructive(Text("Clear")) {
+                        title: Text(localized("files.clearFailedAlert.title")),
+                        message: Text(localized("files.clearFailedAlert.message")),
+                        primaryButton: .destructive(Text(localized("files.clear"))) {
                             model.clearFailedFileTransfers()
                         },
                         secondaryButton: .cancel()
                     )
                 case .clearInactive:
                     return Alert(
-                        title: Text("Clear Inactive Transfers?"),
-                        message: Text("All completed, failed, and cancelled transfer records will be removed from the queue."),
-                        primaryButton: .destructive(Text("Clear")) {
+                        title: Text(localized("files.clearInactiveAlert.title")),
+                        message: Text(localized("files.clearInactiveAlert.message")),
+                        primaryButton: .destructive(Text(localized("files.clear"))) {
                             model.clearInactiveFileTransfers()
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllBookmarks:
                     return Alert(
-                        title: Text("Delete All File Bookmarks?"),
-                        message: Text("This removes \(model.fileBrowserBookmarks.count) saved local file bookmarks."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("files.deleteAllBookmarksAlert.title")),
+                        message: Text(localized("files.deleteAllBookmarksAlert.messageFormat", model.fileBrowserBookmarks.count)),
+                        primaryButton: .destructive(Text(localized("common.delete"))) {
                             model.deleteAllFileBrowserBookmarks()
                         },
                         secondaryButton: .cancel()
                     )
                 case .deleteAllFilterPresets:
                     return Alert(
-                        title: Text("Delete All File Filter Presets?"),
-                        message: Text("This removes \(model.fileBrowserFilterPresets.count) saved local filter presets."),
-                        primaryButton: .destructive(Text("Delete")) {
+                        title: Text(localized("files.deleteAllFilterPresetsAlert.title")),
+                        message: Text(localized("files.deleteAllFilterPresetsAlert.messageFormat", model.fileBrowserFilterPresets.count)),
+                        primaryButton: .destructive(Text(localized("common.delete"))) {
                             model.deleteAllFileBrowserFilterPresets()
                         },
                         secondaryButton: .cancel()
@@ -17736,19 +17741,19 @@ struct FileBrowserSheet: View {
     }
 
     private func uploadConflictSheetItem(_ preview: UploadConflictPreview) -> UploadConflictSheet.Item {
-        let localSize = preview.localSize.map(Self.sizeText) ?? "Unknown"
-        let remoteSize = preview.remoteEntry.isDirectory ? "Directory" : Self.sizeText(preview.remoteEntry.size)
-        var detail = "Local \(localSize) | Remote \(remoteSize)"
+        let localSize = preview.localSize.map(Self.sizeText) ?? localized("common.unknown")
+        let remoteSize = preview.remoteEntry.isDirectory ? localized("files.directory") : Self.sizeText(preview.remoteEntry.size)
+        var detail = localized("files.uploadConflict.detailFormat", localSize, remoteSize)
         if let incompleteSize = preview.remoteEntry.incompleteSize, incompleteSize > 0 {
-            detail += " | Partial \(Self.sizeText(incompleteSize))"
+            detail += " | " + localized("files.uploadConflict.partialFormat", Self.sizeText(incompleteSize))
         }
         let recommendation: String
         if preview.remoteEntry.isDirectory {
-            recommendation = "Choose a different name or remote directory."
+            recommendation = localized("files.uploadConflict.chooseDifferentName")
         } else if preview.canResume {
-            recommendation = "Can resume or overwrite."
+            recommendation = localized("files.uploadConflict.canResume")
         } else {
-            recommendation = "Overwrite replaces the remote file."
+            recommendation = localized("files.uploadConflict.overwriteReplaces")
         }
         return UploadConflictSheet.Item(
             name: preview.remoteEntry.name,
@@ -17794,13 +17799,13 @@ struct FileBrowserSheet: View {
 
     private func presetSummary(_ preset: TS3FileBrowserFilterPreset) -> String {
         var parts = [
-            "Sort \((FileSortMode(rawValue: preset.sortMode) ?? .name).title)"
+            localized("files.presetSummary.sortFormat", sortTitle(FileSortMode(rawValue: preset.sortMode) ?? .name))
         ]
         if !preset.sortAscending {
-            parts.append("Descending")
+            parts.append(localized("files.descending"))
         }
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("files.presetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -17878,6 +17883,15 @@ struct FileBrowserSheet: View {
 
     private var hasLocalFilters: Bool {
         isSearching || sortMode != .name || !sortAscending
+    }
+
+    private func sortTitle(_ mode: FileSortMode) -> String {
+        switch mode {
+        case .name: return localized("files.sort.name")
+        case .type: return localized("files.sort.type")
+        case .size: return localized("files.sort.size")
+        case .modified: return localized("files.sort.modified")
+        }
     }
 
     private var filteredFileEntries: [TS3FileEntrySummary] {
@@ -17966,15 +17980,15 @@ struct FileBrowserSheet: View {
 
     private var fileStatusSnapshot: String {
         let rows: [(String, String?)] = [
-            ("Server", model.serverInfo.name.isEmpty ? nil : model.serverInfo.name),
-            ("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)),
-            ("File Base", model.serverInfo.fileBase),
-            ("Download Quota", model.serverInfo.downloadQuota.map(Self.sizeText)),
-            ("Upload Quota", model.serverInfo.uploadQuota.map(Self.sizeText)),
-            ("Downloaded This Month", model.serverInfo.monthlyBytesDownloaded.map(Self.sizeText)),
-            ("Uploaded This Month", model.serverInfo.monthlyBytesUploaded.map(Self.sizeText)),
-            ("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.sizeText)),
-            ("Total Uploaded", model.serverInfo.totalBytesUploaded.map(Self.sizeText))
+            (localized("files.server"), model.serverInfo.name.isEmpty ? nil : model.serverInfo.name),
+            (localized("files.fileTransferPort"), model.serverInfo.fileTransferPort.map(String.init)),
+            (localized("files.fileBase"), model.serverInfo.fileBase),
+            (localized("files.downloadQuota"), model.serverInfo.downloadQuota.map(Self.sizeText)),
+            (localized("files.uploadQuota"), model.serverInfo.uploadQuota.map(Self.sizeText)),
+            (localized("files.downloadedThisMonth"), model.serverInfo.monthlyBytesDownloaded.map(Self.sizeText)),
+            (localized("files.uploadedThisMonth"), model.serverInfo.monthlyBytesUploaded.map(Self.sizeText)),
+            (localized("files.totalDownloaded"), model.serverInfo.totalBytesDownloaded.map(Self.sizeText)),
+            (localized("files.totalUploaded"), model.serverInfo.totalBytesUploaded.map(Self.sizeText))
         ]
         var lines: [String] = []
         for row in rows {
@@ -17995,31 +18009,31 @@ struct FileBrowserSheet: View {
         }
 
         var lines = [
-            "Path: \(model.fileBrowserPath)",
-            "Sort: \(sortMode.title) \(sortAscending ? "Ascending" : "Descending")"
+            localized("files.snapshot.pathFormat", model.fileBrowserPath),
+            localized("files.snapshot.sortFormat", sortTitle(sortMode), sortAscending ? localized("files.ascending") : localized("files.descending"))
         ]
         if !fileStatusSnapshot.isEmpty {
             lines.append("")
             lines.append(fileStatusSnapshot)
         }
         if isSearching {
-            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+            lines.append(localized("files.snapshot.searchFormat", searchText.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
         if !visibleFileEntries.isEmpty {
             lines.append("")
         }
         let entries = visibleFileEntries.map { entry in
             var rows = [
-                "Name: \(entry.name)",
-                "Path: \(entry.path)",
-                "Type: \(entry.isDirectory ? "Directory" : "File")",
-                "Size: \(Self.sizeText(entry.size))"
+                localized("files.snapshot.nameFormat", entry.name),
+                localized("files.snapshot.pathFormat", entry.path),
+                localized("files.snapshot.typeFormat", entry.isDirectory ? localized("files.directory") : localized("files.file")),
+                localized("files.snapshot.sizeFormat", Self.sizeText(entry.size))
             ]
             if let modifiedAt = dateText(entry.modifiedAt) {
-                rows.append("Modified: \(modifiedAt)")
+                rows.append(localized("files.snapshot.modifiedFormat", modifiedAt))
             }
             if entry.isStillUploading {
-                rows.append("Uploading: Yes")
+                rows.append(localized("files.snapshot.uploadingFormat", localized("common.yes")))
             }
             return rows.joined(separator: "\n")
         }
@@ -18036,36 +18050,36 @@ struct FileBrowserSheet: View {
         formatter.timeStyle = .short
 
         var lines = [
-            "Path: \(model.fileBrowserPath)",
-            "Transfers: \(model.fileTransfers.count)"
+            localized("files.snapshot.pathFormat", model.fileBrowserPath),
+            localized("files.snapshot.transfersFormat", model.fileTransfers.count)
         ]
         let activeCount = model.fileTransfers.filter(\.canCancel).count
         if activeCount > 0 {
-            lines.append("Active: \(activeCount)")
+            lines.append(localized("files.snapshot.activeFormat", activeCount))
         }
         if !model.downloadedFiles.isEmpty {
-            lines.append("Recent Downloads: \(model.downloadedFiles.count)")
+            lines.append(localized("files.snapshot.recentDownloadsFormat", model.downloadedFiles.count))
         }
         if !model.fileTransfers.isEmpty {
             lines.append("")
         }
         let transfers = model.fileTransfers.map { transfer in
             var rows = [
-                "Name: \(transfer.name)",
-                "Direction: \(transfer.direction.title)",
-                "State: \(transfer.state.title)",
-                "Remote Path: \(transfer.remotePath)",
-                "Detail: \(transfer.detail)",
-                "Started: \(formatter.string(from: transfer.startedAt))"
+                localized("files.snapshot.nameFormat", transfer.name),
+                localized("files.snapshot.directionFormat", transferDirectionTitle(transfer.direction)),
+                localized("files.snapshot.stateFormat", transferStateTitle(transfer.state)),
+                localized("files.snapshot.remotePathFormat", transfer.remotePath),
+                localized("files.snapshot.detailFormat", transfer.detail),
+                localized("files.snapshot.startedFormat", formatter.string(from: transfer.startedAt))
             ]
             if let progress = transfer.progress {
-                rows.append("Progress: \(Int((progress * 100).rounded()))%")
+                rows.append(localized("files.snapshot.progressFormat", Int((progress * 100).rounded())))
             }
             if let localPath = transfer.localPath, !localPath.isEmpty {
-                rows.append("Local Path: \(localPath)")
+                rows.append(localized("files.snapshot.localPathFormat", localPath))
             }
             if let completedAt = transfer.completedAt {
-                rows.append("Completed: \(formatter.string(from: completedAt))")
+                rows.append(localized("files.snapshot.completedFormat", formatter.string(from: completedAt)))
             }
             return rows.joined(separator: "\n")
         }
@@ -18085,6 +18099,30 @@ struct FileBrowserSheet: View {
                 }
             }
         )
+    }
+
+    private func transferDirectionTitle(_ direction: TS3FileTransferDirection) -> String {
+        switch direction {
+        case .upload:
+            return localized("files.transferDirection.upload")
+        case .download:
+            return localized("files.transferDirection.download")
+        }
+    }
+
+    private func transferStateTitle(_ state: TS3FileTransferState) -> String {
+        switch state {
+        case .preparing:
+            return localized("files.transferState.preparing")
+        case .transferring:
+            return localized("files.transferState.transferring")
+        case .completed:
+            return localized("files.transferState.completed")
+        case .cancelled:
+            return localized("files.transferState.cancelled")
+        case .failed:
+            return localized("files.transferState.failed")
+        }
     }
 }
 
@@ -18111,27 +18149,32 @@ private struct FileBrowserFilterPresetImportSheet: View {
         preview.candidates.contains { selectedPresetIds.contains($0.id) }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("files.import.preview"))) {
+                    Text(localized("files.import.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("files.import.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("files.import.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("files.import.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("files.import.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("files.import.copyPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("files.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("files.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("files.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -18153,22 +18196,22 @@ private struct FileBrowserFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected file filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("files.import.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import File Filters")
+            .navigationTitle(localized("files.import.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("files.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -18196,6 +18239,15 @@ struct FileTransferRow: View {
     let transfer: TS3FileTransferSummary
     @State private var confirmation: RowConfirmation?
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private var transferStateSummary: String {
+        localized("files.transferRow.stateFormat", transferDirectionTitle(transfer.direction), transferStateTitle(transfer.state))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
@@ -18204,7 +18256,7 @@ struct FileTransferRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
-                Text("\(transfer.direction.title) - \(transfer.state.title)")
+                Text(transferStateSummary)
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -18221,26 +18273,26 @@ struct FileTransferRow: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             if transfer.canCancel {
-                Button("Cancel") {
+                Button(localized("common.cancel")) {
                     confirmation = .cancel
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
                 .foregroundColor(.red)
             } else if transfer.canOpenLocalFile {
-                Button("Open Local File") {
+                Button(localized("files.openLocalFile")) {
                     transfer.openLocalFile()
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
             } else if transfer.canRetry {
-                Button("Retry") {
+                Button(localized("files.retry")) {
                     model.retryFileTransfer(transfer)
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
             } else {
-                Button("Remove") {
+                Button(localized("files.remove")) {
                     confirmation = .remove
                 }
                 .buttonStyle(.borderless)
@@ -18251,55 +18303,55 @@ struct FileTransferRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(transfer.name)
         .accessibilityValue(transfer.accessibilityValue)
-        .accessibilityAction(named: "Copy Status") {
+        .accessibilityAction(named: localized("files.copyStatus")) {
             TS3PlatformSupport.copyToPasteboard(transfer.clipboardSummary)
         }
-        .accessibilityAction(named: "Cancel Transfer") {
+        .accessibilityAction(named: localized("files.cancelTransfer")) {
             guard transfer.canCancel else { return }
             confirmation = .cancel
         }
-        .accessibilityAction(named: "Retry Transfer") {
+        .accessibilityAction(named: localized("files.retryTransfer")) {
             guard transfer.canRetry else { return }
             model.retryFileTransfer(transfer)
         }
-        .accessibilityAction(named: "Open Local File") {
+        .accessibilityAction(named: localized("files.openLocalFile")) {
             guard transfer.canOpenLocalFile else { return }
             transfer.openLocalFile()
         }
-        .accessibilityAction(named: "Remove Transfer") {
+        .accessibilityAction(named: localized("files.removeTransfer")) {
             guard !transfer.canCancel else { return }
             confirmation = .remove
         }
         .contextMenu {
             if transfer.canCancel {
-                Button("Cancel Transfer") {
+                Button(localized("files.cancelTransfer")) {
                     confirmation = .cancel
                 }
             }
             if transfer.canRetry {
-                Button("Retry Transfer") {
+                Button(localized("files.retryTransfer")) {
                     model.retryFileTransfer(transfer)
                 }
             }
             if !transfer.canCancel {
-                Button("Remove Transfer") {
+                Button(localized("files.removeTransfer")) {
                     confirmation = .remove
                 }
             }
             if transfer.canOpenLocalFile {
-                Button("Open Local File") {
+                Button(localized("files.openLocalFile")) {
                     transfer.openLocalFile()
                 }
             }
-            Button("Copy Remote Path") {
+            Button(localized("files.copyRemotePath")) {
                 TS3PlatformSupport.copyToPasteboard(transfer.remotePath)
             }
             if let localPath = transfer.localPath, !localPath.isEmpty {
-                Button("Copy Local Path") {
+                Button(localized("files.copyLocalPath")) {
                     TS3PlatformSupport.copyToPasteboard(localPath)
                 }
             }
-            Button("Copy Status") {
+            Button(localized("files.copyStatus")) {
                 TS3PlatformSupport.copyToPasteboard(transfer.clipboardSummary)
             }
         }
@@ -18307,23 +18359,47 @@ struct FileTransferRow: View {
             switch confirmation {
             case .cancel:
                 return Alert(
-                    title: Text("Cancel Transfer?"),
-                    message: Text("\(transfer.name) will be stopped."),
-                    primaryButton: .destructive(Text("Cancel Transfer")) {
+                    title: Text(localized("files.cancelTransferAlert.title")),
+                    message: Text(localized("files.cancelTransferAlert.messageFormat", transfer.name)),
+                    primaryButton: .destructive(Text(localized("files.cancelTransfer"))) {
                         model.cancelFileTransfer(transfer)
                     },
                     secondaryButton: .cancel()
                 )
             case .remove:
                 return Alert(
-                    title: Text("Remove Transfer?"),
-                    message: Text("\(transfer.name) will be removed from the queue."),
-                    primaryButton: .destructive(Text("Remove")) {
+                    title: Text(localized("files.removeTransferAlert.title")),
+                    message: Text(localized("files.removeTransferAlert.messageFormat", transfer.name)),
+                    primaryButton: .destructive(Text(localized("files.remove"))) {
                         model.removeFileTransfer(transfer)
                     },
                     secondaryButton: .cancel()
                 )
             }
+        }
+    }
+
+    private func transferDirectionTitle(_ direction: TS3FileTransferDirection) -> String {
+        switch direction {
+        case .upload:
+            return localized("files.transferDirection.upload")
+        case .download:
+            return localized("files.transferDirection.download")
+        }
+    }
+
+    private func transferStateTitle(_ state: TS3FileTransferState) -> String {
+        switch state {
+        case .preparing:
+            return localized("files.transferState.preparing")
+        case .transferring:
+            return localized("files.transferState.transferring")
+        case .completed:
+            return localized("files.transferState.completed")
+        case .cancelled:
+            return localized("files.transferState.cancelled")
+        case .failed:
+            return localized("files.transferState.failed")
         }
     }
 }
@@ -18635,10 +18711,15 @@ struct UploadConflictSheet: View {
     let overwrite: () -> Void
     let cancel: () -> Void
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Remote Files Exist")) {
+                Section(header: Text(localized("files.uploadConflict.remoteFilesExist"))) {
                     ForEach(items) { item in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
@@ -18646,7 +18727,7 @@ struct UploadConflictSheet: View {
                                     .font(.subheadline.weight(.semibold))
                                 if item.isBlockingOverwrite {
                                     Spacer()
-                                    Text("Directory")
+                                    Text(localized("files.directory"))
                                         .font(.caption2.weight(.semibold))
                                         .foregroundColor(.red)
                                 }
@@ -18661,24 +18742,24 @@ struct UploadConflictSheet: View {
                     }
                 }
                 Section {
-                    Button("Resume Partial Uploads") {
+                    Button(localized("files.uploadConflict.resumePartialUploads")) {
                         resume()
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!canResume)
-                    Button("Overwrite Remote Files") {
+                    Button(localized("files.uploadConflict.overwriteRemoteFiles")) {
                         overwrite()
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(.red)
                     .disabled(!canOverwrite)
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            .navigationTitle("Upload Conflicts")
+            .navigationTitle(localized("files.uploadConflict.title"))
             .ts3InlineNavigationTitle()
         }
     }
