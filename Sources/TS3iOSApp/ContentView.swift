@@ -11951,39 +11951,44 @@ struct ServerInformationSheet: View {
     @State private var isExportingInfo = false
     @State private var infoExportDocument = TS3TextFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Snapshot")) {
-                    Button("Copy Server Information") {
+                Section(header: Text(localized("serverInfo.snapshot"))) {
+                    Button(localized("serverInfo.copy")) {
                         TS3PlatformSupport.copyToPasteboard(informationSnapshot)
                     }
                     .disabled(informationSnapshot.isEmpty)
-                    Button("Export Server Information") {
+                    Button(localized("serverInfo.export")) {
                         infoExportDocument = TS3TextFileDocument(data: Data(informationSnapshot.utf8))
                         isExportingInfo = true
                     }
                     .disabled(informationSnapshot.isEmpty)
                 }
 
-                Section(header: Text("Overview")) {
-                    ServerInfoDetailRow(label: "Name", value: model.serverInfo.name)
-                    ServerInfoDetailRow(label: "Phonetic Name", value: model.serverInfo.phoneticName)
-                    ServerInfoDetailRow(label: "Status", value: model.serverInfo.status)
-                    ServerInfoDetailRow(label: "Unique ID", value: model.serverInfo.uniqueIdentifier, monospaced: true)
-                    ServerInfoDetailRow(label: "Machine ID", value: model.serverInfo.machineId, monospaced: true)
-                    ServerInfoDetailRow(label: "Port", value: model.serverInfo.port.map(String.init))
-                    ServerInfoDetailRow(label: "Autostart", value: boolText(model.serverInfo.isAutoStartEnabled))
-                    ServerInfoDetailRow(label: "Icon ID", value: model.serverInfo.iconId.map(String.init))
-                    ServerInfoDetailRow(label: "Platform", value: model.serverInfo.platform)
-                    ServerInfoDetailRow(label: "Version", value: model.serverInfo.version)
-                    ServerInfoDetailRow(label: "Created", value: model.serverInfo.createdAt.map(Self.dateText))
-                    ServerInfoDetailRow(label: "Uptime", value: model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText))
-                    ServerInfoDetailRow(label: "Password", value: model.serverInfo.passwordProtected ? "Protected" : "Not Protected")
-                    ServerInfoDetailRow(label: "Server List", value: model.serverInfo.isWeblistEnabled.map { $0 ? "Listed" : "Hidden" })
+                Section(header: Text(localized("serverInfo.overview"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.name"), value: model.serverInfo.name)
+                    ServerInfoDetailRow(label: localized("serverInfo.phoneticName"), value: model.serverInfo.phoneticName)
+                    ServerInfoDetailRow(label: localized("serverInfo.status"), value: model.serverInfo.status)
+                    ServerInfoDetailRow(label: localized("serverInfo.uniqueId"), value: model.serverInfo.uniqueIdentifier, monospaced: true)
+                    ServerInfoDetailRow(label: localized("serverInfo.machineId"), value: model.serverInfo.machineId, monospaced: true)
+                    ServerInfoDetailRow(label: localized("serverInfo.port"), value: model.serverInfo.port.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.autostart"), value: boolText(model.serverInfo.isAutoStartEnabled))
+                    ServerInfoDetailRow(label: localized("serverInfo.iconId"), value: model.serverInfo.iconId.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.platform"), value: model.serverInfo.platform)
+                    ServerInfoDetailRow(label: localized("serverInfo.version"), value: model.serverInfo.version)
+                    ServerInfoDetailRow(label: localized("serverInfo.created"), value: model.serverInfo.createdAt.map(Self.dateText))
+                    ServerInfoDetailRow(label: localized("serverInfo.uptime"), value: model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText))
+                    ServerInfoDetailRow(label: localized("serverInfo.password"), value: model.serverInfo.passwordProtected ? localized("serverInfo.protected") : localized("serverInfo.notProtected"))
+                    ServerInfoDetailRow(label: localized("serverInfo.serverList"), value: model.serverInfo.isWeblistEnabled.map { $0 ? localized("serverInfo.listed") : localized("serverInfo.hidden") })
                     if let message = model.serverInfo.welcomeMessage, !message.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Welcome Message")
+                            Text(localized("serverInfo.welcomeMessage"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Text(message)
@@ -11992,100 +11997,100 @@ struct ServerInformationSheet: View {
                     }
                 }
 
-                Section(header: Text("Population")) {
-                    ServerInfoDetailRow(label: "Clients", value: clientsText)
-                    ServerInfoDetailRow(label: "Query Clients", value: model.serverInfo.clientsInQuery.map(String.init))
-                    ServerInfoDetailRow(label: "Channels", value: model.serverInfo.channelsOnline.map(String.init))
-                    ServerInfoDetailRow(label: "Client Connections", value: model.serverInfo.clientConnections.map(String.init))
-                    ServerInfoDetailRow(label: "Query Connections", value: model.serverInfo.queryClientConnections.map(String.init))
+                Section(header: Text(localized("serverInfo.population"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.clients"), value: clientsText)
+                    ServerInfoDetailRow(label: localized("serverInfo.queryClients"), value: model.serverInfo.clientsInQuery.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.channels"), value: model.serverInfo.channelsOnline.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.clientConnections"), value: model.serverInfo.clientConnections.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.queryConnections"), value: model.serverInfo.queryClientConnections.map(String.init))
                 }
 
-                Section(header: Text("Default Groups")) {
-                    ServerInfoDetailRow(label: "Server Group", value: groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups))
-                    ServerInfoDetailRow(label: "Channel Group", value: groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups))
-                    ServerInfoDetailRow(label: "Channel Admin", value: groupName(model.serverInfo.defaultChannelAdminGroupId, groups: model.channelGroups))
+                Section(header: Text(localized("serverInfo.defaultGroups"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.serverGroup"), value: groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups))
+                    ServerInfoDetailRow(label: localized("serverInfo.channelGroup"), value: groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups))
+                    ServerInfoDetailRow(label: localized("serverInfo.channelAdmin"), value: groupName(model.serverInfo.defaultChannelAdminGroupId, groups: model.channelGroups))
                 }
 
-                Section(header: Text("Limits")) {
-                    ServerInfoDetailRow(label: "Reserved Slots", value: model.serverInfo.reservedSlots.map(String.init))
-                    ServerInfoDetailRow(label: "Download Quota", value: model.serverInfo.downloadQuota.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Upload Quota", value: model.serverInfo.uploadQuota.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Max Download Bandwidth", value: model.serverInfo.maxDownloadTotalBandwidth.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Max Upload Bandwidth", value: model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Needed Identity Security Level", value: model.serverInfo.neededIdentitySecurityLevel.map(String.init))
-                    ServerInfoDetailRow(label: "Minimum Client Version", value: model.serverInfo.minClientVersion.map(String.init))
-                    ServerInfoDetailRow(label: "Minimum Android Version", value: model.serverInfo.minAndroidVersion.map(String.init))
-                    ServerInfoDetailRow(label: "Minimum iOS Version", value: model.serverInfo.minIOSVersion.map(String.init))
-                    ServerInfoDetailRow(label: "File Transfer Port", value: model.serverInfo.fileTransferPort.map(String.init))
-                    ServerInfoDetailRow(label: "File Base", value: model.serverInfo.fileBase)
-                    ServerInfoDetailRow(label: "Codec Encryption", value: model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title))
+                Section(header: Text(localized("serverInfo.limits"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.reservedSlots"), value: model.serverInfo.reservedSlots.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.downloadQuota"), value: model.serverInfo.downloadQuota.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.uploadQuota"), value: model.serverInfo.uploadQuota.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.maxDownloadBandwidth"), value: model.serverInfo.maxDownloadTotalBandwidth.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.maxUploadBandwidth"), value: model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.neededIdentitySecurityLevel"), value: model.serverInfo.neededIdentitySecurityLevel.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.minimumClientVersion"), value: model.serverInfo.minClientVersion.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.minimumAndroidVersion"), value: model.serverInfo.minAndroidVersion.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.minimumIOSVersion"), value: model.serverInfo.minIOSVersion.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.fileTransferPort"), value: model.serverInfo.fileTransferPort.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.fileBase"), value: model.serverInfo.fileBase)
+                    ServerInfoDetailRow(label: localized("serverInfo.codecEncryption"), value: model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title))
                 }
 
-                Section(header: Text("Anti-Flood and Complaints")) {
-                    ServerInfoDetailRow(label: "Auto-Ban Count", value: model.serverInfo.complainAutoBanCount.map(String.init))
-                    ServerInfoDetailRow(label: "Auto-Ban Time", value: model.serverInfo.complainAutoBanTime.map(Self.durationText))
-                    ServerInfoDetailRow(label: "Complaint Remove Time", value: model.serverInfo.complainRemoveTime.map(Self.durationText))
-                    ServerInfoDetailRow(label: "Forced Silence Clients", value: model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init))
-                    ServerInfoDetailRow(label: "Priority Speaker Dimming", value: model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText))
-                    ServerInfoDetailRow(label: "Anti-Flood Tick Reduce", value: model.serverInfo.antiFloodPointsTickReduce.map(String.init))
-                    ServerInfoDetailRow(label: "Anti-Flood Command Block", value: model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init))
-                    ServerInfoDetailRow(label: "Anti-Flood IP Block", value: model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init))
-                    ServerInfoDetailRow(label: "Anti-Flood Plugin Block", value: model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init))
+                Section(header: Text(localized("serverInfo.antiFloodComplaints"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.autoBanCount"), value: model.serverInfo.complainAutoBanCount.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.autoBanTime"), value: model.serverInfo.complainAutoBanTime.map(Self.durationText))
+                    ServerInfoDetailRow(label: localized("serverInfo.complaintRemoveTime"), value: model.serverInfo.complainRemoveTime.map(Self.durationText))
+                    ServerInfoDetailRow(label: localized("serverInfo.forcedSilenceClients"), value: model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.prioritySpeakerDimming"), value: model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText))
+                    ServerInfoDetailRow(label: localized("serverInfo.antiFloodTickReduce"), value: model.serverInfo.antiFloodPointsTickReduce.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.antiFloodCommandBlock"), value: model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.antiFloodIPBlock"), value: model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init))
+                    ServerInfoDetailRow(label: localized("serverInfo.antiFloodPluginBlock"), value: model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init))
                 }
 
-                Section(header: Text("Server Log Options")) {
-                    ServerInfoDetailRow(label: "Client Log", value: boolText(model.serverInfo.isClientLoggingEnabled))
-                    ServerInfoDetailRow(label: "Query Log", value: boolText(model.serverInfo.isQueryLoggingEnabled))
-                    ServerInfoDetailRow(label: "Channel Log", value: boolText(model.serverInfo.isChannelLoggingEnabled))
-                    ServerInfoDetailRow(label: "Permission Log", value: boolText(model.serverInfo.isPermissionLoggingEnabled))
-                    ServerInfoDetailRow(label: "Server Log", value: boolText(model.serverInfo.isServerLoggingEnabled))
-                    ServerInfoDetailRow(label: "File Transfer Log", value: boolText(model.serverInfo.isFileTransferLoggingEnabled))
+                Section(header: Text(localized("serverInfo.serverLogOptions"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.clientLog"), value: boolText(model.serverInfo.isClientLoggingEnabled))
+                    ServerInfoDetailRow(label: localized("serverInfo.queryLog"), value: boolText(model.serverInfo.isQueryLoggingEnabled))
+                    ServerInfoDetailRow(label: localized("serverInfo.channelLog"), value: boolText(model.serverInfo.isChannelLoggingEnabled))
+                    ServerInfoDetailRow(label: localized("serverInfo.permissionLog"), value: boolText(model.serverInfo.isPermissionLoggingEnabled))
+                    ServerInfoDetailRow(label: localized("serverInfo.serverLog"), value: boolText(model.serverInfo.isServerLoggingEnabled))
+                    ServerInfoDetailRow(label: localized("serverInfo.fileTransferLog"), value: boolText(model.serverInfo.isFileTransferLoggingEnabled))
                 }
 
-                Section(header: Text("Traffic")) {
-                    ServerInfoDetailRow(label: "Month Downloaded", value: model.serverInfo.monthlyBytesDownloaded.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Month Uploaded", value: model.serverInfo.monthlyBytesUploaded.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Total Downloaded", value: model.serverInfo.totalBytesDownloaded.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Total Uploaded", value: model.serverInfo.totalBytesUploaded.map(Self.byteText))
+                Section(header: Text(localized("serverInfo.traffic"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.monthDownloaded"), value: model.serverInfo.monthlyBytesDownloaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.monthUploaded"), value: model.serverInfo.monthlyBytesUploaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.totalDownloaded"), value: model.serverInfo.totalBytesDownloaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.totalUploaded"), value: model.serverInfo.totalBytesUploaded.map(Self.byteText))
                 }
 
-                Section(header: Text("Connection Quality")) {
-                    ServerInfoDetailRow(label: "Ping", value: model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" })
-                    ServerInfoDetailRow(label: "Packet Loss", value: model.serverInfo.totalPacketLossTotal.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Speech Loss", value: model.serverInfo.totalPacketLossSpeech.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Keepalive Loss", value: model.serverInfo.totalPacketLossKeepalive.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Control Loss", value: model.serverInfo.totalPacketLossControl.map(Self.percentText))
+                Section(header: Text(localized("serverInfo.connectionQuality"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.ping"), value: model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" })
+                    ServerInfoDetailRow(label: localized("serverInfo.packetLoss"), value: model.serverInfo.totalPacketLossTotal.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.speechLoss"), value: model.serverInfo.totalPacketLossSpeech.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.keepaliveLoss"), value: model.serverInfo.totalPacketLossKeepalive.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.controlLoss"), value: model.serverInfo.totalPacketLossControl.map(Self.percentText))
                 }
 
-                Section(header: Text("Current Connection")) {
-                    ServerInfoDetailRow(label: "Ping", value: model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" })
-                    ServerInfoDetailRow(label: "Packet Loss", value: model.connectionInfo.packetLossTotal.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Speech Loss", value: model.connectionInfo.packetLossSpeech.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Keepalive Loss", value: model.connectionInfo.packetLossKeepalive.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Control Loss", value: model.connectionInfo.packetLossControl.map(Self.percentText))
-                    ServerInfoDetailRow(label: "Connected", value: model.connectionInfo.connectedSeconds.map(Self.durationText))
-                    ServerInfoDetailRow(label: "Idle", value: model.connectionInfo.idleSeconds.map(Self.durationText))
-                    ServerInfoDetailRow(label: "Session Downloaded", value: model.connectionInfo.bytesReceived.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Session Uploaded", value: model.connectionInfo.bytesSent.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Month Downloaded", value: model.connectionInfo.monthlyBytesReceived.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Month Uploaded", value: model.connectionInfo.monthlyBytesSent.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Total Downloaded", value: model.connectionInfo.totalBytesReceived.map(Self.byteText))
-                    ServerInfoDetailRow(label: "Total Uploaded", value: model.connectionInfo.totalBytesSent.map(Self.byteText))
+                Section(header: Text(localized("serverInfo.currentConnection"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.ping"), value: model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" })
+                    ServerInfoDetailRow(label: localized("serverInfo.packetLoss"), value: model.connectionInfo.packetLossTotal.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.speechLoss"), value: model.connectionInfo.packetLossSpeech.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.keepaliveLoss"), value: model.connectionInfo.packetLossKeepalive.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.controlLoss"), value: model.connectionInfo.packetLossControl.map(Self.percentText))
+                    ServerInfoDetailRow(label: localized("serverInfo.connected"), value: model.connectionInfo.connectedSeconds.map(Self.durationText))
+                    ServerInfoDetailRow(label: localized("serverInfo.idle"), value: model.connectionInfo.idleSeconds.map(Self.durationText))
+                    ServerInfoDetailRow(label: localized("serverInfo.sessionDownloaded"), value: model.connectionInfo.bytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.sessionUploaded"), value: model.connectionInfo.bytesSent.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.monthDownloaded"), value: model.connectionInfo.monthlyBytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.monthUploaded"), value: model.connectionInfo.monthlyBytesSent.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.totalDownloaded"), value: model.connectionInfo.totalBytesReceived.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.totalUploaded"), value: model.connectionInfo.totalBytesSent.map(Self.byteText))
                 }
 
-                Section(header: Text("Host Presentation")) {
-                    ServerInfoDetailRow(label: "Host Message", value: model.serverInfo.hostMessage)
-                    ServerInfoDetailRow(label: "Message Mode", value: model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title))
-                    ServerInfoDetailRow(label: "Banner URL", value: model.serverInfo.hostBannerURL)
-                    ServerInfoDetailRow(label: "Banner Graphic", value: model.serverInfo.hostBannerGraphicsURL)
-                    ServerInfoDetailRow(label: "Banner Mode", value: model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title))
-                    ServerInfoDetailRow(label: "Banner Refresh", value: model.serverInfo.hostBannerGraphicsInterval.map(Self.durationText))
-                    ServerInfoDetailRow(label: "Button Tooltip", value: model.serverInfo.hostButtonTooltip)
-                    ServerInfoDetailRow(label: "Button URL", value: model.serverInfo.hostButtonURL)
-                    ServerInfoDetailRow(label: "Button Graphic", value: model.serverInfo.hostButtonGraphicsURL)
+                Section(header: Text(localized("serverInfo.hostPresentation"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.hostMessage"), value: model.serverInfo.hostMessage)
+                    ServerInfoDetailRow(label: localized("serverInfo.messageMode"), value: model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title))
+                    ServerInfoDetailRow(label: localized("serverInfo.bannerURL"), value: model.serverInfo.hostBannerURL)
+                    ServerInfoDetailRow(label: localized("serverInfo.bannerGraphic"), value: model.serverInfo.hostBannerGraphicsURL)
+                    ServerInfoDetailRow(label: localized("serverInfo.bannerMode"), value: model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title))
+                    ServerInfoDetailRow(label: localized("serverInfo.bannerRefresh"), value: model.serverInfo.hostBannerGraphicsInterval.map(Self.durationText))
+                    ServerInfoDetailRow(label: localized("serverInfo.buttonTooltip"), value: model.serverInfo.hostButtonTooltip)
+                    ServerInfoDetailRow(label: localized("serverInfo.buttonURL"), value: model.serverInfo.hostButtonURL)
+                    ServerInfoDetailRow(label: localized("serverInfo.buttonGraphic"), value: model.serverInfo.hostButtonGraphicsURL)
                 }
             }
-            .navigationTitle("Server Information")
+            .navigationTitle(localized("serverInfo.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 model.refreshServerInfo()
@@ -12093,13 +12098,13 @@ struct ServerInformationSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("serverInfo.refresh")) {
                         model.refreshServerInfo()
                         model.refreshGroups()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -12119,87 +12124,87 @@ struct ServerInformationSheet: View {
 
     private var informationSnapshot: String {
         var rows: [(String, String?)] = []
-        rows.append(("Name", model.serverInfo.name))
-        rows.append(("Phonetic Name", model.serverInfo.phoneticName))
-        rows.append(("Status", model.serverInfo.status))
-        rows.append(("Unique ID", model.serverInfo.uniqueIdentifier))
-        rows.append(("Machine ID", model.serverInfo.machineId))
-        rows.append(("Port", model.serverInfo.port.map(String.init)))
-        rows.append(("Autostart", boolText(model.serverInfo.isAutoStartEnabled)))
-        rows.append(("Icon ID", model.serverInfo.iconId.map(String.init)))
-        rows.append(("Platform", model.serverInfo.platform))
-        rows.append(("Version", model.serverInfo.version))
-        rows.append(("Created", model.serverInfo.createdAt.map(Self.dateText)))
-        rows.append(("Uptime", model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText)))
-        rows.append(("Password", model.serverInfo.passwordProtected ? "Protected" : "Not Protected"))
-        rows.append(("Server List", model.serverInfo.isWeblistEnabled.map { $0 ? "Listed" : "Hidden" }))
-        rows.append(("Welcome Message", model.serverInfo.welcomeMessage))
-        rows.append(("Clients", clientsText))
-        rows.append(("Query Clients", model.serverInfo.clientsInQuery.map(String.init)))
-        rows.append(("Channels", model.serverInfo.channelsOnline.map(String.init)))
-        rows.append(("Client Connections", model.serverInfo.clientConnections.map(String.init)))
-        rows.append(("Query Connections", model.serverInfo.queryClientConnections.map(String.init)))
-        rows.append(("Default Server Group", groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups)))
-        rows.append(("Default Channel Group", groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups)))
-        rows.append(("Default Channel Admin", groupName(model.serverInfo.defaultChannelAdminGroupId, groups: model.channelGroups)))
-        rows.append(("Reserved Slots", model.serverInfo.reservedSlots.map(String.init)))
-        rows.append(("Download Quota", model.serverInfo.downloadQuota.map(Self.byteText)))
-        rows.append(("Upload Quota", model.serverInfo.uploadQuota.map(Self.byteText)))
-        rows.append(("Max Download Bandwidth", model.serverInfo.maxDownloadTotalBandwidth.map(Self.byteText)))
-        rows.append(("Max Upload Bandwidth", model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText)))
-        rows.append(("Needed Identity Security Level", model.serverInfo.neededIdentitySecurityLevel.map(String.init)))
-        rows.append(("Minimum Client Version", model.serverInfo.minClientVersion.map(String.init)))
-        rows.append(("Minimum Android Version", model.serverInfo.minAndroidVersion.map(String.init)))
-        rows.append(("Minimum iOS Version", model.serverInfo.minIOSVersion.map(String.init)))
-        rows.append(("File Transfer Port", model.serverInfo.fileTransferPort.map(String.init)))
-        rows.append(("File Base", model.serverInfo.fileBase))
-        rows.append(("Codec Encryption", model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title)))
-        rows.append(("Auto-Ban Count", model.serverInfo.complainAutoBanCount.map(String.init)))
-        rows.append(("Auto-Ban Time", model.serverInfo.complainAutoBanTime.map(Self.durationText)))
-        rows.append(("Complaint Remove Time", model.serverInfo.complainRemoveTime.map(Self.durationText)))
-        rows.append(("Forced Silence Clients", model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init)))
-        rows.append(("Priority Speaker Dimming", model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText)))
-        rows.append(("Anti-Flood Tick Reduce", model.serverInfo.antiFloodPointsTickReduce.map(String.init)))
-        rows.append(("Anti-Flood Command Block", model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init)))
-        rows.append(("Anti-Flood IP Block", model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init)))
-        rows.append(("Anti-Flood Plugin Block", model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init)))
-        rows.append(("Client Log", boolText(model.serverInfo.isClientLoggingEnabled)))
-        rows.append(("Query Log", boolText(model.serverInfo.isQueryLoggingEnabled)))
-        rows.append(("Channel Log", boolText(model.serverInfo.isChannelLoggingEnabled)))
-        rows.append(("Permission Log", boolText(model.serverInfo.isPermissionLoggingEnabled)))
-        rows.append(("Server Log", boolText(model.serverInfo.isServerLoggingEnabled)))
-        rows.append(("File Transfer Log", boolText(model.serverInfo.isFileTransferLoggingEnabled)))
-        rows.append(("Month Downloaded", model.serverInfo.monthlyBytesDownloaded.map(Self.byteText)))
-        rows.append(("Month Uploaded", model.serverInfo.monthlyBytesUploaded.map(Self.byteText)))
-        rows.append(("Total Downloaded", model.serverInfo.totalBytesDownloaded.map(Self.byteText)))
-        rows.append(("Total Uploaded", model.serverInfo.totalBytesUploaded.map(Self.byteText)))
-        rows.append(("Ping", model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" }))
-        rows.append(("Packet Loss", model.serverInfo.totalPacketLossTotal.map(Self.percentText)))
-        rows.append(("Speech Loss", model.serverInfo.totalPacketLossSpeech.map(Self.percentText)))
-        rows.append(("Keepalive Loss", model.serverInfo.totalPacketLossKeepalive.map(Self.percentText)))
-        rows.append(("Control Loss", model.serverInfo.totalPacketLossControl.map(Self.percentText)))
-        rows.append(("Current Ping", model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" }))
-        rows.append(("Current Packet Loss", model.connectionInfo.packetLossTotal.map(Self.percentText)))
-        rows.append(("Current Speech Loss", model.connectionInfo.packetLossSpeech.map(Self.percentText)))
-        rows.append(("Current Keepalive Loss", model.connectionInfo.packetLossKeepalive.map(Self.percentText)))
-        rows.append(("Current Control Loss", model.connectionInfo.packetLossControl.map(Self.percentText)))
-        rows.append(("Current Connected", model.connectionInfo.connectedSeconds.map(Self.durationText)))
-        rows.append(("Current Idle", model.connectionInfo.idleSeconds.map(Self.durationText)))
-        rows.append(("Current Session Downloaded", model.connectionInfo.bytesReceived.map(Self.byteText)))
-        rows.append(("Current Session Uploaded", model.connectionInfo.bytesSent.map(Self.byteText)))
-        rows.append(("Current Month Downloaded", model.connectionInfo.monthlyBytesReceived.map(Self.byteText)))
-        rows.append(("Current Month Uploaded", model.connectionInfo.monthlyBytesSent.map(Self.byteText)))
-        rows.append(("Current Total Downloaded", model.connectionInfo.totalBytesReceived.map(Self.byteText)))
-        rows.append(("Current Total Uploaded", model.connectionInfo.totalBytesSent.map(Self.byteText)))
-        rows.append(("Host Message", model.serverInfo.hostMessage))
-        rows.append(("Message Mode", model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title)))
-        rows.append(("Banner URL", model.serverInfo.hostBannerURL))
-        rows.append(("Banner Graphic", model.serverInfo.hostBannerGraphicsURL))
-        rows.append(("Banner Mode", model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title)))
-        rows.append(("Banner Refresh", model.serverInfo.hostBannerGraphicsInterval.map(Self.durationText)))
-        rows.append(("Button Tooltip", model.serverInfo.hostButtonTooltip))
-        rows.append(("Button URL", model.serverInfo.hostButtonURL))
-        rows.append(("Button Graphic", model.serverInfo.hostButtonGraphicsURL))
+        rows.append((localized("serverInfo.name"), model.serverInfo.name))
+        rows.append((localized("serverInfo.phoneticName"), model.serverInfo.phoneticName))
+        rows.append((localized("serverInfo.status"), model.serverInfo.status))
+        rows.append((localized("serverInfo.uniqueId"), model.serverInfo.uniqueIdentifier))
+        rows.append((localized("serverInfo.machineId"), model.serverInfo.machineId))
+        rows.append((localized("serverInfo.port"), model.serverInfo.port.map(String.init)))
+        rows.append((localized("serverInfo.autostart"), boolText(model.serverInfo.isAutoStartEnabled)))
+        rows.append((localized("serverInfo.iconId"), model.serverInfo.iconId.map(String.init)))
+        rows.append((localized("serverInfo.platform"), model.serverInfo.platform))
+        rows.append((localized("serverInfo.version"), model.serverInfo.version))
+        rows.append((localized("serverInfo.created"), model.serverInfo.createdAt.map(Self.dateText)))
+        rows.append((localized("serverInfo.uptime"), model.serverInfo.uptimeSeconds.map(ServerInfoRows.uptimeText)))
+        rows.append((localized("serverInfo.password"), model.serverInfo.passwordProtected ? localized("serverInfo.protected") : localized("serverInfo.notProtected")))
+        rows.append((localized("serverInfo.serverList"), model.serverInfo.isWeblistEnabled.map { $0 ? localized("serverInfo.listed") : localized("serverInfo.hidden") }))
+        rows.append((localized("serverInfo.welcomeMessage"), model.serverInfo.welcomeMessage))
+        rows.append((localized("serverInfo.clients"), clientsText))
+        rows.append((localized("serverInfo.queryClients"), model.serverInfo.clientsInQuery.map(String.init)))
+        rows.append((localized("serverInfo.channels"), model.serverInfo.channelsOnline.map(String.init)))
+        rows.append((localized("serverInfo.clientConnections"), model.serverInfo.clientConnections.map(String.init)))
+        rows.append((localized("serverInfo.queryConnections"), model.serverInfo.queryClientConnections.map(String.init)))
+        rows.append((localized("serverInfo.defaultServerGroup"), groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups)))
+        rows.append((localized("serverInfo.defaultChannelGroup"), groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups)))
+        rows.append((localized("serverInfo.defaultChannelAdmin"), groupName(model.serverInfo.defaultChannelAdminGroupId, groups: model.channelGroups)))
+        rows.append((localized("serverInfo.reservedSlots"), model.serverInfo.reservedSlots.map(String.init)))
+        rows.append((localized("serverInfo.downloadQuota"), model.serverInfo.downloadQuota.map(Self.byteText)))
+        rows.append((localized("serverInfo.uploadQuota"), model.serverInfo.uploadQuota.map(Self.byteText)))
+        rows.append((localized("serverInfo.maxDownloadBandwidth"), model.serverInfo.maxDownloadTotalBandwidth.map(Self.byteText)))
+        rows.append((localized("serverInfo.maxUploadBandwidth"), model.serverInfo.maxUploadTotalBandwidth.map(Self.byteText)))
+        rows.append((localized("serverInfo.neededIdentitySecurityLevel"), model.serverInfo.neededIdentitySecurityLevel.map(String.init)))
+        rows.append((localized("serverInfo.minimumClientVersion"), model.serverInfo.minClientVersion.map(String.init)))
+        rows.append((localized("serverInfo.minimumAndroidVersion"), model.serverInfo.minAndroidVersion.map(String.init)))
+        rows.append((localized("serverInfo.minimumIOSVersion"), model.serverInfo.minIOSVersion.map(String.init)))
+        rows.append((localized("serverInfo.fileTransferPort"), model.serverInfo.fileTransferPort.map(String.init)))
+        rows.append((localized("serverInfo.fileBase"), model.serverInfo.fileBase))
+        rows.append((localized("serverInfo.codecEncryption"), model.serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title)))
+        rows.append((localized("serverInfo.autoBanCount"), model.serverInfo.complainAutoBanCount.map(String.init)))
+        rows.append((localized("serverInfo.autoBanTime"), model.serverInfo.complainAutoBanTime.map(Self.durationText)))
+        rows.append((localized("serverInfo.complaintRemoveTime"), model.serverInfo.complainRemoveTime.map(Self.durationText)))
+        rows.append((localized("serverInfo.forcedSilenceClients"), model.serverInfo.minClientsInChannelBeforeForcedSilence.map(String.init)))
+        rows.append((localized("serverInfo.prioritySpeakerDimming"), model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText)))
+        rows.append((localized("serverInfo.antiFloodTickReduce"), model.serverInfo.antiFloodPointsTickReduce.map(String.init)))
+        rows.append((localized("serverInfo.antiFloodCommandBlock"), model.serverInfo.antiFloodPointsNeededCommandBlock.map(String.init)))
+        rows.append((localized("serverInfo.antiFloodIPBlock"), model.serverInfo.antiFloodPointsNeededIPBlock.map(String.init)))
+        rows.append((localized("serverInfo.antiFloodPluginBlock"), model.serverInfo.antiFloodPointsNeededPluginBlock.map(String.init)))
+        rows.append((localized("serverInfo.clientLog"), boolText(model.serverInfo.isClientLoggingEnabled)))
+        rows.append((localized("serverInfo.queryLog"), boolText(model.serverInfo.isQueryLoggingEnabled)))
+        rows.append((localized("serverInfo.channelLog"), boolText(model.serverInfo.isChannelLoggingEnabled)))
+        rows.append((localized("serverInfo.permissionLog"), boolText(model.serverInfo.isPermissionLoggingEnabled)))
+        rows.append((localized("serverInfo.serverLog"), boolText(model.serverInfo.isServerLoggingEnabled)))
+        rows.append((localized("serverInfo.fileTransferLog"), boolText(model.serverInfo.isFileTransferLoggingEnabled)))
+        rows.append((localized("serverInfo.monthDownloaded"), model.serverInfo.monthlyBytesDownloaded.map(Self.byteText)))
+        rows.append((localized("serverInfo.monthUploaded"), model.serverInfo.monthlyBytesUploaded.map(Self.byteText)))
+        rows.append((localized("serverInfo.totalDownloaded"), model.serverInfo.totalBytesDownloaded.map(Self.byteText)))
+        rows.append((localized("serverInfo.totalUploaded"), model.serverInfo.totalBytesUploaded.map(Self.byteText)))
+        rows.append((localized("serverInfo.ping"), model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" }))
+        rows.append((localized("serverInfo.packetLoss"), model.serverInfo.totalPacketLossTotal.map(Self.percentText)))
+        rows.append((localized("serverInfo.speechLoss"), model.serverInfo.totalPacketLossSpeech.map(Self.percentText)))
+        rows.append((localized("serverInfo.keepaliveLoss"), model.serverInfo.totalPacketLossKeepalive.map(Self.percentText)))
+        rows.append((localized("serverInfo.controlLoss"), model.serverInfo.totalPacketLossControl.map(Self.percentText)))
+        rows.append((localized("serverInfo.currentPing"), model.connectionInfo.ping.map { "\(Self.decimalText($0)) ms" }))
+        rows.append((localized("serverInfo.currentPacketLoss"), model.connectionInfo.packetLossTotal.map(Self.percentText)))
+        rows.append((localized("serverInfo.currentSpeechLoss"), model.connectionInfo.packetLossSpeech.map(Self.percentText)))
+        rows.append((localized("serverInfo.currentKeepaliveLoss"), model.connectionInfo.packetLossKeepalive.map(Self.percentText)))
+        rows.append((localized("serverInfo.currentControlLoss"), model.connectionInfo.packetLossControl.map(Self.percentText)))
+        rows.append((localized("serverInfo.currentConnected"), model.connectionInfo.connectedSeconds.map(Self.durationText)))
+        rows.append((localized("serverInfo.currentIdle"), model.connectionInfo.idleSeconds.map(Self.durationText)))
+        rows.append((localized("serverInfo.currentSessionDownloaded"), model.connectionInfo.bytesReceived.map(Self.byteText)))
+        rows.append((localized("serverInfo.currentSessionUploaded"), model.connectionInfo.bytesSent.map(Self.byteText)))
+        rows.append((localized("serverInfo.currentMonthDownloaded"), model.connectionInfo.monthlyBytesReceived.map(Self.byteText)))
+        rows.append((localized("serverInfo.currentMonthUploaded"), model.connectionInfo.monthlyBytesSent.map(Self.byteText)))
+        rows.append((localized("serverInfo.currentTotalDownloaded"), model.connectionInfo.totalBytesReceived.map(Self.byteText)))
+        rows.append((localized("serverInfo.currentTotalUploaded"), model.connectionInfo.totalBytesSent.map(Self.byteText)))
+        rows.append((localized("serverInfo.hostMessage"), model.serverInfo.hostMessage))
+        rows.append((localized("serverInfo.messageMode"), model.serverInfo.hostMessageMode.map(TS3HostMessageMode.title)))
+        rows.append((localized("serverInfo.bannerURL"), model.serverInfo.hostBannerURL))
+        rows.append((localized("serverInfo.bannerGraphic"), model.serverInfo.hostBannerGraphicsURL))
+        rows.append((localized("serverInfo.bannerMode"), model.serverInfo.hostBannerMode.map(TS3HostBannerMode.title)))
+        rows.append((localized("serverInfo.bannerRefresh"), model.serverInfo.hostBannerGraphicsInterval.map(Self.durationText)))
+        rows.append((localized("serverInfo.buttonTooltip"), model.serverInfo.hostButtonTooltip))
+        rows.append((localized("serverInfo.buttonURL"), model.serverInfo.hostButtonURL))
+        rows.append((localized("serverInfo.buttonGraphic"), model.serverInfo.hostButtonGraphicsURL))
         return rows.compactMap { label, value in
             guard let value, !value.isEmpty else { return nil }
             return "\(label): \(value)"
@@ -12219,7 +12224,7 @@ struct ServerInformationSheet: View {
     }
 
     private func boolText(_ value: Bool?) -> String? {
-        value.map { $0 ? "Enabled" : "Disabled" }
+        value.map { $0 ? localized("serverInfo.enabled") : localized("serverInfo.disabled") }
     }
 
     private static func dateText(_ date: Date) -> String {
