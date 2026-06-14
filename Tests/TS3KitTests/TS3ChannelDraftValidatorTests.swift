@@ -97,6 +97,40 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         XCTAssertEqual(TS3HostBannerMode.value(forDraft: "keep-aspect-ratio"), TS3HostBannerMode.keepAspect.rawValue)
     }
 
+    func testChannelCodecConfigurationSummaryClassifiesProfilesAndAttentionState() {
+        let highQualityVoice = TS3ChannelCodecConfigurationSummary(
+            codec: TS3ChannelCodec.opusVoice.rawValue,
+            codecQuality: 10,
+            codecLatencyFactor: 2,
+            isCodecUnencrypted: false
+        )
+        let lowLatencyVoice = TS3ChannelCodecConfigurationSummary(
+            codec: TS3ChannelCodec.opusVoice.rawValue,
+            codecQuality: 6,
+            codecLatencyFactor: 1,
+            isCodecUnencrypted: false
+        )
+        let riskyCompatibility = TS3ChannelCodecConfigurationSummary(
+            codec: TS3ChannelCodec.speexWideband.rawValue,
+            codecQuality: 11,
+            codecLatencyFactor: 0,
+            isCodecUnencrypted: true
+        )
+
+        XCTAssertEqual(highQualityVoice.profile, .highQuality)
+        XCTAssertFalse(highQualityVoice.needsAttention)
+        XCTAssertEqual(lowLatencyVoice.profile, .lowLatency)
+        XCTAssertEqual(riskyCompatibility.profile, .compatibility)
+        XCTAssertTrue(riskyCompatibility.hasInvalidQuality)
+        XCTAssertTrue(riskyCompatibility.hasInvalidLatencyFactor)
+        XCTAssertTrue(riskyCompatibility.usesLegacyCodec)
+        XCTAssertTrue(riskyCompatibility.disablesVoiceEncryption)
+        XCTAssertEqual(
+            riskyCompatibility.clipboardSummary,
+            "profile=compatibility | codec=1 | quality=11 | latencyFactor=0 | unencrypted=true | needsAttention=true"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",

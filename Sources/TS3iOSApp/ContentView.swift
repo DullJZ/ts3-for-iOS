@@ -4896,10 +4896,21 @@ struct ChannelInformationSheet: View {
                 }
 
                 Section(header: Text(localized("channelInfo.audio"))) {
+                    ServerInfoDetailRow(label: localized("channelInfo.codecProfile"), value: codecConfigurationProfileText)
                     ServerInfoDetailRow(label: localized("channelInfo.codec"), value: codecText)
                     ServerInfoDetailRow(label: localized("channelInfo.codecQuality"), value: codecQualityText)
                     ServerInfoDetailRow(label: localized("channelInfo.codecLatencyFactor"), value: channel.codecLatencyFactor.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.unencryptedVoice"), value: channel.isCodecUnencrypted.map(yesNo))
+                    if !codecConfigurationMessages.isEmpty {
+                        ForEach(codecConfigurationMessages, id: \.self) { message in
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Button(localized("channelInfo.copyCodecSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(codecConfiguration.clipboardSummary)
+                    }
                     ServerInfoDetailRow(label: localized("channelInfo.forcedSilence"), value: channel.isForcedSilence.map(yesNo))
                     ServerInfoDetailRow(label: localized("channelInfo.neededTalkPower"), value: channel.neededTalkPower.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.neededJoinPower"), value: channel.neededJoinPower.map(String.init))
@@ -5027,10 +5038,12 @@ struct ChannelInformationSheet: View {
             (localized("channelInfo.filePath"), channel.filePath),
             (localized("channelInfo.bannerGraphic"), channel.bannerGraphicsURL),
             (localized("channelInfo.bannerMode"), channel.bannerMode.map(bannerModeText)),
+            (localized("channelInfo.codecProfile"), codecConfigurationProfileText),
             (localized("channelInfo.codec"), codecText),
             (localized("channelInfo.codecQuality"), codecQualityText),
             (localized("channelInfo.codecLatencyFactor"), channel.codecLatencyFactor.map(String.init)),
             (localized("channelInfo.unencryptedVoice"), channel.isCodecUnencrypted.map(yesNo)),
+            (localized("channelInfo.codecDiagnostics"), codecConfigurationMessages.joined(separator: "; ")),
             (localized("channelInfo.forcedSilence"), channel.isForcedSilence.map(yesNo)),
             (localized("channelInfo.neededTalkPower"), channel.neededTalkPower.map(String.init)),
             (localized("channelInfo.neededJoinPower"), channel.neededJoinPower.map(String.init)),
@@ -5062,6 +5075,55 @@ struct ChannelInformationSheet: View {
             return localized("channelInfo.unknownValueFormat", value)
         }
         return localized("channelInfo.valueWithNumberFormat", title, value)
+    }
+
+    private var codecConfiguration: TS3ChannelCodecConfigurationSummary {
+        TS3ChannelCodecConfigurationSummary(
+            codec: channel.codec,
+            codecQuality: channel.codecQuality,
+            codecLatencyFactor: channel.codecLatencyFactor,
+            isCodecUnencrypted: channel.isCodecUnencrypted
+        )
+    }
+
+    private var codecConfigurationProfileText: String {
+        codecConfigurationProfileText(codecConfiguration.profile)
+    }
+
+    private func codecConfigurationProfileText(_ profile: TS3ChannelCodecConfigurationSummary.Profile) -> String {
+        switch profile {
+        case .unchanged:
+            return localized("channelInfo.codecProfile.unchanged")
+        case .voice:
+            return localized("channelInfo.codecProfile.voice")
+        case .music:
+            return localized("channelInfo.codecProfile.music")
+        case .compatibility:
+            return localized("channelInfo.codecProfile.compatibility")
+        case .highQuality:
+            return localized("channelInfo.codecProfile.highQuality")
+        case .lowLatency:
+            return localized("channelInfo.codecProfile.lowLatency")
+        case .custom:
+            return localized("channelInfo.codecProfile.custom")
+        }
+    }
+
+    private var codecConfigurationMessages: [String] {
+        var messages: [String] = []
+        if codecConfiguration.hasInvalidQuality {
+            messages.append(localized("channelInfo.codecQualityRangeWarning"))
+        }
+        if codecConfiguration.hasInvalidLatencyFactor {
+            messages.append(localized("channelInfo.codecLatencyRangeWarning"))
+        }
+        if codecConfiguration.usesLegacyCodec {
+            messages.append(localized("channelInfo.legacyCodecWarning"))
+        }
+        if codecConfiguration.disablesVoiceEncryption {
+            messages.append(localized("channelInfo.voiceEncryptionDisabledWarning"))
+        }
+        return messages
     }
 }
 
@@ -26699,6 +26761,7 @@ struct ChannelEditorSheet: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
+                    ServerInfoDetailRow(label: localized("channelEditor.codecProfile"), value: codecConfigurationProfileText)
                     Picker(localized("channelEditor.codec"), selection: $codec) {
                         Text(localized("channelEditor.unchanged")).tag(Int?.none)
                         ForEach(TS3ChannelCodec.allCases) { codec in
@@ -26731,6 +26794,9 @@ struct ChannelEditorSheet: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                    }
+                    Button(localized("channelEditor.copyCodecSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(codecConfiguration.clipboardSummary)
                     }
                     TextField(localized("channelEditor.neededTalkPower"), text: $neededTalkPower)
                         .ts3NumericKeyboard()
@@ -27022,7 +27088,8 @@ struct ChannelEditorSheet: View {
             (localized("channelEditor.codec"), codecTitle(for: draft.codec)),
             (localized("channelEditor.codecQuality"), codecQualityTitle(for: draft.codecQuality)),
             (localized("channelEditor.codecLatencyFactor"), draft.codecLatencyFactor ?? ""),
-            (localized("channelEditor.codecProfile"), codecProfileSummary),
+            (localized("channelEditor.codecProfile"), codecConfigurationProfileText),
+            (localized("channelEditor.codecSummary"), codecConfiguration.clipboardSummary),
             (localized("channelEditor.codecValidation"), codecValidationMessages.joined(separator: "; ")),
             (localized("channelEditor.codecDiagnostics"), codecDiagnosticMessages.joined(separator: "; ")),
             (localized("channelEditor.unencryptedVoice"), draft.isCodecUnencrypted == true ? localized("channelEditor.yes") : localized("channelEditor.no")),
@@ -27307,6 +27374,38 @@ struct ChannelEditorSheet: View {
             isCodecUnencrypted ? localized("channelEditor.unencrypted") : nil
         ].compactMap { $0 }
         return parts.joined(separator: " | ")
+    }
+
+    private var codecConfiguration: TS3ChannelCodecConfigurationSummary {
+        TS3ChannelCodecConfigurationSummary(
+            codec: codec,
+            codecQuality: parsedOptionalInt(codecQuality),
+            codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
+            isCodecUnencrypted: isCodecUnencrypted
+        )
+    }
+
+    private var codecConfigurationProfileText: String {
+        codecConfigurationProfileText(codecConfiguration.profile)
+    }
+
+    private func codecConfigurationProfileText(_ profile: TS3ChannelCodecConfigurationSummary.Profile) -> String {
+        switch profile {
+        case .unchanged:
+            return localized("channelEditor.codecProfile.unchanged")
+        case .voice:
+            return localized("channelEditor.codecProfile.voice")
+        case .music:
+            return localized("channelEditor.codecProfile.music")
+        case .compatibility:
+            return localized("channelEditor.codecProfile.compatibility")
+        case .highQuality:
+            return localized("channelEditor.codecProfile.highQuality")
+        case .lowLatency:
+            return localized("channelEditor.codecProfile.lowLatency")
+        case .custom:
+            return localized("channelEditor.codecProfile.custom")
+        }
     }
 
     private var codecValidationMessages: [String] {

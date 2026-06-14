@@ -188,6 +188,75 @@ struct TS3ChannelCodecQuality: Identifiable {
     }
 }
 
+struct TS3ChannelCodecConfigurationSummary {
+    enum Profile: String {
+        case unchanged
+        case voice
+        case music
+        case compatibility
+        case highQuality
+        case lowLatency
+        case custom
+    }
+
+    let codec: Int?
+    let codecQuality: Int?
+    let codecLatencyFactor: Int?
+    let isCodecUnencrypted: Bool?
+
+    var profile: Profile {
+        guard let codec else { return .unchanged }
+        if codec == TS3ChannelCodec.opusMusic.rawValue {
+            return .music
+        }
+        if TS3ChannelCodecConstraints.legacyCodecIds.contains(codec) {
+            return .compatibility
+        }
+        if codec == TS3ChannelCodec.opusVoice.rawValue {
+            if let codecQuality, codecQuality >= 9 {
+                return .highQuality
+            }
+            if let codecLatencyFactor, codecLatencyFactor <= 1 {
+                return .lowLatency
+            }
+            return .voice
+        }
+        return .custom
+    }
+
+    var hasInvalidQuality: Bool {
+        !TS3ChannelCodecConstraints.isValidQuality(codecQuality)
+    }
+
+    var hasInvalidLatencyFactor: Bool {
+        !TS3ChannelCodecConstraints.isValidLatencyFactor(codecLatencyFactor)
+    }
+
+    var usesLegacyCodec: Bool {
+        guard let codec else { return false }
+        return TS3ChannelCodecConstraints.legacyCodecIds.contains(codec)
+    }
+
+    var disablesVoiceEncryption: Bool {
+        isCodecUnencrypted == true
+    }
+
+    var needsAttention: Bool {
+        hasInvalidQuality || hasInvalidLatencyFactor || usesLegacyCodec || disablesVoiceEncryption
+    }
+
+    var clipboardSummary: String {
+        [
+            "profile=\(profile.rawValue)",
+            "codec=\(codec.map(String.init) ?? "unchanged")",
+            "quality=\(codecQuality.map(String.init) ?? "unchanged")",
+            "latencyFactor=\(codecLatencyFactor.map(String.init) ?? "unchanged")",
+            "unencrypted=\(isCodecUnencrypted.map { $0 ? "true" : "false" } ?? "unchanged")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3ChannelSummary: Identifiable {
     let id: Int
     let parentId: Int?
