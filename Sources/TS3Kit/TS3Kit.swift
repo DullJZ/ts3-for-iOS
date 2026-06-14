@@ -655,12 +655,18 @@ public struct TS3Channel: Identifiable {
     public let parentId: Int?
     public let order: Int?
     public let name: String
+    /// The stable channel unique identifier, when reported by the server.
+    public let uniqueIdentifier: String?
     /// The phonetic channel name used by clients with text-to-speech support.
     public let phoneticName: String?
     public let topic: String?
     public let description: String?
     /// The server-side file repository path for this channel.
     public let filePath: String?
+    /// The channel banner image URL.
+    public let bannerGraphicsURL: String?
+    /// How clients should scale the channel banner graphic.
+    public let bannerMode: Int?
     public let isDefault: Bool
     public let isPasswordProtected: Bool
     public let isPermanent: Bool
@@ -711,10 +717,13 @@ public struct TS3Channel: Identifiable {
         parentId: Int? = nil,
         order: Int? = nil,
         name: String,
+        uniqueIdentifier: String? = nil,
         phoneticName: String? = nil,
         topic: String?,
         description: String? = nil,
         filePath: String? = nil,
+        bannerGraphicsURL: String? = nil,
+        bannerMode: Int? = nil,
         isDefault: Bool = false,
         isPasswordProtected: Bool = false,
         isPermanent: Bool = false,
@@ -744,10 +753,13 @@ public struct TS3Channel: Identifiable {
         self.parentId = parentId
         self.order = order
         self.name = name
+        self.uniqueIdentifier = uniqueIdentifier
         self.phoneticName = phoneticName
         self.topic = topic
         self.description = description
         self.filePath = filePath
+        self.bannerGraphicsURL = bannerGraphicsURL
+        self.bannerMode = bannerMode
         self.isDefault = isDefault
         self.isPasswordProtected = isPasswordProtected
         self.isPermanent = isPermanent

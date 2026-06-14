@@ -193,10 +193,13 @@ struct TS3ChannelSummary: Identifiable {
     let parentId: Int?
     let order: Int?
     var name: String
+    var uniqueIdentifier: String?
     var phoneticName: String?
     var topic: String?
     var description: String?
     var filePath: String?
+    var bannerGraphicsURL: String?
+    var bannerMode: Int?
     var isDefault: Bool
     var isPasswordProtected: Bool
     var isPermanent: Bool
@@ -229,10 +232,13 @@ struct TS3ChannelSummary: Identifiable {
         parentId: Int? = nil,
         order: Int? = nil,
         name: String,
+        uniqueIdentifier: String? = nil,
         phoneticName: String? = nil,
         topic: String? = nil,
         description: String? = nil,
         filePath: String? = nil,
+        bannerGraphicsURL: String? = nil,
+        bannerMode: Int? = nil,
         isDefault: Bool,
         isPasswordProtected: Bool,
         isPermanent: Bool,
@@ -264,10 +270,13 @@ struct TS3ChannelSummary: Identifiable {
         self.parentId = parentId
         self.order = order
         self.name = name
+        self.uniqueIdentifier = uniqueIdentifier
         self.phoneticName = phoneticName
         self.topic = topic
         self.description = description
         self.filePath = filePath
+        self.bannerGraphicsURL = bannerGraphicsURL
+        self.bannerMode = bannerMode
         self.isDefault = isDefault
         self.isPasswordProtected = isPasswordProtected
         self.isPermanent = isPermanent
@@ -308,6 +317,7 @@ enum TS3ChannelDraftValidator {
         codec: String? = nil,
         codecQuality: String,
         codecLatencyFactor: String,
+        bannerMode: String = "",
         order: String,
         deleteDelaySeconds: String,
         iconId: String,
@@ -350,6 +360,9 @@ enum TS3ChannelDraftValidator {
             !TS3ChannelCodecConstraints.isValidLatencyFactor(parsedOptionalInt(codecLatencyFactor)) {
             messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
         }
+        if !isOptionalHostBannerMode(bannerMode) {
+            messages.append("Banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric.")
+        }
         if !isOptionalInt(order) {
             messages.append("Position must be numeric.")
         }
@@ -380,6 +393,11 @@ enum TS3ChannelDraftValidator {
 
     static func isRequiredInt(_ text: String) -> Bool {
         Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+    }
+
+    private static func isOptionalHostBannerMode(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || TS3HostBannerMode.value(forDraft: trimmed) != nil
     }
 }
 
@@ -8079,10 +8097,13 @@ final class TS3AppModel: ObservableObject {
                 parentId: nil,
                 order: nil,
                 name: name,
+                uniqueIdentifier: nil,
                 phoneticName: nil,
                 topic: topic,
                 description: nil,
                 filePath: nil,
+                bannerGraphicsURL: nil,
+                bannerMode: nil,
                 isDefault: false,
                 isPasswordProtected: false,
                 isPermanent: false,
@@ -12481,6 +12502,8 @@ final class TS3AppModel: ObservableObject {
         codecQuality: Int?,
         codecLatencyFactor: Int?,
         isCodecUnencrypted: Bool?,
+        bannerGraphicsURL: String?,
+        bannerMode: Int?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -12505,6 +12528,8 @@ final class TS3AppModel: ObservableObject {
                 codecQuality: codecQuality,
                 codecLatencyFactor: codecLatencyFactor,
                 isCodecUnencrypted: isCodecUnencrypted,
+                bannerGraphicsURL: bannerGraphicsURL?.isEmpty == true ? nil : bannerGraphicsURL,
+                bannerMode: bannerMode,
                 neededTalkPower: neededTalkPower,
                 neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
@@ -12539,6 +12564,8 @@ final class TS3AppModel: ObservableObject {
         codecQuality: Int?,
         codecLatencyFactor: Int?,
         isCodecUnencrypted: Bool?,
+        bannerGraphicsURL: String,
+        bannerMode: Int?,
         deleteDelaySeconds: Int?,
         maxClients: Int?,
         maxFamilyClients: Int?,
@@ -12566,6 +12593,8 @@ final class TS3AppModel: ObservableObject {
                 codecQuality: codecQuality,
                 codecLatencyFactor: codecLatencyFactor,
                 isCodecUnencrypted: isCodecUnencrypted,
+                bannerGraphicsURL: bannerGraphicsURL.isEmpty ? nil : bannerGraphicsURL,
+                bannerMode: bannerMode,
                 order: order,
                 deleteDelaySeconds: deleteDelaySeconds,
                 maxClients: maxClientsUnlimited ? nil : maxClients,
@@ -19907,10 +19936,13 @@ extension TS3AppModel: TS3ClientDelegate {
                     parentId: channel.parentId,
                     order: channel.order,
                     name: channel.name,
+                    uniqueIdentifier: channel.uniqueIdentifier,
                     phoneticName: channel.phoneticName,
                     topic: channel.topic,
                     description: channel.description,
                     filePath: channel.filePath,
+                    bannerGraphicsURL: channel.bannerGraphicsURL,
+                    bannerMode: channel.bannerMode,
                     isDefault: channel.isDefault,
                     isPasswordProtected: channel.isPasswordProtected,
                     isPermanent: channel.isPermanent,

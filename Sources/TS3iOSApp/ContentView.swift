@@ -4873,6 +4873,7 @@ struct ChannelInformationSheet: View {
 
                 Section(header: Text(channel.name)) {
                     ServerInfoDetailRow(label: localized("channelInfo.channelId"), value: String(channel.id))
+                    ServerInfoDetailRow(label: localized("channelInfo.uniqueId"), value: channel.uniqueIdentifier, monospaced: true)
                     ServerInfoDetailRow(label: localized("channelInfo.parent"), value: parentName)
                     ServerInfoDetailRow(label: localized("channelInfo.orderAfter"), value: orderName)
                     ServerInfoDetailRow(label: localized("channelInfo.type"), value: channelTypeText)
@@ -4890,6 +4891,8 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: localized("channelInfo.topic"), value: channel.topic)
                     ServerInfoDetailRow(label: localized("channelInfo.description"), value: channel.description)
                     ServerInfoDetailRow(label: localized("channelInfo.filePath"), value: channel.filePath)
+                    ServerInfoDetailRow(label: localized("channelInfo.bannerGraphic"), value: channel.bannerGraphicsURL)
+                    ServerInfoDetailRow(label: localized("channelInfo.bannerMode"), value: channel.bannerMode.map(bannerModeText))
                 }
 
                 Section(header: Text(localized("channelInfo.audio"))) {
@@ -5005,6 +5008,7 @@ struct ChannelInformationSheet: View {
     private var informationSnapshot: String {
         let rows: [(String, String?)] = [
             (localized("channelInfo.channelId"), String(channel.id)),
+            (localized("channelInfo.uniqueId"), channel.uniqueIdentifier),
             (localized("channelInfo.name"), channel.name),
             (localized("channelInfo.path"), model.channelPath(for: channel)),
             (localized("channelInfo.parent"), parentName),
@@ -5021,6 +5025,8 @@ struct ChannelInformationSheet: View {
             (localized("channelInfo.topic"), channel.topic),
             (localized("channelInfo.description"), channel.description),
             (localized("channelInfo.filePath"), channel.filePath),
+            (localized("channelInfo.bannerGraphic"), channel.bannerGraphicsURL),
+            (localized("channelInfo.bannerMode"), channel.bannerMode.map(bannerModeText)),
             (localized("channelInfo.codec"), codecText),
             (localized("channelInfo.codecQuality"), codecQualityText),
             (localized("channelInfo.codecLatencyFactor"), channel.codecLatencyFactor.map(String.init)),
@@ -5041,6 +5047,21 @@ struct ChannelInformationSheet: View {
                 return "\(label): \(value)"
             }
             .joined(separator: "\n")
+    }
+
+    private func bannerModeText(_ value: Int) -> String {
+        let title: String
+        switch TS3HostBannerMode(rawValue: value) {
+        case .some(.noAdjust):
+            title = localized("channelInfo.bannerMode.noAdjustment")
+        case .some(.ignoreAspect):
+            title = localized("channelInfo.bannerMode.ignoreAspect")
+        case .some(.keepAspect):
+            title = localized("channelInfo.bannerMode.keepAspect")
+        case nil:
+            return localized("channelInfo.unknownValueFormat", value)
+        }
+        return localized("channelInfo.valueWithNumberFormat", title, value)
     }
 }
 
@@ -26580,6 +26601,8 @@ struct ChannelEditorSheet: View {
         var maxFamilyClientsUnlimited: Bool
         var maxFamilyClientsInherited: Bool
         var iconId: String
+        var bannerGraphicsURL: String?
+        var bannerMode: String?
     }
 
     @Environment(\.presentationMode) private var presentationMode
@@ -26609,6 +26632,8 @@ struct ChannelEditorSheet: View {
     @State private var maxFamilyClientsUnlimited = true
     @State private var maxFamilyClientsInherited = false
     @State private var iconId = ""
+    @State private var bannerGraphicsURL = ""
+    @State private var bannerMode: Int?
     @State private var isShowingIconImporter = false
     @State private var isImportingDraft = false
     @State private var isExportingDraft = false
@@ -26674,6 +26699,18 @@ struct ChannelEditorSheet: View {
                     }
                     TextField(localized("channelEditor.iconId"), text: $iconId)
                         .ts3NumericKeyboard()
+                    TextField(localized("channelEditor.bannerGraphicURL"), text: $bannerGraphicsURL)
+                        .ts3URLTextField()
+                    Picker(localized("channelEditor.bannerMode"), selection: $bannerMode) {
+                        Text(localized("channelEditor.unchanged")).tag(Int?.none)
+                        ForEach(TS3HostBannerMode.allCases) { mode in
+                            Text(bannerModeTitle(mode.rawValue)).tag(Optional(mode.rawValue))
+                        }
+                        if let bannerMode,
+                           TS3HostBannerMode(rawValue: bannerMode) == nil {
+                            Text(bannerModeTitle(bannerMode)).tag(Optional(bannerMode))
+                        }
+                    }
                     Button {
                         isShowingIconImporter = true
                     } label: {
@@ -26777,6 +26814,8 @@ struct ChannelEditorSheet: View {
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
                                 isCodecUnencrypted: isCodecUnencrypted,
+                                bannerGraphicsURL: bannerGraphicsURL,
+                                bannerMode: bannerMode,
                                 deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
@@ -26804,6 +26843,8 @@ struct ChannelEditorSheet: View {
                                 codecQuality: parsedOptionalInt(codecQuality),
                                 codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
                                 isCodecUnencrypted: isCodecUnencrypted,
+                                bannerGraphicsURL: bannerGraphicsURL,
+                                bannerMode: bannerMode,
                                 deleteDelaySeconds: parsedOptionalInt(deleteDelaySeconds),
                                 maxClients: parsedOptionalInt(maxClients),
                                 maxFamilyClients: parsedOptionalInt(maxFamilyClients),
@@ -26845,6 +26886,8 @@ struct ChannelEditorSheet: View {
                     maxFamilyClientsUnlimited = channel.maxFamilyClientsUnlimited ?? true
                     maxFamilyClientsInherited = channel.maxFamilyClientsInherited ?? false
                     iconId = channel.iconId.map(String.init) ?? ""
+                    bannerGraphicsURL = channel.bannerGraphicsURL ?? ""
+                    bannerMode = channel.bannerMode
                 }
             }
             .toolbar {
@@ -26989,7 +27032,9 @@ struct ChannelEditorSheet: View {
             maxClientsUnlimited: maxClientsUnlimited,
             maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
             maxFamilyClientsInherited: maxFamilyClientsInherited,
-            iconId: iconId
+            iconId: iconId,
+            bannerGraphicsURL: bannerGraphicsURL,
+            bannerMode: bannerMode.map(String.init) ?? ""
         )
     }
 
@@ -27019,7 +27064,9 @@ struct ChannelEditorSheet: View {
             (localized("channelEditor.deleteDelaySeconds"), draft.deleteDelaySeconds),
             (localized("channelEditor.maxClients"), draft.maxClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxClients),
             (localized("channelEditor.maxFamilyClients"), draft.maxFamilyClientsInherited ? localized("channelEditor.inherited") : (draft.maxFamilyClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxFamilyClients)),
-            (localized("channelEditor.iconId"), draft.iconId)
+            (localized("channelEditor.iconId"), draft.iconId),
+            (localized("channelEditor.bannerGraphicURL"), draft.bannerGraphicsURL ?? ""),
+            (localized("channelEditor.bannerMode"), bannerModeTitle(draft.bannerMode ?? ""))
         ]
         rows.append((localized("channelEditor.draftValid"), canSubmit ? localized("channelEditor.yes") : localized("channelEditor.no")))
         return rows.compactMap { label, value in
@@ -27119,6 +27166,8 @@ struct ChannelEditorSheet: View {
         let position = positionTitle(for: draft.order ?? "")
         let maxClients = draft.maxClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxClients
         let maxFamilyClients = draft.maxFamilyClientsInherited ? localized("channelEditor.inherited") : (draft.maxFamilyClientsUnlimited ? localized("channelEditor.unlimited") : draft.maxFamilyClients)
+        let bannerURL = draft.bannerGraphicsURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let bannerMode = bannerModeTitle(draft.bannerMode ?? "")
         var lines = [
             "\(localized("channelEditor.name")): \(name.isEmpty ? localized("channelEditor.missing") : name)",
             "\(localized("channelEditor.type")): \(type)",
@@ -27134,6 +27183,12 @@ struct ChannelEditorSheet: View {
         }
         if !latency.isEmpty {
             lines.append("\(localized("channelEditor.codecLatencyFactor")): \(latency)")
+        }
+        if !bannerURL.isEmpty {
+            lines.append("\(localized("channelEditor.bannerGraphicURL")): \(bannerURL)")
+        }
+        if !bannerMode.isEmpty {
+            lines.append("\(localized("channelEditor.bannerMode")): \(bannerMode)")
         }
         if draft.isCodecUnencrypted == true {
             lines.append("\(localized("channelEditor.voiceEncryption")): \(localized("channelEditor.disabled"))")
@@ -27163,6 +27218,7 @@ struct ChannelEditorSheet: View {
             codec: draft.codec,
             codecQuality: draft.codecQuality,
             codecLatencyFactor: draft.codecLatencyFactor ?? "",
+            bannerMode: draft.bannerMode ?? "",
             order: draft.order ?? "",
             deleteDelaySeconds: draft.deleteDelaySeconds,
             iconId: draft.iconId,
@@ -27199,6 +27255,10 @@ struct ChannelEditorSheet: View {
         maxFamilyClientsUnlimited = draft.maxFamilyClientsUnlimited
         maxFamilyClientsInherited = draft.maxFamilyClientsInherited
         iconId = draft.iconId
+        bannerGraphicsURL = draft.bannerGraphicsURL ?? ""
+        bannerMode = (draft.bannerMode ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil
+            : TS3HostBannerMode.value(forDraft: draft.bannerMode ?? "")
     }
 
     private func channelTypeTitle(_ rawValue: String) -> String {
@@ -27250,6 +27310,27 @@ struct ChannelEditorSheet: View {
         return TS3ChannelCodecConstraints.qualityRange.contains(numericValue)
             ? localized("channelEditor.qualityFormat", numericValue)
             : localized("channelEditor.unknownValueFormat", numericValue)
+    }
+
+    private func bannerModeTitle(_ rawValue: String) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let numericValue = TS3HostBannerMode.value(forDraft: trimmed) else { return trimmed }
+        return bannerModeTitle(numericValue)
+    }
+
+    private func bannerModeTitle(_ rawValue: Int) -> String {
+        let title: String
+        switch TS3HostBannerMode(rawValue: rawValue) {
+        case .some(.noAdjust):
+            title = localized("channelEditor.bannerMode.noAdjustment")
+        case .some(.ignoreAspect):
+            title = localized("channelEditor.bannerMode.ignoreAspect")
+        case .some(.keepAspect):
+            title = localized("channelEditor.bannerMode.keepAspect")
+        case nil:
+            return localized("channelEditor.unknownValueFormat", rawValue)
+        }
+        return localized("channelEditor.valueWithNumberFormat", title, rawValue)
     }
 
     private var codecProfileSummary: String {

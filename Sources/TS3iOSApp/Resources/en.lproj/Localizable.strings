@@ -514,6 +514,11 @@
 "channelEditor.afterFormat" = "After %@";
 "channelEditor.defaultChannel" = "Default Channel";
 "channelEditor.iconId" = "Icon ID";
+"channelEditor.bannerGraphicURL" = "Banner Image URL";
+"channelEditor.bannerMode" = "Banner Mode";
+"channelEditor.bannerMode.noAdjustment" = "No Adjustment";
+"channelEditor.bannerMode.ignoreAspect" = "Ignore Aspect Ratio";
+"channelEditor.bannerMode.keepAspect" = "Keep Aspect Ratio";
 "channelEditor.uploadIcon" = "Upload Icon";
 "channelEditor.voice" = "Voice";
 "channelEditor.codecPresets" = "Codec Presets";
@@ -597,6 +602,7 @@
 "channelInfo.copy" = "Copy Channel Information";
 "channelInfo.export" = "Export Channel Information";
 "channelInfo.channelId" = "Channel ID";
+"channelInfo.uniqueId" = "Unique ID";
 "channelInfo.name" = "Name";
 "channelInfo.path" = "Path";
 "channelInfo.parent" = "Parent";
@@ -616,6 +622,11 @@
 "channelInfo.topic" = "Topic";
 "channelInfo.description" = "Description";
 "channelInfo.filePath" = "File Path";
+"channelInfo.bannerGraphic" = "Banner Image";
+"channelInfo.bannerMode" = "Banner Mode";
+"channelInfo.bannerMode.noAdjustment" = "No Adjustment";
+"channelInfo.bannerMode.ignoreAspect" = "Ignore Aspect Ratio";
+"channelInfo.bannerMode.keepAspect" = "Keep Aspect Ratio";
 "channelInfo.audio" = "Audio";
 "channelInfo.codec" = "Codec";
 "channelInfo.codecQuality" = "Codec Quality";

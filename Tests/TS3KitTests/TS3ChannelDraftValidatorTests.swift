@@ -79,6 +79,7 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
             codec: "opus-music",
             codecQuality: "10",
             codecLatencyFactor: "2",
+            bannerMode: "keep-aspect-ratio",
             order: "",
             deleteDelaySeconds: "",
             iconId: "",
@@ -93,6 +94,7 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         XCTAssertEqual(TS3ChannelType.value(forDraft: "semi-permanent"), .semiPermanent)
         XCTAssertEqual(TS3ChannelCodec.value(forDraft: "opus-music"), TS3ChannelCodec.opusMusic.rawValue)
         XCTAssertEqual(TS3ChannelCodec.value(forDraft: "speex_uwb"), TS3ChannelCodec.speexUltraWideband.rawValue)
+        XCTAssertEqual(TS3HostBannerMode.value(forDraft: "keep-aspect-ratio"), TS3HostBannerMode.keepAspect.rawValue)
     }
 
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
@@ -106,6 +108,7 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
             codec: "lossless",
             codecQuality: "",
             codecLatencyFactor: "",
+            bannerMode: "stretchy",
             order: "",
             deleteDelaySeconds: "",
             iconId: "",
@@ -120,7 +123,8 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
             messages,
             [
                 "Channel type must be temporary, semi-permanent, or permanent.",
-                "Codec must be Speex Narrowband, Speex Wideband, Speex Ultra-Wideband, CELT Mono, Opus Voice, Opus Music, or numeric."
+                "Codec must be Speex Narrowband, Speex Wideband, Speex Ultra-Wideband, CELT Mono, Opus Voice, Opus Music, or numeric.",
+                "Banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric."
             ]
         )
     }
@@ -136,6 +140,7 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
             codec: "lossless",
             codecQuality: "12",
             codecLatencyFactor: "0",
+            bannerMode: "stretchy",
             order: "after-lobby",
             deleteDelaySeconds: "soon",
             iconId: "icon",
@@ -158,6 +163,7 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
                 "Codec must be Speex Narrowband, Speex Wideband, Speex Ultra-Wideband, CELT Mono, Opus Voice, Opus Music, or numeric.",
                 "Codec quality must be between 0 and 10.",
                 "Codec latency factor must be between 1 and 10.",
+                "Banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric.",
                 "Position must be numeric.",
                 "Delete delay must be numeric.",
                 "Icon ID must be numeric.",

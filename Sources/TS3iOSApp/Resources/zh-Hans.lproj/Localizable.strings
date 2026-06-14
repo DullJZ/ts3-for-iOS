@@ -514,6 +514,11 @@
 "channelEditor.afterFormat" = "位于 %@ 之后";
 "channelEditor.defaultChannel" = "默认频道";
 "channelEditor.iconId" = "图标 ID";
+"channelEditor.bannerGraphicURL" = "横幅图片 URL";
+"channelEditor.bannerMode" = "横幅模式";
+"channelEditor.bannerMode.noAdjustment" = "不调整";
+"channelEditor.bannerMode.ignoreAspect" = "忽略宽高比";
+"channelEditor.bannerMode.keepAspect" = "保持宽高比";
 "channelEditor.uploadIcon" = "上传图标";
 "channelEditor.voice" = "语音";
 "channelEditor.codecPresets" = "编解码预设";
@@ -597,6 +602,7 @@
 "channelInfo.copy" = "复制频道信息";
 "channelInfo.export" = "导出频道信息";
 "channelInfo.channelId" = "频道 ID";
+"channelInfo.uniqueId" = "唯一 ID";
 "channelInfo.name" = "名称";
 "channelInfo.path" = "路径";
 "channelInfo.parent" = "父级";
@@ -616,6 +622,11 @@
 "channelInfo.topic" = "主题";
 "channelInfo.description" = "描述";
 "channelInfo.filePath" = "文件路径";
+"channelInfo.bannerGraphic" = "横幅图片";
+"channelInfo.bannerMode" = "横幅模式";
+"channelInfo.bannerMode.noAdjustment" = "不调整";
+"channelInfo.bannerMode.ignoreAspect" = "忽略宽高比";
+"channelInfo.bannerMode.keepAspect" = "保持宽高比";
 "channelInfo.audio" = "音频";
 "channelInfo.codec" = "编解码器";
 "channelInfo.codecQuality" = "编解码质量";
