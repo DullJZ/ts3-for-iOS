@@ -7141,12 +7141,12 @@ enum TS3BanDuration: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .tenMinutes: return "10 Minutes"
-        case .oneHour: return "1 Hour"
-        case .oneDay: return "1 Day"
-        case .oneWeek: return "1 Week"
-        case .permanent: return "Permanent"
-        case .custom: return "Custom"
+        case .tenMinutes: return NSLocalizedString("ban.duration.tenMinutes", comment: "")
+        case .oneHour: return NSLocalizedString("ban.duration.oneHour", comment: "")
+        case .oneDay: return NSLocalizedString("ban.duration.oneDay", comment: "")
+        case .oneWeek: return NSLocalizedString("ban.duration.oneWeek", comment: "")
+        case .permanent: return NSLocalizedString("ban.duration.permanent", comment: "")
+        case .custom: return NSLocalizedString("ban.duration.custom", comment: "")
         }
     }
 
@@ -22397,12 +22397,12 @@ struct BanListSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "All Bans"
-            case .ip: return "IP"
-            case .name: return "Name"
-            case .uniqueIdentifier: return "Unique ID"
-            case .permanent: return "Permanent"
-            case .temporary: return "Temporary"
+            case .all: return NSLocalizedString("ban.filter.all", comment: "")
+            case .ip: return NSLocalizedString("ban.filter.ip", comment: "")
+            case .name: return NSLocalizedString("ban.filter.name", comment: "")
+            case .uniqueIdentifier: return NSLocalizedString("contacts.editor.uniqueId", comment: "")
+            case .permanent: return NSLocalizedString("ban.duration.permanent", comment: "")
+            case .temporary: return NSLocalizedString("ban.filter.temporary", comment: "")
             }
         }
 
@@ -22458,33 +22458,33 @@ struct BanListSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Add Ban")) {
-                    TextField("IP Address", text: $ip)
+                Section(header: Text(localized("ban.addBan"))) {
+                    TextField(localized("ban.ipAddress"), text: $ip)
                         .ts3PlainTextField()
-                    TextField("Name", text: $name)
+                    TextField(localized("groups.sort.name"), text: $name)
                         .ts3PlainTextField()
-                    TextField("Unique ID", text: $uniqueIdentifier)
+                    TextField(localized("contacts.editor.uniqueId"), text: $uniqueIdentifier)
                         .ts3PlainTextField()
-                    TextField("myTeamSpeak ID", text: $myTeamSpeakId)
+                    TextField(localized("ban.myTeamSpeakId"), text: $myTeamSpeakId)
                         .ts3PlainTextField()
-                    TextField("Last Nickname", text: $lastNickname)
+                    TextField(localized("ban.lastNickname"), text: $lastNickname)
                         .ts3PlainTextField()
-                    TextField("Reason", text: $reason)
+                    TextField(localized("ban.reason"), text: $reason)
                         .ts3PlainTextField()
-                    Picker("Duration", selection: $duration) {
+                    Picker(localized("ban.duration"), selection: $duration) {
                         ForEach(TS3BanDuration.allCases) { duration in
                             Text(duration.title).tag(duration)
                         }
                     }
                     if duration == .custom {
-                        TextField("Minutes", text: $customBanMinutes)
+                        TextField(localized("ban.minutes"), text: $customBanMinutes)
                             .ts3PlainTextField()
                             .ts3NumericKeyboard()
                     }
                     Text(banDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Ban Rule Summary") {
+                    Button(localized("ban.copyRuleSummary")) {
                         TS3PlatformSupport.copyToPasteboard(banDraftSummary)
                     }
                     ForEach(banDraftValidationMessages, id: \.self) { message in
@@ -22492,7 +22492,7 @@ struct BanListSheet: View {
                             .font(.caption)
                             .foregroundColor(.red)
                     }
-                    Button("Add Ban Rule") {
+                    Button(localized("ban.addRule")) {
                         model.addBan(
                             ip: ip,
                             name: name,
@@ -22508,17 +22508,17 @@ struct BanListSheet: View {
                     .disabled(model.state != .connected || isAddDisabled)
                 }
 
-                Section(header: Text("Filters")) {
-                    Picker("Type", selection: $banFilter) {
+                Section(header: Text(localized("events.filters"))) {
+                    Picker(localized("groups.type"), selection: $banFilter) {
                         ForEach(BanFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
                         }
                     }
-                    TextField("Search bans", text: $searchText)
+                    TextField(localized("ban.searchBans"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.saveBanFilterPreset(
                                 name: presetName,
                                 banFilter: banFilter.rawValue,
@@ -22528,17 +22528,17 @@ struct BanListSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.banFilterPresets.isEmpty {
-                            Text("No saved ban filter presets")
+                            Text(localized("ban.noSavedFilterPresets"))
                         } else {
                             ForEach(model.banFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteBanFilterPreset(preset)
                                     }
                                 } label: {
@@ -22550,22 +22550,22 @@ struct BanListSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.banFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.banFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("groups.clearFilters")) {
                             banFilter = .all
                             searchText = ""
                         }
@@ -22573,28 +22573,28 @@ struct BanListSheet: View {
                 }
 
                 if model.banEntries.isEmpty {
-                    Text("No bans")
+                    Text(localized("ban.noBans"))
                         .foregroundColor(.secondary)
                 } else {
-                    Section(header: Text("Visible Bans")) {
-                        Button("Copy Visible Bans") {
+                    Section(header: Text(localized("ban.visibleBans"))) {
+                        Button(localized("ban.copyVisibleBans")) {
                             TS3PlatformSupport.copyToPasteboard(visibleBanSnapshot)
                         }
                         .disabled(filteredBanEntries.isEmpty)
-                        Button("Export Visible Bans") {
+                        Button(localized("ban.exportVisibleBans")) {
                             banExportDocument = TS3TextFileDocument(data: Data(visibleBanSnapshot.utf8))
                             isExportingBans = true
                         }
                         .disabled(filteredBanEntries.isEmpty)
-                        Button("Export Ban Backup") {
+                        Button(localized("ban.exportBackup")) {
                             exportBanBackup()
                         }
                         .disabled(model.banEntries.isEmpty)
-                        Button("Import Ban Backup") {
+                        Button(localized("ban.importBackup")) {
                             isImportingBans = true
                         }
                         .disabled(model.state != .connected)
-                        Button("Delete Visible Bans") {
+                        Button(localized("ban.deleteVisibleBans")) {
                             isConfirmingDeleteVisible = true
                         }
                         .foregroundColor(.red)
@@ -22602,7 +22602,7 @@ struct BanListSheet: View {
                     }
 
                     if filteredBanEntries.isEmpty {
-                        Text("No matching bans")
+                        Text(localized("ban.noMatchingBans"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(filteredBanEntries) { entry in
@@ -22613,7 +22613,7 @@ struct BanListSheet: View {
                         }
                     }
                     Section {
-                        Button("Delete All Bans") {
+                        Button(localized("ban.deleteAllBans")) {
                             isConfirmingDeleteAll = true
                         }
                         .foregroundColor(.red)
@@ -22673,7 +22673,7 @@ struct BanListSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .navigationTitle("Ban List")
+            .navigationTitle(localized("ban.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if model.state == .connected {
@@ -22682,22 +22682,22 @@ struct BanListSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.refreshBanList()
                     }
                     .disabled(model.state != .connected)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
-                    title: Text("Delete All Bans?"),
-                    message: Text("This removes every ban entry on the server."),
-                    primaryButton: .destructive(Text("Delete All")) {
+                    title: Text(localized("ban.deleteAllAlert.title")),
+                    message: Text(localized("ban.deleteAllAlert.message")),
+                    primaryButton: .destructive(Text(localized("ban.deleteAllBans"))) {
                         model.deleteAllBans()
                     },
                     secondaryButton: .cancel()
@@ -22705,9 +22705,9 @@ struct BanListSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
-                    title: Text("Delete Visible Bans?"),
-                    message: Text("This removes \(filteredBanEntries.count) ban entries from the server."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("ban.deleteVisibleAlert.title")),
+                    message: Text(localized("ban.deleteVisibleAlert.messageFormat", filteredBanEntries.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteBans(filteredBanEntries)
                     },
                     secondaryButton: .cancel()
@@ -22740,9 +22740,9 @@ struct BanListSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Ban Filter Presets?"),
-                    message: Text("This removes \(model.banFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("ban.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.banFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllBanFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -22846,7 +22846,7 @@ struct BanListSheet: View {
             (BanFilter(rawValue: preset.banFilter) ?? .all).title
         ]
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("events.searchPresetSummaryFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -22919,41 +22919,47 @@ struct BanListSheet: View {
 
     private func banBackupPreviewMessage(_ preview: TS3BanBackupPreview) -> String {
         var lines = [
-            "Rules: \(preview.ruleCount)",
-            "IP rules: \(preview.ipRuleCount)",
-            "Name rules: \(preview.nameRuleCount)",
-            "Unique ID rules: \(preview.uniqueIdentifierRuleCount)",
-            "Last nickname rules: \(preview.lastNicknameRuleCount)"
+            localized("ban.backupPreview.rulesFormat", preview.ruleCount),
+            localized("ban.backupPreview.ipRulesFormat", preview.ipRuleCount),
+            localized("ban.backupPreview.nameRulesFormat", preview.nameRuleCount),
+            localized("ban.backupPreview.uniqueIdRulesFormat", preview.uniqueIdentifierRuleCount),
+            localized("ban.backupPreview.lastNicknameRulesFormat", preview.lastNicknameRuleCount)
         ]
         if preview.skippedRuleCount > 0 {
-            lines.append("Skipped empty or duplicate rules: \(preview.skippedRuleCount)")
+            lines.append(localized("ban.backupPreview.skippedFormat", preview.skippedRuleCount))
         }
         if !preview.targetTypeSummaries.isEmpty {
-            lines.append("Targets: \(preview.targetTypeSummaries.joined(separator: " | "))")
+            lines.append(localized("ban.backupPreview.targetsFormat", preview.targetTypeSummaries.joined(separator: " | ")))
         }
         if !preview.durationSummaries.isEmpty {
-            lines.append("Durations: \(preview.durationSummaries.joined(separator: " | "))")
+            lines.append(localized("ban.backupPreview.durationsFormat", preview.durationSummaries.joined(separator: " | ")))
         }
         if let ip = preview.firstIP {
-            lines.append("First IP: \(ip)")
+            lines.append(localized("ban.backupPreview.firstIPFormat", ip))
         }
         if let name = preview.firstName {
-            lines.append("First name: \(name)")
+            lines.append(localized("ban.backupPreview.firstNameFormat", name))
         }
         if let uniqueIdentifier = preview.firstUniqueIdentifier {
-            lines.append("First unique ID: \(uniqueIdentifier)")
+            lines.append(localized("ban.backupPreview.firstUniqueIdFormat", uniqueIdentifier))
         }
         if let lastNickname = preview.firstLastNickname {
-            lines.append("First last nickname: \(lastNickname)")
+            lines.append(localized("ban.backupPreview.firstLastNicknameFormat", lastNickname))
         }
         if let duration = preview.firstDurationSeconds {
-            lines.append("First duration: \(duration == 0 ? "Permanent" : "\(duration) seconds")")
+            let durationText = duration == 0 ? localized("ban.duration.permanent") : localized("ban.backupPreview.secondsFormat", duration)
+            lines.append(localized("ban.backupPreview.firstDurationFormat", durationText))
         }
         if let reason = preview.firstReason {
-            lines.append("First reason: \(reason)")
+            lines.append(localized("ban.backupPreview.firstReasonFormat", reason))
         }
-        lines.append(preview.hasRules ? "Import adds these ban rules to the server." : "The backup has no usable ban rules.")
+        lines.append(preview.hasRules ? localized("ban.backupPreview.hasRules") : localized("ban.backupPreview.noUsableRules"))
         return lines.joined(separator: "\n")
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -22971,19 +22977,19 @@ private struct BanBackupImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("ban.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasRules {
-                        Button("Copy Rule Summary") {
+                        Button(localized("ban.import.copyRuleSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("ban.import.selectAll")) {
                                 selectedRuleIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("ban.import.clear")) {
                                 selectedRuleIds = []
                             }
                             .disabled(selectedRuleIds.isEmpty)
@@ -23024,13 +23030,13 @@ private struct BanBackupImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import adds the selected usable ban rules to the connected server. Empty and duplicate backup rules are skipped.")
+                Section(header: Text(localized("ban.import.behavior"))) {
+                    Text(localized("ban.import.behaviorSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Ban Backup")
+            .navigationTitle(localized("ban.import.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedRuleIds.isEmpty {
@@ -23039,18 +23045,23 @@ private struct BanBackupImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("ban.import.action")) {
                         importBackup(validSelectedRuleIds)
                     }
                     .disabled(!preview.hasRules || validSelectedRuleIds.isEmpty)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -23080,24 +23091,24 @@ private struct BanFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("ban.import.preview"))) {
+                    Text(localized("ban.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("ban.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("ban.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("ban.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("ban.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("ban.filterImport.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("ban.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("ban.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("ban.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -23119,22 +23130,22 @@ private struct BanFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected ban filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("ban.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Ban Filters")
+            .navigationTitle(localized("ban.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("ban.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -23142,6 +23153,11 @@ private struct BanFilterPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
