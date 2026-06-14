@@ -27640,7 +27640,7 @@ struct TalkControlBar: View {
                 Button(action: {
                     model.toggleCurrentWhisperActivation()
                 }) {
-                    Text(model.isWhisperActivationActive ? "Stop Temporary Whisper" : "Start Temporary Whisper")
+                    Text(model.isWhisperActivationActive ? LocalizedStringKey("whisper.stopTemporary") : LocalizedStringKey("whisper.startTemporary"))
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(TS3BorderedButtonStyle(isProminent: model.isWhisperActivationActive))
@@ -27652,14 +27652,14 @@ struct TalkControlBar: View {
                     .disabled(model.state != .connected || model.whisperRoute == .none)
             }
             HStack(spacing: 12) {
-                Button("Start Whisper") {
+                Button("whisper.start") {
                     model.beginCurrentWhisperActivation()
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
                 .frame(maxWidth: .infinity)
                 .ts3KeyboardShortcut("start-whisper-activation", in: model)
                 .disabled(model.state != .connected || model.whisperRoute == .none || model.isWhisperActivationActive)
-                Button("Stop Whisper") {
+                Button("whisper.stop") {
                     model.endWhisperActivation()
                 }
                 .buttonStyle(TS3BorderedButtonStyle())
@@ -27690,7 +27690,7 @@ struct WhisperHoldButton: View {
     @State private var isPressing = false
 
     var body: some View {
-        Text(isPressing || model.isWhisperActivationActive ? "Release to Stop Whisper" : "Hold to Whisper")
+        Text(isPressing || model.isWhisperActivationActive ? LocalizedStringKey("whisper.releaseToStop") : LocalizedStringKey("whisper.holdToWhisper"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .contentShape(Rectangle())
@@ -27721,7 +27721,7 @@ struct WhisperHoldButton: View {
                 }
             }
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Hold to Whisper")
+            .accessibilityLabel(Text("whisper.holdToWhisper"))
             .accessibilityValue(model.whisperActivationStatus)
     }
 }

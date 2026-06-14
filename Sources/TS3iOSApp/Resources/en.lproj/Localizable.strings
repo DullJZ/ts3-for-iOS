@@ -1421,8 +1421,12 @@
 "whisper.activationMode.tapToToggle" = "Tap to Toggle";
 "whisper.activationMode.holdDetail" = "Hold the whisper control or shortcut to keep the temporary whisper route active.";
 "whisper.activationMode.toggleDetail" = "Tap the whisper control or shortcut once to start, then tap again to stop.";
+"whisper.start" = "Start Whisper";
+"whisper.stop" = "Stop Whisper";
 "whisper.startTemporary" = "Start Temporary Whisper";
 "whisper.stopTemporary" = "Stop Temporary Whisper";
+"whisper.releaseToStop" = "Release to Stop Whisper";
+"whisper.holdToWhisper" = "Hold to Whisper";
 "whisper.activationLog" = "Activation Log";
 "whisper.noActivationEvents" = "No whisper activation events";
 "whisper.talking" = "talking";
