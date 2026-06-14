@@ -6856,6 +6856,7 @@ struct ContactRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let contact: TS3ContactEntry
     @State private var isEditing = false
+    @State private var isShowingClientDatabase = false
     @State private var onlineActionMode: UserActionMode?
 
     private var onlineUser: TS3UserSummary? {
@@ -6924,6 +6925,10 @@ struct ContactRow: View {
                 Button(localized("contacts.row.editContact")) {
                     isEditing = true
                 }
+                Button(localized("contacts.row.findDatabaseClient")) {
+                    model.findDatabaseClient(for: contact)
+                    isShowingClientDatabase = true
+                }
                 Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(contact.nickname)
                 }
@@ -6969,6 +6974,10 @@ struct ContactRow: View {
                     .environmentObject(model)
             }
         }
+        .sheet(isPresented: $isShowingClientDatabase) {
+            ClientDatabaseSheet()
+                .environmentObject(model)
+        }
         .contextMenu {
             if onlineUser != nil {
                 Button(localized("contacts.row.sendPrivateMessage")) {
@@ -6990,6 +6999,10 @@ struct ContactRow: View {
             Button(localized("contacts.row.editContact")) {
                 isEditing = true
             }
+            Button(localized("contacts.row.findDatabaseClient")) {
+                model.findDatabaseClient(for: contact)
+                isShowingClientDatabase = true
+            }
             Button(localized("contacts.row.deleteContact")) {
                 model.deleteContact(contact)
             }
@@ -7002,6 +7015,10 @@ struct ContactRow: View {
         }
         .accessibilityAction(named: localized("contacts.row.editContact")) {
             isEditing = true
+        }
+        .accessibilityAction(named: localized("contacts.row.findDatabaseClient")) {
+            model.findDatabaseClient(for: contact)
+            isShowingClientDatabase = true
         }
         .accessibilityAction(named: localized("contacts.row.deleteContact")) {
             model.deleteContact(contact)

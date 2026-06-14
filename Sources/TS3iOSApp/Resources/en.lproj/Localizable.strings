@@ -1160,6 +1160,7 @@
 "contacts.row.poke" = "Poke";
 "contacts.row.clientInfo" = "Client Info";
 "contacts.row.editContact" = "Edit Contact";
+"contacts.row.findDatabaseClient" = "Find Database Record";
 "contacts.row.copyNickname" = "Copy Nickname";
 "contacts.row.copyUniqueId" = "Copy Unique ID";
 "contacts.row.copySummary" = "Copy Summary";

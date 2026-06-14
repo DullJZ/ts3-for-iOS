@@ -323,6 +323,28 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(model.lastError, "The offline message sender did not provide a unique id.")
     }
 
+    @MainActor
+    func testContactDatabaseLookupRequiresUniqueIdentifier() {
+        let model = TS3AppModel()
+        let contact = makeContact(uniqueIdentifier: "   ", nickname: "Missing UID")
+
+        model.findDatabaseClient(for: contact)
+
+        XCTAssertEqual(model.lastError, "The contact does not have a unique id.")
+        XCTAssertFalse(model.isShowingClientDatabase)
+    }
+
+    @MainActor
+    func testContactDatabaseLookupUsesTrimmedUniqueIdentifier() {
+        let model = TS3AppModel()
+        let contact = makeContact(uniqueIdentifier: " contact-uid ", nickname: "Contact")
+
+        model.findDatabaseClient(for: contact)
+
+        XCTAssertEqual(model.lastError, "Connect to a server first.")
+        XCTAssertFalse(model.isShowingClientDatabase)
+    }
+
     private func makeUser(
         id: Int = 12,
         databaseId: Int? = 44,
@@ -363,6 +385,16 @@ final class TS3ClientActionTests: XCTestCase {
             totalConnections: nil,
             idleTimeSeconds: nil,
             connectedSeconds: nil
+        )
+    }
+
+    private func makeContact(uniqueIdentifier: String, nickname: String) -> TS3ContactEntry {
+        TS3ContactEntry(
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            status: .friend,
+            note: "",
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
     }
 

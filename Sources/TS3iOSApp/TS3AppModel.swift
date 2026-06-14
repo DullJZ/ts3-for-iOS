@@ -10612,6 +10612,15 @@ final class TS3AppModel: ObservableObject {
         isShowingClientDatabase = true
     }
 
+    func findDatabaseClient(for contact: TS3ContactEntry) {
+        let uniqueIdentifier = contact.uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uniqueIdentifier.isEmpty else {
+            lastError = "The contact does not have a unique id."
+            return
+        }
+        findDatabaseClient(uniqueIdentifier: uniqueIdentifier)
+    }
+
     func showBanList() {
         refreshBanList()
         isShowingBans = true
