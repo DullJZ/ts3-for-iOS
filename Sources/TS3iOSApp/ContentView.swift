@@ -5479,45 +5479,50 @@ struct UserActionSheet: View {
     @State private var isExportingInfo = false
     @State private var infoExportDocument = TS3TextFileDocument()
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     var title: String {
         switch mode {
-        case .info: return "Client Info"
-        case .privateMessage: return "Private Message"
-        case .offlineMessage: return "Offline Message"
-        case .poke: return "Poke"
-        case .editDescription: return "Edit Description"
-        case .contactNote: return "Contact Note"
-        case .complain: return "Complain"
-        case .kickChannel: return "Kick From Channel"
-        case .kickServer: return "Kick From Server"
-        case .ban: return "Ban User"
+        case .info: return localized("contacts.row.clientInfo")
+        case .privateMessage: return localized("clientActions.privateMessage")
+        case .offlineMessage: return localized("clientActions.offlineMessage")
+        case .poke: return localized("contacts.row.poke")
+        case .editDescription: return localized("database.editDescription")
+        case .contactNote: return localized("clientActions.contactNote")
+        case .complain: return localized("clientActions.complain")
+        case .kickChannel: return localized("clientActions.kickFromChannel")
+        case .kickServer: return localized("clientActions.kickFromServer")
+        case .ban: return localized("clientActions.banUser")
         }
     }
 
     var fieldTitle: String {
         switch mode {
-        case .info: return "Details"
-        case .privateMessage: return "Message"
-        case .offlineMessage: return "Message"
-        case .poke: return "Poke Message"
-        case .editDescription: return "Description"
-        case .contactNote: return "Note"
-        case .complain: return "Complaint"
-        case .kickChannel, .kickServer, .ban: return "Reason"
+        case .info: return localized("clientActions.details")
+        case .privateMessage: return localized("clientActions.message")
+        case .offlineMessage: return localized("clientActions.message")
+        case .poke: return localized("clientActions.pokeMessage")
+        case .editDescription: return localized("temporaryPasswords.description")
+        case .contactNote: return localized("clientActions.note")
+        case .complain: return localized("complaints.complaint")
+        case .kickChannel, .kickServer, .ban: return localized("clientActions.reason")
         }
     }
 
     var actionTitle: String {
         switch mode {
-        case .info: return "Refresh"
-        case .privateMessage: return "Send"
-        case .offlineMessage: return "Send"
-        case .poke: return "Poke"
-        case .editDescription: return "Save"
-        case .contactNote: return "Save"
-        case .complain: return "Submit Complaint"
-        case .kickChannel, .kickServer: return "Kick"
-        case .ban: return "Ban"
+        case .info: return localized("clientActions.refresh")
+        case .privateMessage: return localized("clientActions.send")
+        case .offlineMessage: return localized("clientActions.send")
+        case .poke: return localized("contacts.row.poke")
+        case .editDescription: return localized("common.save")
+        case .contactNote: return localized("common.save")
+        case .complain: return localized("clientActions.submitComplaint")
+        case .kickChannel, .kickServer: return localized("clientActions.kick")
+        case .ban: return localized("clientActions.ban")
         }
     }
 
@@ -5525,12 +5530,12 @@ struct UserActionSheet: View {
         NavigationView {
             Form {
                 if mode == .info {
-                    Section(header: Text("Snapshot")) {
-                        Button("Copy Client Information") {
+                    Section(header: Text(localized("selfStatus.snapshot"))) {
+                        Button(localized("clientActions.copyClientInformation")) {
                             TS3PlatformSupport.copyToPasteboard(infoSnapshot)
                         }
                         .disabled(infoSnapshot.isEmpty)
-                        Button("Export Client Information") {
+                        Button(localized("clientActions.exportClientInformation")) {
                             infoExportDocument = TS3TextFileDocument(data: Data(infoSnapshot.utf8))
                             isExportingInfo = true
                         }
@@ -5541,7 +5546,7 @@ struct UserActionSheet: View {
                 } else {
                     Section(header: Text(user.nickname)) {
                         if mode == .offlineMessage {
-                            TextField("Subject", text: $subject)
+                            TextField(localized("clientActions.subject"), text: $subject)
                                 .ts3PlainTextField()
                         }
                         TextField(fieldTitle, text: $text)
@@ -5550,7 +5555,7 @@ struct UserActionSheet: View {
                             Text(offlineMessageDraftSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Button("Copy Offline Message Summary") {
+                            Button(localized("clientActions.copyOfflineMessageSummary")) {
                                 TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
                             }
                             ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
@@ -5563,7 +5568,7 @@ struct UserActionSheet: View {
                             Text(pokeDraftSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Button("Copy Poke Summary") {
+                            Button(localized("clientActions.copyPokeSummary")) {
                                 TS3PlatformSupport.copyToPasteboard(pokeDraftSummary)
                             }
                             ForEach(pokeDraftValidationMessages, id: \.self) { message in
@@ -5574,14 +5579,14 @@ struct UserActionSheet: View {
                         }
                     }
                     if mode == .ban {
-                        Section(header: Text("Duration")) {
-                            Picker("Duration", selection: $banDuration) {
+                        Section(header: Text(localized("ban.duration"))) {
+                            Picker(localized("ban.duration"), selection: $banDuration) {
                                 ForEach(TS3BanDuration.allCases) { duration in
                                     Text(duration.title).tag(duration)
                                 }
                             }
                             if banDuration == .custom {
-                                TextField("Minutes", text: $customBanMinutes)
+                                TextField(localized("temporaryPasswords.minutes"), text: $customBanMinutes)
                                     .ts3PlainTextField()
                             }
                         }
@@ -5658,7 +5663,7 @@ struct UserActionSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -5759,55 +5764,73 @@ struct UserInfoRows: View {
     @EnvironmentObject private var model: TS3AppModel
     let user: TS3UserSummary
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        localized(value ? "common.yes" : "common.no")
+    }
+
     var body: some View {
         Section(header: Text(user.nickname)) {
-            ServerInfoDetailRow(label: "Client ID", value: String(user.id))
-            ServerInfoDetailRow(label: "Database ID", value: user.databaseId.map(String.init))
-            ServerInfoDetailRow(label: "Unique ID", value: user.uniqueIdentifier, monospaced: true)
-            ServerInfoDetailRow(label: "Icon ID", value: user.iconId.map(String.init))
-            ServerInfoDetailRow(label: "Avatar Hash", value: user.avatarHash, monospaced: true)
-            ServerInfoDetailRow(label: "Avatar Path", value: user.avatarURL?.path, monospaced: true)
-            ServerInfoDetailRow(label: "Channel", value: String(user.channelId))
-            ServerInfoDetailRow(label: "Country", value: user.country)
-            ServerInfoDetailRow(label: "IP Address", value: user.ipAddress)
+            ServerInfoDetailRow(label: localized("clientActions.clientId"), value: String(user.id))
+            ServerInfoDetailRow(label: localized("database.databaseId"), value: user.databaseId.map(String.init))
+            ServerInfoDetailRow(label: localized("clientActions.uniqueId"), value: user.uniqueIdentifier, monospaced: true)
+            ServerInfoDetailRow(label: localized("selfStatus.iconId"), value: user.iconId.map(String.init))
+            ServerInfoDetailRow(label: localized("clientActions.avatarHash"), value: user.avatarHash, monospaced: true)
+            ServerInfoDetailRow(label: localized("clientActions.avatarPath"), value: user.avatarURL?.path, monospaced: true)
+            ServerInfoDetailRow(label: localized("channelEditor.channel"), value: String(user.channelId))
+            ServerInfoDetailRow(label: localized("clientActions.country"), value: user.country)
+            ServerInfoDetailRow(label: localized("clientActions.ipAddress"), value: user.ipAddress)
         }
 
-        Section(header: Text("Contact")) {
-            ServerInfoDetailRow(label: "Status", value: model.contactStatus(for: user).title)
-            ServerInfoDetailRow(label: "Note", value: model.contactNote(for: user))
+        Section(header: Text(localized("clientActions.contact"))) {
+            ServerInfoDetailRow(label: localized("serverInfo.status"), value: localizedContactStatus)
+            ServerInfoDetailRow(label: localized("clientActions.note"), value: model.contactNote(for: user))
         }
 
-        Section(header: Text("Local Playback")) {
-            ServerInfoDetailRow(label: "Muted", value: model.isPlaybackMuted(for: user) ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Volume", value: model.playbackVolumePercentText(for: user))
+        Section(header: Text(localized("clientActions.localPlayback"))) {
+            ServerInfoDetailRow(label: localized("clientActions.muted"), value: yesNo(model.isPlaybackMuted(for: user)))
+            ServerInfoDetailRow(label: localized("clientActions.volume"), value: model.playbackVolumePercentText(for: user))
         }
 
-        Section(header: Text("Application")) {
-            ServerInfoDetailRow(label: "Platform", value: user.platform)
-            ServerInfoDetailRow(label: "Version", value: user.version)
+        Section(header: Text(localized("clientActions.application"))) {
+            ServerInfoDetailRow(label: localized("serverInfo.platform"), value: user.platform)
+            ServerInfoDetailRow(label: localized("serverInfo.version"), value: user.version)
         }
 
-        Section(header: Text("Status")) {
-            ServerInfoDetailRow(label: "Channel Commander", value: user.isChannelCommander ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Priority Speaker", value: user.isPrioritySpeaker ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Talker", value: user.isTalker ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Requests Talk Power", value: user.isRequestingTalkPower ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Talk Request", value: user.talkRequestMessage?.isEmpty == false ? user.talkRequestMessage : nil)
-            ServerInfoDetailRow(label: "Talk Power", value: user.talkPower.map(String.init))
+        Section(header: Text(localized("serverInfo.status"))) {
+            ServerInfoDetailRow(label: localized("selfStatus.channelCommander"), value: yesNo(user.isChannelCommander))
+            ServerInfoDetailRow(label: localized("clientActions.prioritySpeaker"), value: yesNo(user.isPrioritySpeaker))
+            ServerInfoDetailRow(label: localized("clientActions.talker"), value: yesNo(user.isTalker))
+            ServerInfoDetailRow(label: localized("clientActions.requestsTalkPower"), value: yesNo(user.isRequestingTalkPower))
+            ServerInfoDetailRow(label: localized("clientActions.talkRequest"), value: user.talkRequestMessage?.isEmpty == false ? user.talkRequestMessage : nil)
+            ServerInfoDetailRow(label: localized("selfStatus.talkPower"), value: user.talkPower.map(String.init))
         }
 
-        Section(header: Text("Activity")) {
-            ServerInfoDetailRow(label: "Connected", value: durationText(user.connectedSeconds))
-            ServerInfoDetailRow(label: "Idle", value: durationText(user.idleTimeSeconds))
-            ServerInfoDetailRow(label: "Total Connections", value: user.totalConnections.map(String.init))
-            ServerInfoDetailRow(label: "Created", value: dateText(user.createdAt))
-            ServerInfoDetailRow(label: "Last Connected", value: dateText(user.lastConnectedAt))
+        Section(header: Text(localized("clientActions.activity"))) {
+            ServerInfoDetailRow(label: localized("serverInfo.connected"), value: durationText(user.connectedSeconds))
+            ServerInfoDetailRow(label: localized("serverInfo.idle"), value: durationText(user.idleTimeSeconds))
+            ServerInfoDetailRow(label: localized("clientActions.totalConnections"), value: user.totalConnections.map(String.init))
+            ServerInfoDetailRow(label: localized("serverInfo.created"), value: dateText(user.createdAt))
+            ServerInfoDetailRow(label: localized("clientActions.lastConnected"), value: dateText(user.lastConnectedAt))
         }
 
-        Section(header: Text("Status")) {
-            ServerInfoDetailRow(label: "Away", value: user.isAway ? (user.awayMessage?.isEmpty == false ? user.awayMessage : "Yes") : "No")
-            ServerInfoDetailRow(label: "Input Muted", value: user.isInputMuted ? "Yes" : "No")
-            ServerInfoDetailRow(label: "Output Muted", value: user.isOutputMuted ? "Yes" : "No")
+        Section(header: Text(localized("serverInfo.status"))) {
+            ServerInfoDetailRow(label: localized("selfStatus.away"), value: user.isAway ? (user.awayMessage?.isEmpty == false ? user.awayMessage : localized("common.yes")) : localized("common.no"))
+            ServerInfoDetailRow(label: localized("clientActions.inputMuted"), value: yesNo(user.isInputMuted))
+            ServerInfoDetailRow(label: localized("clientActions.outputMuted"), value: yesNo(user.isOutputMuted))
+        }
+    }
+
+    private var localizedContactStatus: String {
+        switch model.contactStatus(for: user) {
+        case .neutral: return localized("contacts.status.neutral")
+        case .friend: return localized("contacts.status.friend")
+        case .ignored: return localized("contacts.status.ignored")
+        case .blocked: return localized("contacts.status.blocked")
         }
     }
 
