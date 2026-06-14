@@ -26686,6 +26686,10 @@ struct ChannelEditorSheet: View {
     @State private var pendingDraftImport: ChannelDraftImportConfirmation?
     @State private var draftDocument = TS3TextFileDocument()
     @State private var snapshotDocument = TS3TextFileDocument()
+    @State private var isShowingDraftTools = false
+    @State private var isShowingChannelSettings = true
+    @State private var isShowingVoiceSettings = false
+    @State private var isShowingLimitSettings = false
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
@@ -26702,144 +26706,160 @@ struct ChannelEditorSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text(localized("channelEditor.draft"))) {
-                    Button(localized("channelEditor.copySnapshot")) {
-                        TS3PlatformSupport.copyToPasteboard(channelDraftSnapshot)
-                    }
-                    Button(localized("channelEditor.exportSnapshot")) {
-                        snapshotDocument = TS3TextFileDocument(data: Data(channelDraftSnapshot.utf8))
-                        isExportingSnapshot = true
-                    }
-                    Button(localized("channelEditor.exportDraft")) {
-                        exportDraft()
-                    }
-                    Button(localized("channelEditor.importDraft")) {
-                        isImportingDraft = true
-                    }
-                }
-
-                Section(header: Text(localized("channelEditor.channel"))) {
-                    TextField(localized("channelEditor.name"), text: $name)
-                    TextField(localized("channelEditor.phoneticName"), text: $phoneticName)
-                    TextField(localized("channelEditor.topic"), text: $topic)
-                    TextField(localized("channelEditor.description"), text: $description)
-                    if case .edit = mode {
-                        Toggle(localized("channelEditor.clearPassword"), isOn: $clearPassword)
-                    }
-                    SecureField(localized("channelEditor.password"), text: $password)
-                        .disabled(clearPassword)
-                    Picker(localized("channelEditor.type"), selection: $channelType) {
-                        ForEach(TS3ChannelType.allCases) { type in
-                            Text(channelTypeTitle(type)).tag(type)
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingDraftTools) {
+                        Button(localized("channelEditor.copySnapshot")) {
+                            TS3PlatformSupport.copyToPasteboard(channelDraftSnapshot)
                         }
-                    }
-                    Picker(localized("channelEditor.position"), selection: $selectedOrderId) {
-                        Text(localized("channelEditor.first")).tag(Optional<Int>.none)
-                        ForEach(positionSiblingOptions) { sibling in
-                            Text(localized("channelEditor.afterFormat", sibling.name)).tag(Optional(sibling.id))
+                        Button(localized("channelEditor.exportSnapshot")) {
+                            snapshotDocument = TS3TextFileDocument(data: Data(channelDraftSnapshot.utf8))
+                            isExportingSnapshot = true
                         }
-                    }
-                    if case .edit = mode {
-                        Toggle(localized("channelEditor.defaultChannel"), isOn: $isDefault)
-                    }
-                    TextField(localized("channelEditor.iconId"), text: $iconId)
-                        .ts3NumericKeyboard()
-                    TextField(localized("channelEditor.bannerGraphicURL"), text: $bannerGraphicsURL)
-                        .ts3URLTextField()
-                    Picker(localized("channelEditor.bannerMode"), selection: $bannerMode) {
-                        Text(localized("channelEditor.unchanged")).tag(Int?.none)
-                        ForEach(TS3HostBannerMode.allCases) { mode in
-                            Text(bannerModeTitle(mode.rawValue)).tag(Optional(mode.rawValue))
+                        Button(localized("channelEditor.exportDraft")) {
+                            exportDraft()
                         }
-                        if let bannerMode,
-                           TS3HostBannerMode(rawValue: bannerMode) == nil {
-                            Text(bannerModeTitle(bannerMode)).tag(Optional(bannerMode))
+                        Button(localized("channelEditor.importDraft")) {
+                            isImportingDraft = true
                         }
-                    }
-                    Button {
-                        isShowingIconImporter = true
                     } label: {
-                        Label(localized("channelEditor.uploadIcon"), systemImage: "photo")
+                        Label(localized("channelEditor.draft"), systemImage: "doc.text")
                     }
                 }
 
-                Section(header: Text(localized("channelEditor.voice"))) {
-                    Menu {
-                        ForEach(TS3ChannelCodecPreset.allPresets) { preset in
-                            Button(codecPresetTitle(preset)) {
-                                applyCodecPreset(preset)
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingChannelSettings) {
+                        TextField(localized("channelEditor.name"), text: $name)
+                        TextField(localized("channelEditor.phoneticName"), text: $phoneticName)
+                        TextField(localized("channelEditor.topic"), text: $topic)
+                        TextField(localized("channelEditor.description"), text: $description)
+                        if case .edit = mode {
+                            Toggle(localized("channelEditor.clearPassword"), isOn: $clearPassword)
+                        }
+                        SecureField(localized("channelEditor.password"), text: $password)
+                            .disabled(clearPassword)
+                        Picker(localized("channelEditor.type"), selection: $channelType) {
+                            ForEach(TS3ChannelType.allCases) { type in
+                                Text(channelTypeTitle(type)).tag(type)
                             }
                         }
+                        Picker(localized("channelEditor.position"), selection: $selectedOrderId) {
+                            Text(localized("channelEditor.first")).tag(Optional<Int>.none)
+                            ForEach(positionSiblingOptions) { sibling in
+                                Text(localized("channelEditor.afterFormat", sibling.name)).tag(Optional(sibling.id))
+                            }
+                        }
+                        if case .edit = mode {
+                            Toggle(localized("channelEditor.defaultChannel"), isOn: $isDefault)
+                        }
+                        TextField(localized("channelEditor.iconId"), text: $iconId)
+                            .ts3NumericKeyboard()
+                        TextField(localized("channelEditor.bannerGraphicURL"), text: $bannerGraphicsURL)
+                            .ts3URLTextField()
+                        Picker(localized("channelEditor.bannerMode"), selection: $bannerMode) {
+                            Text(localized("channelEditor.unchanged")).tag(Int?.none)
+                            ForEach(TS3HostBannerMode.allCases) { mode in
+                                Text(bannerModeTitle(mode.rawValue)).tag(Optional(mode.rawValue))
+                            }
+                            if let bannerMode,
+                               TS3HostBannerMode(rawValue: bannerMode) == nil {
+                                Text(bannerModeTitle(bannerMode)).tag(Optional(bannerMode))
+                            }
+                        }
+                        Button {
+                            isShowingIconImporter = true
+                        } label: {
+                            Label(localized("channelEditor.uploadIcon"), systemImage: "photo")
+                        }
                     } label: {
-                        Label(localized("channelEditor.codecPresets"), systemImage: "waveform")
+                        Label(localized("channelEditor.channel"), systemImage: "number")
                     }
-                    if !codecProfileSummary.isEmpty {
-                        Text(codecProfileSummary)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    ServerInfoDetailRow(label: localized("channelEditor.codecProfile"), value: codecConfigurationProfileText)
-                    Picker(localized("channelEditor.codec"), selection: $codec) {
-                        Text(localized("channelEditor.unchanged")).tag(Int?.none)
-                        ForEach(TS3ChannelCodec.allCases) { codec in
-                            Text(codecTitle(for: codec.rawValue)).tag(Optional(codec.rawValue))
+                }
+
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingVoiceSettings) {
+                        Menu {
+                            ForEach(TS3ChannelCodecPreset.allPresets) { preset in
+                                Button(codecPresetTitle(preset)) {
+                                    applyCodecPreset(preset)
+                                }
+                            }
+                        } label: {
+                            Label(localized("channelEditor.codecPresets"), systemImage: "waveform")
                         }
-                    }
-                    Picker(localized("channelEditor.codecQuality"), selection: $codecQuality) {
-                        Text(localized("channelEditor.unchanged")).tag("")
-                        ForEach(TS3ChannelCodecQuality.allCases) { quality in
-                            Text(codecQualityTitle(for: String(quality.value))).tag(String(quality.value))
-                        }
-                        if let numericQuality = Int(codecQuality.trimmingCharacters(in: .whitespacesAndNewlines)),
-                           TS3ChannelCodecQuality.title(for: numericQuality) == "Unknown (\(numericQuality))" {
-                            Text(codecQualityTitle(for: String(numericQuality))).tag(codecQuality)
-                        }
-                    }
-                    TextField(localized("channelEditor.codecLatencyFactor"), text: $codecLatencyFactor)
-                        .ts3NumericKeyboard()
-                    Toggle(localized("channelEditor.unencryptedVoice"), isOn: $isCodecUnencrypted)
-                    if !codecValidationMessages.isEmpty {
-                        ForEach(codecValidationMessages, id: \.self) { message in
-                            Text(message)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
-                    if !codecDiagnosticMessages.isEmpty {
-                        ForEach(codecDiagnosticMessages, id: \.self) { message in
-                            Text(message)
+                        if !codecProfileSummary.isEmpty {
+                            Text(codecProfileSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        ServerInfoDetailRow(label: localized("channelEditor.codecProfile"), value: codecConfigurationProfileText)
+                        Picker(localized("channelEditor.codec"), selection: $codec) {
+                            Text(localized("channelEditor.unchanged")).tag(Int?.none)
+                            ForEach(TS3ChannelCodec.allCases) { codec in
+                                Text(codecTitle(for: codec.rawValue)).tag(Optional(codec.rawValue))
+                            }
+                        }
+                        Picker(localized("channelEditor.codecQuality"), selection: $codecQuality) {
+                            Text(localized("channelEditor.unchanged")).tag("")
+                            ForEach(TS3ChannelCodecQuality.allCases) { quality in
+                                Text(codecQualityTitle(for: String(quality.value))).tag(String(quality.value))
+                            }
+                            if let numericQuality = Int(codecQuality.trimmingCharacters(in: .whitespacesAndNewlines)),
+                               TS3ChannelCodecQuality.title(for: numericQuality) == "Unknown (\(numericQuality))" {
+                                Text(codecQualityTitle(for: String(numericQuality))).tag(codecQuality)
+                            }
+                        }
+                        TextField(localized("channelEditor.codecLatencyFactor"), text: $codecLatencyFactor)
+                            .ts3NumericKeyboard()
+                        Toggle(localized("channelEditor.unencryptedVoice"), isOn: $isCodecUnencrypted)
+                        if !codecValidationMessages.isEmpty {
+                            ForEach(codecValidationMessages, id: \.self) { message in
+                                Text(message)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        if !codecDiagnosticMessages.isEmpty {
+                            ForEach(codecDiagnosticMessages, id: \.self) { message in
+                                Text(message)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        Button(localized("channelEditor.copyCodecSummary")) {
+                            TS3PlatformSupport.copyToPasteboard(codecConfiguration.clipboardSummary)
+                        }
+                        TextField(localized("channelEditor.neededTalkPower"), text: $neededTalkPower)
+                            .ts3NumericKeyboard()
+                        TextField(localized("channelEditor.neededJoinPower"), text: $neededJoinPower)
+                            .ts3NumericKeyboard()
+                        TextField(localized("channelEditor.neededSubscribePower"), text: $neededSubscribePower)
+                            .ts3NumericKeyboard()
+                        TextField(localized("channelEditor.neededDescriptionViewPower"), text: $neededDescriptionViewPower)
+                            .ts3NumericKeyboard()
+                        TextField(localized("channelEditor.deleteDelaySeconds"), text: $deleteDelaySeconds)
+                            .ts3NumericKeyboard()
+                    } label: {
+                        Label(localized("channelEditor.voice"), systemImage: "waveform")
                     }
-                    Button(localized("channelEditor.copyCodecSummary")) {
-                        TS3PlatformSupport.copyToPasteboard(codecConfiguration.clipboardSummary)
-                    }
-                    TextField(localized("channelEditor.neededTalkPower"), text: $neededTalkPower)
-                        .ts3NumericKeyboard()
-                    TextField(localized("channelEditor.neededJoinPower"), text: $neededJoinPower)
-                        .ts3NumericKeyboard()
-                    TextField(localized("channelEditor.neededSubscribePower"), text: $neededSubscribePower)
-                        .ts3NumericKeyboard()
-                    TextField(localized("channelEditor.neededDescriptionViewPower"), text: $neededDescriptionViewPower)
-                        .ts3NumericKeyboard()
-                    TextField(localized("channelEditor.deleteDelaySeconds"), text: $deleteDelaySeconds)
-                        .ts3NumericKeyboard()
                 }
 
-                Section(header: Text(localized("channelEditor.limits"))) {
-                    Toggle(localized("channelEditor.unlimitedClients"), isOn: $maxClientsUnlimited)
-                    if !maxClientsUnlimited {
-                        TextField(localized("channelEditor.maxClients"), text: $maxClients)
-                            .ts3NumericKeyboard()
-                    }
-                    Toggle(localized("channelEditor.inheritFamilyLimit"), isOn: $maxFamilyClientsInherited)
-                    if !maxFamilyClientsInherited {
-                        Toggle(localized("channelEditor.unlimitedFamilyClients"), isOn: $maxFamilyClientsUnlimited)
-                        if !maxFamilyClientsUnlimited {
-                            TextField(localized("channelEditor.maxFamilyClients"), text: $maxFamilyClients)
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingLimitSettings) {
+                        Toggle(localized("channelEditor.unlimitedClients"), isOn: $maxClientsUnlimited)
+                        if !maxClientsUnlimited {
+                            TextField(localized("channelEditor.maxClients"), text: $maxClients)
                                 .ts3NumericKeyboard()
                         }
+                        Toggle(localized("channelEditor.inheritFamilyLimit"), isOn: $maxFamilyClientsInherited)
+                        if !maxFamilyClientsInherited {
+                            Toggle(localized("channelEditor.unlimitedFamilyClients"), isOn: $maxFamilyClientsUnlimited)
+                            if !maxFamilyClientsUnlimited {
+                                TextField(localized("channelEditor.maxFamilyClients"), text: $maxFamilyClients)
+                                    .ts3NumericKeyboard()
+                            }
+                        }
+                    } label: {
+                        Label(localized("channelEditor.limits"), systemImage: "person.2")
                     }
                 }
                 Section {
