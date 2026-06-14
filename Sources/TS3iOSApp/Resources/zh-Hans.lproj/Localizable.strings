@@ -850,6 +850,17 @@
 "serverInfo.copy" = "复制服务器信息";
 "serverInfo.export" = "导出服务器信息";
 "serverInfo.refresh" = "刷新";
+"serverInfo.healthSummary" = "健康摘要";
+"serverInfo.copyHealthSummary" = "复制健康摘要";
+"serverInfo.healthOverall" = "整体";
+"serverInfo.healthCurrentConnection" = "当前连接";
+"serverInfo.healthServerQuality" = "服务器质量";
+"serverInfo.healthDownloadQuota" = "下载配额";
+"serverInfo.healthUploadQuota" = "上传配额";
+"serverInfo.health.unknown" = "未知";
+"serverInfo.health.good" = "良好";
+"serverInfo.health.warning" = "警告";
+"serverInfo.health.critical" = "严重";
 "serverInfo.overview" = "概览";
 "serverInfo.name" = "名称";
 "serverInfo.phoneticName" = "语音名称";

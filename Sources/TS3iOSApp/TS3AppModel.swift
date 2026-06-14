@@ -6538,6 +6538,106 @@ struct TS3ConnectionInfoSummary {
     }
 }
 
+struct TS3ServerHealthSummary {
+    enum State: String {
+        case unknown
+        case good
+        case warning
+        case critical
+    }
+
+    let serverInfo: TS3ServerInfoSummary
+    let connectionInfo: TS3ConnectionInfoSummary
+
+    var connectionState: State {
+        qualityState(ping: connectionInfo.ping, packetLoss: connectionInfo.packetLossTotal)
+    }
+
+    var serverQualityState: State {
+        qualityState(ping: serverInfo.totalPing, packetLoss: serverInfo.totalPacketLossTotal)
+    }
+
+    var downloadQuotaState: State {
+        quotaState(used: serverInfo.monthlyBytesDownloaded, quota: serverInfo.downloadQuota)
+    }
+
+    var uploadQuotaState: State {
+        quotaState(used: serverInfo.monthlyBytesUploaded, quota: serverInfo.uploadQuota)
+    }
+
+    var overallState: State {
+        let states = [connectionState, serverQualityState, downloadQuotaState, uploadQuotaState]
+        if states.contains(.critical) {
+            return .critical
+        }
+        if states.contains(.warning) {
+            return .warning
+        }
+        if states.contains(.good) {
+            return .good
+        }
+        return .unknown
+    }
+
+    var clipboardSummary: String {
+        [
+            "overall=\(overallState.rawValue)",
+            "connection=\(connectionState.rawValue)",
+            "connectionPing=\(connectionInfo.ping.map { decimalText($0) } ?? "unknown")",
+            "connectionLoss=\(connectionInfo.packetLossTotal.map { decimalText($0 * 100) } ?? "unknown")%",
+            "serverQuality=\(serverQualityState.rawValue)",
+            "serverPing=\(serverInfo.totalPing.map { decimalText($0) } ?? "unknown")",
+            "serverLoss=\(serverInfo.totalPacketLossTotal.map { decimalText($0 * 100) } ?? "unknown")%",
+            "downloadQuota=\(quotaDescription(used: serverInfo.monthlyBytesDownloaded, quota: serverInfo.downloadQuota))",
+            "downloadQuotaState=\(downloadQuotaState.rawValue)",
+            "uploadQuota=\(quotaDescription(used: serverInfo.monthlyBytesUploaded, quota: serverInfo.uploadQuota))",
+            "uploadQuotaState=\(uploadQuotaState.rawValue)"
+        ].joined(separator: " | ")
+    }
+
+    func quotaUsagePercent(used: Int64?, quota: Int64?) -> Double? {
+        guard let used, let quota, quota > 0 else { return nil }
+        return Double(used) / Double(quota)
+    }
+
+    private func qualityState(ping: Double?, packetLoss: Double?) -> State {
+        guard ping != nil || packetLoss != nil else {
+            return .unknown
+        }
+        if (ping ?? 0) >= 250 || (packetLoss ?? 0) >= 0.05 {
+            return .critical
+        }
+        if (ping ?? 0) >= 150 || (packetLoss ?? 0) >= 0.02 {
+            return .warning
+        }
+        return .good
+    }
+
+    private func quotaState(used: Int64?, quota: Int64?) -> State {
+        guard let usage = quotaUsagePercent(used: used, quota: quota) else {
+            return .unknown
+        }
+        if usage >= 1 {
+            return .critical
+        }
+        if usage >= 0.8 {
+            return .warning
+        }
+        return .good
+    }
+
+    private func quotaDescription(used: Int64?, quota: Int64?) -> String {
+        guard let used, let quota, quota > 0 else {
+            return "unknown"
+        }
+        return "\(used)/\(quota) (\(decimalText(Double(used) / Double(quota) * 100))%)"
+    }
+
+    private func decimalText(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
+}
+
 struct TS3ServerLogSummary: Identifiable, Codable {
     let id: Int
     let timestamp: Date?

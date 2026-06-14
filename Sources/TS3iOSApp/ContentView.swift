@@ -12374,6 +12374,17 @@ struct ServerInformationSheet: View {
                     .disabled(informationSnapshot.isEmpty)
                 }
 
+                Section(header: Text(localized("serverInfo.healthSummary"))) {
+                    ServerInfoDetailRow(label: localized("serverInfo.healthOverall"), value: healthStateTitle(healthSummary.overallState))
+                    ServerInfoDetailRow(label: localized("serverInfo.healthCurrentConnection"), value: healthStateTitle(healthSummary.connectionState))
+                    ServerInfoDetailRow(label: localized("serverInfo.healthServerQuality"), value: healthStateTitle(healthSummary.serverQualityState))
+                    ServerInfoDetailRow(label: localized("serverInfo.healthDownloadQuota"), value: healthStateTitle(healthSummary.downloadQuotaState))
+                    ServerInfoDetailRow(label: localized("serverInfo.healthUploadQuota"), value: healthStateTitle(healthSummary.uploadQuotaState))
+                    Button(localized("serverInfo.copyHealthSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(healthSummary.clipboardSummary)
+                    }
+                }
+
                 Section(header: Text(localized("serverInfo.overview"))) {
                     ServerInfoDetailRow(label: localized("serverInfo.name"), value: model.serverInfo.name)
                     ServerInfoDetailRow(label: localized("serverInfo.phoneticName"), value: model.serverInfo.phoneticName)
@@ -12546,6 +12557,7 @@ struct ServerInformationSheet: View {
         rows.append((localized("serverInfo.password"), model.serverInfo.passwordProtected ? localized("serverInfo.protected") : localized("serverInfo.notProtected")))
         rows.append((localized("serverInfo.serverList"), model.serverInfo.isWeblistEnabled.map { $0 ? localized("serverInfo.listed") : localized("serverInfo.hidden") }))
         rows.append((localized("serverInfo.welcomeMessage"), model.serverInfo.welcomeMessage))
+        rows.append((localized("serverInfo.healthSummary"), healthSummary.clipboardSummary))
         rows.append((localized("serverInfo.clients"), clientsText))
         rows.append((localized("serverInfo.queryClients"), model.serverInfo.clientsInQuery.map(String.init)))
         rows.append((localized("serverInfo.channels"), model.serverInfo.channelsOnline.map(String.init)))
@@ -12628,6 +12640,23 @@ struct ServerInformationSheet: View {
             return "\(clients) / \(maxClients)"
         }
         return String(clients)
+    }
+
+    private var healthSummary: TS3ServerHealthSummary {
+        TS3ServerHealthSummary(serverInfo: model.serverInfo, connectionInfo: model.connectionInfo)
+    }
+
+    private func healthStateTitle(_ state: TS3ServerHealthSummary.State) -> String {
+        switch state {
+        case .unknown:
+            return localized("serverInfo.health.unknown")
+        case .good:
+            return localized("serverInfo.health.good")
+        case .warning:
+            return localized("serverInfo.health.warning")
+        case .critical:
+            return localized("serverInfo.health.critical")
+        }
     }
 
     private func groupName(_ id: Int?, groups: [TS3GroupSummary]) -> String? {

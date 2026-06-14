@@ -850,6 +850,17 @@
 "serverInfo.copy" = "Copy Server Information";
 "serverInfo.export" = "Export Server Information";
 "serverInfo.refresh" = "Refresh";
+"serverInfo.healthSummary" = "Health Summary";
+"serverInfo.copyHealthSummary" = "Copy Health Summary";
+"serverInfo.healthOverall" = "Overall";
+"serverInfo.healthCurrentConnection" = "Current Connection";
+"serverInfo.healthServerQuality" = "Server Quality";
+"serverInfo.healthDownloadQuota" = "Download Quota";
+"serverInfo.healthUploadQuota" = "Upload Quota";
+"serverInfo.health.unknown" = "Unknown";
+"serverInfo.health.good" = "Good";
+"serverInfo.health.warning" = "Warning";
+"serverInfo.health.critical" = "Critical";
 "serverInfo.overview" = "Overview";
 "serverInfo.name" = "Name";
 "serverInfo.phoneticName" = "Phonetic Name";
