@@ -25372,58 +25372,68 @@ struct ServerInfoRows: View {
 
     var body: some View {
         if !model.serverInfo.name.isEmpty {
-            HStack {
-                Text("Name")
-                Spacer()
-                Text(model.serverInfo.name)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
+            infoRow(label: "serverInfo.name", value: model.serverInfo.name)
+        }
+        if let status = model.serverInfo.status, !status.isEmpty {
+            infoRow(label: "serverInfo.status", value: status)
+        }
+        if let port = model.serverInfo.port {
+            infoRow(label: "serverInfo.port", value: String(port))
         }
         if let clientsOnline = model.serverInfo.clientsOnline {
-            HStack {
-                Text("Clients")
-                Spacer()
-                if let maxClients = model.serverInfo.maxClients {
-                    Text("\(clientsOnline) / \(maxClients)")
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("\(clientsOnline)")
-                        .foregroundColor(.secondary)
-                }
-            }
+            infoRow(label: "serverInfo.clients", value: clientsText(clientsOnline))
         }
         if let channelsOnline = model.serverInfo.channelsOnline {
-            HStack {
-                Text("Channels")
-                Spacer()
-                Text("\(channelsOnline)")
-                    .foregroundColor(.secondary)
-            }
+            infoRow(label: "serverInfo.channels", value: String(channelsOnline))
         }
         if let uptime = model.serverInfo.uptimeSeconds {
-            HStack {
-                Text("Uptime")
-                Spacer()
-                Text(Self.uptimeText(uptime))
-                    .foregroundColor(.secondary)
-            }
+            infoRow(label: "serverInfo.uptime", value: Self.uptimeText(uptime))
+        }
+        infoRow(
+            label: "serverInfo.password",
+            value: model.serverInfo.passwordProtected
+                ? NSLocalizedString("serverInfo.protected", comment: "")
+                : NSLocalizedString("serverInfo.notProtected", comment: "")
+        )
+        if let isListed = model.serverInfo.isWeblistEnabled {
+            infoRow(
+                label: "serverInfo.serverList",
+                value: isListed
+                    ? NSLocalizedString("serverInfo.listed", comment: "")
+                    : NSLocalizedString("serverInfo.hidden", comment: "")
+            )
         }
         if let version = model.serverInfo.version, !version.isEmpty {
-            HStack {
-                Text("Version")
-                Spacer()
-                Text(version)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
+            infoRow(label: "serverInfo.version", value: version)
         }
         if let message = model.serverInfo.welcomeMessage, !message.isEmpty {
-            Text(message)
-                .font(.footnote)
-                .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(NSLocalizedString("serverInfo.welcomeMessage", comment: ""))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(message)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
         }
+    }
+
+    private func infoRow(label: String, value: String) -> some View {
+        HStack {
+            Text(NSLocalizedString(label, comment: ""))
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+    }
+
+    private func clientsText(_ clientsOnline: Int) -> String {
+        if let maxClients = model.serverInfo.maxClients {
+            return "\(clientsOnline) / \(maxClients)"
+        }
+        return "\(clientsOnline)"
     }
 
     static func uptimeText(_ seconds: Int) -> String {
