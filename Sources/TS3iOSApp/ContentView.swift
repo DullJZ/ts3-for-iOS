@@ -4359,6 +4359,11 @@ struct ChannelRow: View {
         model.channelPath(for: channel)
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     private var channelClipboardSummary: String {
         var parts = [
             "channelId=\(channel.id)",
@@ -4389,14 +4394,14 @@ struct ChannelRow: View {
                             .frame(width: 18, height: 18)
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel(isCollapsed ? "Expand Channel" : "Collapse Channel")
+                    .accessibilityLabel(isCollapsed ? localized("channelActions.expandChannel") : localized("channelActions.collapseChannel"))
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(channel.name)
                             .fontWeight(channel.isCurrent ? .semibold : .regular)
                         if channel.isCurrent {
-                            Text("Current")
+                            Text(localized("channelActions.current"))
                                 .font(.caption.weight(.semibold))
                                 .foregroundColor(.accentColor)
                                 .padding(.horizontal, 8)
@@ -4421,16 +4426,16 @@ struct ChannelRow: View {
                         }
                     }
                     HStack(spacing: 6) {
-                        Text("\(members.count) user\(members.count == 1 ? "" : "s")")
+                        Text(localized("channelActions.userCountFormat", members.count))
                             .font(.caption)
                             .foregroundColor(.secondary)
                         if let power = channel.neededTalkPower {
-                            Text("Talk \(power)")
+                            Text(localized("channelActions.talkPowerFormat", power))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                         if let codecQuality = channel.codecQuality {
-                            Text("Quality \(codecQuality)")
+                            Text(localized("channelActions.qualityFormat", codecQuality))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -4451,7 +4456,7 @@ struct ChannelRow: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.accentColor)
                 } else {
-                    Button("Join") {
+                    Button(localized("channelActions.join")) {
                         if channel.isPasswordProtected {
                             isShowingJoinPassword = true
                         } else {
@@ -4461,22 +4466,22 @@ struct ChannelRow: View {
                     .buttonStyle(TS3BorderedButtonStyle())
                 }
                 Menu {
-                    Button("Channel Info") {
+                    Button(localized("channelActions.channelInfo")) {
                         isShowingInfo = true
                     }
-                    Button("Copy Channel Summary") {
+                    Button(localized("channelActions.copyChannelSummary")) {
                         TS3PlatformSupport.copyToPasteboard(channelClipboardSummary)
                     }
-                    Button("Copy Channel Name") {
+                    Button(localized("channelActions.copyChannelName")) {
                         TS3PlatformSupport.copyToPasteboard(channel.name)
                     }
-                    Button("Copy Channel Path") {
+                    Button(localized("channelActions.copyChannelPath")) {
                         TS3PlatformSupport.copyToPasteboard(channelPath)
                     }
-                    Button("Copy Channel Invite Link") {
+                    Button(localized("channelActions.copyChannelInviteLink")) {
                         model.copyInviteLink(for: channel)
                     }
-                    Button("Copy Full Channel Invite Link") {
+                    Button(localized("channelActions.copyFullChannelInviteLink")) {
                         if channel.isPasswordProtected {
                             fullInviteChannelPassword = ""
                             isShowingFullInvitePassword = true
@@ -4484,41 +4489,41 @@ struct ChannelRow: View {
                             model.copyFullInviteLink(for: channel)
                         }
                     }
-                    Button("Copy Channel ID") {
+                    Button(localized("channelActions.copyChannelId")) {
                         TS3PlatformSupport.copyToPasteboard("\(channel.id)")
                     }
-                    Button("Send Channel Message") {
+                    Button(localized("channelActions.sendChannelMessage")) {
                         isShowingChannelMessage = true
                     }
                     if let isSubscribed = channel.isSubscribed {
-                        Button(isSubscribed ? "Unsubscribe Channel" : "Subscribe Channel") {
+                        Button(isSubscribed ? localized("channelActions.unsubscribeChannel") : localized("channelActions.subscribeChannel")) {
                             model.setChannelSubscribed(channel, isSubscribed: !isSubscribed)
                         }
                     } else {
-                        Button("Subscribe Channel") {
+                        Button(localized("channelActions.subscribeChannel")) {
                             model.setChannelSubscribed(channel, isSubscribed: true)
                         }
                     }
-                    Button("Edit Channel") {
+                    Button(localized("channelActions.editChannel")) {
                         isShowingEdit = true
                     }
-                    Button("Edit Channel Permissions") {
+                    Button(localized("channelActions.editChannelPermissions")) {
                         model.selectChannelPermissions(channel)
                         isShowingPermissions = true
                     }
-                    Button("Browse Channel Files") {
+                    Button(localized("channelActions.browseChannelFiles")) {
                         model.openFileBrowser(channel: channel)
                         isShowingFiles = true
                     }
                     if !model.channelGroups.isEmpty {
-                        Button("Create Channel Privilege Key") {
+                        Button(localized("channelActions.createChannelPrivilegeKey")) {
                             isShowingPrivilegeKeys = true
                         }
                     }
-                    Button("Move Channel") {
+                    Button(localized("channelActions.moveChannel")) {
                         isShowingMove = true
                     }
-                    Button("Set as Default Channel") {
+                    Button(localized("channelActions.setAsDefaultChannel")) {
                         if channel.isPasswordProtected {
                             defaultChannelPassword = ""
                             isShowingDefaultChannelPassword = true
@@ -4526,13 +4531,13 @@ struct ChannelRow: View {
                             model.setDefaultChannel(channel)
                         }
                     }
-                    Button("Whisper to Channel") {
+                    Button(localized("channelActions.whisperToChannel")) {
                         model.enableWhisperToChannel(id: channel.id)
                     }
-                    Button("Delete Channel") {
+                    Button(localized("channelActions.deleteChannel")) {
                         isConfirmingDelete = true
                     }
-                    Button("Force Delete Channel") {
+                    Button(localized("channelActions.forceDeleteChannel")) {
                         isConfirmingForcedDelete = true
                     }
                 } label: {
@@ -4541,7 +4546,7 @@ struct ChannelRow: View {
             }
 
             if members.isEmpty {
-                Text("No users in this channel")
+                Text(localized("channelActions.noUsers"))
                     .font(.footnote)
                     .foregroundColor(.secondary)
             } else {
@@ -4599,9 +4604,9 @@ struct ChannelRow: View {
         }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Channel"),
+                title: Text(localized("channelActions.deleteChannel")),
                 message: Text(channel.name),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                     model.deleteChannel(channel, force: false)
                 },
                 secondaryButton: .cancel()
@@ -4610,9 +4615,9 @@ struct ChannelRow: View {
         .background(
             EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
                 Alert(
-                    title: Text("Force Delete Channel"),
+                    title: Text(localized("channelActions.forceDeleteChannel")),
                     message: Text(channel.name),
-                    primaryButton: .destructive(Text("Force Delete")) {
+                    primaryButton: .destructive(Text(localized("channelActions.forceDelete"))) {
                         model.deleteChannel(channel, force: true)
                     },
                     secondaryButton: .cancel()
@@ -4626,13 +4631,13 @@ struct ChannelRow: View {
             return nil
         }
         if let maxClients = channel.maxClients, maxClients >= 0 {
-            return "Limit \(maxClients)"
+            return localized("channelActions.limitFormat", maxClients)
         }
         if channel.maxFamilyClientsInherited == true || channel.maxFamilyClientsUnlimited == true {
             return nil
         }
         if let maxFamilyClients = channel.maxFamilyClients, maxFamilyClients >= 0 {
-            return "Family \(maxFamilyClients)"
+            return localized("channelActions.familyLimitFormat", maxFamilyClients)
         }
         return nil
     }
