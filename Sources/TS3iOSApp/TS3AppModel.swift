@@ -384,6 +384,7 @@ struct TS3ChannelSummary: Identifiable {
     var neededTalkPower: Int?
     var neededJoinPower: Int?
     var neededSubscribePower: Int?
+    var neededModifyPower: Int?
     var neededDescriptionViewPower: Int?
     var codec: Int?
     var codecQuality: Int?
@@ -423,6 +424,7 @@ struct TS3ChannelSummary: Identifiable {
         neededTalkPower: Int? = nil,
         neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
+        neededModifyPower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
@@ -461,6 +463,7 @@ struct TS3ChannelSummary: Identifiable {
         self.neededTalkPower = neededTalkPower
         self.neededJoinPower = neededJoinPower
         self.neededSubscribePower = neededSubscribePower
+        self.neededModifyPower = neededModifyPower
         self.neededDescriptionViewPower = neededDescriptionViewPower
         self.codec = codec
         self.codecQuality = codecQuality
@@ -489,6 +492,7 @@ enum TS3ChannelDraftValidator {
         neededTalkPower: String,
         neededJoinPower: String,
         neededSubscribePower: String,
+        neededModifyPower: String,
         neededDescriptionViewPower: String,
         codec: String? = nil,
         codecQuality: String,
@@ -519,6 +523,9 @@ enum TS3ChannelDraftValidator {
         }
         if !isOptionalInt(neededSubscribePower) {
             messages.append("Needed subscribe power must be numeric.")
+        }
+        if !isOptionalInt(neededModifyPower) {
+            messages.append("Needed modify power must be numeric.")
         }
         if !isOptionalInt(neededDescriptionViewPower) {
             messages.append("Needed description view power must be numeric.")
@@ -8456,6 +8463,7 @@ final class TS3AppModel: ObservableObject {
                 neededTalkPower: nil,
                 neededJoinPower: nil,
                 neededSubscribePower: nil,
+                neededModifyPower: nil,
                 neededDescriptionViewPower: nil,
                 codec: nil,
                 codecQuality: nil,
@@ -12910,6 +12918,7 @@ final class TS3AppModel: ObservableObject {
         neededTalkPower: Int?,
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
+        neededModifyPower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
         codec: Int?,
@@ -12948,6 +12957,7 @@ final class TS3AppModel: ObservableObject {
                 neededTalkPower: neededTalkPower,
                 neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
+                neededModifyPower: neededModifyPower,
                 neededDescriptionViewPower: neededDescriptionViewPower,
                 order: order,
                 deleteDelaySeconds: deleteDelaySeconds,
@@ -12974,6 +12984,7 @@ final class TS3AppModel: ObservableObject {
         neededTalkPower: Int?,
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
+        neededModifyPower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
         codec: Int?,
@@ -13005,6 +13016,7 @@ final class TS3AppModel: ObservableObject {
                 neededTalkPower: neededTalkPower,
                 neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
+                neededModifyPower: neededModifyPower,
                 neededDescriptionViewPower: neededDescriptionViewPower,
                 codec: codec,
                 codecQuality: codecQuality,
@@ -20369,6 +20381,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     neededTalkPower: channel.neededTalkPower,
                     neededJoinPower: channel.neededJoinPower,
                     neededSubscribePower: channel.neededSubscribePower,
+                    neededModifyPower: channel.neededModifyPower,
                     neededDescriptionViewPower: channel.neededDescriptionViewPower,
                     codec: channel.codec,
                     codecQuality: channel.codecQuality,
