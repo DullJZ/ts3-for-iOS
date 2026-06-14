@@ -7060,6 +7060,11 @@ struct UserPlaybackSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let user: TS3UserSummary
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     private var mutedBinding: Binding<Bool> {
         Binding(
             get: { model.isPlaybackMuted(for: user) },
@@ -7078,11 +7083,11 @@ struct UserPlaybackSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(user.nickname)) {
-                    Toggle("Mute Locally", isOn: mutedBinding)
+                    Toggle(localized("clientActions.muteLocally"), isOn: mutedBinding)
                         .disabled(model.contactStatus(for: user) == .blocked)
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Playback Volume")
+                            Text(localized("audio.playbackVolume"))
                             Spacer()
                             Text(model.playbackVolumePercentText(for: user))
                                 .foregroundColor(.secondary)
@@ -7106,11 +7111,11 @@ struct UserPlaybackSheet: View {
                     .padding(.vertical, 4)
                 }
             }
-            .navigationTitle("Local Playback")
+            .navigationTitle(localized("clientActions.localPlayback"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
