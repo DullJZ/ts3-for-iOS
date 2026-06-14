@@ -8780,6 +8780,35 @@ final class TS3AppModel: ObservableObject {
         lastError = nil
     }
 
+    func fullInviteLink(for temporaryPassword: TS3TemporaryServerPasswordSummary) -> String? {
+        let targetChannel = temporaryPassword.targetChannelId.flatMap { targetId in
+            channels.first { $0.id == targetId }
+        }
+        let targetChannelPath = targetChannel.map(channelPath(for:)) ?? ""
+        let name = targetChannel.map { "\(serverHost) - \($0.name)" } ?? serverHost
+        return inviteLink(
+            name: name,
+            host: serverHost,
+            port: serverPort,
+            nickname: nickname,
+            phoneticNickname: phoneticNickname,
+            serverPassword: temporaryPassword.password,
+            defaultChannel: targetChannelPath,
+            defaultChannelPassword: temporaryPassword.targetChannelPassword ?? "",
+            privilegeKey: privilegeKey,
+            includingSecrets: true
+        )
+    }
+
+    func copyFullInviteLink(for temporaryPassword: TS3TemporaryServerPasswordSummary) {
+        guard let link = fullInviteLink(for: temporaryPassword) else {
+            lastError = "Current server is not a valid TeamSpeak invite link."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(link)
+        lastError = nil
+    }
+
     func copyInviteLink(for bookmark: TS3BookmarkSummary) {
         guard let link = inviteLink(
             name: bookmark.name,

@@ -21394,6 +21394,9 @@ struct TemporaryServerPasswordRow: View {
                     Button(localized("groups.row.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary(channels: model.channels))
                     }
+                    Button(localized("temporaryPasswords.row.copyFullInviteLink")) {
+                        model.copyFullInviteLink(for: entry)
+                    }
                     Button(localized("temporaryPasswords.row.deletePassword")) {
                         isConfirmingDelete = true
                     }
@@ -21412,6 +21415,9 @@ struct TemporaryServerPasswordRow: View {
         }
         .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary(channels: model.channels))
+        }
+        .accessibilityAction(named: localized("temporaryPasswords.row.copyFullInviteLink")) {
+            model.copyFullInviteLink(for: entry)
         }
         .accessibilityAction(named: localized("temporaryPasswords.row.deletePassword")) {
             if model.state == .connected {

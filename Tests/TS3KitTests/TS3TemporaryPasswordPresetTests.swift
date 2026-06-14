@@ -1,5 +1,6 @@
 import XCTest
 @testable import TS3iOSApp
+import TS3Kit
 
 final class TS3TemporaryPasswordPresetTests: XCTestCase {
     func testTemporaryPasswordDraftValidatorRejectsInvalidDrafts() {
@@ -118,6 +119,80 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
             entry.accessibilityValue(channels: []),
             "Temporary server password. Target Server Default. Creator Database ID 91"
         )
+    }
+
+    @MainActor
+    func testTemporaryPasswordFullInviteLinkUsesTargetChannelAndPassword() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = "9988"
+        model.nickname = "Avery"
+        model.phoneticNickname = "A very"
+        model.privilegeKey = "group-token"
+        model.channels = [
+            TS3ChannelSummary(
+                id: 12,
+                parentId: nil,
+                order: 0,
+                name: "Lobby",
+                isDefault: false,
+                isPasswordProtected: false,
+                isPermanent: true,
+                isCurrent: false
+            )
+        ]
+        let entry = TS3TemporaryServerPasswordSummary(
+            id: "guest-pass",
+            password: "guest-pass",
+            creatorUniqueIdentifier: nil,
+            creatorDatabaseId: nil,
+            creatorName: nil,
+            targetChannelId: 12,
+            targetChannelPassword: "room-secret",
+            createdAt: nil,
+            durationSeconds: nil,
+            description: nil
+        )
+
+        let link = try XCTUnwrap(model.fullInviteLink(for: entry))
+        let parsed = try TS3ServerURL(url: try XCTUnwrap(URL(string: link)))
+
+        XCTAssertEqual(parsed.host, "voice.example.test")
+        XCTAssertEqual(parsed.port, 9988)
+        XCTAssertEqual(parsed.nickname, "Avery")
+        XCTAssertEqual(parsed.phoneticNickname, "A very")
+        XCTAssertEqual(parsed.serverPassword, "guest-pass")
+        XCTAssertEqual(parsed.defaultChannel, "Lobby")
+        XCTAssertEqual(parsed.defaultChannelPassword, "room-secret")
+        XCTAssertEqual(parsed.privilegeKey, "group-token")
+    }
+
+    @MainActor
+    func testTemporaryPasswordFullInviteLinkUsesServerDefaultPassword() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = "9987"
+        let entry = TS3TemporaryServerPasswordSummary(
+            id: "server-pass",
+            password: "server-pass",
+            creatorUniqueIdentifier: nil,
+            creatorDatabaseId: nil,
+            creatorName: nil,
+            targetChannelId: nil,
+            targetChannelPassword: nil,
+            createdAt: nil,
+            durationSeconds: nil,
+            description: nil
+        )
+
+        let link = try XCTUnwrap(model.fullInviteLink(for: entry))
+        let parsed = try TS3ServerURL(url: try XCTUnwrap(URL(string: link)))
+
+        XCTAssertEqual(parsed.host, "voice.example.test")
+        XCTAssertEqual(parsed.port, 9987)
+        XCTAssertEqual(parsed.serverPassword, "server-pass")
+        XCTAssertNil(parsed.defaultChannel)
+        XCTAssertNil(parsed.defaultChannelPassword)
     }
 
     @MainActor

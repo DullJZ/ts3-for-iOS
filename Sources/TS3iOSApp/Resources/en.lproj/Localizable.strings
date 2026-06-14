@@ -2539,6 +2539,7 @@
 "temporaryPasswords.import.title" = "Import Temporary Password Filters";
 "temporaryPasswords.import.action" = "Import";
 "temporaryPasswords.row.copyPassword" = "Copy Password";
+"temporaryPasswords.row.copyFullInviteLink" = "Copy Full Invite Link";
 "temporaryPasswords.row.deletePassword" = "Delete Password";
 "temporaryPasswords.row.deleteAlert.title" = "Delete Temporary Password?";
 "temporaryPasswords.row.targetFormat" = "Target: %@";

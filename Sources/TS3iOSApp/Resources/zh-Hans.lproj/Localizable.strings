@@ -2539,6 +2539,7 @@
 "temporaryPasswords.import.title" = "导入临时密码筛选";
 "temporaryPasswords.import.action" = "导入";
 "temporaryPasswords.row.copyPassword" = "复制密码";
+"temporaryPasswords.row.copyFullInviteLink" = "复制完整邀请链接";
 "temporaryPasswords.row.deletePassword" = "删除密码";
 "temporaryPasswords.row.deleteAlert.title" = "删除临时密码？";
 "temporaryPasswords.row.targetFormat" = "目标：%@";
