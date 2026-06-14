@@ -25400,52 +25400,52 @@ struct IdentitySummaryRows: View {
 
     var body: some View {
         HStack {
-            Text("UID")
+            Text(NSLocalizedString("identity.uid", comment: ""))
             Spacer()
-            Text(model.identitySummary.uid.isEmpty ? "Unavailable" : model.identitySummary.uid)
+            Text(model.identitySummary.uid.isEmpty ? NSLocalizedString("identity.unavailable", comment: "") : model.identitySummary.uid)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
         HStack {
-            Text("Security")
+            Text(NSLocalizedString("identity.security", comment: ""))
             Spacer()
             Text("\(model.identitySummary.securityLevel)")
                 .foregroundColor(.secondary)
         }
-        Button("Refresh Identity") {
+        Button(NSLocalizedString("identity.refresh", comment: "")) {
             Task { @MainActor in
                 await model.refreshIdentitySummary()
             }
         }
-        Button("Copy Identity Backup") {
+        Button(NSLocalizedString("identity.copyBackup", comment: "")) {
             model.copyIdentityExport()
         }
         .disabled(model.identitySummary.exportString.isEmpty)
         HStack {
-            Text("New Security Level")
+            Text(NSLocalizedString("identity.newSecurityLevel", comment: ""))
             Spacer()
             TextField("8", text: $targetSecurityLevel)
                 .multilineTextAlignment(.trailing)
                 .ts3NumericKeyboard()
         }
-        TextField("Identity Backup", text: $importedIdentity)
+        TextField(NSLocalizedString("identity.backupPlaceholder", comment: ""), text: $importedIdentity)
             .ts3PlainTextField()
-        Button("Import Identity") {
+        Button(NSLocalizedString("identity.import", comment: "")) {
             model.importIdentity(importedIdentity)
             importedIdentity = ""
         }
         .disabled(importedIdentity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        Button("Regenerate Identity") {
+        Button(NSLocalizedString("identity.regenerate", comment: "")) {
             isConfirmingRegenerate = true
         }
         .foregroundColor(.red)
         .disabled(model.state != .disconnected || parsedSecurityLevel == nil)
         .alert(isPresented: $isConfirmingRegenerate) {
             Alert(
-                title: Text("Regenerate Identity?"),
-                message: Text("This replaces your local identity. Servers will treat you as a different client unless you restore a backup."),
-                primaryButton: .destructive(Text("Regenerate")) {
+                title: Text(NSLocalizedString("identity.regenerateAlert.title", comment: "")),
+                message: Text(NSLocalizedString("identity.regenerateAlert.message", comment: "")),
+                primaryButton: .destructive(Text(NSLocalizedString("identity.regenerate", comment: ""))) {
                     model.regenerateIdentity(securityLevel: parsedSecurityLevel ?? 8)
                 },
                 secondaryButton: .cancel()
@@ -25487,42 +25487,42 @@ struct IdentityManagementSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Identity")) {
+                Section(header: Text(NSLocalizedString("identity.title", comment: ""))) {
                     IdentitySummaryRows(importedIdentity: $importedIdentity)
-                    Button("Copy Identity Snapshot") {
+                    Button(NSLocalizedString("identity.copySnapshot", comment: "")) {
                         model.copyIdentitySnapshot()
                     }
-                    Button("Export Identity Snapshot") {
+                    Button(NSLocalizedString("identity.exportSnapshot", comment: "")) {
                         exportIdentitySnapshot()
                     }
-                    Button("Import Identity Backup") {
+                    Button(NSLocalizedString("identity.importBackup", comment: "")) {
                         isImportingIdentity = true
                     }
-                    Button("Export Identity Backup") {
+                    Button(NSLocalizedString("identity.exportBackup", comment: "")) {
                         exportIdentityBackup()
                     }
                     .disabled(model.identitySummary.exportString.isEmpty)
                 }
-                Section(header: Text("Identity Profiles")) {
-                    TextField("Profile Name", text: $identityProfileName)
+                Section(header: Text(NSLocalizedString("identity.profiles", comment: ""))) {
+                    TextField(NSLocalizedString("identity.profileName", comment: ""), text: $identityProfileName)
                         .ts3PlainTextField()
-                    Button("Save Current Identity as Profile") {
+                    Button(NSLocalizedString("identity.saveCurrentAsProfile", comment: "")) {
                         model.saveCurrentIdentityProfile(name: identityProfileName)
                         identityProfileName = ""
                     }
                     .disabled(model.identitySummary.exportString.isEmpty)
-                    Button("Import Backup as Profile") {
+                    Button(NSLocalizedString("identity.importBackupAsProfile", comment: "")) {
                         isImportingIdentityProfile = true
                     }
-                    Button("Export Profile Backup") {
+                    Button(NSLocalizedString("identity.exportProfileBackup", comment: "")) {
                         exportIdentityProfiles()
                     }
                     .disabled(model.identityProfiles.isEmpty)
-                    Button("Import Profile Backup") {
+                    Button(NSLocalizedString("identity.importProfileBackup", comment: "")) {
                         isImportingIdentityProfiles = true
                     }
                     if model.identityProfiles.isEmpty {
-                        Text("No saved identity profiles")
+                        Text(NSLocalizedString("identity.noSavedProfiles", comment: ""))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(model.identityProfiles) { profile in
@@ -25532,7 +25532,7 @@ struct IdentityManagementSheet: View {
                     }
                 }
             }
-            .navigationTitle("Identity")
+            .navigationTitle(NSLocalizedString("identity.title", comment: ""))
             .ts3InlineNavigationTitle()
             .onAppear {
                 Task { @MainActor in
@@ -25541,7 +25541,7 @@ struct IdentityManagementSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(NSLocalizedString("common.done", comment: "")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -25741,24 +25741,24 @@ private struct IdentityProfileImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported profiles: \(preview.importedProfileCount)")
-                    Text("Usable profiles: \(preview.usableProfileCount)")
-                    Text("New profiles: \(preview.newProfileCount)")
-                    Text("Replacing profiles: \(preview.replacedProfileCount)")
-                    Text("Skipped profiles: \(preview.skippedProfileCount)")
-                    Button("Copy Profile Backup Preview") {
+                Section(header: Text(NSLocalizedString("identity.import.preview", comment: ""))) {
+                    Text(localized("identity.import.importedProfilesFormat", preview.importedProfileCount))
+                    Text(localized("identity.import.usableProfilesFormat", preview.usableProfileCount))
+                    Text(localized("identity.import.newProfilesFormat", preview.newProfileCount))
+                    Text(localized("identity.import.replacingProfilesFormat", preview.replacedProfileCount))
+                    Text(localized("identity.import.skippedProfilesFormat", preview.skippedProfileCount))
+                    Button(NSLocalizedString("identity.import.copyProfileBackupPreview", comment: "")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(NSLocalizedString("identity.import.restore", comment: ""))) {
                     HStack {
-                        Button("Select All") {
+                        Button(NSLocalizedString("identity.import.selectAll", comment: "")) {
                             selectedProfileIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(NSLocalizedString("identity.import.clear", comment: "")) {
                             selectedProfileIds.removeAll()
                         }
                     }
@@ -25780,22 +25780,22 @@ private struct IdentityProfileImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected identity profiles by UID and leaves unselected profiles unchanged.")
+                    Text(NSLocalizedString("identity.import.behavior", comment: ""))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Identity Profiles")
+            .navigationTitle(NSLocalizedString("identity.import.title", comment: ""))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(NSLocalizedString("identity.import.action", comment: "")) {
                         importProfiles(selectedProfileIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -25803,6 +25803,11 @@ private struct IdentityProfileImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return String(format: format, locale: Locale.current, arguments: arguments)
     }
 }
 
@@ -25828,33 +25833,33 @@ private struct IdentityProfileRow: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text("Security \(profile.securityLevel) · Offset \(profile.keyOffset)")
+                    Text(localized("identity.row.securityOffsetFormat", profile.securityLevel, profile.keyOffset))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 if isActive {
-                    Text("Active")
+                    Text(NSLocalizedString("identity.row.active", comment: ""))
                         .font(.caption.weight(.semibold))
                         .foregroundColor(.accentColor)
                 }
             }
             HStack {
-                Button("Use") {
+                Button(NSLocalizedString("identity.row.use", comment: "")) {
                     model.activateIdentityProfile(profile)
                 }
                 .buttonStyle(.borderless)
                 .disabled(model.state != .disconnected || isActive)
-                Button("Rename") {
+                Button(NSLocalizedString("identity.row.rename", comment: "")) {
                     editedName = profile.name
                     isEditingName = true
                 }
                 .buttonStyle(.borderless)
-                Button("Copy Backup") {
+                Button(NSLocalizedString("identity.row.copyBackup", comment: "")) {
                     TS3PlatformSupport.copyToPasteboard(profile.exportString)
                 }
                 .buttonStyle(.borderless)
-                Button("Delete") {
+                Button(NSLocalizedString("common.delete", comment: "")) {
                     isConfirmingDelete = true
                 }
                 .buttonStyle(.borderless)
@@ -25866,31 +25871,31 @@ private struct IdentityProfileRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(profile.name)
         .accessibilityValue(profile.accessibilityValue(isActive: isActive, canSwitch: model.state == .disconnected))
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: NSLocalizedString("common.copySummary", comment: "")) {
             TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
         }
-        .accessibilityAction(named: "Use Identity") {
+        .accessibilityAction(named: NSLocalizedString("identity.row.useIdentity", comment: "")) {
             model.activateIdentityProfile(profile)
         }
         .contextMenu {
-            Button("Use Identity") {
+            Button(NSLocalizedString("identity.row.useIdentity", comment: "")) {
                 model.activateIdentityProfile(profile)
             }
             .disabled(model.state != .disconnected || isActive)
-            Button("Copy Backup") {
+            Button(NSLocalizedString("identity.row.copyBackup", comment: "")) {
                 TS3PlatformSupport.copyToPasteboard(profile.exportString)
             }
-            Button("Copy Summary") {
+            Button(NSLocalizedString("common.copySummary", comment: "")) {
                 TS3PlatformSupport.copyToPasteboard(profile.clipboardSummary)
             }
-            Button("Copy UID") {
+            Button(NSLocalizedString("identity.row.copyUid", comment: "")) {
                 TS3PlatformSupport.copyToPasteboard(profile.uid)
             }
-            Button("Rename") {
+            Button(NSLocalizedString("identity.row.rename", comment: "")) {
                 editedName = profile.name
                 isEditingName = true
             }
-            Button("Delete") {
+            Button(NSLocalizedString("common.delete", comment: "")) {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
@@ -25898,19 +25903,19 @@ private struct IdentityProfileRow: View {
         .sheet(isPresented: $isEditingName) {
             NavigationView {
                 Form {
-                    TextField("Profile Name", text: $editedName)
+                    TextField(NSLocalizedString("identity.profileName", comment: ""), text: $editedName)
                         .ts3PlainTextField()
                 }
-                .navigationTitle("Rename Identity")
+                .navigationTitle(NSLocalizedString("identity.row.renameIdentity", comment: ""))
                 .ts3InlineNavigationTitle()
                 .toolbar {
                     ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                        Button("Cancel") {
+                        Button(NSLocalizedString("common.cancel", comment: "")) {
                             isEditingName = false
                         }
                     }
                     ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                        Button("Save") {
+                        Button(NSLocalizedString("common.save", comment: "")) {
                             model.renameIdentityProfile(profile, name: editedName)
                             isEditingName = false
                         }
@@ -25921,14 +25926,19 @@ private struct IdentityProfileRow: View {
         }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Identity Profile?"),
+                title: Text(NSLocalizedString("identity.row.deleteAlert.title", comment: "")),
                 message: Text(profile.name),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                     model.deleteIdentityProfile(profile)
                 },
                 secondaryButton: .cancel()
             )
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return String(format: format, locale: Locale.current, arguments: arguments)
     }
 }
 
