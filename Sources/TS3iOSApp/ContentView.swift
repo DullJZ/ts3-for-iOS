@@ -5113,6 +5113,11 @@ struct ChannelMemberRow: View {
     @State private var passwordMoveChannel: TS3ChannelSummary?
     @State private var movePassword = ""
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     private var memberClipboardSummary: String {
         var parts = [
             "clientId=\(member.id)",
@@ -5152,52 +5157,52 @@ struct ChannelMemberRow: View {
                 }
                 HStack(spacing: 8) {
                     if contactStatus == .friend {
-                        Text("Friend")
+                        Text(localized("contacts.status.friend"))
                     }
                     if contactStatus == .blocked {
-                        Text("Blocked")
+                        Text(localized("contacts.status.blocked"))
                     }
                     if member.isAway {
-                        Text(member.awayMessage?.isEmpty == false ? "Away: \(member.awayMessage!)" : "Away")
+                        Text(member.awayMessage?.isEmpty == false ? localized("clientActions.awayMessageFormat", member.awayMessage!) : localized("selfStatus.away"))
                     }
                     if member.isInputMuted {
-                        Text("Mic muted")
+                        Text(localized("clientActions.micMuted"))
                     }
                     if member.isOutputMuted {
-                        Text("Sound muted")
+                        Text(localized("clientActions.soundMuted"))
                     }
                     if isPlaybackMuted {
-                        Text("Locally muted")
+                        Text(localized("clientActions.locallyMuted"))
                     } else if playbackPreference.volume != 1 {
-                        Text("Volume \(model.playbackVolumePercentText(for: member))")
+                        Text(localized("clientActions.volumeFormat", model.playbackVolumePercentText(for: member)))
                     }
                     if member.isChannelCommander {
-                        Text("Commander")
+                        Text(localized("clientActions.commander"))
                     }
                     if member.isPrioritySpeaker {
-                        Text("Priority")
+                        Text(localized("clientActions.priority"))
                     }
                     if member.isTalker {
-                        Text("Talker")
+                        Text(localized("clientActions.talker"))
                     }
                     if member.isRequestingTalkPower {
-                        Text("Wants Talk")
+                        Text(localized("clientActions.wantsTalk"))
                     }
                     if let talkRequestMessage = member.talkRequestMessage, !talkRequestMessage.isEmpty {
-                        Text("Request: \(talkRequestMessage)")
+                        Text(localized("clientActions.requestFormat", talkRequestMessage))
                             .lineLimit(2)
                     }
                     if let power = member.talkPower {
-                        Text("Talk \(power)")
+                        Text(localized("channelActions.talkPowerFormat", power))
                     }
                     if let channelGroupId = member.channelGroupId {
-                        Text("Channel: \(TS3GroupSummary.name(for: channelGroupId, in: model.channelGroups))")
+                        Text(localized("clientActions.channelGroupFormat", TS3GroupSummary.name(for: channelGroupId, in: model.channelGroups)))
                     }
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
                 if !member.serverGroups.isEmpty {
-                    Text("Server: \(serverGroupNames)")
+                    Text(localized("clientActions.serverGroupsFormat", serverGroupNames))
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -5209,14 +5214,14 @@ struct ChannelMemberRow: View {
                         .lineLimit(2)
                 }
                 if let note = model.contactNote(for: member) {
-                    Text("Note: \(note)")
+                    Text(localized("clientActions.noteFormat", note))
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
             }
             if member.isCurrentUser {
-                Text("You")
+                Text(localized("clientActions.you"))
                     .font(.caption.weight(.semibold))
                     .foregroundColor(.accentColor)
                     .padding(.horizontal, 8)
@@ -5226,140 +5231,140 @@ struct ChannelMemberRow: View {
             }
             Spacer()
             Menu {
-                Button("Client Info") {
+                Button(localized("contacts.row.clientInfo")) {
                     actionMode = .info
                 }
-                Button("Copy Client Summary") {
+                Button(localized("clientActions.copyClientSummary")) {
                     TS3PlatformSupport.copyToPasteboard(memberClipboardSummary)
                 }
-                Button("Copy Nickname") {
+                Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(member.nickname)
                 }
-                Button("Copy Client ID") {
+                Button(localized("selfStatus.copyClientId")) {
                     TS3PlatformSupport.copyToPasteboard("\(member.id)")
                 }
                 if let databaseId = member.databaseId {
-                    Button("Copy Database ID") {
+                    Button(localized("selfStatus.copyDatabaseId")) {
                         TS3PlatformSupport.copyToPasteboard("\(databaseId)")
                     }
                 }
                 if let uniqueIdentifier = member.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                    Button("Copy Unique ID") {
+                    Button(localized("contacts.row.copyUniqueId")) {
                         TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                     }
                 }
                 if let ipAddress = member.ipAddress, !ipAddress.isEmpty {
-                    Button("Copy IP Address") {
+                    Button(localized("clientActions.copyIpAddress")) {
                         TS3PlatformSupport.copyToPasteboard(ipAddress)
                     }
                 }
-                Button("Send Private Message") {
+                Button(localized("contacts.row.sendPrivateMessage")) {
                     actionMode = .privateMessage
                 }
-                Button("Send Offline Message") {
+                Button(localized("clientActions.sendOfflineMessage")) {
                     actionMode = .offlineMessage
                 }
-                Button("Poke") {
+                Button(localized("contacts.row.poke")) {
                     actionMode = .poke
                 }
                 if !member.isCurrentUser {
-                    Button("Complain") {
+                    Button(localized("clientActions.complain")) {
                         actionMode = .complain
                     }
-                    Button("View Complaints") {
+                    Button(localized("database.viewComplaints")) {
                         model.showComplaints(for: member)
                     }
                 }
-                Button("Whisper to User") {
+                Button(localized("clientActions.whisperToUser")) {
                     model.enableWhisperToClient(member)
                 }
                 if !member.isCurrentUser {
-                    Menu("Local Playback") {
-                        Button(isPlaybackMuted ? "Unmute Locally" : "Mute Locally") {
+                    Menu(localized("clientActions.localPlayback")) {
+                        Button(isPlaybackMuted ? localized("clientActions.unmuteLocally") : localized("clientActions.muteLocally")) {
                             model.setPlaybackMuted(!isPlaybackMuted, for: member)
                         }
                         .disabled(contactStatus == .blocked)
-                        Button("Adjust Volume") {
+                        Button(localized("clientActions.adjustVolume")) {
                             isShowingPlaybackSettings = true
                         }
-                        Button("Reset Volume") {
+                        Button(localized("clientActions.resetVolume")) {
                             model.updatePlaybackVolume(1, for: member)
                             model.setPlaybackMuted(false, for: member)
                         }
                         .disabled(!playbackPreference.isMuted && playbackPreference.volume == 1)
                     }
                 }
-                Button("Refresh Details") {
+                Button(localized("clientActions.refreshDetails")) {
                     model.refreshUserDetails(member)
                 }
-                Button("View Database Client") {
+                Button(localized("clientActions.viewDatabaseClient")) {
                     if let record = TS3DatabaseClientSummary(user: member) {
                         model.loadDatabaseClientDetails(record)
                         isShowingDatabaseClient = true
                     }
                 }
                 .disabled(member.databaseId == nil)
-                Button("Download Avatar") {
+                Button(localized("selfStatus.downloadAvatar")) {
                     model.refreshUserAvatar(member)
                 }
-                Button("Edit Description") {
+                Button(localized("database.editDescription")) {
                     actionMode = .editDescription
                 }
-                Button("Edit Channel Client Permissions") {
+                Button(localized("clientActions.editChannelClientPermissions")) {
                     model.selectChannelClientPermissions(member)
                     isShowingPermissions = member.databaseId != nil
                 }
                 .disabled(member.databaseId == nil)
                 if member.uniqueIdentifier != nil {
-                    Menu("Contact") {
-                        Button("Open Contact Manager") {
+                    Menu(localized("clientActions.contact")) {
+                        Button(localized("clientActions.openContactManager")) {
                             model.showContacts(for: member)
                         }
-                        Button("Mark as Friend") {
+                        Button(localized("clientActions.markAsFriend")) {
                             model.setContactStatus(.friend, for: member)
                         }
                         .disabled(contactStatus == .friend)
-                        Button("Block Contact") {
+                        Button(localized("clientActions.blockContact")) {
                             model.setContactStatus(.blocked, for: member)
                         }
                         .disabled(contactStatus == .blocked)
-                        Button("Ignore Contact") {
+                        Button(localized("clientActions.ignoreContact")) {
                             model.setContactStatus(.ignored, for: member)
                         }
                         .disabled(contactStatus == .ignored)
-                        Button("Set Neutral") {
+                        Button(localized("clientActions.setNeutral")) {
                             model.setContactStatus(.neutral, for: member)
                         }
                         .disabled(contactStatus == .neutral && model.contactNote(for: member) == nil)
-                        Button("Edit Note") {
+                        Button(localized("clientActions.editNote")) {
                             actionMode = .contactNote
                         }
                     }
                 }
                 if member.isPrioritySpeaker {
-                    Button("Remove Priority Speaker") {
+                    Button(localized("selfStatus.removePrioritySpeaker")) {
                         model.setPrioritySpeaker(false, for: member)
                     }
                 } else {
-                    Button("Grant Priority Speaker") {
+                    Button(localized("selfStatus.grantPrioritySpeaker")) {
                         model.setPrioritySpeaker(true, for: member)
                     }
                 }
                 if member.isTalker {
-                    Button("Remove Talk Power") {
+                    Button(localized("clientActions.removeTalkPower")) {
                         model.setTalker(false, for: member)
                     }
                 } else {
-                    Button(member.isRequestingTalkPower ? "Grant Talk Power" : "Mark As Talker") {
+                    Button(member.isRequestingTalkPower ? localized("clientActions.grantTalkPower") : localized("selfStatus.markAsTalker")) {
                         model.setTalker(true, for: member)
                     }
                     if member.isRequestingTalkPower {
-                        Button("Deny Talk Request") {
+                        Button(localized("clientActions.denyTalkRequest")) {
                             model.denyTalkRequest(for: member)
                         }
                     }
                 }
-                Menu("Move To") {
+                Menu(localized("clientActions.moveTo")) {
                     ForEach(model.channels) { channel in
                         Button(channel.name) {
                             if channel.isPasswordProtected {
@@ -5372,18 +5377,18 @@ struct ChannelMemberRow: View {
                     }
                 }
                 if !member.isCurrentUser {
-                    Button("Kick From Channel") {
+                    Button(localized("clientActions.kickFromChannel")) {
                         actionMode = .kickChannel
                     }
-                    Button("Kick From Server") {
+                    Button(localized("clientActions.kickFromServer")) {
                         actionMode = .kickServer
                     }
-                    Button("Ban") {
+                    Button(localized("clientActions.ban")) {
                         actionMode = .ban
                     }
                 }
                 if !availableServerGroups.isEmpty {
-                    Menu("Add Server Group") {
+                    Menu(localized("clientActions.addServerGroup")) {
                         ForEach(availableServerGroups) { group in
                             Button(group.name) {
                                 model.addServerGroup(group, to: member)
@@ -5392,7 +5397,7 @@ struct ChannelMemberRow: View {
                     }
                 }
                 if !assignedServerGroups.isEmpty {
-                    Menu("Remove Server Group") {
+                    Menu(localized("clientActions.removeServerGroup")) {
                         ForEach(assignedServerGroups) { group in
                             Button(group.name) {
                                 model.removeServerGroup(group, from: member)
@@ -5401,7 +5406,7 @@ struct ChannelMemberRow: View {
                     }
                 }
                 if !model.channelGroups.isEmpty, let channel = model.channels.first(where: { $0.id == member.channelId }) {
-                    Menu("Set Channel Group") {
+                    Menu(localized("clientActions.setChannelGroup")) {
                         ForEach(model.channelGroups) { group in
                             Button(group.name) {
                                 model.setChannelGroup(group, for: member, in: channel)
