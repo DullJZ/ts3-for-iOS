@@ -164,4 +164,94 @@ final class TS3FileTransferTests: XCTestCase {
             "Directory. Remote path /recordings/"
         )
     }
+
+    func testFileMovePreviewDetectsConflictInKnownDestinationDirectory() throws {
+        let source = fileEntry(
+            channelId: 51,
+            path: "/mods/map.dat",
+            parentPath: "/mods/",
+            name: "map.dat"
+        )
+        let existingDestination = fileEntry(
+            channelId: 51,
+            path: "/archive/MAP.dat",
+            parentPath: "/archive/",
+            name: "MAP.dat"
+        )
+
+        let preview = try XCTUnwrap(TS3FileMovePreview.previews(
+            for: [source],
+            destinationDirectory: "archive",
+            knownDestinationEntries: [existingDestination]
+        ).first)
+
+        XCTAssertEqual(preview.newPath, "/archive/map.dat")
+        XCTAssertEqual(preview.conflict?.id, existingDestination.id)
+        XCTAssertTrue(preview.isBlocking)
+        XCTAssertFalse(preview.isUnchanged)
+    }
+
+    func testFileMovePreviewDetectsDuplicateSelectedDestinationNames() {
+        let first = fileEntry(
+            channelId: 52,
+            path: "/a/readme.txt",
+            parentPath: "/a/",
+            name: "readme.txt"
+        )
+        let second = fileEntry(
+            channelId: 52,
+            path: "/b/README.txt",
+            parentPath: "/b/",
+            name: "README.txt"
+        )
+
+        let previews = TS3FileMovePreview.previews(
+            for: [first, second],
+            destinationDirectory: "/merged/",
+            knownDestinationEntries: []
+        )
+
+        XCTAssertEqual(previews.map(\.newPath), ["/merged/readme.txt", "/merged/README.txt"])
+        XCTAssertTrue(previews.allSatisfy(\.duplicatesSelectedName))
+        XCTAssertTrue(previews.allSatisfy(\.isBlocking))
+    }
+
+    func testFileMovePreviewBlocksMovingDirectoryIntoItself() throws {
+        let entry = fileEntry(
+            channelId: 53,
+            path: "/recordings/",
+            parentPath: "/",
+            name: "recordings",
+            isDirectory: true
+        )
+
+        let preview = try XCTUnwrap(TS3FileMovePreview.previews(
+            for: [entry],
+            destinationDirectory: "/recordings/live/",
+            knownDestinationEntries: []
+        ).first)
+
+        XCTAssertEqual(preview.newPath, "/recordings/live/recordings")
+        XCTAssertTrue(preview.isMovingDirectoryIntoItself)
+        XCTAssertTrue(preview.isBlocking)
+    }
+
+    private func fileEntry(
+        channelId: Int,
+        path: String,
+        parentPath: String,
+        name: String,
+        isDirectory: Bool = false
+    ) -> TS3FileEntrySummary {
+        TS3FileEntrySummary(entry: TS3FileEntry(
+            channelId: channelId,
+            path: path,
+            parentPath: parentPath,
+            name: name,
+            size: 0,
+            modifiedAt: nil,
+            type: isDirectory ? 0 : 1,
+            incompleteSize: nil
+        ))
+    }
 }

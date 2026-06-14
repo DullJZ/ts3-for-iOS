@@ -17937,13 +17937,12 @@ struct FileBrowserSheet: View {
                 MoveFileEntriesSheet(
                     entries: selectedEntries,
                     destinationDirectory: $selectedMoveDestinationDirectory,
-                    knownDirectoryPath: model.fileBrowserPath,
-                    knownDirectoryEntries: model.fileEntries,
                     onMove: {
                         model.moveFileEntries(selectedEntries, toDirectory: selectedMoveDestinationDirectory)
                         selectedEntryIDs.removeAll()
                     }
                 )
+                .environmentObject(model)
             }
             .alert(item: $transferConfirmation) { confirmation in
                 switch confirmation {
@@ -18879,9 +18878,7 @@ struct FileEntryRow: View {
         .sheet(isPresented: $isMoving) {
             MoveFileEntrySheet(
                 entry: entry,
-                destinationDirectory: $destinationDirectory,
-                knownDirectoryPath: model.fileBrowserPath,
-                knownDirectoryEntries: model.fileEntries
+                destinationDirectory: $destinationDirectory
             )
                 .environmentObject(model)
         }
@@ -19185,56 +19182,59 @@ struct MoveFileEntrySheet: View {
     @EnvironmentObject private var model: TS3AppModel
     let entry: TS3FileEntrySummary
     @Binding var destinationDirectory: String
-    let knownDirectoryPath: String
-    let knownDirectoryEntries: [TS3FileEntrySummary]
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(entry.name)) {
-                    TextField("Destination Directory", text: $destinationDirectory)
+                    TextField(localized("files.move.destinationDirectory"), text: $destinationDirectory)
                         .ts3PlainTextField()
-                    Text("Enter a remote directory path, for example / or /subfolder/.")
+                    Text(localized("files.move.destinationHelp"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                Section(header: Text("Move Preview")) {
+                Section(header: Text(localized("files.move.preview"))) {
                     if destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Enter a destination directory.")
+                        Text(localized("files.move.enterDestination"))
                             .foregroundColor(.secondary)
-                    } else if newPath == entry.path {
-                        Text("Destination is unchanged.")
+                    } else if preview.isUnchanged {
+                        Text(localized("files.move.unchanged"))
                             .foregroundColor(.secondary)
-                    } else if isMovingDirectoryIntoItself {
-                        Text("Cannot move a directory into itself.")
+                    } else if preview.isMovingDirectoryIntoItself {
+                        Text(localized("files.move.directoryIntoItself"))
                             .foregroundColor(.red)
-                    } else if let conflict = destinationConflict {
-                        Text("Conflicts with \(conflict.name) in the destination.")
+                    } else if let conflict = preview.conflict {
+                        Text(localized("files.move.conflictFormat", conflict.name))
                             .foregroundColor(.red)
                     } else {
-                        Text("\(entry.path) -> \(newPath)")
+                        Text("\(entry.path) -> \(preview.newPath)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     if !isDestinationKnown {
-                        Text("Destination contents are not loaded; the server will still validate conflicts when moving.")
+                        Text(localized("files.move.destinationUnknown"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
                 Section {
-                    Button("Move") {
+                    Button(localized("files.move.action")) {
                         model.moveFileEntry(entry, toDirectory: destinationDirectory)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(isMoveDisabled)
                 }
             }
-            .navigationTitle("Move")
+            .navigationTitle(localized("files.move.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -19244,84 +19244,59 @@ struct MoveFileEntrySheet: View {
 
     private var isMoveDisabled: Bool {
         destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || newPath == entry.path
-            || isMovingDirectoryIntoItself
-            || destinationConflict != nil
+            || preview.isUnchanged
+            || preview.isBlocking
     }
 
     private var normalizedDestinationDirectory: String {
-        Self.normalizedDirectoryPath(destinationDirectory)
+        TS3FileMovePreview.normalizedDirectoryPath(destinationDirectory)
     }
 
-    private var newPath: String {
-        Self.joinedPath(parentPath: normalizedDestinationDirectory, name: entry.name)
+    private var knownDestinationEntries: [TS3FileEntrySummary]? {
+        model.cachedFileEntries(channelId: entry.channelId, directoryPath: normalizedDestinationDirectory)
     }
 
     private var isDestinationKnown: Bool {
-        normalizedDestinationDirectory == Self.normalizedDirectoryPath(knownDirectoryPath)
+        knownDestinationEntries != nil
     }
 
-    private var destinationConflict: TS3FileEntrySummary? {
-        guard isDestinationKnown else { return nil }
-        return knownDirectoryEntries.first {
-            $0.id != entry.id
-                && $0.name.caseInsensitiveCompare(entry.name) == .orderedSame
-        }
-    }
-
-    private var isMovingDirectoryIntoItself: Bool {
-        guard entry.isDirectory else { return false }
-        let sourceDirectory = Self.normalizedDirectoryPath(entry.path)
-        return normalizedDestinationDirectory == sourceDirectory
-            || normalizedDestinationDirectory.hasPrefix(sourceDirectory)
-    }
-
-    private static func joinedPath(parentPath: String, name: String) -> String {
-        let parentPath = normalizedDirectoryPath(parentPath)
-        if name.hasPrefix("/") {
-            return name
-        }
-        return parentPath + name
-    }
-
-    private static func normalizedDirectoryPath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "/" }
-        var result = trimmed
-        if !result.hasPrefix("/") {
-            result = "/" + result
-        }
-        if !result.hasSuffix("/") {
-            result += "/"
-        }
-        return result
+    private var preview: TS3FileMovePreview {
+        TS3FileMovePreview.previews(
+            for: [entry],
+            destinationDirectory: normalizedDestinationDirectory,
+            knownDestinationEntries: knownDestinationEntries
+        )[0]
     }
 }
 
 struct MoveFileEntriesSheet: View {
     @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
     let entries: [TS3FileEntrySummary]
     @Binding var destinationDirectory: String
-    let knownDirectoryPath: String
-    let knownDirectoryEntries: [TS3FileEntrySummary]
     let onMove: () -> Void
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("\(entries.count) Selected Entries")) {
-                    TextField("Destination Directory", text: $destinationDirectory)
+                Section(header: Text(localized("files.move.selectedEntriesFormat", entries.count))) {
+                    TextField(localized("files.move.destinationDirectory"), text: $destinationDirectory)
                         .ts3PlainTextField()
-                    Text("Enter a remote directory path, for example / or /subfolder/.")
+                    Text(localized("files.move.destinationHelp"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                Section(header: Text("Move Preview")) {
+                Section(header: Text(localized("files.move.preview"))) {
                     if destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Enter a destination directory.")
+                        Text(localized("files.move.enterDestination"))
                             .foregroundColor(.secondary)
                     } else if previewItems.isEmpty {
-                        Text("No entries will be moved.")
+                        Text(localized("files.move.noEntriesMoved"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(previewItems) { item in
@@ -19341,12 +19316,12 @@ struct MoveFileEntriesSheet: View {
                         }
                     }
                     if !isDestinationKnown {
-                        Text("Destination contents are not loaded; the server will still validate conflicts when moving.")
+                        Text(localized("files.move.destinationUnknown"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-                Section(header: Text("Entries")) {
+                Section(header: Text(localized("files.move.entries"))) {
                     ForEach(entries) { entry in
                         HStack {
                             Image(systemName: entry.isDirectory ? "folder" : "doc")
@@ -19358,18 +19333,18 @@ struct MoveFileEntriesSheet: View {
                     }
                 }
                 Section {
-                    Button("Move Selected") {
+                    Button(localized("files.move.selectedAction")) {
                         onMove()
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(isMoveDisabled)
                 }
             }
-            .navigationTitle("Move Selected")
+            .navigationTitle(localized("files.move.selectedTitle"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -19385,64 +19360,55 @@ struct MoveFileEntriesSheet: View {
     }
 
     private var normalizedDestinationDirectory: String {
-        Self.normalizedDirectoryPath(destinationDirectory)
+        TS3FileMovePreview.normalizedDirectoryPath(destinationDirectory)
+    }
+
+    private var knownDestinationEntries: [TS3FileEntrySummary]? {
+        guard let channelId = entries.first?.channelId else { return nil }
+        return model.cachedFileEntries(channelId: channelId, directoryPath: normalizedDestinationDirectory)
     }
 
     private var isDestinationKnown: Bool {
-        normalizedDestinationDirectory == Self.normalizedDirectoryPath(knownDirectoryPath)
+        knownDestinationEntries != nil
     }
 
     private var previewItems: [MovePreviewItem] {
-        let selectedIds = Set(entries.map(\.id))
-        return entries.compactMap { entry in
-            let newPath = Self.joinedPath(parentPath: normalizedDestinationDirectory, name: entry.name)
-            if newPath == entry.path {
+        TS3FileMovePreview.previews(
+            for: entries,
+            destinationDirectory: normalizedDestinationDirectory,
+            knownDestinationEntries: knownDestinationEntries
+        )
+        .compactMap { preview in
+            if preview.isUnchanged {
                 return nil
             }
-            if isMovingDirectoryIntoItself(entry) {
-                return MovePreviewItem(entry: entry, detail: "Cannot move a directory into itself.", isBlocking: true)
+            if preview.isMovingDirectoryIntoItself {
+                return MovePreviewItem(
+                    entry: preview.entry,
+                    detail: localized("files.move.directoryIntoItself"),
+                    isBlocking: true
+                )
             }
-            if let conflict = destinationConflict(for: entry, selectedIds: selectedIds) {
-                return MovePreviewItem(entry: entry, detail: "Conflicts with \(conflict.name) in the destination.", isBlocking: true)
+            if preview.duplicatesSelectedName {
+                return MovePreviewItem(
+                    entry: preview.entry,
+                    detail: localized("files.move.duplicateSelectedName"),
+                    isBlocking: true
+                )
             }
-            return MovePreviewItem(entry: entry, detail: "\(entry.path) -> \(newPath)", isBlocking: false)
+            if let conflict = preview.conflict {
+                return MovePreviewItem(
+                    entry: preview.entry,
+                    detail: localized("files.move.conflictFormat", conflict.name),
+                    isBlocking: true
+                )
+            }
+            return MovePreviewItem(
+                entry: preview.entry,
+                detail: "\(preview.entry.path) -> \(preview.newPath)",
+                isBlocking: false
+            )
         }
-    }
-
-    private func destinationConflict(for entry: TS3FileEntrySummary, selectedIds: Set<String>) -> TS3FileEntrySummary? {
-        guard isDestinationKnown else { return nil }
-        return knownDirectoryEntries.first {
-            !selectedIds.contains($0.id)
-                && $0.name.caseInsensitiveCompare(entry.name) == .orderedSame
-        }
-    }
-
-    private func isMovingDirectoryIntoItself(_ entry: TS3FileEntrySummary) -> Bool {
-        guard entry.isDirectory else { return false }
-        let sourceDirectory = Self.normalizedDirectoryPath(entry.path)
-        return normalizedDestinationDirectory == sourceDirectory
-            || normalizedDestinationDirectory.hasPrefix(sourceDirectory)
-    }
-
-    private static func joinedPath(parentPath: String, name: String) -> String {
-        let parentPath = normalizedDirectoryPath(parentPath)
-        if name.hasPrefix("/") {
-            return name
-        }
-        return parentPath + name
-    }
-
-    private static func normalizedDirectoryPath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "/" }
-        var result = trimmed
-        if !result.hasPrefix("/") {
-            result = "/" + result
-        }
-        if !result.hasSuffix("/") {
-            result += "/"
-        }
-        return result
     }
 }
 

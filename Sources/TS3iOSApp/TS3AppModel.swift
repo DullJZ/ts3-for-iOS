@@ -3458,6 +3458,73 @@ struct TS3FileEntrySummary: Identifiable {
     }
 }
 
+struct TS3FileMovePreview {
+    let entry: TS3FileEntrySummary
+    let newPath: String
+    let conflict: TS3FileEntrySummary?
+    let duplicatesSelectedName: Bool
+    let isMovingDirectoryIntoItself: Bool
+
+    var isUnchanged: Bool {
+        newPath == entry.path
+    }
+
+    var isBlocking: Bool {
+        duplicatesSelectedName || isMovingDirectoryIntoItself || conflict != nil
+    }
+
+    static func normalizedDirectoryPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/" }
+        var result = trimmed
+        if !result.hasPrefix("/") {
+            result = "/" + result
+        }
+        if !result.hasSuffix("/") {
+            result += "/"
+        }
+        return result
+    }
+
+    static func joinedPath(parentPath: String, name: String) -> String {
+        let parentPath = normalizedDirectoryPath(parentPath)
+        if name.hasPrefix("/") {
+            return name
+        }
+        return parentPath + name
+    }
+
+    static func previews(
+        for entries: [TS3FileEntrySummary],
+        destinationDirectory: String,
+        knownDestinationEntries: [TS3FileEntrySummary]?
+    ) -> [TS3FileMovePreview] {
+        let normalizedDestination = normalizedDirectoryPath(destinationDirectory)
+        let selectedIds = Set(entries.map(\.id))
+        let selectedNameCounts = Dictionary(
+            entries.map { ($0.name.lowercased(), 1) },
+            uniquingKeysWith: +
+        )
+        return entries.map { entry in
+            let newPath = joinedPath(parentPath: normalizedDestination, name: entry.name)
+            let sourceDirectory = normalizedDirectoryPath(entry.path)
+            let isMovingDirectoryIntoItself = entry.isDirectory
+                && (normalizedDestination == sourceDirectory || normalizedDestination.hasPrefix(sourceDirectory))
+            let conflict = knownDestinationEntries?.first {
+                !selectedIds.contains($0.id)
+                    && $0.name.caseInsensitiveCompare(entry.name) == .orderedSame
+            }
+            return TS3FileMovePreview(
+                entry: entry,
+                newPath: newPath,
+                conflict: conflict,
+                duplicatesSelectedName: (selectedNameCounts[entry.name.lowercased()] ?? 0) > 1,
+                isMovingDirectoryIntoItself: isMovingDirectoryIntoItself
+            )
+        }
+    }
+}
+
 struct TS3FileBrowserBookmark: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -7223,6 +7290,7 @@ final class TS3AppModel: ObservableObject {
     @Published var fileBrowserChannelId: Int?
     @Published var fileBrowserPath = "/"
     @Published var fileBrowserPassword = ""
+    @Published private var fileDirectoryEntryCache: [String: [TS3FileEntrySummary]] = [:]
     @Published var fileTransferStatus: String?
     @Published var fileTransferProgress: Double?
     @Published var fileTransfers: [TS3FileTransferSummary] = []
@@ -8864,6 +8932,7 @@ final class TS3AppModel: ObservableObject {
         fileBrowserChannelId = nil
         fileBrowserPath = "/"
         fileBrowserPassword = ""
+        fileDirectoryEntryCache = [:]
         for task in fileTransferTasks.values {
             task.cancel()
         }
@@ -11124,14 +11193,21 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             let entries = try await client.refreshFileList(channelId: channelId, path: path, password: password)
             await MainActor.run {
-                self.fileEntries = entries
+                let summaries = entries
                     .map { TS3FileEntrySummary(entry: $0) }
                     .sorted {
                         if $0.isDirectory != $1.isDirectory { return $0.isDirectory && !$1.isDirectory }
                         return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
                     }
+                self.fileEntries = summaries
+                self.fileDirectoryEntryCache[self.fileDirectoryCacheKey(channelId: channelId, path: path)] = summaries
             }
         }
+    }
+
+    func cachedFileEntries(channelId: Int?, directoryPath: String) -> [TS3FileEntrySummary]? {
+        guard let channelId else { return nil }
+        return fileDirectoryEntryCache[fileDirectoryCacheKey(channelId: channelId, path: directoryPath)]
     }
 
     func enterFileDirectory(_ entry: TS3FileEntrySummary) {
@@ -11166,6 +11242,7 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             try await client.createFileDirectory(channelId: channelId, path: path, password: password)
         } onSuccess: {
+            self.invalidateFileDirectoryCache(channelId: channelId, path: self.fileBrowserPath)
             self.refreshFileList()
         }
     }
@@ -11175,6 +11252,7 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             try await client.deleteFile(channelId: entry.channelId, path: entry.path, password: password)
         } onSuccess: {
+            self.invalidateFileDirectoryCache(channelId: entry.channelId, path: entry.parentPath)
             self.refreshFileList()
         }
     }
@@ -11191,6 +11269,10 @@ final class TS3AppModel: ObservableObject {
                 try await client.deleteFile(channelId: entry.channelId, path: entry.path, password: password)
             }
             await MainActor.run {
+                let affectedPaths = Set(entries.map(\.parentPath))
+                for path in affectedPaths {
+                    self.invalidateFileDirectoryCache(channelId: entries.first?.channelId, path: path)
+                }
                 self.refreshFileList()
             }
         }
@@ -11204,6 +11286,7 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath, password: password)
         } onSuccess: {
+            self.invalidateFileDirectoryCache(channelId: entry.channelId, path: entry.parentPath)
             self.refreshFileList()
         }
     }
@@ -11220,6 +11303,8 @@ final class TS3AppModel: ObservableObject {
         runClientCommand { client in
             try await client.renameFile(channelId: entry.channelId, oldPath: entry.path, newPath: newPath, password: password)
         } onSuccess: {
+            self.invalidateFileDirectoryCache(channelId: entry.channelId, path: entry.parentPath)
+            self.invalidateFileDirectoryCache(channelId: entry.channelId, path: directoryPath)
             self.refreshFileList()
         }
     }
@@ -11246,6 +11331,11 @@ final class TS3AppModel: ObservableObject {
                 )
             }
             await MainActor.run {
+                let affectedSourcePaths = Set(moves.map { $0.entry.parentPath })
+                for path in affectedSourcePaths {
+                    self.invalidateFileDirectoryCache(channelId: moves.first?.entry.channelId, path: path)
+                }
+                self.invalidateFileDirectoryCache(channelId: moves.first?.entry.channelId, path: directoryPath)
                 self.refreshFileList()
             }
         }
@@ -11699,6 +11789,15 @@ final class TS3AppModel: ObservableObject {
             result += "/"
         }
         return result
+    }
+
+    private func fileDirectoryCacheKey(channelId: Int, path: String) -> String {
+        "\(channelId)|\(normalizedFileDirectoryPath(path).lowercased())"
+    }
+
+    private func invalidateFileDirectoryCache(channelId: Int?, path: String) {
+        guard let channelId else { return }
+        fileDirectoryEntryCache[fileDirectoryCacheKey(channelId: channelId, path: path)] = nil
     }
 
     private func joinedFilePath(parentPath: String, name: String) -> String {
