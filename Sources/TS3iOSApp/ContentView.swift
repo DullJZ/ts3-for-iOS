@@ -23186,12 +23186,12 @@ struct ComplaintListSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "All Complaints"
-            case .namedSource: return "Named Source"
-            case .anonymousSource: return "Anonymous Source"
-            case .withMessage: return "With Message"
-            case .withoutMessage: return "Without Message"
-            case .withTimestamp: return "With Date"
+            case .all: return NSLocalizedString("complaints.filter.all", comment: "")
+            case .namedSource: return NSLocalizedString("complaints.filter.namedSource", comment: "")
+            case .anonymousSource: return NSLocalizedString("complaints.filter.anonymousSource", comment: "")
+            case .withMessage: return NSLocalizedString("complaints.filter.withMessage", comment: "")
+            case .withoutMessage: return NSLocalizedString("complaints.filter.withoutMessage", comment: "")
+            case .withTimestamp: return NSLocalizedString("complaints.filter.withDate", comment: "")
             }
         }
 
@@ -23223,10 +23223,10 @@ struct ComplaintListSheet: View {
 
         var title: String {
             switch self {
-            case .date: return "Date"
-            case .source: return "Source"
-            case .sourceDatabaseId: return "Source DB"
-            case .message: return "Message"
+            case .date: return NSLocalizedString("complaints.sort.date", comment: "")
+            case .source: return NSLocalizedString("complaints.sort.source", comment: "")
+            case .sourceDatabaseId: return NSLocalizedString("complaints.sort.sourceDb", comment: "")
+            case .message: return NSLocalizedString("chat.message", comment: "")
             }
         }
     }
@@ -23260,33 +23260,33 @@ struct ComplaintListSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("User")) {
+                Section(header: Text(localized("chat.user"))) {
                     if let target = model.complaintTarget {
-                        ServerInfoDetailRow(label: "Selected", value: target.nickname)
+                        ServerInfoDetailRow(label: localized("complaints.selected"), value: target.nickname)
                         if let databaseId = target.databaseId {
-                            ServerInfoDetailRow(label: "Database ID", value: String(databaseId))
+                            ServerInfoDetailRow(label: localized("database.databaseId"), value: String(databaseId))
                         }
                     }
                     if !model.clients.filter({ !$0.isCurrentUser }).isEmpty {
-                        Picker("User", selection: selectedUserId) {
+                        Picker(localized("chat.user"), selection: selectedUserId) {
                             ForEach(model.clients.filter { !$0.isCurrentUser }) { user in
                                 Text(user.nickname).tag(user.id)
                             }
                         }
                     } else if model.complaintTarget == nil {
-                        Text("No other users")
+                        Text(localized("chat.noOtherUsers"))
                             .foregroundColor(.secondary)
                     }
                 }
 
                 if let target = model.complaintTarget {
-                    Section(header: Text("New Complaint")) {
-                        TextField("Complaint", text: $newComplaintMessage)
+                    Section(header: Text(localized("complaints.newComplaint"))) {
+                        TextField(localized("complaints.complaint"), text: $newComplaintMessage)
                             .ts3PlainTextField()
                         Text(complaintDraftSummary(for: target))
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Button("Copy Complaint Summary") {
+                        Button(localized("complaints.copyComplaintSummary")) {
                             TS3PlatformSupport.copyToPasteboard(complaintDraftSummary(for: target))
                         }
                         ForEach(complaintDraftValidationMessages(for: target), id: \.self) { message in
@@ -23294,7 +23294,7 @@ struct ComplaintListSheet: View {
                                 .font(.caption)
                                 .foregroundColor(.red)
                         }
-                        Button("Submit Complaint") {
+                        Button(localized("groups.members.row.submitComplaint")) {
                             model.complainAboutUser(target, message: newComplaintMessage)
                             newComplaintMessage = ""
                         }
@@ -23302,23 +23302,23 @@ struct ComplaintListSheet: View {
                     }
                 }
 
-                Section(header: Text("Filters")) {
-                    Picker("Type", selection: $complaintFilter) {
+                Section(header: Text(localized("events.filters"))) {
+                    Picker(localized("groups.type"), selection: $complaintFilter) {
                         ForEach(ComplaintFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("groups.sortBy"), selection: $sortMode) {
                         ForEach(ComplaintSortMode.allCases) { mode in
                             Text(mode.title).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Search complaints", text: $searchText)
+                    Toggle(localized("groups.ascending"), isOn: $sortAscending)
+                    TextField(localized("complaints.searchComplaints"), text: $searchText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current Filters") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("groups.saveCurrentFilters")) {
                             model.saveComplaintFilterPreset(
                                 name: presetName,
                                 complaintFilter: complaintFilter.rawValue,
@@ -23330,17 +23330,17 @@ struct ComplaintListSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.complaintFilterPresets.isEmpty {
-                            Text("No saved complaint filter presets")
+                            Text(localized("complaints.noSavedFilterPresets"))
                         } else {
                             ForEach(model.complaintFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteComplaintFilterPreset(preset)
                                     }
                                 } label: {
@@ -23352,22 +23352,22 @@ struct ComplaintListSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.complaintFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.complaintFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalFilters {
-                        Button("Clear Filters") {
+                        Button(localized("groups.clearFilters")) {
                             complaintFilter = .all
                             sortMode = .date
                             sortAscending = false
@@ -23376,39 +23376,39 @@ struct ComplaintListSheet: View {
                     }
                 }
 
-                Section(header: Text("Complaints")) {
-                    Button("Import Complaint Archive") {
+                Section(header: Text(localized("complaints.title"))) {
+                    Button(localized("complaints.importArchive")) {
                         isImportingComplaintArchive = true
                     }
 
                     if model.complaintEntries.isEmpty {
-                        Text("No complaints")
+                        Text(localized("complaints.noComplaints"))
                             .foregroundColor(.secondary)
                     } else {
-                        Button("Copy Visible Complaints") {
+                        Button(localized("complaints.copyVisible")) {
                             TS3PlatformSupport.copyToPasteboard(complaintSnapshot)
                         }
                         .disabled(filteredComplaintEntries.isEmpty)
 
-                        Button("Export Visible Complaints") {
+                        Button(localized("complaints.exportVisible")) {
                             complaintExportDocument = TS3TextFileDocument(data: Data(complaintSnapshot.utf8))
                             isExportingComplaints = true
                         }
                         .disabled(filteredComplaintEntries.isEmpty)
 
-                        Button("Export Complaint Archive") {
+                        Button(localized("complaints.exportArchive")) {
                             exportComplaintArchive()
                         }
                         .disabled(model.complaintEntries.isEmpty)
 
-                        Button("Delete Visible Complaints") {
+                        Button(localized("complaints.deleteVisible")) {
                             isConfirmingDeleteVisible = true
                         }
                         .foregroundColor(.red)
                         .disabled(model.state != .connected || filteredComplaintEntries.isEmpty)
 
                         if filteredComplaintEntries.isEmpty {
-                            Text("No matching complaints")
+                            Text(localized("complaints.noMatchingComplaints"))
                                 .foregroundColor(.secondary)
                         } else {
                             ForEach(filteredComplaintEntries) { entry in
@@ -23421,7 +23421,7 @@ struct ComplaintListSheet: View {
 
                 if !model.complaintEntries.isEmpty {
                     Section {
-                        Button("Delete All Complaints") {
+                        Button(localized("complaints.deleteAll")) {
                             isConfirmingDeleteAll = true
                         }
                         .foregroundColor(.red)
@@ -23481,11 +23481,11 @@ struct ComplaintListSheet: View {
                     model.lastError = error.localizedDescription
                 }
             }
-            .navigationTitle("Complaints")
+            .navigationTitle(localized("complaints.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         if let target = model.complaintTarget {
                             model.refreshComplaints(for: target)
                         }
@@ -23493,16 +23493,16 @@ struct ComplaintListSheet: View {
                     .disabled(model.state != .connected || model.complaintTarget == nil)
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
-                    title: Text("Delete All Complaints?"),
-                    message: Text(model.complaintTarget?.nickname ?? "Selected user"),
-                    primaryButton: .destructive(Text("Delete All")) {
+                    title: Text(localized("complaints.deleteAllAlert.title")),
+                    message: Text(model.complaintTarget?.nickname ?? localized("complaints.selectedUser")),
+                    primaryButton: .destructive(Text(localized("complaints.deleteAll"))) {
                         model.deleteAllComplaintsForCurrentTarget()
                     },
                     secondaryButton: .cancel()
@@ -23510,9 +23510,9 @@ struct ComplaintListSheet: View {
             }
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
-                    title: Text("Delete Visible Complaints?"),
-                    message: Text(model.complaintTarget?.nickname ?? "Selected user"),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("complaints.deleteVisibleAlert.title")),
+                    message: Text(model.complaintTarget?.nickname ?? localized("complaints.selectedUser")),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteComplaints(filteredComplaintEntries)
                     },
                     secondaryButton: .cancel()
@@ -23545,9 +23545,9 @@ struct ComplaintListSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Complaint Filter Presets?"),
-                    message: Text("This removes \(model.complaintFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("complaints.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.complaintFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllComplaintFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -23679,13 +23679,13 @@ struct ComplaintListSheet: View {
     private func presetSummary(_ preset: TS3ComplaintFilterPreset) -> String {
         var parts = [
             (ComplaintFilter(rawValue: preset.complaintFilter) ?? .all).title,
-            "Sort \((ComplaintSortMode(rawValue: preset.sortMode) ?? .date).title)"
+            localized("permissions.presetSummary.sortFormat", (ComplaintSortMode(rawValue: preset.sortMode) ?? .date).title)
         ]
         if preset.sortAscending {
-            parts.append("Ascending")
+            parts.append(localized("groups.ascending"))
         }
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("events.searchPresetSummaryFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -23758,39 +23758,44 @@ struct ComplaintListSheet: View {
 
     private func complaintArchivePreviewMessage(_ preview: TS3ComplaintArchivePreview) -> String {
         var lines = [
-            "Complaints: \(preview.complaintCount)",
-            "Targets: \(preview.targetCount)",
-            "Named sources: \(preview.namedSourceCount)",
-            "Anonymous sources: \(preview.anonymousSourceCount)",
-            "With messages: \(preview.messageCount)"
+            localized("complaints.archivePreview.complaintsFormat", preview.complaintCount),
+            localized("complaints.archivePreview.targetsFormat", preview.targetCount),
+            localized("complaints.archivePreview.namedSourcesFormat", preview.namedSourceCount),
+            localized("complaints.archivePreview.anonymousSourcesFormat", preview.anonymousSourceCount),
+            localized("complaints.archivePreview.withMessagesFormat", preview.messageCount)
         ]
         if preview.skippedComplaintCount > 0 {
-            lines.append("Skipped invalid or duplicate complaints: \(preview.skippedComplaintCount)")
+            lines.append(localized("complaints.archivePreview.skippedFormat", preview.skippedComplaintCount))
         }
         if !preview.targetSummaries.isEmpty {
-            lines.append("Target summary: \(preview.targetSummaries.joined(separator: " | "))")
+            lines.append(localized("complaints.archivePreview.targetSummaryFormat", preview.targetSummaries.joined(separator: " | ")))
         }
         if !preview.sourceSummaries.isEmpty {
-            lines.append("Source summary: \(preview.sourceSummaries.joined(separator: " | "))")
+            lines.append(localized("complaints.archivePreview.sourceSummaryFormat", preview.sourceSummaries.joined(separator: " | ")))
         }
         if let targetName = preview.firstTargetName {
-            lines.append("First target: \(targetName)")
+            lines.append(localized("complaints.archivePreview.firstTargetFormat", targetName))
         } else if let targetDatabaseId = preview.firstTargetDatabaseId {
-            lines.append("First target DB: \(targetDatabaseId)")
+            lines.append(localized("complaints.archivePreview.firstTargetDbFormat", targetDatabaseId))
         }
         if let sourceName = preview.firstSourceName {
-            lines.append("First source: \(sourceName)")
+            lines.append(localized("complaints.archivePreview.firstSourceFormat", sourceName))
         } else if let sourceDatabaseId = preview.firstSourceDatabaseId {
-            lines.append("First source DB: \(sourceDatabaseId)")
+            lines.append(localized("complaints.archivePreview.firstSourceDbFormat", sourceDatabaseId))
         }
         if let firstTimestamp = preview.firstTimestamp {
-            lines.append("First date: \(ComplaintEntryRow.dateText(firstTimestamp))")
+            lines.append(localized("complaints.archivePreview.firstDateFormat", ComplaintEntryRow.dateText(firstTimestamp)))
         }
         if let firstMessage = preview.firstMessage {
-            lines.append("First message: \(firstMessage)")
+            lines.append(localized("complaints.archivePreview.firstMessageFormat", firstMessage))
         }
-        lines.append(preview.hasComplaints ? "Import replaces the local cached complaint list for offline review; it does not submit complaints to the server." : "The archive has no usable complaints.")
+        lines.append(preview.hasComplaints ? localized("complaints.archivePreview.hasComplaints") : localized("complaints.archivePreview.noUsableComplaints"))
         return lines.joined(separator: "\n")
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -23808,19 +23813,19 @@ private struct ComplaintArchiveImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("complaints.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasComplaints {
-                        Button("Copy Complaint Summary") {
+                        Button(localized("complaints.copyComplaintSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("complaints.import.selectAll")) {
                                 selectedComplaintIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("complaints.import.clear")) {
                                 selectedComplaintIds = []
                             }
                             .disabled(selectedComplaintIds.isEmpty)
@@ -23861,13 +23866,13 @@ private struct ComplaintArchiveImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached complaint list with the selected complaints for offline review and does not submit complaints to the server.")
+                Section(header: Text(localized("complaints.import.behavior"))) {
+                    Text(localized("complaints.import.behaviorSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Complaints")
+            .navigationTitle(localized("complaints.import.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedComplaintIds.isEmpty {
@@ -23876,18 +23881,23 @@ private struct ComplaintArchiveImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("complaints.import.action")) {
                         importArchive(validSelectedComplaintIds)
                     }
                     .disabled(!preview.hasComplaints || validSelectedComplaintIds.isEmpty)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -23917,24 +23927,24 @@ private struct ComplaintFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("complaints.import.preview"))) {
+                    Text(localized("complaints.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("complaints.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("complaints.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("complaints.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("complaints.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("complaints.filterImport.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("complaints.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("complaints.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("complaints.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -23956,22 +23966,22 @@ private struct ComplaintFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected complaint filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("complaints.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Complaint Filters")
+            .navigationTitle(localized("complaints.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("complaints.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -23979,6 +23989,11 @@ private struct ComplaintFilterPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -23993,7 +24008,7 @@ struct ComplaintEntryRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.sourceTitle)
                         .font(.subheadline.weight(.semibold))
-                    Text("Source DB \(entry.sourceClientDatabaseId)")
+                    Text(localized("complaints.sourceDbFormat", entry.sourceClientDatabaseId))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -24007,7 +24022,7 @@ struct ComplaintEntryRow: View {
             if let message = entry.message, !message.isEmpty {
                 Text(message)
             }
-            Button("Delete Complaint") {
+            Button(localized("complaints.row.deleteComplaint")) {
                 isConfirmingDelete = true
             }
             .buttonStyle(.borderless)
@@ -24018,62 +24033,67 @@ struct ComplaintEntryRow: View {
         .padding(.vertical, 4)
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Complaint?"),
+                title: Text(localized("complaints.row.deleteAlert.title")),
                 message: Text(entry.sourceTitle),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deleteComplaint(entry)
                 },
                 secondaryButton: .cancel()
             )
         }
         .contextMenu {
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
-            Button("Copy Source DB") {
+            Button(localized("complaints.row.copySourceDb")) {
                 TS3PlatformSupport.copyToPasteboard("\(entry.sourceClientDatabaseId)")
             }
             if let sourceName = entry.sourceName, !sourceName.isEmpty {
-                Button("Copy Source Name") {
+                Button(localized("complaints.row.copySourceName")) {
                     TS3PlatformSupport.copyToPasteboard(sourceName)
                 }
             }
             if let message = entry.message, !message.isEmpty {
-                Button("Copy Message") {
+                Button(localized("chat.copyMessage")) {
                     TS3PlatformSupport.copyToPasteboard(message)
                 }
             }
-            Menu("Contact Source") {
-                Button("Mark as Friend") {
+            Menu(localized("complaints.row.contactSource")) {
+                Button(localized("groups.members.row.markFriend")) {
                     model.setComplaintSourceContactStatus(.friend, for: entry)
                 }
-                Button("Block Contact") {
+                Button(localized("groups.members.row.blockContact")) {
                     model.setComplaintSourceContactStatus(.blocked, for: entry)
                 }
-                Button("Ignore Contact") {
+                Button(localized("groups.members.row.ignoreContact")) {
                     model.setComplaintSourceContactStatus(.ignored, for: entry)
                 }
-                Button("Set Neutral") {
+                Button(localized("groups.members.row.setNeutral")) {
                     model.setComplaintSourceContactStatus(.neutral, for: entry)
                 }
             }
-            Button("Delete Complaint") {
+            Button(localized("complaints.row.deleteComplaint")) {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
             .disabled(model.state != .connected)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Complaint from \(entry.sourceTitle)")
+        .accessibilityLabel(localized("complaints.row.accessibilityLabelFormat", entry.sourceTitle))
         .accessibilityValue(entry.accessibilityValue)
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
         }
-        .accessibilityAction(named: "Delete Complaint") {
+        .accessibilityAction(named: localized("complaints.row.deleteComplaint")) {
             if model.state == .connected {
                 isConfirmingDelete = true
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 
     fileprivate static func dateText(_ date: Date) -> String {
