@@ -870,6 +870,10 @@
 "serverInfo.monthUploaded" = "Month Uploaded";
 "serverInfo.totalDownloaded" = "Total Downloaded";
 "serverInfo.totalUploaded" = "Total Uploaded";
+"serverInfo.downloadLastSecond" = "Download Last Second";
+"serverInfo.uploadLastSecond" = "Upload Last Second";
+"serverInfo.downloadLastMinute" = "Download Last Minute";
+"serverInfo.uploadLastMinute" = "Upload Last Minute";
 "serverInfo.connectionQuality" = "Connection Quality";
 "serverInfo.ping" = "Ping";
 "serverInfo.packetLoss" = "Packet Loss";

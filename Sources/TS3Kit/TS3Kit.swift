@@ -147,6 +147,14 @@ public struct TS3ServerInfo {
     public let totalBytesDownloaded: Int64?
     /// The total number of uploaded bytes.
     public let totalBytesUploaded: Int64?
+    /// Aggregate bytes received per second by the virtual server.
+    public let bandwidthReceivedLastSecond: Int64?
+    /// Aggregate bytes sent per second by the virtual server.
+    public let bandwidthSentLastSecond: Int64?
+    /// Aggregate bytes received per minute by the virtual server.
+    public let bandwidthReceivedLastMinute: Int64?
+    /// Aggregate bytes sent per minute by the virtual server.
+    public let bandwidthSentLastMinute: Int64?
     /// The packet loss fraction for speech packets.
     public let totalPacketLossSpeech: Double?
     /// The packet loss fraction for keepalive packets.
@@ -231,6 +239,10 @@ public struct TS3ServerInfo {
         monthlyBytesUploaded: Int64? = nil,
         totalBytesDownloaded: Int64? = nil,
         totalBytesUploaded: Int64? = nil,
+        bandwidthReceivedLastSecond: Int64? = nil,
+        bandwidthSentLastSecond: Int64? = nil,
+        bandwidthReceivedLastMinute: Int64? = nil,
+        bandwidthSentLastMinute: Int64? = nil,
         totalPacketLossSpeech: Double? = nil,
         totalPacketLossKeepalive: Double? = nil,
         totalPacketLossControl: Double? = nil,
@@ -301,6 +313,10 @@ public struct TS3ServerInfo {
         self.monthlyBytesUploaded = monthlyBytesUploaded
         self.totalBytesDownloaded = totalBytesDownloaded
         self.totalBytesUploaded = totalBytesUploaded
+        self.bandwidthReceivedLastSecond = bandwidthReceivedLastSecond
+        self.bandwidthSentLastSecond = bandwidthSentLastSecond
+        self.bandwidthReceivedLastMinute = bandwidthReceivedLastMinute
+        self.bandwidthSentLastMinute = bandwidthSentLastMinute
         self.totalPacketLossSpeech = totalPacketLossSpeech
         self.totalPacketLossKeepalive = totalPacketLossKeepalive
         self.totalPacketLossControl = totalPacketLossControl

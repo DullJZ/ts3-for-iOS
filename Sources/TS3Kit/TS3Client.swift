@@ -2729,6 +2729,113 @@ private extension TS3Client {
 }
 
 extension TS3Client {
+    static func serverInfo(from command: TS3SingleCommand, fallbackName: String) -> TS3ServerInfo? {
+        let name = command.get("virtualserver_name")?.value
+            ?? command.get("name")?.value
+            ?? fallbackName
+        func intValue(_ name: String) -> Int? {
+            command.get(name)?.value.flatMap(Int.init)
+        }
+        func int64Value(_ name: String) -> Int64? {
+            command.get(name)?.value.flatMap(Int64.init)
+        }
+        func firstInt64Value(_ names: String...) -> Int64? {
+            for name in names {
+                if let value = int64Value(name) {
+                    return value
+                }
+            }
+            return nil
+        }
+        func doubleValue(_ name: String) -> Double? {
+            command.get(name)?.value.flatMap(Double.init)
+        }
+        func boolValue(_ name: String) -> Bool {
+            command.get(name)?.value == "1"
+        }
+        func optionalBoolValue(_ name: String) -> Bool? {
+            command.get(name)?.value.map { $0 == "1" }
+        }
+        func dateValue(_ name: String) -> Date? {
+            int64Value(name).map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        }
+        return TS3ServerInfo(
+            uniqueIdentifier: command.get("virtualserver_unique_identifier")?.value,
+            name: name,
+            platform: command.get("virtualserver_platform")?.value,
+            version: command.get("virtualserver_version")?.value,
+            createdAt: dateValue("virtualserver_created"),
+            clientsOnline: intValue("virtualserver_clientsonline"),
+            maxClients: intValue("virtualserver_maxclients"),
+            port: intValue("virtualserver_port"),
+            clientsInQuery: intValue("virtualserver_queryclientsonline"),
+            reservedSlots: intValue("virtualserver_reserved_slots"),
+            channelsOnline: intValue("virtualserver_channelsonline"),
+            uptimeSeconds: intValue("virtualserver_uptime"),
+            welcomeMessage: command.get("virtualserver_welcomemessage")?.value,
+            passwordProtected: boolValue("virtualserver_flag_password"),
+            phoneticName: command.get("virtualserver_name_phonetic")?.value,
+            status: command.get("virtualserver_status")?.value,
+            machineId: command.get("virtualserver_machine_id")?.value,
+            isAutoStartEnabled: optionalBoolValue("virtualserver_autostart"),
+            codecEncryptionMode: intValue("virtualserver_codec_encryption_mode"),
+            isWeblistEnabled: optionalBoolValue("virtualserver_weblist_enabled"),
+            defaultServerGroupId: intValue("virtualserver_default_server_group"),
+            defaultChannelGroupId: intValue("virtualserver_default_channel_group"),
+            defaultChannelAdminGroupId: intValue("virtualserver_default_channel_admin_group"),
+            fileBase: command.get("virtualserver_filebase")?.value,
+            fileTransferPort: intValue("virtualserver_filetransfer_port"),
+            complainAutoBanCount: intValue("virtualserver_complain_autoban_count"),
+            complainAutoBanTime: intValue("virtualserver_complain_autoban_time"),
+            complainRemoveTime: intValue("virtualserver_complain_remove_time"),
+            minClientsInChannelBeforeForcedSilence: intValue("virtualserver_min_clients_in_channel_before_forced_silence"),
+            prioritySpeakerDimmModificator: doubleValue("virtualserver_priority_speaker_dimm_modificator"),
+            antiFloodPointsTickReduce: intValue("virtualserver_antiflood_points_tick_reduce"),
+            antiFloodPointsNeededCommandBlock: intValue("virtualserver_antiflood_points_needed_command_block"),
+            antiFloodPointsNeededIPBlock: intValue("virtualserver_antiflood_points_needed_ip_block"),
+            antiFloodPointsNeededPluginBlock: intValue("virtualserver_antiflood_points_needed_plugin_block"),
+            isClientLoggingEnabled: optionalBoolValue("virtualserver_log_client"),
+            isQueryLoggingEnabled: optionalBoolValue("virtualserver_log_query"),
+            isChannelLoggingEnabled: optionalBoolValue("virtualserver_log_channel"),
+            isPermissionLoggingEnabled: optionalBoolValue("virtualserver_log_permissions"),
+            isServerLoggingEnabled: optionalBoolValue("virtualserver_log_server"),
+            isFileTransferLoggingEnabled: optionalBoolValue("virtualserver_log_filetransfer"),
+            clientConnections: intValue("virtualserver_client_connections"),
+            queryClientConnections: intValue("virtualserver_query_client_connections"),
+            downloadQuota: int64Value("virtualserver_download_quota"),
+            uploadQuota: int64Value("virtualserver_upload_quota"),
+            maxDownloadTotalBandwidth: int64Value("virtualserver_max_download_total_bandwidth"),
+            maxUploadTotalBandwidth: int64Value("virtualserver_max_upload_total_bandwidth"),
+            monthlyBytesDownloaded: firstInt64Value("virtualserver_month_bytes_downloaded", "connection_bytes_received_month"),
+            monthlyBytesUploaded: firstInt64Value("virtualserver_month_bytes_uploaded", "connection_bytes_sent_month"),
+            totalBytesDownloaded: firstInt64Value("virtualserver_total_bytes_downloaded", "connection_bytes_received_total"),
+            totalBytesUploaded: firstInt64Value("virtualserver_total_bytes_uploaded", "connection_bytes_sent_total"),
+            bandwidthReceivedLastSecond: firstInt64Value("connection_bandwidth_received_last_second_total"),
+            bandwidthSentLastSecond: firstInt64Value("connection_bandwidth_sent_last_second_total"),
+            bandwidthReceivedLastMinute: firstInt64Value("connection_bandwidth_received_last_minute_total"),
+            bandwidthSentLastMinute: firstInt64Value("connection_bandwidth_sent_last_minute_total"),
+            totalPacketLossSpeech: doubleValue("virtualserver_total_packetloss_speech"),
+            totalPacketLossKeepalive: doubleValue("virtualserver_total_packetloss_keepalive"),
+            totalPacketLossControl: doubleValue("virtualserver_total_packetloss_control"),
+            totalPacketLossTotal: doubleValue("virtualserver_total_packetloss_total"),
+            totalPing: doubleValue("virtualserver_total_ping"),
+            hostMessage: command.get("virtualserver_hostmessage")?.value,
+            hostMessageMode: intValue("virtualserver_hostmessage_mode"),
+            hostBannerURL: command.get("virtualserver_hostbanner_url")?.value,
+            hostBannerGraphicsURL: command.get("virtualserver_hostbanner_gfx_url")?.value,
+            hostBannerMode: intValue("virtualserver_hostbanner_mode"),
+            hostBannerGraphicsInterval: intValue("virtualserver_hostbanner_gfx_interval"),
+            hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
+            hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
+            hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,
+            iconId: intValue("virtualserver_icon_id"),
+            neededIdentitySecurityLevel: intValue("virtualserver_needed_identity_security_level"),
+            minClientVersion: intValue("virtualserver_min_client_version"),
+            minAndroidVersion: intValue("virtualserver_min_android_version"),
+            minIOSVersion: intValue("virtualserver_min_ios_version")
+        )
+    }
+
     static func permission(from command: TS3SingleCommand) -> TS3Permission? {
         guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
               let value = command.get("permvalue")?.value.flatMap(Int.init) else {
@@ -3381,80 +3488,7 @@ private extension TS3Client {
     }
 
     func serverInfo(from command: TS3SingleCommand) -> TS3ServerInfo? {
-        let name = command.get("virtualserver_name")?.value
-            ?? command.get("name")?.value
-            ?? serverAddress
-        return TS3ServerInfo(
-            uniqueIdentifier: command.get("virtualserver_unique_identifier")?.value,
-            name: name,
-            platform: command.get("virtualserver_platform")?.value,
-            version: command.get("virtualserver_version")?.value,
-            createdAt: dateValue(command, "virtualserver_created"),
-            clientsOnline: intValue(command, "virtualserver_clientsonline"),
-            maxClients: intValue(command, "virtualserver_maxclients"),
-            port: intValue(command, "virtualserver_port"),
-            clientsInQuery: intValue(command, "virtualserver_queryclientsonline"),
-            reservedSlots: intValue(command, "virtualserver_reserved_slots"),
-            channelsOnline: intValue(command, "virtualserver_channelsonline"),
-            uptimeSeconds: intValue(command, "virtualserver_uptime"),
-            welcomeMessage: command.get("virtualserver_welcomemessage")?.value,
-            passwordProtected: boolValue(command, "virtualserver_flag_password"),
-            phoneticName: command.get("virtualserver_name_phonetic")?.value,
-            status: command.get("virtualserver_status")?.value,
-            machineId: command.get("virtualserver_machine_id")?.value,
-            isAutoStartEnabled: optionalBoolValue(command, "virtualserver_autostart"),
-            codecEncryptionMode: intValue(command, "virtualserver_codec_encryption_mode"),
-            isWeblistEnabled: optionalBoolValue(command, "virtualserver_weblist_enabled"),
-            defaultServerGroupId: intValue(command, "virtualserver_default_server_group"),
-            defaultChannelGroupId: intValue(command, "virtualserver_default_channel_group"),
-            defaultChannelAdminGroupId: intValue(command, "virtualserver_default_channel_admin_group"),
-            fileBase: command.get("virtualserver_filebase")?.value,
-            fileTransferPort: intValue(command, "virtualserver_filetransfer_port"),
-            complainAutoBanCount: intValue(command, "virtualserver_complain_autoban_count"),
-            complainAutoBanTime: intValue(command, "virtualserver_complain_autoban_time"),
-            complainRemoveTime: intValue(command, "virtualserver_complain_remove_time"),
-            minClientsInChannelBeforeForcedSilence: intValue(command, "virtualserver_min_clients_in_channel_before_forced_silence"),
-            prioritySpeakerDimmModificator: doubleValue(command, "virtualserver_priority_speaker_dimm_modificator"),
-            antiFloodPointsTickReduce: intValue(command, "virtualserver_antiflood_points_tick_reduce"),
-            antiFloodPointsNeededCommandBlock: intValue(command, "virtualserver_antiflood_points_needed_command_block"),
-            antiFloodPointsNeededIPBlock: intValue(command, "virtualserver_antiflood_points_needed_ip_block"),
-            antiFloodPointsNeededPluginBlock: intValue(command, "virtualserver_antiflood_points_needed_plugin_block"),
-            isClientLoggingEnabled: optionalBoolValue(command, "virtualserver_log_client"),
-            isQueryLoggingEnabled: optionalBoolValue(command, "virtualserver_log_query"),
-            isChannelLoggingEnabled: optionalBoolValue(command, "virtualserver_log_channel"),
-            isPermissionLoggingEnabled: optionalBoolValue(command, "virtualserver_log_permissions"),
-            isServerLoggingEnabled: optionalBoolValue(command, "virtualserver_log_server"),
-            isFileTransferLoggingEnabled: optionalBoolValue(command, "virtualserver_log_filetransfer"),
-            clientConnections: intValue(command, "virtualserver_client_connections"),
-            queryClientConnections: intValue(command, "virtualserver_query_client_connections"),
-            downloadQuota: int64Value(command, "virtualserver_download_quota"),
-            uploadQuota: int64Value(command, "virtualserver_upload_quota"),
-            maxDownloadTotalBandwidth: int64Value(command, "virtualserver_max_download_total_bandwidth"),
-            maxUploadTotalBandwidth: int64Value(command, "virtualserver_max_upload_total_bandwidth"),
-            monthlyBytesDownloaded: int64Value(command, "connection_bytes_received_month"),
-            monthlyBytesUploaded: int64Value(command, "connection_bytes_sent_month"),
-            totalBytesDownloaded: int64Value(command, "connection_bytes_received_total"),
-            totalBytesUploaded: int64Value(command, "connection_bytes_sent_total"),
-            totalPacketLossSpeech: doubleValue(command, "virtualserver_total_packetloss_speech"),
-            totalPacketLossKeepalive: doubleValue(command, "virtualserver_total_packetloss_keepalive"),
-            totalPacketLossControl: doubleValue(command, "virtualserver_total_packetloss_control"),
-            totalPacketLossTotal: doubleValue(command, "virtualserver_total_packetloss_total"),
-            totalPing: doubleValue(command, "virtualserver_total_ping"),
-            hostMessage: command.get("virtualserver_hostmessage")?.value,
-            hostMessageMode: intValue(command, "virtualserver_hostmessage_mode"),
-            hostBannerURL: command.get("virtualserver_hostbanner_url")?.value,
-            hostBannerGraphicsURL: command.get("virtualserver_hostbanner_gfx_url")?.value,
-            hostBannerMode: intValue(command, "virtualserver_hostbanner_mode"),
-            hostBannerGraphicsInterval: intValue(command, "virtualserver_hostbanner_gfx_interval"),
-            hostButtonTooltip: command.get("virtualserver_hostbutton_tooltip")?.value,
-            hostButtonURL: command.get("virtualserver_hostbutton_url")?.value,
-            hostButtonGraphicsURL: command.get("virtualserver_hostbutton_gfx_url")?.value,
-            iconId: intValue(command, "virtualserver_icon_id"),
-            neededIdentitySecurityLevel: intValue(command, "virtualserver_needed_identity_security_level"),
-            minClientVersion: intValue(command, "virtualserver_min_client_version"),
-            minAndroidVersion: intValue(command, "virtualserver_min_android_version"),
-            minIOSVersion: intValue(command, "virtualserver_min_ios_version")
-        )
+        Self.serverInfo(from: command, fallbackName: serverAddress)
     }
 
     func connectionInfo(from command: TS3SingleCommand) -> TS3ConnectionInfo? {

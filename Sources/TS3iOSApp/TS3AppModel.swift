@@ -5888,6 +5888,10 @@ struct TS3ServerInfoSummary {
     var monthlyBytesUploaded: Int64?
     var totalBytesDownloaded: Int64?
     var totalBytesUploaded: Int64?
+    var bandwidthReceivedLastSecond: Int64?
+    var bandwidthSentLastSecond: Int64?
+    var bandwidthReceivedLastMinute: Int64?
+    var bandwidthSentLastMinute: Int64?
     var totalPacketLossSpeech: Double?
     var totalPacketLossKeepalive: Double?
     var totalPacketLossControl: Double?
@@ -5960,6 +5964,10 @@ struct TS3ServerInfoSummary {
         monthlyBytesUploaded: nil,
         totalBytesDownloaded: nil,
         totalBytesUploaded: nil,
+        bandwidthReceivedLastSecond: nil,
+        bandwidthSentLastSecond: nil,
+        bandwidthReceivedLastMinute: nil,
+        bandwidthSentLastMinute: nil,
         totalPacketLossSpeech: nil,
         totalPacketLossKeepalive: nil,
         totalPacketLossControl: nil,
@@ -19901,6 +19909,10 @@ extension TS3AppModel: TS3ClientDelegate {
                 monthlyBytesUploaded: info.monthlyBytesUploaded,
                 totalBytesDownloaded: info.totalBytesDownloaded,
                 totalBytesUploaded: info.totalBytesUploaded,
+                bandwidthReceivedLastSecond: info.bandwidthReceivedLastSecond,
+                bandwidthSentLastSecond: info.bandwidthSentLastSecond,
+                bandwidthReceivedLastMinute: info.bandwidthReceivedLastMinute,
+                bandwidthSentLastMinute: info.bandwidthSentLastMinute,
                 totalPacketLossSpeech: info.totalPacketLossSpeech,
                 totalPacketLossKeepalive: info.totalPacketLossKeepalive,
                 totalPacketLossControl: info.totalPacketLossControl,

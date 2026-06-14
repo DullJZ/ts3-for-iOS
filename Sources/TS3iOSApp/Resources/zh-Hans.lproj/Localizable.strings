@@ -870,6 +870,10 @@
 "serverInfo.monthUploaded" = "本月上传";
 "serverInfo.totalDownloaded" = "总下载";
 "serverInfo.totalUploaded" = "总上传";
+"serverInfo.downloadLastSecond" = "上一秒下载";
+"serverInfo.uploadLastSecond" = "上一秒上传";
+"serverInfo.downloadLastMinute" = "上一分钟下载";
+"serverInfo.uploadLastMinute" = "上一分钟上传";
 "serverInfo.connectionQuality" = "连接质量";
 "serverInfo.ping" = "延迟";
 "serverInfo.packetLoss" = "丢包率";

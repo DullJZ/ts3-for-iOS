@@ -12311,6 +12311,10 @@ struct ServerInformationSheet: View {
                     ServerInfoDetailRow(label: localized("serverInfo.monthUploaded"), value: model.serverInfo.monthlyBytesUploaded.map(Self.byteText))
                     ServerInfoDetailRow(label: localized("serverInfo.totalDownloaded"), value: model.serverInfo.totalBytesDownloaded.map(Self.byteText))
                     ServerInfoDetailRow(label: localized("serverInfo.totalUploaded"), value: model.serverInfo.totalBytesUploaded.map(Self.byteText))
+                    ServerInfoDetailRow(label: localized("serverInfo.downloadLastSecond"), value: model.serverInfo.bandwidthReceivedLastSecond.map(Self.bandwidthText))
+                    ServerInfoDetailRow(label: localized("serverInfo.uploadLastSecond"), value: model.serverInfo.bandwidthSentLastSecond.map(Self.bandwidthText))
+                    ServerInfoDetailRow(label: localized("serverInfo.downloadLastMinute"), value: model.serverInfo.bandwidthReceivedLastMinute.map(Self.bandwidthText))
+                    ServerInfoDetailRow(label: localized("serverInfo.uploadLastMinute"), value: model.serverInfo.bandwidthSentLastMinute.map(Self.bandwidthText))
                 }
 
                 Section(header: Text(localized("serverInfo.connectionQuality"))) {
@@ -12437,6 +12441,10 @@ struct ServerInformationSheet: View {
         rows.append((localized("serverInfo.monthUploaded"), model.serverInfo.monthlyBytesUploaded.map(Self.byteText)))
         rows.append((localized("serverInfo.totalDownloaded"), model.serverInfo.totalBytesDownloaded.map(Self.byteText)))
         rows.append((localized("serverInfo.totalUploaded"), model.serverInfo.totalBytesUploaded.map(Self.byteText)))
+        rows.append((localized("serverInfo.downloadLastSecond"), model.serverInfo.bandwidthReceivedLastSecond.map(Self.bandwidthText)))
+        rows.append((localized("serverInfo.uploadLastSecond"), model.serverInfo.bandwidthSentLastSecond.map(Self.bandwidthText)))
+        rows.append((localized("serverInfo.downloadLastMinute"), model.serverInfo.bandwidthReceivedLastMinute.map(Self.bandwidthText)))
+        rows.append((localized("serverInfo.uploadLastMinute"), model.serverInfo.bandwidthSentLastMinute.map(Self.bandwidthText)))
         rows.append((localized("serverInfo.ping"), model.serverInfo.totalPing.map { "\(Self.decimalText($0)) ms" }))
         rows.append((localized("serverInfo.packetLoss"), model.serverInfo.totalPacketLossTotal.map(Self.percentText)))
         rows.append((localized("serverInfo.speechLoss"), model.serverInfo.totalPacketLossSpeech.map(Self.percentText)))
@@ -12495,6 +12503,10 @@ struct ServerInformationSheet: View {
 
     private static func byteText(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
+    }
+
+    private static func bandwidthText(_ value: Int64) -> String {
+        "\(byteText(value))/s"
     }
 
     private static func durationText(_ seconds: Int) -> String {

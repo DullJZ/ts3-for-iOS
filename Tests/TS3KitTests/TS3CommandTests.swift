@@ -379,6 +379,25 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(info.antiFloodPointsNeededPluginBlock, 350)
     }
 
+    func testServerInfoParsesOfficialVirtualServerTrafficCounters() throws {
+        let command = try TS3MultiCommand.parse(
+            """
+            serverinfo virtualserver_name=Example virtualserver_month_bytes_downloaded=1024 virtualserver_month_bytes_uploaded=2048 virtualserver_total_bytes_downloaded=4096 virtualserver_total_bytes_uploaded=8192 connection_bytes_received_month=1 connection_bytes_sent_month=2 connection_bytes_received_total=3 connection_bytes_sent_total=4 connection_bandwidth_received_last_second_total=128 connection_bandwidth_sent_last_second_total=256 connection_bandwidth_received_last_minute_total=512 connection_bandwidth_sent_last_minute_total=1024
+            """
+        ).simplifyOne()
+
+        let info = try XCTUnwrap(TS3Client.serverInfo(from: command, fallbackName: "example.com"))
+
+        XCTAssertEqual(info.monthlyBytesDownloaded, 1024)
+        XCTAssertEqual(info.monthlyBytesUploaded, 2048)
+        XCTAssertEqual(info.totalBytesDownloaded, 4096)
+        XCTAssertEqual(info.totalBytesUploaded, 8192)
+        XCTAssertEqual(info.bandwidthReceivedLastSecond, 128)
+        XCTAssertEqual(info.bandwidthSentLastSecond, 256)
+        XCTAssertEqual(info.bandwidthReceivedLastMinute, 512)
+        XCTAssertEqual(info.bandwidthSentLastMinute, 1024)
+    }
+
     func testLogViewCommandBuildsOfficialPaginationParameters() {
         let command = TS3Client.logViewCommand(
             limit: 250,
