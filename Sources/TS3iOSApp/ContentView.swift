@@ -3724,24 +3724,29 @@ struct DisconnectSheet: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var reason = ""
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Disconnect")) {
-                    TextField("Message", text: $reason)
+                Section(header: Text(localized("channels.disconnect"))) {
+                    TextField(localized("clientActions.message"), text: $reason)
                         .ts3PlainTextField()
-                    Button("Disconnect") {
+                    Button(localized("channels.disconnect")) {
                         model.disconnect(reason: reason)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(.red)
                 }
             }
-            .navigationTitle("Disconnect")
+            .navigationTitle(localized("channels.disconnect"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
