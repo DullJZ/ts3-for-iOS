@@ -139,6 +139,7 @@ final class TS3CommandTests: XCTestCase {
             phoneticName: "raid",
             topic: "Tonight",
             description: "Bring buffs | food",
+            filePath: "files/raid",
             password: "room pass",
             codec: 4,
             codecQuality: 10,
@@ -162,7 +163,7 @@ final class TS3CommandTests: XCTestCase {
 
         XCTAssertEqual(
             command.build(),
-            "channelcreate channel_name=Raid\\sRoom cpid=5 channel_name_phonetic=raid channel_topic=Tonight channel_description=Bring\\sbuffs\\s\\p\\sfood channel_password=room\\spass channel_needed_talk_power=20 channel_needed_join_power=25 channel_needed_subscribe_power=10 channel_needed_description_view_power=30 channel_order=4 channel_codec=4 channel_codec_quality=10 channel_codec_latency_factor=1 channel_codec_is_unencrypted=0 channel_banner_gfx_url=https:\\/\\/example.com\\/banner.png channel_banner_mode=2 channel_delete_delay=3600 channel_maxclients=12 channel_maxfamilyclients=24 channel_flag_maxclients_unlimited=0 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=1 channel_icon_id=456 channel_flag_semi_permanent=1"
+            "channelcreate channel_name=Raid\\sRoom cpid=5 channel_name_phonetic=raid channel_topic=Tonight channel_description=Bring\\sbuffs\\s\\p\\sfood channel_filepath=files\\/raid channel_password=room\\spass channel_needed_talk_power=20 channel_needed_join_power=25 channel_needed_subscribe_power=10 channel_needed_description_view_power=30 channel_order=4 channel_codec=4 channel_codec_quality=10 channel_codec_latency_factor=1 channel_codec_is_unencrypted=0 channel_banner_gfx_url=https:\\/\\/example.com\\/banner.png channel_banner_mode=2 channel_delete_delay=3600 channel_maxclients=12 channel_maxfamilyclients=24 channel_flag_maxclients_unlimited=0 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=1 channel_icon_id=456 channel_flag_semi_permanent=1"
         )
     }
 
@@ -175,6 +176,7 @@ final class TS3CommandTests: XCTestCase {
             phoneticName: nil,
             topic: nil,
             description: nil,
+            filePath: nil,
             password: "",
             codec: nil,
             codecQuality: nil,
@@ -205,6 +207,7 @@ final class TS3CommandTests: XCTestCase {
             phoneticName: "quiet",
             topic: "",
             description: "Updated description",
+            filePath: "",
             password: "",
             isDefault: false,
             isPermanent: true,
@@ -231,7 +234,7 @@ final class TS3CommandTests: XCTestCase {
 
         XCTAssertEqual(
             command.build(),
-            "channeledit cid=7 channel_name=Quiet\\sRoom channel_name_phonetic=quiet channel_topic= channel_description=Updated\\sdescription channel_password= channel_needed_talk_power=15 channel_needed_join_power=17 channel_needed_subscribe_power=5 channel_needed_description_view_power=11 channel_order=3 channel_codec=5 channel_codec_quality=7 channel_codec_latency_factor=2 channel_codec_is_unencrypted=1 channel_banner_gfx_url= channel_banner_mode=1 channel_delete_delay=0 channel_maxclients=8 channel_maxfamilyclients=16 channel_flag_maxclients_unlimited=1 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=0 channel_icon_id=789 channel_flag_default=0 channel_flag_permanent=1 channel_flag_semi_permanent=0"
+            "channeledit cid=7 channel_name=Quiet\\sRoom channel_name_phonetic=quiet channel_topic= channel_description=Updated\\sdescription channel_filepath= channel_password= channel_needed_talk_power=15 channel_needed_join_power=17 channel_needed_subscribe_power=5 channel_needed_description_view_power=11 channel_order=3 channel_codec=5 channel_codec_quality=7 channel_codec_latency_factor=2 channel_codec_is_unencrypted=1 channel_banner_gfx_url= channel_banner_mode=1 channel_delete_delay=0 channel_maxclients=8 channel_maxfamilyclients=16 channel_flag_maxclients_unlimited=1 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=0 channel_icon_id=789 channel_flag_default=0 channel_flag_permanent=1 channel_flag_semi_permanent=0"
         )
     }
 

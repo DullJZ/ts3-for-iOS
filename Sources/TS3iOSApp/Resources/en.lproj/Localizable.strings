@@ -506,6 +506,7 @@
 "channelEditor.phoneticName" = "Phonetic Name";
 "channelEditor.topic" = "Topic";
 "channelEditor.description" = "Description";
+"channelEditor.filePath" = "File Path";
 "channelEditor.clearPassword" = "Clear Password";
 "channelEditor.password" = "Password";
 "channelEditor.type" = "Type";

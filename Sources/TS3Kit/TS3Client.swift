@@ -501,6 +501,7 @@ public final class TS3Client {
         phoneticName: String? = nil,
         topic: String? = nil,
         description: String? = nil,
+        filePath: String? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
         codecLatencyFactor: Int? = nil,
@@ -528,6 +529,7 @@ public final class TS3Client {
             phoneticName: phoneticName,
             topic: topic,
             description: description,
+            filePath: filePath,
             password: password,
             codec: codec,
             codecQuality: codecQuality,
@@ -561,6 +563,7 @@ public final class TS3Client {
         phoneticName: String? = nil,
         topic: String?,
         description: String?,
+        filePath: String? = nil,
         password: String?,
         isDefault: Bool? = nil,
         isPermanent: Bool? = nil,
@@ -590,6 +593,7 @@ public final class TS3Client {
             phoneticName: phoneticName,
             topic: topic,
             description: description,
+            filePath: filePath,
             password: password,
             isDefault: isDefault,
             isPermanent: isPermanent,
@@ -2974,6 +2978,7 @@ extension TS3Client {
         phoneticName: String?,
         topic: String?,
         description: String?,
+        filePath: String?,
         password: String?,
         codec: Int?,
         codecQuality: Int?,
@@ -3005,6 +3010,7 @@ extension TS3Client {
             phoneticName: phoneticName,
             topic: topic,
             description: description,
+            filePath: filePath,
             password: password?.isEmpty == false ? password : nil,
             neededTalkPower: neededTalkPower,
             neededJoinPower: neededJoinPower,
@@ -3039,6 +3045,7 @@ extension TS3Client {
         phoneticName: String?,
         topic: String?,
         description: String?,
+        filePath: String?,
         password: String?,
         isDefault: Bool?,
         isPermanent: Bool?,
@@ -3071,6 +3078,7 @@ extension TS3Client {
             phoneticName: phoneticName,
             topic: topic,
             description: description,
+            filePath: filePath,
             password: password,
             neededTalkPower: neededTalkPower,
             neededJoinPower: neededJoinPower,
@@ -3165,6 +3173,7 @@ extension TS3Client {
         phoneticName: String?,
         topic: String?,
         description: String?,
+        filePath: String?,
         password: String?,
         neededTalkPower: Int?,
         neededJoinPower: Int?,
@@ -3188,6 +3197,7 @@ extension TS3Client {
         if let phoneticName { params.append(TS3CommandSingleParameter(name: "channel_name_phonetic", value: phoneticName)) }
         if let topic { params.append(TS3CommandSingleParameter(name: "channel_topic", value: topic)) }
         if let description { params.append(TS3CommandSingleParameter(name: "channel_description", value: description)) }
+        if let filePath { params.append(TS3CommandSingleParameter(name: "channel_filepath", value: filePath)) }
         if let password { params.append(TS3CommandSingleParameter(name: "channel_password", value: password)) }
         if let neededTalkPower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_talk_power", value: String(neededTalkPower)))

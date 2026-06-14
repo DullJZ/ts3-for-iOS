@@ -26695,6 +26695,7 @@ struct ChannelEditorSheet: View {
         var phoneticName: String
         var topic: String
         var description: String
+        var filePath: String?
         var password: String
         var clearPassword: Bool
         var channelType: String
@@ -26726,6 +26727,7 @@ struct ChannelEditorSheet: View {
     @State private var phoneticName = ""
     @State private var topic = ""
     @State private var description = ""
+    @State private var filePath = ""
     @State private var password = ""
     @State private var clearPassword = false
     @State private var channelType: TS3ChannelType = .permanent
@@ -26801,6 +26803,8 @@ struct ChannelEditorSheet: View {
                         TextField(localized("channelEditor.phoneticName"), text: $phoneticName)
                         TextField(localized("channelEditor.topic"), text: $topic)
                         TextField(localized("channelEditor.description"), text: $description)
+                        TextField(localized("channelEditor.filePath"), text: $filePath)
+                            .ts3PlainTextField()
                         if case .edit = mode {
                             Toggle(localized("channelEditor.clearPassword"), isOn: $clearPassword)
                         }
@@ -26943,6 +26947,7 @@ struct ChannelEditorSheet: View {
                                 phoneticName: phoneticName,
                                 topic: topic,
                                 description: description,
+                                filePath: filePath,
                                 neededTalkPower: parsedOptionalInt(neededTalkPower),
                                 neededJoinPower: parsedOptionalInt(neededJoinPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
@@ -26969,6 +26974,7 @@ struct ChannelEditorSheet: View {
                                 phoneticName: phoneticName,
                                 topic: topic,
                                 description: description,
+                                filePath: filePath,
                                 password: clearPassword ? "" : (password.isEmpty ? nil : password),
                                 isDefault: isDefault,
                                 channelType: channelType,
@@ -27005,6 +27011,7 @@ struct ChannelEditorSheet: View {
                     phoneticName = channel.phoneticName ?? ""
                     topic = channel.topic ?? ""
                     description = channel.description ?? ""
+                    filePath = channel.filePath ?? ""
                     clearPassword = false
                     channelType = channelType(for: channel)
                     isDefault = channel.isDefault
@@ -27151,6 +27158,7 @@ struct ChannelEditorSheet: View {
             phoneticName: phoneticName,
             topic: topic,
             description: description,
+            filePath: filePath,
             password: password,
             clearPassword: clearPassword,
             channelType: channelType.rawValue,
@@ -27184,6 +27192,7 @@ struct ChannelEditorSheet: View {
             (localized("channelEditor.phoneticName"), draft.phoneticName),
             (localized("channelEditor.topic"), draft.topic),
             (localized("channelEditor.description"), draft.description),
+            (localized("channelEditor.filePath"), draft.filePath ?? ""),
             (localized("channelEditor.password"), draft.clearPassword ? localized("channelEditor.clearPassword") : (draft.password.isEmpty ? localized("channelEditor.unchanged") : localized("channelEditor.newPasswordSet"))),
             (localized("channelEditor.type"), channelTypeTitle(draft.channelType)),
             (localized("channelEditor.defaultChannel"), draft.isDefault ? localized("channelEditor.yes") : localized("channelEditor.no")),
@@ -27374,6 +27383,7 @@ struct ChannelEditorSheet: View {
         phoneticName = draft.phoneticName
         topic = draft.topic
         description = draft.description
+        filePath = draft.filePath ?? ""
         password = draft.password
         clearPassword = draft.clearPassword
         channelType = TS3ChannelType.value(forDraft: draft.channelType) ?? .permanent

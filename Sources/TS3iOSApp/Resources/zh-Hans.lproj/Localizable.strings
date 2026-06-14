@@ -506,6 +506,7 @@
 "channelEditor.phoneticName" = "语音名称";
 "channelEditor.topic" = "主题";
 "channelEditor.description" = "描述";
+"channelEditor.filePath" = "文件路径";
 "channelEditor.clearPassword" = "清除密码";
 "channelEditor.password" = "密码";
 "channelEditor.type" = "类型";
