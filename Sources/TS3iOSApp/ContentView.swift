@@ -10764,73 +10764,78 @@ struct ServerToolsSheet: View {
         )
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Server")) {
+                Section(header: Text(localized("serverTools.server"))) {
                     ServerInfoRows()
-                    Button("Refresh Channels and Clients") {
+                    Button(localized("serverTools.refreshChannelsAndClients")) {
                         model.refreshServerView()
                     }
                     .ts3KeyboardShortcut("refresh-server", in: model)
-                    Button("Subscribe All Channels") {
+                    Button(localized("serverTools.subscribeAllChannels")) {
                         model.setAllChannelsSubscribed(true)
                     }
-                    Button("Unsubscribe All Channels") {
+                    Button(localized("serverTools.unsubscribeAllChannels")) {
                         model.setAllChannelsSubscribed(false)
                     }
-                    Button("Refresh Server Info") {
+                    Button(localized("serverTools.refreshServerInfo")) {
                         model.refreshServerInfo()
                     }
-                    Button("View Server Information") {
+                    Button(localized("serverTools.viewServerInformation")) {
                         model.refreshServerInfo()
                         isShowingServerInfo = true
                     }
-                    Button("View Server Logs") {
+                    Button(localized("serverTools.viewServerLogs")) {
                         model.refreshServerLogs()
                         isShowingServerLogs = true
                     }
                     .ts3KeyboardShortcut("view-server-logs", in: model)
-                    Button("Edit Server Settings") {
+                    Button(localized("serverTools.editServerSettings")) {
                         isShowingServerEditor = true
                     }
-                    Button("Refresh Permission Groups") {
+                    Button(localized("serverTools.refreshPermissionGroups")) {
                         model.refreshGroups()
                     }
-                    Button("Manage Permission Groups") {
+                    Button(localized("serverTools.managePermissionGroups")) {
                         model.refreshGroups()
                         isShowingGroupManagement = true
                     }
-                    Button("View Permissions") {
+                    Button(localized("serverTools.viewPermissions")) {
                         model.refreshPermissionList()
                         model.refreshOwnClientPermissions()
                         isShowingPermissions = true
                     }
-                    Button("Manage Privilege Keys") {
+                    Button(localized("serverTools.managePrivilegeKeys")) {
                         model.refreshPrivilegeKeys()
                         isShowingPrivilegeKeys = true
                     }
-                    Button("Manage Temporary Passwords") {
+                    Button(localized("serverTools.manageTemporaryPasswords")) {
                         model.refreshTemporaryServerPasswords()
                         isShowingTemporaryPasswords = true
                     }
-                    Button("Browse Client Database") {
+                    Button(localized("serverTools.browseClientDatabase")) {
                         model.refreshClientDatabase()
                         isShowingClientDatabase = true
                     }
-                    Button("Manage Contacts") {
+                    Button(localized("serverTools.manageContacts")) {
                         isShowingContacts = true
                     }
                     .ts3KeyboardShortcut("manage-contacts", in: model)
-                    Button("Browse Channel Files") {
+                    Button(localized("serverTools.browseChannelFiles")) {
                         model.openFileBrowser()
                         isShowingFiles = true
                     }
-                    Button("Manage Bans") {
+                    Button(localized("serverTools.manageBans")) {
                         model.refreshBanList()
                         isShowingBanList = true
                     }
-                    Button("Manage Complaints") {
+                    Button(localized("serverTools.manageComplaints")) {
                         if let user = model.clients.first(where: { !$0.isCurrentUser }) {
                             model.refreshComplaints(for: user)
                         }
@@ -10838,134 +10843,134 @@ struct ServerToolsSheet: View {
                     }
                 }
 
-                Section(header: Text("Current Server Bookmark")) {
-                    TextField("Bookmark Name", text: $bookmarkName)
+                Section(header: Text(localized("serverTools.currentServerBookmark"))) {
+                    TextField(localized("connect.bookmarkName"), text: $bookmarkName)
                         .ts3PlainTextField()
-                    TextField("Folder (optional)", text: $bookmarkFolder)
+                    TextField(localized("connect.folderOptional"), text: $bookmarkFolder)
                         .ts3PlainTextField()
-                    Button("Save Current Server") {
+                    Button(localized("connect.saveCurrentServer")) {
                         model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
                         bookmarkName = ""
                         bookmarkFolder = ""
                     }
-                    Button("Copy Invite Link") {
+                    Button(localized("connect.copyInviteLink")) {
                         model.copyCurrentInviteLink()
                     }
-                    Button("Copy Full Invite Link") {
+                    Button(localized("connect.copyFullInviteLink")) {
                         model.copyCurrentFullInviteLink()
                     }
-                    Button("Copy Connection Summary") {
+                    Button(localized("connect.copyConnectionSummary")) {
                         model.copyCurrentConnectionSummary()
                     }
-                    Text("Full invite links include saved passwords and privilege keys.")
+                    Text(localized("serverTools.fullInviteWarning"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Connection Manager")) {
-                    Button("Open Connection Manager") {
+                Section(header: Text(localized("connect.managerTitle"))) {
+                    Button(localized("serverTools.openConnectionManager")) {
                         model.isShowingConnectionManager = true
                     }
-                    Text("Manage bookmarks, recent servers, recovery settings, and connection backups.")
+                    Text(localized("serverTools.connectionManagerSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Client Migration")) {
-                    Button("Open Client Migration") {
+                Section(header: Text(localized("connect.clientMigration"))) {
+                    Button(localized("serverTools.openClientMigration")) {
                         model.isShowingClientMigration = true
                     }
-                    Text("Export or import a client package with bookmarks, contacts, profiles, notifications, and presets.")
+                    Text(localized("serverTools.clientMigrationSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Profile")) {
-                    TextField("Nickname", text: $nickname)
+                Section(header: Text(localized("serverTools.profile"))) {
+                    TextField(localized("connect.nickname"), text: $nickname)
                         .ts3PlainTextField()
-                    Button("Apply Nickname") {
+                    Button(localized("serverTools.applyNickname")) {
                         model.updateNickname(to: nickname.isEmpty ? model.nickname : nickname)
                     }
                     .ts3KeyboardShortcut("apply-nickname", in: model)
-                    TextField("Phonetic Nickname", text: $phoneticNickname)
+                    TextField(localized("connect.phoneticNicknameOptional"), text: $phoneticNickname)
                         .ts3PlainTextField()
-                    Button("Apply Phonetic Nickname") {
+                    Button(localized("serverTools.applyPhoneticNickname")) {
                         model.updatePhoneticNickname(to: phoneticNickname)
                     }
-                    TextField("Away Message", text: $model.awayMessage)
-                    Button(model.isAway ? "Clear Away" : "Set Away") {
+                    TextField(localized("selfStatus.awayMessage"), text: $model.awayMessage)
+                    Button(model.isAway ? localized("selfStatus.clearAway") : localized("selfStatus.setAway")) {
                         model.toggleAway()
                     }
                     .ts3KeyboardShortcut("toggle-away", in: model)
-                    Button(model.isInputMuted ? "Unmute Microphone" : "Mute Microphone") {
+                    Button(model.isInputMuted ? localized("serverTools.unmuteMicrophone") : localized("serverTools.muteMicrophone")) {
                         model.toggleInputMuted()
                     }
                     .ts3KeyboardShortcut("toggle-input-muted", in: model)
-                    Button(model.isOutputMuted ? "Unmute Sound" : "Mute Sound") {
+                    Button(model.isOutputMuted ? localized("serverTools.unmuteSound") : localized("serverTools.muteSound")) {
                         model.toggleOutputMuted()
                     }
                     .ts3KeyboardShortcut("toggle-output-muted", in: model)
                 }
 
-                Section(header: Text("Notifications")) {
-                    Toggle("Enable Notifications", isOn: notificationsBinding)
-                    Toggle("Sound", isOn: notificationSoundBinding)
+                Section(header: Text(localized("notifications.section"))) {
+                    Toggle(localized("notifications.enable"), isOn: notificationsBinding)
+                    Toggle(localized("notifications.sound"), isOn: notificationSoundBinding)
                         .disabled(!model.notificationsEnabled)
-                    Toggle("Private Messages", isOn: privateMessageNotificationsBinding)
+                    Toggle(localized("notifications.privateMessages"), isOn: privateMessageNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
-                    Toggle("Pokes", isOn: pokeNotificationsBinding)
+                    Toggle(localized("notifications.pokes"), isOn: pokeNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
-                    Toggle("Server Activity", isOn: activityNotificationsBinding)
+                    Toggle(localized("notifications.serverActivity"), isOn: activityNotificationsBinding)
                         .disabled(!model.notificationsEnabled)
-                    Button("Direct Messages Preset") {
+                    Button(localized("notifications.directPreset")) {
                         model.applyDirectNotificationPreset()
                     }
-                    Button("Silent Direct Messages Preset") {
+                    Button(localized("notifications.silentDirectPreset")) {
                         model.applyDirectNotificationPreset(soundEnabled: false)
                     }
-                    Button("All Events Preset") {
+                    Button(localized("notifications.allEventsPreset")) {
                         model.applyAllEventsNotificationPreset()
                     }
-                    Button("Export Notification Settings") {
+                    Button(localized("notifications.exportSettings")) {
                         exportNotificationSettings()
                     }
-                    Button("Import Notification Settings") {
+                    Button(localized("notifications.importSettings")) {
                         isImportingNotificationSettings = true
                     }
-                    Button("Reset Notification Settings") {
+                    Button(localized("notifications.resetSettings")) {
                         isConfirmingResetNotificationSettings = true
                     }
-                    Text("Notifications are shown when the app is not active.")
+                    Text(localized("notifications.backgroundNote"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
                 NotificationRulesSection()
 
-                Section(header: Text("Privilege Key")) {
-                    SecureField("Privilege Key", text: $privilegeKey)
-                    Button("Use Privilege Key") {
+                Section(header: Text(localized("serverTools.privilegeKey"))) {
+                    SecureField(localized("privilegeKeys.key"), text: $privilegeKey)
+                    Button(localized("privilegeKeys.useKey")) {
                         model.usePrivilegeKey(privilegeKey)
                         privilegeKey = ""
                     }
                 }
 
-                Section(header: Text("Identity")) {
+                Section(header: Text(localized("identity.title"))) {
                     IdentitySummaryRows(importedIdentity: $importedIdentity)
                 }
 
                 if !model.serverGroups.isEmpty || !model.channelGroups.isEmpty {
-                    Section(header: Text("Permission Groups")) {
+                    Section(header: Text(localized("groups.title"))) {
                         ForEach(model.serverGroups) { group in
-                            Text("Server: \(group.name)")
+                            Text(localized("serverTools.serverGroupFormat", group.name))
                         }
                         ForEach(model.channelGroups) { group in
-                            Text("Channel: \(group.name)")
+                            Text(localized("serverTools.channelGroupFormat", group.name))
                         }
                     }
                 }
             }
-            .navigationTitle("Server Tools")
+            .navigationTitle(localized("serverTools.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 nickname = model.nickname
@@ -10977,7 +10982,7 @@ struct ServerToolsSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -11053,9 +11058,9 @@ struct ServerToolsSheet: View {
             }
             .alert(isPresented: $isConfirmingResetNotificationSettings) {
                 Alert(
-                    title: Text("Reset Notification Settings?"),
-                    message: Text("This restores local notification preferences to their default values."),
-                    primaryButton: .destructive(Text("Reset")) {
+                    title: Text(localized("notifications.resetAlert.title")),
+                    message: Text(localized("notifications.resetAlert.message")),
+                    primaryButton: .destructive(Text(localized("notifications.reset"))) {
                         model.resetNotificationSettings()
                     },
                     secondaryButton: .cancel()
