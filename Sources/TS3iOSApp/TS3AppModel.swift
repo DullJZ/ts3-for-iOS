@@ -211,6 +211,7 @@ struct TS3ChannelSummary: Identifiable {
     var codecLatencyFactor: Int?
     var isCodecUnencrypted: Bool?
     var deleteDelaySeconds: Int?
+    var secondsEmpty: Int?
     var maxClients: Int?
     var maxFamilyClients: Int?
     var maxClientsUnlimited: Bool?
@@ -246,6 +247,7 @@ struct TS3ChannelSummary: Identifiable {
         codecLatencyFactor: Int? = nil,
         isCodecUnencrypted: Bool? = nil,
         deleteDelaySeconds: Int? = nil,
+        secondsEmpty: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
         maxClientsUnlimited: Bool? = nil,
@@ -280,6 +282,7 @@ struct TS3ChannelSummary: Identifiable {
         self.codecLatencyFactor = codecLatencyFactor
         self.isCodecUnencrypted = isCodecUnencrypted
         self.deleteDelaySeconds = deleteDelaySeconds
+        self.secondsEmpty = secondsEmpty
         self.maxClients = maxClients
         self.maxFamilyClients = maxFamilyClients
         self.maxClientsUnlimited = maxClientsUnlimited
@@ -8094,6 +8097,7 @@ final class TS3AppModel: ObservableObject {
                 codecLatencyFactor: nil,
                 isCodecUnencrypted: nil,
                 deleteDelaySeconds: nil,
+                secondsEmpty: nil,
                 maxClients: nil,
                 maxFamilyClients: nil,
                 maxClientsUnlimited: nil,
@@ -19921,6 +19925,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     codecLatencyFactor: channel.codecLatencyFactor,
                     isCodecUnencrypted: channel.isCodecUnencrypted,
                     deleteDelaySeconds: channel.deleteDelaySeconds,
+                    secondsEmpty: channel.secondsEmpty,
                     maxClients: channel.maxClients,
                     maxFamilyClients: channel.maxFamilyClients,
                     maxClientsUnlimited: channel.maxClientsUnlimited,

@@ -630,6 +630,7 @@
 "channelInfo.maxClients" = "最大用户数";
 "channelInfo.maxFamilyClients" = "最大家族用户数";
 "channelInfo.deleteDelay" = "删除延迟";
+"channelInfo.secondsEmpty" = "空置时间";
 "channelInfo.secondsFormat" = "%d 秒";
 "channelInfo.root" = "根目录";
 "channelInfo.first" = "最前";

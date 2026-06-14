@@ -630,6 +630,7 @@
 "channelInfo.maxClients" = "Max Clients";
 "channelInfo.maxFamilyClients" = "Max Family Clients";
 "channelInfo.deleteDelay" = "Delete Delay";
+"channelInfo.secondsEmpty" = "Seconds Empty";
 "channelInfo.secondsFormat" = "%ds";
 "channelInfo.root" = "Root";
 "channelInfo.first" = "First";

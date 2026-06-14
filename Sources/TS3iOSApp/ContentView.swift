@@ -4908,6 +4908,7 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: localized("channelInfo.maxClients"), value: maxClientsText)
                     ServerInfoDetailRow(label: localized("channelInfo.maxFamilyClients"), value: maxFamilyClientsText)
                     ServerInfoDetailRow(label: localized("channelInfo.deleteDelay"), value: channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) })
+                    ServerInfoDetailRow(label: localized("channelInfo.secondsEmpty"), value: channel.secondsEmpty.map { localized("channelInfo.secondsFormat", $0) })
                 }
             }
             .fileExporter(
@@ -5031,7 +5032,8 @@ struct ChannelInformationSheet: View {
             (localized("channelInfo.neededDescriptionViewPower"), channel.neededDescriptionViewPower.map(String.init)),
             (localized("channelInfo.maxClients"), maxClientsText),
             (localized("channelInfo.maxFamilyClients"), maxFamilyClientsText),
-            (localized("channelInfo.deleteDelay"), channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) })
+            (localized("channelInfo.deleteDelay"), channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) }),
+            (localized("channelInfo.secondsEmpty"), channel.secondsEmpty.map { localized("channelInfo.secondsFormat", $0) })
         ]
         return rows
             .compactMap { label, value in

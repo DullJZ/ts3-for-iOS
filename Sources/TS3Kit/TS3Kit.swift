@@ -684,6 +684,8 @@ public struct TS3Channel: Identifiable {
     public let isCodecUnencrypted: Bool?
     /// The channel delete delay in seconds.
     public let deleteDelaySeconds: Int?
+    /// Seconds since the channel last became empty, when reported by the server.
+    public let secondsEmpty: Int?
     /// The maximum number of clients allowed in the channel.
     public let maxClients: Int?
     /// The maximum number of clients allowed in the channel family.
@@ -727,6 +729,7 @@ public struct TS3Channel: Identifiable {
         codecLatencyFactor: Int? = nil,
         isCodecUnencrypted: Bool? = nil,
         deleteDelaySeconds: Int? = nil,
+        secondsEmpty: Int? = nil,
         maxClients: Int? = nil,
         maxFamilyClients: Int? = nil,
         maxClientsUnlimited: Bool? = nil,
@@ -759,6 +762,7 @@ public struct TS3Channel: Identifiable {
         self.codecLatencyFactor = codecLatencyFactor
         self.isCodecUnencrypted = isCodecUnencrypted
         self.deleteDelaySeconds = deleteDelaySeconds
+        self.secondsEmpty = secondsEmpty
         self.maxClients = maxClients
         self.maxFamilyClients = maxFamilyClients
         self.maxClientsUnlimited = maxClientsUnlimited
