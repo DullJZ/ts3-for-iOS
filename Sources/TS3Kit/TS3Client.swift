@@ -2415,41 +2415,7 @@ private extension TS3Client {
     }
 
     func channelFromCommand(_ command: TS3SingleCommand) -> TS3Channel? {
-        guard let cidValue = command.get("cid")?.value,
-              let cid = Int(cidValue),
-              let name = command.get("channel_name")?.value else {
-            return nil
-        }
-        let topic = command.get("channel_topic")?.value
-        return TS3Channel(
-            id: cid,
-            parentId: intValue(command, "pid") ?? intValue(command, "cpid"),
-            order: intValue(command, "channel_order"),
-            name: name,
-            phoneticName: command.get("channel_name_phonetic")?.value,
-            topic: topic,
-            description: command.get("channel_description")?.value,
-            isDefault: command.get("channel_flag_default")?.value == "1",
-            isPasswordProtected: command.get("channel_flag_password")?.value == "1",
-            isPermanent: command.get("channel_flag_permanent")?.value == "1",
-            isSemiPermanent: optionalBoolValue(command, "channel_flag_semi_permanent"),
-            neededTalkPower: intValue(command, "channel_needed_talk_power"),
-            neededJoinPower: intValue(command, "channel_needed_join_power"),
-            neededSubscribePower: intValue(command, "channel_needed_subscribe_power"),
-            neededDescriptionViewPower: intValue(command, "channel_needed_description_view_power"),
-            codec: intValue(command, "channel_codec"),
-            codecQuality: intValue(command, "channel_codec_quality"),
-            codecLatencyFactor: intValue(command, "channel_codec_latency_factor"),
-            isCodecUnencrypted: optionalBoolValue(command, "channel_codec_is_unencrypted"),
-            deleteDelaySeconds: intValue(command, "channel_delete_delay"),
-            maxClients: intValue(command, "channel_maxclients"),
-            maxFamilyClients: intValue(command, "channel_maxfamilyclients"),
-            maxClientsUnlimited: optionalBoolValue(command, "channel_flag_maxclients_unlimited"),
-            maxFamilyClientsUnlimited: optionalBoolValue(command, "channel_flag_maxfamilyclients_unlimited"),
-            maxFamilyClientsInherited: optionalBoolValue(command, "channel_flag_maxfamilyclients_inherited"),
-            iconId: intValue(command, "channel_icon_id"),
-            isSubscribed: optionalBoolValue(command, "channel_flag_are_subscribed")
-        )
+        Self.channel(from: command)
     }
 
     func updateChannelSubscription(channelId: Int, isSubscribed: Bool) {
@@ -2475,10 +2441,12 @@ private extension TS3Client {
             phoneticName: channel.phoneticName,
             topic: channel.topic,
             description: channel.description,
+            filePath: channel.filePath,
             isDefault: channel.isDefault,
             isPasswordProtected: channel.isPasswordProtected,
             isPermanent: channel.isPermanent,
             isSemiPermanent: channel.isSemiPermanent,
+            isForcedSilence: channel.isForcedSilence,
             neededTalkPower: channel.neededTalkPower,
             neededJoinPower: channel.neededJoinPower,
             neededSubscribePower: channel.neededSubscribePower,
@@ -2494,6 +2462,8 @@ private extension TS3Client {
             maxFamilyClientsUnlimited: channel.maxFamilyClientsUnlimited,
             maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
             iconId: channel.iconId,
+            totalClients: channel.totalClients,
+            totalClientsFamily: channel.totalClientsFamily,
             isSubscribed: isSubscribed ?? channel.isSubscribed
         )
     }
@@ -2729,6 +2699,53 @@ private extension TS3Client {
 }
 
 extension TS3Client {
+    static func channel(from command: TS3SingleCommand) -> TS3Channel? {
+        guard let cidValue = command.get("cid")?.value,
+              let cid = Int(cidValue),
+              let name = command.get("channel_name")?.value else {
+            return nil
+        }
+        func intValue(_ name: String) -> Int? {
+            command.get(name)?.value.flatMap(Int.init)
+        }
+        func optionalBoolValue(_ name: String) -> Bool? {
+            command.get(name)?.value.map { $0 == "1" }
+        }
+        return TS3Channel(
+            id: cid,
+            parentId: intValue("pid") ?? intValue("cpid"),
+            order: intValue("channel_order"),
+            name: name,
+            phoneticName: command.get("channel_name_phonetic")?.value,
+            topic: command.get("channel_topic")?.value,
+            description: command.get("channel_description")?.value,
+            filePath: command.get("channel_filepath")?.value,
+            isDefault: command.get("channel_flag_default")?.value == "1",
+            isPasswordProtected: command.get("channel_flag_password")?.value == "1",
+            isPermanent: command.get("channel_flag_permanent")?.value == "1",
+            isSemiPermanent: optionalBoolValue("channel_flag_semi_permanent"),
+            isForcedSilence: optionalBoolValue("channel_forced_silence"),
+            neededTalkPower: intValue("channel_needed_talk_power"),
+            neededJoinPower: intValue("channel_needed_join_power"),
+            neededSubscribePower: intValue("channel_needed_subscribe_power"),
+            neededDescriptionViewPower: intValue("channel_needed_description_view_power"),
+            codec: intValue("channel_codec"),
+            codecQuality: intValue("channel_codec_quality"),
+            codecLatencyFactor: intValue("channel_codec_latency_factor"),
+            isCodecUnencrypted: optionalBoolValue("channel_codec_is_unencrypted"),
+            deleteDelaySeconds: intValue("channel_delete_delay"),
+            maxClients: intValue("channel_maxclients"),
+            maxFamilyClients: intValue("channel_maxfamilyclients"),
+            maxClientsUnlimited: optionalBoolValue("channel_flag_maxclients_unlimited"),
+            maxFamilyClientsUnlimited: optionalBoolValue("channel_flag_maxfamilyclients_unlimited"),
+            maxFamilyClientsInherited: optionalBoolValue("channel_flag_maxfamilyclients_inherited"),
+            iconId: intValue("channel_icon_id"),
+            totalClients: intValue("total_clients"),
+            totalClientsFamily: intValue("total_clients_family"),
+            isSubscribed: optionalBoolValue("channel_flag_are_subscribed")
+        )
+    }
+
     static func serverInfo(from command: TS3SingleCommand, fallbackName: String) -> TS3ServerInfo? {
         let name = command.get("virtualserver_name")?.value
             ?? command.get("name")?.value

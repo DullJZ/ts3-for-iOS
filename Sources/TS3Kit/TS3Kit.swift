@@ -659,11 +659,15 @@ public struct TS3Channel: Identifiable {
     public let phoneticName: String?
     public let topic: String?
     public let description: String?
+    /// The server-side file repository path for this channel.
+    public let filePath: String?
     public let isDefault: Bool
     public let isPasswordProtected: Bool
     public let isPermanent: Bool
     /// Whether the channel is semi-permanent.
     public let isSemiPermanent: Bool?
+    /// Whether the channel is currently forcing silence because of server moderation limits.
+    public let isForcedSilence: Bool?
     public let neededTalkPower: Int?
     /// The permission power required to join the channel.
     public let neededJoinPower: Int?
@@ -692,6 +696,10 @@ public struct TS3Channel: Identifiable {
     public let maxFamilyClientsInherited: Bool?
     /// The channel icon id reported by the server.
     public let iconId: Int?
+    /// The number of clients directly inside this channel, when reported by the server.
+    public let totalClients: Int?
+    /// The number of clients inside this channel family, when reported by the server.
+    public let totalClientsFamily: Int?
     /// Whether the current client is subscribed to channel events, when reported by the server.
     public let isSubscribed: Bool?
 
@@ -704,10 +712,12 @@ public struct TS3Channel: Identifiable {
         phoneticName: String? = nil,
         topic: String?,
         description: String? = nil,
+        filePath: String? = nil,
         isDefault: Bool = false,
         isPasswordProtected: Bool = false,
         isPermanent: Bool = false,
         isSemiPermanent: Bool? = nil,
+        isForcedSilence: Bool? = nil,
         neededTalkPower: Int? = nil,
         neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
@@ -723,6 +733,8 @@ public struct TS3Channel: Identifiable {
         maxFamilyClientsUnlimited: Bool? = nil,
         maxFamilyClientsInherited: Bool? = nil,
         iconId: Int? = nil,
+        totalClients: Int? = nil,
+        totalClientsFamily: Int? = nil,
         isSubscribed: Bool? = nil
     ) {
         self.id = id
@@ -732,10 +744,12 @@ public struct TS3Channel: Identifiable {
         self.phoneticName = phoneticName
         self.topic = topic
         self.description = description
+        self.filePath = filePath
         self.isDefault = isDefault
         self.isPasswordProtected = isPasswordProtected
         self.isPermanent = isPermanent
         self.isSemiPermanent = isSemiPermanent
+        self.isForcedSilence = isForcedSilence
         self.neededTalkPower = neededTalkPower
         self.neededJoinPower = neededJoinPower
         self.neededSubscribePower = neededSubscribePower
@@ -751,6 +765,8 @@ public struct TS3Channel: Identifiable {
         self.maxFamilyClientsUnlimited = maxFamilyClientsUnlimited
         self.maxFamilyClientsInherited = maxFamilyClientsInherited
         self.iconId = iconId
+        self.totalClients = totalClients
+        self.totalClientsFamily = totalClientsFamily
         self.isSubscribed = isSubscribed
     }
 }

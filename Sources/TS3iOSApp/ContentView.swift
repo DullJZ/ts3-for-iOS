@@ -4881,12 +4881,15 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: localized("channelInfo.subscribed"), value: channel.isSubscribed.map(yesNo))
                     ServerInfoDetailRow(label: localized("channelInfo.iconId"), value: channel.iconId.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.members"), value: String(memberCount))
+                    ServerInfoDetailRow(label: localized("channelInfo.directClients"), value: channel.totalClients.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.familyClients"), value: channel.totalClientsFamily.map(String.init))
                 }
 
                 Section(header: Text(localized("channelInfo.text"))) {
                     ServerInfoDetailRow(label: localized("channelInfo.phoneticName"), value: channel.phoneticName)
                     ServerInfoDetailRow(label: localized("channelInfo.topic"), value: channel.topic)
                     ServerInfoDetailRow(label: localized("channelInfo.description"), value: channel.description)
+                    ServerInfoDetailRow(label: localized("channelInfo.filePath"), value: channel.filePath)
                 }
 
                 Section(header: Text(localized("channelInfo.audio"))) {
@@ -4894,6 +4897,7 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: localized("channelInfo.codecQuality"), value: codecQualityText)
                     ServerInfoDetailRow(label: localized("channelInfo.codecLatencyFactor"), value: channel.codecLatencyFactor.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.unencryptedVoice"), value: channel.isCodecUnencrypted.map(yesNo))
+                    ServerInfoDetailRow(label: localized("channelInfo.forcedSilence"), value: channel.isForcedSilence.map(yesNo))
                     ServerInfoDetailRow(label: localized("channelInfo.neededTalkPower"), value: channel.neededTalkPower.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.neededJoinPower"), value: channel.neededJoinPower.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.neededSubscribePower"), value: channel.neededSubscribePower.map(String.init))
@@ -5010,13 +5014,17 @@ struct ChannelInformationSheet: View {
             (localized("channelInfo.subscribed"), channel.isSubscribed.map(yesNo)),
             (localized("channelInfo.iconId"), channel.iconId.map(String.init)),
             (localized("channelInfo.members"), String(memberCount)),
+            (localized("channelInfo.directClients"), channel.totalClients.map(String.init)),
+            (localized("channelInfo.familyClients"), channel.totalClientsFamily.map(String.init)),
             (localized("channelInfo.phoneticName"), channel.phoneticName),
             (localized("channelInfo.topic"), channel.topic),
             (localized("channelInfo.description"), channel.description),
+            (localized("channelInfo.filePath"), channel.filePath),
             (localized("channelInfo.codec"), codecText),
             (localized("channelInfo.codecQuality"), codecQualityText),
             (localized("channelInfo.codecLatencyFactor"), channel.codecLatencyFactor.map(String.init)),
             (localized("channelInfo.unencryptedVoice"), channel.isCodecUnencrypted.map(yesNo)),
+            (localized("channelInfo.forcedSilence"), channel.isForcedSilence.map(yesNo)),
             (localized("channelInfo.neededTalkPower"), channel.neededTalkPower.map(String.init)),
             (localized("channelInfo.neededJoinPower"), channel.neededJoinPower.map(String.init)),
             (localized("channelInfo.neededSubscribePower"), channel.neededSubscribePower.map(String.init)),

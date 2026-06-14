@@ -196,10 +196,12 @@ struct TS3ChannelSummary: Identifiable {
     var phoneticName: String?
     var topic: String?
     var description: String?
+    var filePath: String?
     var isDefault: Bool
     var isPasswordProtected: Bool
     var isPermanent: Bool
     var isSemiPermanent: Bool?
+    var isForcedSilence: Bool?
     var neededTalkPower: Int?
     var neededJoinPower: Int?
     var neededSubscribePower: Int?
@@ -216,8 +218,80 @@ struct TS3ChannelSummary: Identifiable {
     var maxFamilyClientsInherited: Bool?
     var iconId: Int?
     var iconURL: URL?
+    var totalClients: Int?
+    var totalClientsFamily: Int?
     var isSubscribed: Bool?
     var isCurrent: Bool
+
+    init(
+        id: Int,
+        parentId: Int? = nil,
+        order: Int? = nil,
+        name: String,
+        phoneticName: String? = nil,
+        topic: String? = nil,
+        description: String? = nil,
+        filePath: String? = nil,
+        isDefault: Bool,
+        isPasswordProtected: Bool,
+        isPermanent: Bool,
+        isSemiPermanent: Bool? = nil,
+        isForcedSilence: Bool? = nil,
+        neededTalkPower: Int? = nil,
+        neededJoinPower: Int? = nil,
+        neededSubscribePower: Int? = nil,
+        neededDescriptionViewPower: Int? = nil,
+        codec: Int? = nil,
+        codecQuality: Int? = nil,
+        codecLatencyFactor: Int? = nil,
+        isCodecUnencrypted: Bool? = nil,
+        deleteDelaySeconds: Int? = nil,
+        maxClients: Int? = nil,
+        maxFamilyClients: Int? = nil,
+        maxClientsUnlimited: Bool? = nil,
+        maxFamilyClientsUnlimited: Bool? = nil,
+        maxFamilyClientsInherited: Bool? = nil,
+        iconId: Int? = nil,
+        iconURL: URL? = nil,
+        totalClients: Int? = nil,
+        totalClientsFamily: Int? = nil,
+        isSubscribed: Bool? = nil,
+        isCurrent: Bool
+    ) {
+        self.id = id
+        self.parentId = parentId
+        self.order = order
+        self.name = name
+        self.phoneticName = phoneticName
+        self.topic = topic
+        self.description = description
+        self.filePath = filePath
+        self.isDefault = isDefault
+        self.isPasswordProtected = isPasswordProtected
+        self.isPermanent = isPermanent
+        self.isSemiPermanent = isSemiPermanent
+        self.isForcedSilence = isForcedSilence
+        self.neededTalkPower = neededTalkPower
+        self.neededJoinPower = neededJoinPower
+        self.neededSubscribePower = neededSubscribePower
+        self.neededDescriptionViewPower = neededDescriptionViewPower
+        self.codec = codec
+        self.codecQuality = codecQuality
+        self.codecLatencyFactor = codecLatencyFactor
+        self.isCodecUnencrypted = isCodecUnencrypted
+        self.deleteDelaySeconds = deleteDelaySeconds
+        self.maxClients = maxClients
+        self.maxFamilyClients = maxFamilyClients
+        self.maxClientsUnlimited = maxClientsUnlimited
+        self.maxFamilyClientsUnlimited = maxFamilyClientsUnlimited
+        self.maxFamilyClientsInherited = maxFamilyClientsInherited
+        self.iconId = iconId
+        self.iconURL = iconURL
+        self.totalClients = totalClients
+        self.totalClientsFamily = totalClientsFamily
+        self.isSubscribed = isSubscribed
+        self.isCurrent = isCurrent
+    }
 }
 
 enum TS3ChannelDraftValidator {
@@ -8005,10 +8079,12 @@ final class TS3AppModel: ObservableObject {
                 phoneticName: nil,
                 topic: topic,
                 description: nil,
+                filePath: nil,
                 isDefault: false,
                 isPasswordProtected: false,
                 isPermanent: false,
                 isSemiPermanent: nil,
+                isForcedSilence: nil,
                 neededTalkPower: nil,
                 neededJoinPower: nil,
                 neededSubscribePower: nil,
@@ -8025,6 +8101,8 @@ final class TS3AppModel: ObservableObject {
                 maxFamilyClientsInherited: nil,
                 iconId: nil,
                 iconURL: nil,
+                totalClients: nil,
+                totalClientsFamily: nil,
                 isSubscribed: nil,
                 isCurrent: true
             ))
@@ -19828,10 +19906,12 @@ extension TS3AppModel: TS3ClientDelegate {
                     phoneticName: channel.phoneticName,
                     topic: channel.topic,
                     description: channel.description,
+                    filePath: channel.filePath,
                     isDefault: channel.isDefault,
                     isPasswordProtected: channel.isPasswordProtected,
                     isPermanent: channel.isPermanent,
                     isSemiPermanent: channel.isSemiPermanent,
+                    isForcedSilence: channel.isForcedSilence,
                     neededTalkPower: channel.neededTalkPower,
                     neededJoinPower: channel.neededJoinPower,
                     neededSubscribePower: channel.neededSubscribePower,
@@ -19848,6 +19928,8 @@ extension TS3AppModel: TS3ClientDelegate {
                     maxFamilyClientsInherited: channel.maxFamilyClientsInherited,
                     iconId: channel.iconId,
                     iconURL: channel.iconId.flatMap { self.iconURLs[$0] },
+                    totalClients: channel.totalClients,
+                    totalClientsFamily: channel.totalClientsFamily,
                     isSubscribed: channel.isSubscribed,
                     isCurrent: channel.id == client.currentChannelId
                 )

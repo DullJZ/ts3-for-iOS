@@ -84,6 +84,48 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(permission?.isSkipped, true)
     }
 
+    func testChannelParserKeepsOfficialInfoAndPopulationFields() throws {
+        let command = try TS3MultiCommand.parse(
+            """
+            channelinfo cid=12 pid=1 channel_order=3 channel_name=Raid\\sRoom channel_name_phonetic=raid channel_topic=Tonight channel_description=Bring\\sbuffs channel_filepath=files\\/raid channel_flag_default=0 channel_flag_password=1 channel_flag_permanent=1 channel_flag_semi_permanent=0 channel_forced_silence=1 channel_needed_talk_power=20 channel_needed_join_power=25 channel_needed_subscribe_power=10 channel_needed_description_view_power=30 channel_codec=4 channel_codec_quality=10 channel_codec_latency_factor=1 channel_codec_is_unencrypted=0 channel_delete_delay=3600 channel_maxclients=12 channel_maxfamilyclients=24 channel_flag_maxclients_unlimited=0 channel_flag_maxfamilyclients_unlimited=0 channel_flag_maxfamilyclients_inherited=1 channel_icon_id=456 total_clients=7 total_clients_family=19 channel_flag_are_subscribed=1
+            """
+        ).simplifyOne()
+
+        let channel = try XCTUnwrap(TS3Client.channel(from: command))
+
+        XCTAssertEqual(channel.id, 12)
+        XCTAssertEqual(channel.parentId, 1)
+        XCTAssertEqual(channel.order, 3)
+        XCTAssertEqual(channel.name, "Raid Room")
+        XCTAssertEqual(channel.phoneticName, "raid")
+        XCTAssertEqual(channel.topic, "Tonight")
+        XCTAssertEqual(channel.description, "Bring buffs")
+        XCTAssertEqual(channel.filePath, "files/raid")
+        XCTAssertEqual(channel.isDefault, false)
+        XCTAssertEqual(channel.isPasswordProtected, true)
+        XCTAssertEqual(channel.isPermanent, true)
+        XCTAssertEqual(channel.isSemiPermanent, false)
+        XCTAssertEqual(channel.isForcedSilence, true)
+        XCTAssertEqual(channel.neededTalkPower, 20)
+        XCTAssertEqual(channel.neededJoinPower, 25)
+        XCTAssertEqual(channel.neededSubscribePower, 10)
+        XCTAssertEqual(channel.neededDescriptionViewPower, 30)
+        XCTAssertEqual(channel.codec, 4)
+        XCTAssertEqual(channel.codecQuality, 10)
+        XCTAssertEqual(channel.codecLatencyFactor, 1)
+        XCTAssertEqual(channel.isCodecUnencrypted, false)
+        XCTAssertEqual(channel.deleteDelaySeconds, 3600)
+        XCTAssertEqual(channel.maxClients, 12)
+        XCTAssertEqual(channel.maxFamilyClients, 24)
+        XCTAssertEqual(channel.maxClientsUnlimited, false)
+        XCTAssertEqual(channel.maxFamilyClientsUnlimited, false)
+        XCTAssertEqual(channel.maxFamilyClientsInherited, true)
+        XCTAssertEqual(channel.iconId, 456)
+        XCTAssertEqual(channel.totalClients, 7)
+        XCTAssertEqual(channel.totalClientsFamily, 19)
+        XCTAssertEqual(channel.isSubscribed, true)
+    }
+
     func testChannelCreateCommandBuildsOfficialAdvancedParameters() {
         let command = TS3Client.channelCreateCommand(
             name: "Raid Room",
