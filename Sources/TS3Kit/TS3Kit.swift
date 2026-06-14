@@ -681,6 +681,8 @@ public struct TS3Channel: Identifiable {
     public let neededSubscribePower: Int?
     /// The permission power required to modify the channel.
     public let neededModifyPower: Int?
+    /// The permission power required to delete the channel.
+    public let neededDeletePower: Int?
     /// The permission power required to view the channel description.
     public let neededDescriptionViewPower: Int?
     public let codec: Int?
@@ -735,6 +737,7 @@ public struct TS3Channel: Identifiable {
         neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededModifyPower: Int? = nil,
+        neededDeletePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
@@ -772,6 +775,7 @@ public struct TS3Channel: Identifiable {
         self.neededJoinPower = neededJoinPower
         self.neededSubscribePower = neededSubscribePower
         self.neededModifyPower = neededModifyPower
+        self.neededDeletePower = neededDeletePower
         self.neededDescriptionViewPower = neededDescriptionViewPower
         self.codec = codec
         self.codecQuality = codecQuality

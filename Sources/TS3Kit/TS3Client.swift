@@ -512,6 +512,7 @@ public final class TS3Client {
         neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededModifyPower: Int? = nil,
+        neededDeletePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         order: Int? = nil,
         deleteDelaySeconds: Int? = nil,
@@ -542,6 +543,7 @@ public final class TS3Client {
             neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededModifyPower: neededModifyPower,
+            neededDeletePower: neededDeletePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             order: order,
             deleteDelaySeconds: deleteDelaySeconds,
@@ -574,6 +576,7 @@ public final class TS3Client {
         neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededModifyPower: Int? = nil,
+        neededDeletePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
@@ -605,6 +608,7 @@ public final class TS3Client {
             neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededModifyPower: neededModifyPower,
+            neededDeletePower: neededDeletePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec,
             codecQuality: codecQuality,
@@ -2470,6 +2474,7 @@ private extension TS3Client {
             neededJoinPower: channel.neededJoinPower,
             neededSubscribePower: channel.neededSubscribePower,
             neededModifyPower: channel.neededModifyPower,
+            neededDeletePower: channel.neededDeletePower,
             neededDescriptionViewPower: channel.neededDescriptionViewPower,
             codec: channel.codec,
             codecQuality: channel.codecQuality,
@@ -2753,6 +2758,7 @@ extension TS3Client {
             neededJoinPower: intValue("channel_needed_join_power"),
             neededSubscribePower: intValue("channel_needed_subscribe_power"),
             neededModifyPower: intValue("channel_needed_modify_power"),
+            neededDeletePower: intValue("channel_needed_delete_power"),
             neededDescriptionViewPower: intValue("channel_needed_description_view_power"),
             codec: intValue("channel_codec"),
             codecQuality: intValue("channel_codec_quality"),
@@ -2996,6 +3002,7 @@ extension TS3Client {
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededModifyPower: Int?,
+        neededDeletePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
         deleteDelaySeconds: Int?,
@@ -3023,6 +3030,7 @@ extension TS3Client {
             neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededModifyPower: neededModifyPower,
+            neededDeletePower: neededDeletePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             order: order,
             codec: codec,
@@ -3062,6 +3070,7 @@ extension TS3Client {
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededModifyPower: Int?,
+        neededDeletePower: Int?,
         neededDescriptionViewPower: Int?,
         codec: Int?,
         codecQuality: Int?,
@@ -3093,6 +3102,7 @@ extension TS3Client {
             neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededModifyPower: neededModifyPower,
+            neededDeletePower: neededDeletePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             order: order,
             codec: codec,
@@ -3189,6 +3199,7 @@ extension TS3Client {
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededModifyPower: Int?,
+        neededDeletePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
         codec: Int?,
@@ -3221,6 +3232,9 @@ extension TS3Client {
         }
         if let neededModifyPower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_modify_power", value: String(neededModifyPower)))
+        }
+        if let neededDeletePower {
+            params.append(TS3CommandSingleParameter(name: "channel_needed_delete_power", value: String(neededDeletePower)))
         }
         if let neededDescriptionViewPower {
             params.append(TS3CommandSingleParameter(name: "channel_needed_description_view_power", value: String(neededDescriptionViewPower)))

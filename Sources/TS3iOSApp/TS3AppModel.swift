@@ -385,6 +385,7 @@ struct TS3ChannelSummary: Identifiable {
     var neededJoinPower: Int?
     var neededSubscribePower: Int?
     var neededModifyPower: Int?
+    var neededDeletePower: Int?
     var neededDescriptionViewPower: Int?
     var codec: Int?
     var codecQuality: Int?
@@ -425,6 +426,7 @@ struct TS3ChannelSummary: Identifiable {
         neededJoinPower: Int? = nil,
         neededSubscribePower: Int? = nil,
         neededModifyPower: Int? = nil,
+        neededDeletePower: Int? = nil,
         neededDescriptionViewPower: Int? = nil,
         codec: Int? = nil,
         codecQuality: Int? = nil,
@@ -464,6 +466,7 @@ struct TS3ChannelSummary: Identifiable {
         self.neededJoinPower = neededJoinPower
         self.neededSubscribePower = neededSubscribePower
         self.neededModifyPower = neededModifyPower
+        self.neededDeletePower = neededDeletePower
         self.neededDescriptionViewPower = neededDescriptionViewPower
         self.codec = codec
         self.codecQuality = codecQuality
@@ -493,6 +496,7 @@ enum TS3ChannelDraftValidator {
         neededJoinPower: String,
         neededSubscribePower: String,
         neededModifyPower: String,
+        neededDeletePower: String,
         neededDescriptionViewPower: String,
         codec: String? = nil,
         codecQuality: String,
@@ -526,6 +530,9 @@ enum TS3ChannelDraftValidator {
         }
         if !isOptionalInt(neededModifyPower) {
             messages.append("Needed modify power must be numeric.")
+        }
+        if !isOptionalInt(neededDeletePower) {
+            messages.append("Needed delete power must be numeric.")
         }
         if !isOptionalInt(neededDescriptionViewPower) {
             messages.append("Needed description view power must be numeric.")
@@ -8464,6 +8471,7 @@ final class TS3AppModel: ObservableObject {
                 neededJoinPower: nil,
                 neededSubscribePower: nil,
                 neededModifyPower: nil,
+                neededDeletePower: nil,
                 neededDescriptionViewPower: nil,
                 codec: nil,
                 codecQuality: nil,
@@ -12919,6 +12927,7 @@ final class TS3AppModel: ObservableObject {
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededModifyPower: Int?,
+        neededDeletePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
         codec: Int?,
@@ -12958,6 +12967,7 @@ final class TS3AppModel: ObservableObject {
                 neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
                 neededModifyPower: neededModifyPower,
+                neededDeletePower: neededDeletePower,
                 neededDescriptionViewPower: neededDescriptionViewPower,
                 order: order,
                 deleteDelaySeconds: deleteDelaySeconds,
@@ -12985,6 +12995,7 @@ final class TS3AppModel: ObservableObject {
         neededJoinPower: Int?,
         neededSubscribePower: Int?,
         neededModifyPower: Int?,
+        neededDeletePower: Int?,
         neededDescriptionViewPower: Int?,
         order: Int?,
         codec: Int?,
@@ -13017,6 +13028,7 @@ final class TS3AppModel: ObservableObject {
                 neededJoinPower: neededJoinPower,
                 neededSubscribePower: neededSubscribePower,
                 neededModifyPower: neededModifyPower,
+                neededDeletePower: neededDeletePower,
                 neededDescriptionViewPower: neededDescriptionViewPower,
                 codec: codec,
                 codecQuality: codecQuality,
@@ -20382,6 +20394,7 @@ extension TS3AppModel: TS3ClientDelegate {
                     neededJoinPower: channel.neededJoinPower,
                     neededSubscribePower: channel.neededSubscribePower,
                     neededModifyPower: channel.neededModifyPower,
+                    neededDeletePower: channel.neededDeletePower,
                     neededDescriptionViewPower: channel.neededDescriptionViewPower,
                     codec: channel.codec,
                     codecQuality: channel.codecQuality,

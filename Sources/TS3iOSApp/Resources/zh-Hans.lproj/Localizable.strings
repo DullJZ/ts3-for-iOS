@@ -531,6 +531,7 @@
 "channelEditor.neededJoinPower" = "所需加入权限值";
 "channelEditor.neededSubscribePower" = "所需订阅权限值";
 "channelEditor.neededModifyPower" = "所需修改权限值";
+"channelEditor.neededDeletePower" = "所需删除权限值";
 "channelEditor.neededDescriptionViewPower" = "所需描述查看权限值";
 "channelEditor.deleteDelaySeconds" = "删除延迟秒数";
 "channelEditor.limits" = "限制";
@@ -651,6 +652,7 @@
 "channelInfo.neededJoinPower" = "所需加入权限值";
 "channelInfo.neededSubscribePower" = "所需订阅权限值";
 "channelInfo.neededModifyPower" = "所需修改权限值";
+"channelInfo.neededDeletePower" = "所需删除权限值";
 "channelInfo.neededDescriptionViewPower" = "所需描述查看权限值";
 "channelInfo.limits" = "限制";
 "channelInfo.limitState" = "限制状态";

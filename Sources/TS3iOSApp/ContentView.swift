@@ -4916,6 +4916,7 @@ struct ChannelInformationSheet: View {
                     ServerInfoDetailRow(label: localized("channelInfo.neededJoinPower"), value: channel.neededJoinPower.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.neededSubscribePower"), value: channel.neededSubscribePower.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.neededModifyPower"), value: channel.neededModifyPower.map(String.init))
+                    ServerInfoDetailRow(label: localized("channelInfo.neededDeletePower"), value: channel.neededDeletePower.map(String.init))
                     ServerInfoDetailRow(label: localized("channelInfo.neededDescriptionViewPower"), value: channel.neededDescriptionViewPower.map(String.init))
                 }
 
@@ -5082,6 +5083,7 @@ struct ChannelInformationSheet: View {
             (localized("channelInfo.neededJoinPower"), channel.neededJoinPower.map(String.init)),
             (localized("channelInfo.neededSubscribePower"), channel.neededSubscribePower.map(String.init)),
             (localized("channelInfo.neededModifyPower"), channel.neededModifyPower.map(String.init)),
+            (localized("channelInfo.neededDeletePower"), channel.neededDeletePower.map(String.init)),
             (localized("channelInfo.neededDescriptionViewPower"), channel.neededDescriptionViewPower.map(String.init)),
             (localized("channelInfo.limitState"), limitStateText),
             (localized("channelInfo.limitSummary"), limitSummary.clipboardSummary),
@@ -26706,6 +26708,7 @@ struct ChannelEditorSheet: View {
         var neededJoinPower: String?
         var neededSubscribePower: String
         var neededModifyPower: String?
+        var neededDeletePower: String?
         var neededDescriptionViewPower: String?
         var codec: String
         var codecQuality: String
@@ -26739,6 +26742,7 @@ struct ChannelEditorSheet: View {
     @State private var neededJoinPower = ""
     @State private var neededSubscribePower = ""
     @State private var neededModifyPower = ""
+    @State private var neededDeletePower = ""
     @State private var neededDescriptionViewPower = ""
     @State private var codec: Int?
     @State private var codecQuality = ""
@@ -26913,6 +26917,8 @@ struct ChannelEditorSheet: View {
                             .ts3NumericKeyboard()
                         TextField(localized("channelEditor.neededModifyPower"), text: $neededModifyPower)
                             .ts3NumericKeyboard()
+                        TextField(localized("channelEditor.neededDeletePower"), text: $neededDeletePower)
+                            .ts3NumericKeyboard()
                         TextField(localized("channelEditor.neededDescriptionViewPower"), text: $neededDescriptionViewPower)
                             .ts3NumericKeyboard()
                         TextField(localized("channelEditor.deleteDelaySeconds"), text: $deleteDelaySeconds)
@@ -26958,6 +26964,7 @@ struct ChannelEditorSheet: View {
                                 neededJoinPower: parsedOptionalInt(neededJoinPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 neededModifyPower: parsedOptionalInt(neededModifyPower),
+                                neededDeletePower: parsedOptionalInt(neededDeletePower),
                                 neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
                                 order: selectedOrderId,
                                 codec: codec,
@@ -26989,6 +26996,7 @@ struct ChannelEditorSheet: View {
                                 neededJoinPower: parsedOptionalInt(neededJoinPower),
                                 neededSubscribePower: parsedOptionalInt(neededSubscribePower),
                                 neededModifyPower: parsedOptionalInt(neededModifyPower),
+                                neededDeletePower: parsedOptionalInt(neededDeletePower),
                                 neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
                                 order: selectedOrderId,
                                 codec: codec,
@@ -27027,6 +27035,7 @@ struct ChannelEditorSheet: View {
                     neededJoinPower = channel.neededJoinPower.map(String.init) ?? ""
                     neededSubscribePower = channel.neededSubscribePower.map(String.init) ?? ""
                     neededModifyPower = channel.neededModifyPower.map(String.init) ?? ""
+                    neededDeletePower = channel.neededDeletePower.map(String.init) ?? ""
                     neededDescriptionViewPower = channel.neededDescriptionViewPower.map(String.init) ?? ""
                     codec = channel.codec
                     codecQuality = channel.codecQuality.map(String.init) ?? ""
@@ -27176,6 +27185,7 @@ struct ChannelEditorSheet: View {
             neededJoinPower: neededJoinPower,
             neededSubscribePower: neededSubscribePower,
             neededModifyPower: neededModifyPower,
+            neededDeletePower: neededDeletePower,
             neededDescriptionViewPower: neededDescriptionViewPower,
             codec: codec.map(String.init) ?? "",
             codecQuality: codecQuality,
@@ -27210,6 +27220,7 @@ struct ChannelEditorSheet: View {
             (localized("channelEditor.neededJoinPower"), draft.neededJoinPower ?? ""),
             (localized("channelEditor.neededSubscribePower"), draft.neededSubscribePower),
             (localized("channelEditor.neededModifyPower"), draft.neededModifyPower ?? ""),
+            (localized("channelEditor.neededDeletePower"), draft.neededDeletePower ?? ""),
             (localized("channelEditor.neededDescriptionViewPower"), draft.neededDescriptionViewPower ?? ""),
             (localized("channelEditor.codec"), codecTitle(for: draft.codec)),
             (localized("channelEditor.codecQuality"), codecQualityTitle(for: draft.codecQuality)),
@@ -27241,6 +27252,7 @@ struct ChannelEditorSheet: View {
             && isOptionalInt(neededJoinPower)
             && isOptionalInt(neededSubscribePower)
             && isOptionalInt(neededModifyPower)
+            && isOptionalInt(neededDeletePower)
             && isOptionalInt(neededDescriptionViewPower)
             && isCodecQualityValid
             && isCodecLatencyFactorValid
@@ -27375,6 +27387,7 @@ struct ChannelEditorSheet: View {
             neededJoinPower: draft.neededJoinPower ?? "",
             neededSubscribePower: draft.neededSubscribePower,
             neededModifyPower: draft.neededModifyPower ?? "",
+            neededDeletePower: draft.neededDeletePower ?? "",
             neededDescriptionViewPower: draft.neededDescriptionViewPower ?? "",
             codec: draft.codec,
             codecQuality: draft.codecQuality,
@@ -27405,6 +27418,7 @@ struct ChannelEditorSheet: View {
         neededJoinPower = draft.neededJoinPower ?? ""
         neededSubscribePower = draft.neededSubscribePower
         neededModifyPower = draft.neededModifyPower ?? ""
+        neededDeletePower = draft.neededDeletePower ?? ""
         neededDescriptionViewPower = draft.neededDescriptionViewPower ?? ""
         codec = parsedOptionalCodec(draft.codec)
         codecQuality = draft.codecQuality

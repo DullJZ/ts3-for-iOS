@@ -531,6 +531,7 @@
 "channelEditor.neededJoinPower" = "Needed Join Power";
 "channelEditor.neededSubscribePower" = "Needed Subscribe Power";
 "channelEditor.neededModifyPower" = "Needed Modify Power";
+"channelEditor.neededDeletePower" = "Needed Delete Power";
 "channelEditor.neededDescriptionViewPower" = "Needed Description View Power";
 "channelEditor.deleteDelaySeconds" = "Delete Delay Seconds";
 "channelEditor.limits" = "Limits";
@@ -651,6 +652,7 @@
 "channelInfo.neededJoinPower" = "Needed Join Power";
 "channelInfo.neededSubscribePower" = "Needed Subscribe Power";
 "channelInfo.neededModifyPower" = "Needed Modify Power";
+"channelInfo.neededDeletePower" = "Needed Delete Power";
 "channelInfo.neededDescriptionViewPower" = "Needed Description View Power";
 "channelInfo.limits" = "Limits";
 "channelInfo.limitState" = "Limit State";
