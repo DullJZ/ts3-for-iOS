@@ -25564,6 +25564,24 @@ struct ServerInfoRows: View {
                     : NSLocalizedString("serverInfo.hidden", comment: "")
             )
         }
+        if let defaultServerGroup = groupName(model.serverInfo.defaultServerGroupId, groups: model.serverGroups) {
+            infoRow(label: "serverInfo.defaultServerGroup", value: defaultServerGroup)
+        }
+        if let defaultChannelGroup = groupName(model.serverInfo.defaultChannelGroupId, groups: model.channelGroups) {
+            infoRow(label: "serverInfo.defaultChannelGroup", value: defaultChannelGroup)
+        }
+        if let reservedSlots = model.serverInfo.reservedSlots {
+            infoRow(label: "serverInfo.reservedSlots", value: String(reservedSlots))
+        }
+        if let fileTransferPort = model.serverInfo.fileTransferPort {
+            infoRow(label: "serverInfo.fileTransferPort", value: String(fileTransferPort))
+        }
+        if let codecEncryptionMode = model.serverInfo.codecEncryptionMode {
+            infoRow(label: "serverInfo.codecEncryption", value: TS3CodecEncryptionMode.title(for: codecEncryptionMode))
+        }
+        if let neededIdentitySecurityLevel = model.serverInfo.neededIdentitySecurityLevel {
+            infoRow(label: "serverInfo.neededIdentitySecurityLevel", value: String(neededIdentitySecurityLevel))
+        }
         if let version = model.serverInfo.version, !version.isEmpty {
             infoRow(label: "serverInfo.version", value: version)
         }
@@ -25595,6 +25613,10 @@ struct ServerInfoRows: View {
             return "\(clientsOnline) / \(maxClients)"
         }
         return "\(clientsOnline)"
+    }
+
+    private func groupName(_ id: Int?, groups: [TS3GroupSummary]) -> String? {
+        id.map { TS3GroupSummary.name(for: $0, in: groups) }
     }
 
     static func uptimeText(_ seconds: Int) -> String {
