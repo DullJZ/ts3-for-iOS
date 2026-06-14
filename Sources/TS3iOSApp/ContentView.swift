@@ -14576,12 +14576,12 @@ struct ClientDatabaseSheet: View {
 
         var title: String {
             switch self {
-            case .all: return "All Records"
-            case .withUniqueId: return "With Unique ID"
-            case .withoutUniqueId: return "Without Unique ID"
-            case .withDescription: return "With Description"
-            case .withLastIP: return "With Last IP"
-            case .withConnections: return "With Connections"
+            case .all: return NSLocalizedString("database.filter.allRecords", comment: "")
+            case .withUniqueId: return NSLocalizedString("database.filter.withUniqueId", comment: "")
+            case .withoutUniqueId: return NSLocalizedString("database.filter.withoutUniqueId", comment: "")
+            case .withDescription: return NSLocalizedString("database.filter.withDescription", comment: "")
+            case .withLastIP: return NSLocalizedString("database.filter.withLastIP", comment: "")
+            case .withConnections: return NSLocalizedString("database.filter.withConnections", comment: "")
             }
         }
 
@@ -14615,12 +14615,12 @@ struct ClientDatabaseSheet: View {
 
         var title: String {
             switch self {
-            case .nickname: return "Nickname"
-            case .databaseId: return "Database ID"
-            case .created: return "Created"
-            case .lastConnected: return "Last Connected"
-            case .connections: return "Connections"
-            case .lastIP: return "Last IP"
+            case .nickname: return NSLocalizedString("contacts.sort.nickname", comment: "")
+            case .databaseId: return NSLocalizedString("database.databaseId", comment: "")
+            case .created: return NSLocalizedString("database.sort.created", comment: "")
+            case .lastConnected: return NSLocalizedString("database.sort.lastConnected", comment: "")
+            case .connections: return NSLocalizedString("database.sort.connections", comment: "")
+            case .lastIP: return NSLocalizedString("database.sort.lastIP", comment: "")
             }
         }
     }
@@ -14722,47 +14722,47 @@ struct ClientDatabaseSheet: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Search")) {
-                    TextField("Nickname", text: $searchText)
+                Section(header: Text(localized("database.search"))) {
+                    TextField(localized("contacts.editor.nickname"), text: $searchText)
                         .ts3PlainTextField()
                     HStack {
-                        Button("Search") {
+                        Button(localized("database.search")) {
                             model.searchClientDatabase(pattern: searchText)
                         }
                         .disabled(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("events.clear")) {
                             searchText = ""
                             uniqueIdSearchText = ""
                             model.databaseSearchResults = []
                             model.clientLocations = []
                         }
                     }
-                    TextField("Unique ID", text: $uniqueIdSearchText)
+                    TextField(localized("contacts.editor.uniqueId"), text: $uniqueIdSearchText)
                         .ts3PlainTextField()
-                    Button("Find by Unique ID") {
+                    Button(localized("database.findByUniqueId")) {
                         model.findDatabaseClient(uniqueIdentifier: uniqueIdSearchText)
                     }
                     .disabled(uniqueIdSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
 
-                Section(header: Text("List View")) {
-                    Picker("Filter", selection: $recordFilter) {
+                Section(header: Text(localized("database.listView"))) {
+                    Picker(localized("channels.filter"), selection: $recordFilter) {
                         ForEach(DatabaseRecordFilter.allCases) { filter in
                             Text(filter.title).tag(filter)
                         }
                     }
-                    Picker("Sort By", selection: $sortMode) {
+                    Picker(localized("groups.sortBy"), selection: $sortMode) {
                         ForEach(DatabaseRecordSortMode.allCases) { mode in
                             Text(mode.title).tag(mode)
                         }
                     }
-                    Toggle("Ascending", isOn: $sortAscending)
-                    TextField("Filter loaded records", text: $localFilterText)
+                    Toggle(localized("groups.ascending"), isOn: $sortAscending)
+                    TextField(localized("database.filterLoadedRecords"), text: $localFilterText)
                         .ts3PlainTextField()
                     Menu {
-                        TextField("Preset Name", text: $presetName)
-                        Button("Save Current View") {
+                        TextField(localized("groups.presetName"), text: $presetName)
+                        Button(localized("database.saveCurrentView")) {
                             model.saveDatabaseClientFilterPreset(
                                 name: presetName,
                                 recordFilter: recordFilter.rawValue,
@@ -14775,17 +14775,17 @@ struct ClientDatabaseSheet: View {
                         }
                         .disabled(presetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         if model.databaseClientFilterPresets.isEmpty {
-                            Text("No saved database filter presets")
+                            Text(localized("database.noSavedFilterPresets"))
                         } else {
                             ForEach(model.databaseClientFilterPresets) { preset in
                                 Menu {
-                                    Button("Apply Preset") {
+                                    Button(localized("groups.applyPreset")) {
                                         applyPreset(preset)
                                     }
-                                    Button("Use Name") {
+                                    Button(localized("groups.useName")) {
                                         presetName = preset.name
                                     }
-                                    Button("Delete Preset") {
+                                    Button(localized("groups.deletePreset")) {
                                         model.deleteDatabaseClientFilterPreset(preset)
                                     }
                                 } label: {
@@ -14797,22 +14797,22 @@ struct ClientDatabaseSheet: View {
                             }
                         }
                         Divider()
-                        Button("Export Presets") {
+                        Button(localized("groups.exportPresets")) {
                             exportPresets()
                         }
                         .disabled(model.databaseClientFilterPresets.isEmpty)
-                        Button("Import Presets") {
+                        Button(localized("groups.importPresets")) {
                             isImportingPresets = true
                         }
-                        Button("Delete All Presets") {
+                        Button(localized("groups.deleteAllPresets")) {
                             isConfirmingDeletePresets = true
                         }
                         .disabled(model.databaseClientFilterPresets.isEmpty)
                     } label: {
-                        Label("Filter Presets", systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("groups.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
                     }
                     if hasLocalViewOptions {
-                        Button("Clear List View") {
+                        Button(localized("database.clearListView")) {
                             recordFilter = .all
                             sortMode = .nickname
                             sortAscending = true
@@ -14821,14 +14821,14 @@ struct ClientDatabaseSheet: View {
                     }
                 }
 
-                Section(header: Text("Database Range")) {
-                    TextField("Batch Size", text: $databaseBatchSize)
+                Section(header: Text(localized("database.range"))) {
+                    TextField(localized("database.batchSize"), text: $databaseBatchSize)
                         .ts3NumericKeyboard()
                     HStack {
-                        Text("\(model.databaseClients.count) loaded")
+                        Text(localized("database.loadedFormat", model.databaseClients.count))
                             .foregroundColor(.secondary)
                         Spacer()
-                        Button("Load More") {
+                        Button(localized("database.loadMore")) {
                             model.loadMoreClientDatabaseRecords(limit: parsedDatabaseBatchSize)
                         }
                         .disabled(!model.databaseSearchResults.isEmpty || !model.canLoadMoreDatabaseClients)
@@ -14836,7 +14836,7 @@ struct ClientDatabaseSheet: View {
                 }
 
                 if !model.clientLocations.isEmpty {
-                    Section(header: Text("Online Locations")) {
+                    Section(header: Text(localized("database.onlineLocations"))) {
                         ForEach(model.clientLocations) { location in
                             DatabaseClientLocationRow(location: location)
                                 .environmentObject(model)
@@ -14845,51 +14845,51 @@ struct ClientDatabaseSheet: View {
                 }
 
                 if let selected = model.selectedDatabaseClient {
-                    Section(header: Text("Selected Client")) {
+                    Section(header: Text(localized("database.selectedClient"))) {
                         DatabaseClientDetailRows(record: selected)
-                        Button("Copy Selected Snapshot") {
+                        Button(localized("database.copySelectedSnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(databaseClientSnapshot(for: selected))
                         }
-                        Button("Export Selected Snapshot") {
+                        Button(localized("database.exportSelectedSnapshot")) {
                             databaseExportDocument = TS3TextFileDocument(data: Data(databaseClientSnapshot(for: selected).utf8))
                             isExportingDatabase = true
                         }
-                        Button("Export Database Backup") {
+                        Button(localized("database.exportBackup")) {
                             exportDatabaseBackup()
                         }
-                        Button("Copy Nickname") {
+                        Button(localized("contacts.row.copyNickname")) {
                             TS3PlatformSupport.copyToPasteboard(selected.nickname)
                         }
-                        Button("Copy Database ID") {
+                        Button(localized("selfStatus.copyDatabaseId")) {
                             TS3PlatformSupport.copyToPasteboard("\(selected.id)")
                         }
                         if let uniqueIdentifier = selected.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                            Button("Copy Unique ID") {
+                            Button(localized("contacts.row.copyUniqueId")) {
                                 TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                             }
-                            Menu("Contact") {
-                                Button("Mark as Friend") {
+                            Menu(localized("contacts.editor.contact")) {
+                                Button(localized("groups.members.row.markFriend")) {
                                     model.setContactStatus(.friend, for: selected)
                                 }
                                 .disabled(model.contactStatus(for: selected) == .friend)
-                                Button("Block Contact") {
+                                Button(localized("groups.members.row.blockContact")) {
                                     model.setContactStatus(.blocked, for: selected)
                                 }
                                 .disabled(model.contactStatus(for: selected) == .blocked)
-                                Button("Ignore Contact") {
+                                Button(localized("groups.members.row.ignoreContact")) {
                                     model.setContactStatus(.ignored, for: selected)
                                 }
                                 .disabled(model.contactStatus(for: selected) == .ignored)
-                                Button("Set Neutral") {
+                                Button(localized("groups.members.row.setNeutral")) {
                                     model.setContactStatus(.neutral, for: selected)
                                 }
                                 .disabled(model.contactStatus(for: selected) == .neutral && model.contactNote(for: selected) == nil)
-                                Button("Edit Note") {
+                                Button(localized("groups.members.row.editNote")) {
                                     actionMode = .contactNote
                                 }
                             }
                             if !model.serverGroups.isEmpty {
-                                Menu("Add Server Group") {
+                                Menu(localized("database.addServerGroup")) {
                                     ForEach(model.serverGroups) { group in
                                         Button(group.name) {
                                             model.addServerGroup(group, to: selected)
@@ -14898,53 +14898,53 @@ struct ClientDatabaseSheet: View {
                                 }
                             }
                         }
-                        Button("Resolve Database ID From UID") {
+                        Button(localized("database.resolveDatabaseIdFromUid")) {
                             model.resolveDatabaseIdForSelectedClient()
                         }
                         .disabled(selected.uniqueIdentifier == nil)
-                        Button("Find Online Client") {
+                        Button(localized("database.findOnlineClient")) {
                             model.refreshOnlineLocations(for: selected)
                         }
                         .disabled(selected.uniqueIdentifier == nil)
                         if model.hasOnlineClientActions(for: selected) {
-                            Button("Poke Online Client") {
+                            Button(localized("groups.members.row.pokeOnlineClient")) {
                                 onlineActionMode = .poke
                             }
-                            Button("Send Private Message") {
+                            Button(localized("contacts.row.sendPrivateMessage")) {
                                 onlineActionMode = .privateMessage
                             }
                         }
-                        Button("Edit Description") {
+                        Button(localized("database.editDescription")) {
                             isShowingDescriptionEditor = true
                         }
-                        Button("Edit Client Permissions") {
+                        Button(localized("database.editClientPermissions")) {
                             model.selectDatabaseClientPermissions(selected)
                             isShowingPermissions = true
                         }
-                        Button("Send Offline Message") {
+                        Button(localized("groups.members.row.sendOfflineMessage")) {
                             actionMode = .offlineMessage
                         }
                         .disabled(!model.canSendOfflineMessage(to: selected))
-                        Button("Submit Complaint") {
+                        Button(localized("groups.members.row.submitComplaint")) {
                             actionMode = .complain
                         }
-                        Button("View Complaints") {
+                        Button(localized("database.viewComplaints")) {
                             model.refreshComplaints(for: selected)
                             isShowingComplaints = true
                         }
-                        Button("Ban Unique ID") {
+                        Button(localized("groups.members.row.banUniqueId")) {
                             actionMode = .ban
                         }
                         .disabled(!model.canBanDatabaseClient(selected))
-                        Button("Delete Database Record") {
+                        Button(localized("database.deleteRecord")) {
                             isConfirmingDelete = true
                         }
                     }
                 }
 
-                Section(header: Text(model.databaseSearchResults.isEmpty ? "Database Clients" : "Search Results")) {
+                Section(header: Text(model.databaseSearchResults.isEmpty ? localized("database.clients") : localized("database.searchResults"))) {
                     if displayedRecords.isEmpty {
-                        Text("No clients")
+                        Text(localized("database.noClients"))
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(displayedRecords) { record in
@@ -14954,58 +14954,58 @@ struct ClientDatabaseSheet: View {
                     }
                 }
             }
-            .navigationTitle("Client Database")
+            .navigationTitle(localized("database.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Refresh") {
+                    Button(localized("groups.refresh")) {
                         model.refreshClientDatabase(limit: parsedDatabaseBatchSize)
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Menu {
-                        Button("Copy Visible Database Snapshot") {
+                        Button(localized("database.copyVisibleSnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(databaseSnapshot)
                         }
                         .disabled(displayedRecords.isEmpty)
-                        Button("Export Visible Database Snapshot") {
+                        Button(localized("database.exportVisibleSnapshot")) {
                             databaseExportDocument = TS3TextFileDocument(data: Data(databaseSnapshot.utf8))
                             isExportingDatabase = true
                         }
                         .disabled(displayedRecords.isEmpty)
-                        Button("Import Database Backup") {
+                        Button(localized("database.importBackup")) {
                             isImportingDatabase = true
                         }
                         Divider()
-                        Button("Mark Visible Friends") {
+                        Button(localized("contacts.markVisibleFriends")) {
                             applyVisibleContactStatus(.friend)
                         }
                         .disabled(!canMarkVisibleFriends)
-                        Button("Copy Mark Friends Draft") {
+                        Button(localized("contacts.copyMarkFriendsDraft")) {
                             copyVisibleContactStatusDraft(.friend)
                         }
                         .disabled(visibleContactEntries.isEmpty)
-                        Button("Block Visible Contacts") {
+                        Button(localized("contacts.blockVisibleContacts")) {
                             applyVisibleContactStatus(.blocked)
                         }
                         .disabled(!canBlockVisibleContacts)
-                        Button("Copy Block Draft") {
+                        Button(localized("contacts.copyBlockDraft")) {
                             copyVisibleContactStatusDraft(.blocked)
                         }
                         .disabled(visibleContactEntries.isEmpty)
-                        Button("Ignore Visible Contacts") {
+                        Button(localized("contacts.ignoreVisibleContacts")) {
                             applyVisibleContactStatus(.ignored)
                         }
                         .disabled(!canIgnoreVisibleContacts)
-                        Button("Copy Ignore Draft") {
+                        Button(localized("contacts.copyIgnoreDraft")) {
                             copyVisibleContactStatusDraft(.ignored)
                         }
                         .disabled(visibleContactEntries.isEmpty)
-                        Button("Set Visible Neutral") {
+                        Button(localized("contacts.setVisibleNeutral")) {
                             applyVisibleContactStatus(.neutral)
                         }
                         .disabled(!canSetVisibleNeutral)
-                        Button("Copy Neutral Draft") {
+                        Button(localized("contacts.copyNeutralDraft")) {
                             copyVisibleContactStatusDraft(.neutral)
                         }
                         .disabled(visibleContactEntries.isEmpty)
@@ -15014,7 +15014,7 @@ struct ClientDatabaseSheet: View {
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -15049,9 +15049,9 @@ struct ClientDatabaseSheet: View {
             }
             .alert(isPresented: $isConfirmingDelete) {
                 Alert(
-                    title: Text("Delete Database Record?"),
-                    message: Text(model.selectedDatabaseClient?.nickname ?? "Selected client"),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("database.deleteRecordAlert.title")),
+                    message: Text(model.selectedDatabaseClient?.nickname ?? localized("database.selectedClient")),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         if let selected = model.selectedDatabaseClient {
                             model.deleteDatabaseClient(selected)
                         }
@@ -15061,9 +15061,9 @@ struct ClientDatabaseSheet: View {
             }
             .alert(isPresented: $isConfirmingDeletePresets) {
                 Alert(
-                    title: Text("Delete All Database Filter Presets?"),
-                    message: Text("This removes \(model.databaseClientFilterPresets.count) saved local filter presets."),
-                    primaryButton: .destructive(Text("Delete")) {
+                    title: Text(localized("database.deleteAllPresetsAlert.title")),
+                    message: Text(localized("groups.deleteAllPresetsAlert.messageFormat", model.databaseClientFilterPresets.count)),
+                    primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteAllDatabaseClientFilterPresets()
                     },
                     secondaryButton: .cancel()
@@ -15329,14 +15329,14 @@ struct ClientDatabaseSheet: View {
     private func presetSummary(_ preset: TS3DatabaseClientFilterPreset) -> String {
         var parts = [
             (DatabaseRecordFilter(rawValue: preset.recordFilter) ?? .all).title,
-            "Sort \((DatabaseRecordSortMode(rawValue: preset.sortMode) ?? .nickname).title)",
-            "Batch \(preset.batchSize)"
+            localized("permissions.presetSummary.sortFormat", (DatabaseRecordSortMode(rawValue: preset.sortMode) ?? .nickname).title),
+            localized("database.presetSummary.batchFormat", preset.batchSize)
         ]
         if !preset.sortAscending {
-            parts.append("Descending")
+            parts.append(localized("groups.members.descending"))
         }
         if !preset.localFilterText.isEmpty {
-            parts.append("Filter \(preset.localFilterText)")
+            parts.append(localized("database.presetSummary.filterFormat", preset.localFilterText))
         }
         return parts.joined(separator: " · ")
     }
@@ -15368,23 +15368,29 @@ struct ClientDatabaseSheet: View {
 
     private func databaseBackupPreviewMessage(_ preview: TS3DatabaseClientBackupPreview) -> String {
         var lines = [
-            "\(preview.clientCount) database clients are available to restore into the currently loaded local list.",
-            "\(preview.uniqueIdentifierCount) with unique IDs, \(preview.descriptionCount) with descriptions, \(preview.lastIPCount) with last IPs, \(preview.connectionCount) with connection counts."
+            localized("database.backupPreview.clientsFormat", preview.clientCount),
+            localized(
+                "database.backupPreview.fieldsFormat",
+                preview.uniqueIdentifierCount,
+                preview.descriptionCount,
+                preview.lastIPCount,
+                preview.connectionCount
+            )
         ]
         if preview.skippedClientCount > 0 {
-            lines.append("\(preview.skippedClientCount) invalid or duplicate records will be skipped.")
+            lines.append(localized("database.backupPreview.skippedFormat", preview.skippedClientCount))
         }
         if !preview.fieldSummaries.isEmpty {
-            lines.append("Fields: \(preview.fieldSummaries.joined(separator: " | "))")
+            lines.append(localized("database.backupPreview.fieldSummariesFormat", preview.fieldSummaries.joined(separator: " | ")))
         }
         if let firstNickname = preview.firstNickname, let firstDatabaseId = preview.firstDatabaseId {
-            var first = "First: \(firstNickname) (DB \(firstDatabaseId))"
+            var first = localized("database.backupPreview.firstFormat", firstNickname, firstDatabaseId)
             if let firstUniqueIdentifier = preview.firstUniqueIdentifier, !firstUniqueIdentifier.isEmpty {
-                first += " uid \(firstUniqueIdentifier)"
+                first += " " + localized("database.backupPreview.uidFormat", firstUniqueIdentifier)
             }
             lines.append(first)
         }
-        lines.append(preview.hasClients ? "Import replaces only the local cached database client list with the selected records." : "The backup has no usable database client records.")
+        lines.append(preview.hasClients ? localized("database.backupPreview.hasClients") : localized("database.backupPreview.noUsableClients"))
         return lines.joined(separator: "\n")
     }
 
@@ -15419,6 +15425,11 @@ struct ClientDatabaseSheet: View {
             model.lastError = error.localizedDescription
         }
     }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 private struct DatabaseClientFilterPresetImportSheet: View {
@@ -15447,24 +15458,24 @@ private struct DatabaseClientFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("database.import.preview"))) {
+                    Text(localized("database.filterImport.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("database.filterImport.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("database.filterImport.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("database.filterImport.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("database.filterImport.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("database.filterImport.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("database.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("database.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("database.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }
@@ -15486,22 +15497,22 @@ private struct DatabaseClientFilterPresetImportSheet: View {
                 }
 
                 Section {
-                    Text("Importing merges the selected database filter presets by name and leaves unselected presets unchanged.")
+                    Text(localized("database.filterImport.behavior"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Database Filters")
+            .navigationTitle(localized("database.filterImport.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("database.import.action")) {
                         importPresets(selectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -15509,6 +15520,11 @@ private struct DatabaseClientFilterPresetImportSheet: View {
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -15526,19 +15542,19 @@ private struct DatabaseBackupImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("database.import.preview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     if preview.hasClients {
-                        Button("Copy Client Summary") {
+                        Button(localized("database.import.copyClientSummary")) {
                             TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                         }
                         HStack {
-                            Button("Select All") {
+                            Button(localized("database.import.selectAll")) {
                                 selectedClientIds = Set(preview.candidates.map(\.id))
                             }
-                            Button("Clear") {
+                            Button(localized("database.import.clear")) {
                                 selectedClientIds = []
                             }
                             .disabled(selectedClientIds.isEmpty)
@@ -15568,13 +15584,13 @@ private struct DatabaseBackupImportSheet: View {
                     }
                 }
 
-                Section(header: Text("Import Behavior")) {
-                    Text("Import replaces the local cached client database list with the selected records for offline review and does not create, edit, or delete server database records.")
+                Section(header: Text(localized("database.import.behavior"))) {
+                    Text(localized("database.import.behaviorSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Import Database")
+            .navigationTitle(localized("database.import.title"))
             .ts3InlineNavigationTitle()
             .onAppear {
                 if selectedClientIds.isEmpty {
@@ -15583,18 +15599,23 @@ private struct DatabaseBackupImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         cancel()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("database.import.action")) {
                         importBackup(validSelectedClientIds)
                     }
                     .disabled(!preview.hasClients || validSelectedClientIds.isEmpty)
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
