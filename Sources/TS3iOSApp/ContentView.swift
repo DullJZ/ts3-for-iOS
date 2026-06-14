@@ -25961,26 +25961,31 @@ struct ClientMigrationSheet: View {
     @State private var clientPackageDocument = TS3BookmarkFileDocument()
     @State private var pendingClientPackageImport: ClientPackageImportConfirmation?
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Client Package")) {
-                    Button("Export Client Package") {
+                Section(header: Text(localized("clientMigration.clientPackage"))) {
+                    Button(localized("connect.exportClientPackage")) {
                         exportClientPackage()
                     }
-                    Button("Import Client Package") {
+                    Button(localized("connect.importClientPackage")) {
                         isImportingClientPackage = true
                     }
-                    Text("Client packages include bookmarks, recent servers, contacts, notifications, recovery, channel layout, audio, status, playback, and whisper presets.")
+                    Text(localized("connect.clientPackageSummary"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("Client Migration")
+            .navigationTitle(localized("connect.clientMigration"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -26057,18 +26062,18 @@ struct ClientMigrationSheet: View {
 
     private func clientPackagePreviewMessage(_ preview: TS3ClientMigrationPackagePreview) -> String {
         var lines = [
-            "Schema: \(preview.schemaVersion)",
-            "Exported: \(Self.dateText(preview.exportedAt))",
-            "Items: \(preview.totalItemCount)"
+            localized("clientMigration.preview.schemaFormat", preview.schemaVersion),
+            localized("clientMigration.preview.exportedFormat", Self.dateText(preview.exportedAt)),
+            localized("clientMigration.preview.itemsFormat", preview.totalItemCount)
         ]
         if !preview.itemCounts.isEmpty {
-            lines.append(preview.itemCounts.map { "\($0.0): \($0.1)" }.joined(separator: "\n"))
+            lines.append(preview.itemCounts.map { localized("clientMigration.preview.itemCountFormat", $0.0, $0.1) }.joined(separator: "\n"))
         }
-        lines.append("Settings groups: \(preview.settingsGroups.joined(separator: ", "))")
+        lines.append(localized("clientMigration.preview.settingsGroupsFormat", preview.settingsGroups.joined(separator: ", ")))
         if !preview.settingsDetails.isEmpty {
             lines.append(preview.settingsDetails.joined(separator: "\n"))
         }
-        lines.append("Import merges list-style data and applies package settings.")
+        lines.append(localized("clientMigration.preview.importBehavior"))
         return lines.joined(separator: "\n")
     }
 
@@ -26087,34 +26092,39 @@ private struct ClientPackageImportSheet: View {
     let importPackage: (TS3ClientMigrationRestoreOptions) -> Void
     @State private var options = TS3ClientMigrationRestoreOptions.all
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Package Preview")) {
+                Section(header: Text(localized("clientMigration.packagePreview"))) {
                     Text(previewMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Section(header: Text("Restore Sections")) {
-                    Toggle("Connections", isOn: $options.connections)
-                    Toggle("Identities", isOn: $options.identities)
-                    Toggle("Contacts", isOn: $options.contacts)
-                    Toggle("Notifications", isOn: $options.notifications)
-                    Toggle("Chat", isOn: $options.chat)
-                    Toggle("Server Administration", isOn: $options.serverAdministration)
-                    Toggle("Channel Layout", isOn: $options.channelLayout)
-                    Toggle("Files", isOn: $options.files)
-                    Toggle("Audio", isOn: $options.audio)
-                    Toggle("Self Status", isOn: $options.selfStatus)
-                    Toggle("Whisper", isOn: $options.whisper)
+                Section(header: Text(localized("clientMigration.restoreSections"))) {
+                    Toggle(localized("clientMigration.section.connections"), isOn: $options.connections)
+                    Toggle(localized("clientMigration.section.identities"), isOn: $options.identities)
+                    Toggle(localized("clientMigration.section.contacts"), isOn: $options.contacts)
+                    Toggle(localized("clientMigration.section.notifications"), isOn: $options.notifications)
+                    Toggle(localized("clientMigration.section.chat"), isOn: $options.chat)
+                    Toggle(localized("clientMigration.section.serverAdministration"), isOn: $options.serverAdministration)
+                    Toggle(localized("clientMigration.section.channelLayout"), isOn: $options.channelLayout)
+                    Toggle(localized("clientMigration.section.files"), isOn: $options.files)
+                    Toggle(localized("clientMigration.section.audio"), isOn: $options.audio)
+                    Toggle(localized("clientMigration.section.selfStatus"), isOn: $options.selfStatus)
+                    Toggle(localized("clientMigration.section.whisper"), isOn: $options.whisper)
                 }
 
                 Section {
-                    Button("Select All") {
+                    Button(localized("clientMigration.selectAll")) {
                         options = .all
                     }
-                    Button("Clear Selection") {
+                    Button(localized("clientMigration.clearSelection")) {
                         options = TS3ClientMigrationRestoreOptions(
                             connections: false,
                             identities: false,
@@ -26131,16 +26141,16 @@ private struct ClientPackageImportSheet: View {
                     }
                 }
             }
-            .navigationTitle("Import Client Package")
+            .navigationTitle(localized("clientMigration.importTitle"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Import") {
+                    Button(localized("clientMigration.importAction")) {
                         importPackage(options)
                         presentationMode.wrappedValue.dismiss()
                     }
