@@ -6894,6 +6894,7 @@ struct ContactRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let contact: TS3ContactEntry
     @State private var isEditing = false
+    @State private var isShowingOfflineMessage = false
     @State private var isShowingClientDatabase = false
     @State private var onlineActionMode: UserActionMode?
 
@@ -6960,6 +6961,9 @@ struct ContactRow: View {
                     }
                     Divider()
                 }
+                Button(localized("clientActions.sendOfflineMessage")) {
+                    isShowingOfflineMessage = true
+                }
                 Button(localized("contacts.row.editContact")) {
                     isEditing = true
                 }
@@ -7012,6 +7016,10 @@ struct ContactRow: View {
                     .environmentObject(model)
             }
         }
+        .sheet(isPresented: $isShowingOfflineMessage) {
+            ContactOfflineMessageSheet(contact: contact)
+                .environmentObject(model)
+        }
         .sheet(isPresented: $isShowingClientDatabase) {
             ClientDatabaseSheet()
                 .environmentObject(model)
@@ -7024,6 +7032,9 @@ struct ContactRow: View {
                 Button(localized("contacts.row.poke")) {
                     onlineActionMode = .poke
                 }
+            }
+            Button(localized("clientActions.sendOfflineMessage")) {
+                isShowingOfflineMessage = true
             }
             Button(localized("contacts.row.copyNickname")) {
                 TS3PlatformSupport.copyToPasteboard(contact.nickname)
@@ -7058,6 +7069,9 @@ struct ContactRow: View {
             model.findDatabaseClient(for: contact)
             isShowingClientDatabase = true
         }
+        .accessibilityAction(named: localized("clientActions.sendOfflineMessage")) {
+            isShowingOfflineMessage = true
+        }
         .accessibilityAction(named: localized("contacts.row.deleteContact")) {
             model.deleteContact(contact)
         }
@@ -7065,6 +7079,118 @@ struct ContactRow: View {
 
     private var clipboardSummary: String {
         contact.clipboardSummary(onlineNickname: onlineUser?.nickname)
+    }
+}
+
+struct ContactOfflineMessageSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let contact: TS3ContactEntry
+    @State private var subject = ""
+    @State private var message = ""
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(contact.nickname)) {
+                    Text(contact.uniqueIdentifier)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    TextField(localized("clientActions.subject"), text: $subject)
+                        .ts3PlainTextField()
+                    TextField(localized("clientActions.message"), text: $message)
+                        .ts3PlainTextField()
+                    Text(offlineMessageDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("clientActions.copyOfflineMessageSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
+                    }
+                    ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle(localized("clientActions.offlineMessage"))
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button(localized("clientActions.send")) {
+                        model.sendOfflineMessage(
+                            toUniqueIdentifier: contact.uniqueIdentifier,
+                            subject: subject,
+                            message: message
+                        ) {
+                            model.clearOfflineMessageDraft(id: offlineDraftId)
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(isSendDisabled)
+                }
+            }
+            .onAppear {
+                loadOfflineDraft()
+            }
+            .onChange(of: subject) { _ in
+                saveOfflineDraft()
+            }
+            .onChange(of: message) { _ in
+                saveOfflineDraft()
+            }
+        }
+    }
+
+    private var offlineDraftId: String {
+        "uid:\(contact.uniqueIdentifier)"
+    }
+
+    private func loadOfflineDraft() {
+        guard let draft = model.offlineMessageDraft(for: offlineDraftId) else { return }
+        subject = draft.subject
+        message = draft.message
+    }
+
+    private func saveOfflineDraft() {
+        model.saveOfflineMessageDraft(
+            id: offlineDraftId,
+            recipientName: contact.nickname,
+            subject: subject,
+            message: message
+        )
+    }
+
+    private var isSendDisabled: Bool {
+        !offlineMessageDraftValidationMessages.isEmpty
+    }
+
+    private var offlineMessageDraftValidationMessages: [String] {
+        TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: contact.nickname,
+            recipientUniqueIdentifier: contact.uniqueIdentifier,
+            subject: subject,
+            message: message
+        )
+    }
+
+    private var offlineMessageDraftSummary: String {
+        TS3OfflineMessageDraftValidator.creationSummary(
+            recipientName: contact.nickname,
+            recipientUniqueIdentifier: contact.uniqueIdentifier,
+            subject: subject,
+            message: message
+        )
     }
 }
 
