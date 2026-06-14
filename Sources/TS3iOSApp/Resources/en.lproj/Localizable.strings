@@ -650,6 +650,17 @@
 "channelInfo.neededSubscribePower" = "Needed Subscribe Power";
 "channelInfo.neededDescriptionViewPower" = "Needed Description View Power";
 "channelInfo.limits" = "Limits";
+"channelInfo.limitState" = "Limit State";
+"channelInfo.limitSummary" = "Limit Summary";
+"channelInfo.copyLimitSummary" = "Copy Limit Summary";
+"channelInfo.directLimitStateFormat" = "Direct %@";
+"channelInfo.familyLimitStateFormat" = "Family %@";
+"channelInfo.limitState.unknown" = "Unknown";
+"channelInfo.limitState.unlimited" = "Unlimited";
+"channelInfo.limitState.available" = "Available";
+"channelInfo.limitState.nearLimit" = "Near Limit";
+"channelInfo.limitState.full" = "Full";
+"channelInfo.limitState.overLimit" = "Over Limit";
 "channelInfo.maxClients" = "Max Clients";
 "channelInfo.maxFamilyClients" = "Max Family Clients";
 "channelInfo.deleteDelay" = "Delete Delay";

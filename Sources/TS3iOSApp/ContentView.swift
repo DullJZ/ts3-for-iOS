@@ -4919,10 +4919,14 @@ struct ChannelInformationSheet: View {
                 }
 
                 Section(header: Text(localized("channelInfo.limits"))) {
+                    ServerInfoDetailRow(label: localized("channelInfo.limitState"), value: limitStateText)
                     ServerInfoDetailRow(label: localized("channelInfo.maxClients"), value: maxClientsText)
                     ServerInfoDetailRow(label: localized("channelInfo.maxFamilyClients"), value: maxFamilyClientsText)
                     ServerInfoDetailRow(label: localized("channelInfo.deleteDelay"), value: channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) })
                     ServerInfoDetailRow(label: localized("channelInfo.secondsEmpty"), value: channel.secondsEmpty.map { localized("channelInfo.secondsFormat", $0) })
+                    Button(localized("channelInfo.copyLimitSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(limitSummary.clipboardSummary)
+                    }
                 }
             }
             .fileExporter(
@@ -5007,6 +5011,34 @@ struct ChannelInformationSheet: View {
         return channel.maxFamilyClients.map(String.init)
     }
 
+    private var limitSummary: TS3ChannelLimitSummary {
+        TS3ChannelLimitSummary(channel: channel)
+    }
+
+    private var limitStateText: String {
+        [
+            localized("channelInfo.directLimitStateFormat", limitStateTitle(limitSummary.directState)),
+            localized("channelInfo.familyLimitStateFormat", limitStateTitle(limitSummary.familyState))
+        ].joined(separator: ", ")
+    }
+
+    private func limitStateTitle(_ state: TS3ChannelLimitSummary.LimitState) -> String {
+        switch state {
+        case .unknown:
+            return localized("channelInfo.limitState.unknown")
+        case .unlimited:
+            return localized("channelInfo.limitState.unlimited")
+        case .available:
+            return localized("channelInfo.limitState.available")
+        case .nearLimit:
+            return localized("channelInfo.limitState.nearLimit")
+        case .full:
+            return localized("channelInfo.limitState.full")
+        case .overLimit:
+            return localized("channelInfo.limitState.overLimit")
+        }
+    }
+
     private func normalizedId(_ id: Int?) -> Int? {
         guard let id, id > 0 else { return nil }
         return id
@@ -5049,6 +5081,8 @@ struct ChannelInformationSheet: View {
             (localized("channelInfo.neededJoinPower"), channel.neededJoinPower.map(String.init)),
             (localized("channelInfo.neededSubscribePower"), channel.neededSubscribePower.map(String.init)),
             (localized("channelInfo.neededDescriptionViewPower"), channel.neededDescriptionViewPower.map(String.init)),
+            (localized("channelInfo.limitState"), limitStateText),
+            (localized("channelInfo.limitSummary"), limitSummary.clipboardSummary),
             (localized("channelInfo.maxClients"), maxClientsText),
             (localized("channelInfo.maxFamilyClients"), maxFamilyClientsText),
             (localized("channelInfo.deleteDelay"), channel.deleteDelaySeconds.map { localized("channelInfo.secondsFormat", $0) }),

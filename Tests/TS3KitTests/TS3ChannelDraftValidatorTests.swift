@@ -131,6 +131,48 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelLimitSummaryClassifiesDirectAndFamilyLimits() {
+        let summary = TS3ChannelLimitSummary(channel: makeChannel(
+            totalClients: 9,
+            totalClientsFamily: 13,
+            maxClients: 10,
+            maxFamilyClients: 12,
+            maxClientsUnlimited: false,
+            maxFamilyClientsUnlimited: false,
+            maxFamilyClientsInherited: false,
+            deleteDelaySeconds: 3600,
+            secondsEmpty: 42
+        ))
+
+        XCTAssertEqual(summary.directState, .nearLimit)
+        XCTAssertEqual(summary.familyState, .overLimit)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "direct=9/10 | directState=nearLimit | family=13/12 | familyState=overLimit | deleteDelay=3600 | secondsEmpty=42 | needsAttention=true"
+        )
+    }
+
+    func testChannelLimitSummaryHandlesUnlimitedAndInheritedLimits() {
+        let summary = TS3ChannelLimitSummary(channel: makeChannel(
+            totalClients: 50,
+            totalClientsFamily: 60,
+            maxClients: nil,
+            maxFamilyClients: 10,
+            maxClientsUnlimited: true,
+            maxFamilyClientsUnlimited: false,
+            maxFamilyClientsInherited: true
+        ))
+
+        XCTAssertEqual(summary.directState, .unlimited)
+        XCTAssertEqual(summary.familyState, .unknown)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "direct=unlimited | directState=unlimited | family=inherited | familyState=unknown | deleteDelay=unknown | secondsEmpty=unknown | needsAttention=false"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",
@@ -204,6 +246,37 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
                 "Max clients is required when the client limit is not unlimited.",
                 "Max family clients is required when the family limit is not inherited or unlimited."
             ]
+        )
+    }
+
+    private func makeChannel(
+        totalClients: Int?,
+        totalClientsFamily: Int?,
+        maxClients: Int?,
+        maxFamilyClients: Int?,
+        maxClientsUnlimited: Bool?,
+        maxFamilyClientsUnlimited: Bool?,
+        maxFamilyClientsInherited: Bool?,
+        deleteDelaySeconds: Int? = nil,
+        secondsEmpty: Int? = nil
+    ) -> TS3ChannelSummary {
+        TS3ChannelSummary(
+            id: 12,
+            name: "Raid Room",
+            topic: nil,
+            isDefault: false,
+            isPasswordProtected: false,
+            isPermanent: true,
+            deleteDelaySeconds: deleteDelaySeconds,
+            secondsEmpty: secondsEmpty,
+            maxClients: maxClients,
+            maxFamilyClients: maxFamilyClients,
+            maxClientsUnlimited: maxClientsUnlimited,
+            maxFamilyClientsUnlimited: maxFamilyClientsUnlimited,
+            maxFamilyClientsInherited: maxFamilyClientsInherited,
+            totalClients: totalClients,
+            totalClientsFamily: totalClientsFamily,
+            isCurrent: false
         )
     }
 }

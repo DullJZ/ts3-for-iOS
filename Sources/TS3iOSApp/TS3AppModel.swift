@@ -257,6 +257,113 @@ struct TS3ChannelCodecConfigurationSummary {
     }
 }
 
+struct TS3ChannelLimitSummary {
+    enum LimitState: String {
+        case unknown
+        case unlimited
+        case available
+        case nearLimit
+        case full
+        case overLimit
+    }
+
+    let maxClients: Int?
+    let maxFamilyClients: Int?
+    let maxClientsUnlimited: Bool?
+    let maxFamilyClientsUnlimited: Bool?
+    let maxFamilyClientsInherited: Bool?
+    let totalClients: Int?
+    let totalClientsFamily: Int?
+    let deleteDelaySeconds: Int?
+    let secondsEmpty: Int?
+
+    init(channel: TS3ChannelSummary) {
+        self.maxClients = channel.maxClients
+        self.maxFamilyClients = channel.maxFamilyClients
+        self.maxClientsUnlimited = channel.maxClientsUnlimited
+        self.maxFamilyClientsUnlimited = channel.maxFamilyClientsUnlimited
+        self.maxFamilyClientsInherited = channel.maxFamilyClientsInherited
+        self.totalClients = channel.totalClients
+        self.totalClientsFamily = channel.totalClientsFamily
+        self.deleteDelaySeconds = channel.deleteDelaySeconds
+        self.secondsEmpty = channel.secondsEmpty
+    }
+
+    var directState: LimitState {
+        state(current: totalClients, limit: maxClients, unlimited: maxClientsUnlimited)
+    }
+
+    var familyState: LimitState {
+        if maxFamilyClientsInherited == true {
+            return .unknown
+        }
+        return state(current: totalClientsFamily, limit: maxFamilyClients, unlimited: maxFamilyClientsUnlimited)
+    }
+
+    var needsAttention: Bool {
+        [.nearLimit, .full, .overLimit].contains(directState) ||
+            [.nearLimit, .full, .overLimit].contains(familyState)
+    }
+
+    var clipboardSummary: String {
+        [
+            "direct=\(limitDescription(current: totalClients, limit: maxClients, unlimited: maxClientsUnlimited))",
+            "directState=\(directState.rawValue)",
+            "family=\(familyLimitDescription)",
+            "familyState=\(familyState.rawValue)",
+            "deleteDelay=\(deleteDelaySeconds.map(String.init) ?? "unknown")",
+            "secondsEmpty=\(secondsEmpty.map(String.init) ?? "unknown")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var familyLimitDescription: String {
+        if maxFamilyClientsInherited == true {
+            return "inherited"
+        }
+        return limitDescription(
+            current: totalClientsFamily,
+            limit: maxFamilyClients,
+            unlimited: maxFamilyClientsUnlimited
+        )
+    }
+
+    private func state(current: Int?, limit: Int?, unlimited: Bool?) -> LimitState {
+        if unlimited == true {
+            return .unlimited
+        }
+        guard let current, let limit, limit >= 0 else {
+            return .unknown
+        }
+        if current > limit {
+            return .overLimit
+        }
+        if current == limit {
+            return .full
+        }
+        if limit > 1 && current >= max(1, Int(Double(limit) * 0.8)) {
+            return .nearLimit
+        }
+        return .available
+    }
+
+    private func limitDescription(current: Int?, limit: Int?, unlimited: Bool?) -> String {
+        if unlimited == true {
+            return "unlimited"
+        }
+        switch (current, limit) {
+        case let (.some(current), .some(limit)):
+            return "\(current)/\(limit)"
+        case let (.none, .some(limit)):
+            return "unknown/\(limit)"
+        case let (.some(current), .none):
+            return "\(current)/unknown"
+        case (.none, .none):
+            return "unknown"
+        }
+    }
+}
+
 struct TS3ChannelSummary: Identifiable {
     let id: Int
     let parentId: Int?

@@ -650,6 +650,17 @@
 "channelInfo.neededSubscribePower" = "所需订阅权限值";
 "channelInfo.neededDescriptionViewPower" = "所需描述查看权限值";
 "channelInfo.limits" = "限制";
+"channelInfo.limitState" = "限制状态";
+"channelInfo.limitSummary" = "限制摘要";
+"channelInfo.copyLimitSummary" = "复制限制摘要";
+"channelInfo.directLimitStateFormat" = "本频道 %@";
+"channelInfo.familyLimitStateFormat" = "家族 %@";
+"channelInfo.limitState.unknown" = "未知";
+"channelInfo.limitState.unlimited" = "无限制";
+"channelInfo.limitState.available" = "可用";
+"channelInfo.limitState.nearLimit" = "接近上限";
+"channelInfo.limitState.full" = "已满";
+"channelInfo.limitState.overLimit" = "超出上限";
 "channelInfo.maxClients" = "最大用户数";
 "channelInfo.maxFamilyClients" = "最大家族用户数";
 "channelInfo.deleteDelay" = "删除延迟";
