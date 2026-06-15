@@ -1462,6 +1462,77 @@ extension TS3ContactEntry {
     }
 }
 
+struct TS3ContactListSummary {
+    let contacts: [TS3ContactEntry]
+    let onlineUniqueIdentifiers: Set<String>
+
+    var totalCount: Int {
+        contacts.count
+    }
+
+    var friendCount: Int {
+        count(status: .friend)
+    }
+
+    var blockedCount: Int {
+        count(status: .blocked)
+    }
+
+    var ignoredCount: Int {
+        count(status: .ignored)
+    }
+
+    var neutralCount: Int {
+        count(status: .neutral)
+    }
+
+    var notedCount: Int {
+        contacts.filter { !$0.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+    }
+
+    var onlineCount: Int {
+        contacts.filter { onlineUniqueIdentifiers.contains($0.uniqueIdentifier) }.count
+    }
+
+    var latestUpdate: Date? {
+        contacts.map(\.updatedAt).max()
+    }
+
+    var needsAttention: Bool {
+        blockedCount > 0 || ignoredCount > 0 || notedCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "contacts=\(totalCount)",
+            "friends=\(friendCount)",
+            "blocked=\(blockedCount)",
+            "ignored=\(ignoredCount)",
+            "neutral=\(neutralCount)",
+            "noted=\(notedCount)",
+            "online=\(onlineCount)",
+            "latestUpdate=\(latestUpdate.map { Self.dateText($0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(contacts: [TS3ContactEntry], onlineUniqueIdentifiers: Set<String> = []) {
+        var seen = Set<String>()
+        self.contacts = contacts.filter { contact in
+            seen.insert(contact.uniqueIdentifier).inserted
+        }
+        self.onlineUniqueIdentifiers = onlineUniqueIdentifiers
+    }
+
+    private func count(status: TS3ContactStatus) -> Int {
+        contacts.filter { $0.status == status }.count
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+}
+
 struct TS3ContactImportPreview {
     let importedCount: Int
     let validCount: Int

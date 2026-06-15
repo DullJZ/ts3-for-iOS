@@ -1157,6 +1157,7 @@
 "contacts.filterPresets" = "Filter Presets";
 "contacts.clearFilters" = "Clear Filters";
 "contacts.copySnapshot" = "Copy Contact Snapshot";
+"contacts.copyVisibleSummary" = "Copy Visible Contact Summary";
 "contacts.exportSnapshot" = "Export Contact Snapshot";
 "contacts.exportBackup" = "Export Contacts Backup";
 "contacts.exportVisibleBackup" = "Export Visible Contacts Backup";
@@ -1182,6 +1183,14 @@
 "contacts.presetSummary.sortFormat" = "Sort %@";
 "contacts.presetSummary.descending" = "Descending";
 "contacts.presetSummary.searchFormat" = "Search %@";
+"contacts.visibleSummary" = "Visible Summary";
+"contacts.visibleSummaryFormat" = "%d visible, %d online";
+"contacts.summary.friendsFormat" = "%d friends";
+"contacts.summary.blockedFormat" = "%d blocked";
+"contacts.summary.ignoredFormat" = "%d ignored";
+"contacts.summary.neutralFormat" = "%d neutral";
+"contacts.summary.notesFormat" = "%d with notes";
+"contacts.summary.updatedFormat" = "Updated %@";
 "contacts.snapshot.nicknameFormat" = "Nickname: %@";
 "contacts.snapshot.uniqueIdFormat" = "Unique ID: %@";
 "contacts.snapshot.statusFormat" = "Status: %@";

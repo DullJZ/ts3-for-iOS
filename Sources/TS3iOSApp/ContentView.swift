@@ -6311,6 +6311,13 @@ struct ContactsSheet: View {
         }
     }
 
+    private var visibleContactSummary: TS3ContactListSummary {
+        TS3ContactListSummary(
+            contacts: visibleContacts,
+            onlineUniqueIdentifiers: Set(model.clients.compactMap(\.uniqueIdentifier))
+        )
+    }
+
     private var canMarkVisibleFriends: Bool {
         visibleContacts.contains { $0.status != .friend }
     }
@@ -6418,6 +6425,19 @@ struct ContactsSheet: View {
                             searchText = ""
                         }
                     }
+                    if !visibleContacts.isEmpty {
+                        ServerInfoDetailRow(
+                            label: localized("contacts.visibleSummary"),
+                            value: localized(
+                                "contacts.visibleSummaryFormat",
+                                visibleContactSummary.totalCount,
+                                visibleContactSummary.onlineCount
+                            )
+                        )
+                        Text(contactListSummaryText(visibleContactSummary))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 contactSection(title: localized("contacts.section.friends"), contacts: filteredFriends)
@@ -6434,6 +6454,10 @@ struct ContactsSheet: View {
                             TS3PlatformSupport.copyToPasteboard(contactSnapshot)
                         }
                         .disabled(model.contacts.isEmpty)
+                        Button(localized("contacts.copyVisibleSummary")) {
+                            TS3PlatformSupport.copyToPasteboard(visibleContactSummary.clipboardSummary)
+                        }
+                        .disabled(visibleContacts.isEmpty)
                         Button(localized("contacts.exportSnapshot")) {
                             contactsDocument = TS3TextFileDocument(data: Data(contactSnapshot.utf8))
                             isExportingContacts = true
@@ -6753,6 +6777,23 @@ struct ContactsSheet: View {
         let remainingCount = names.count - min(names.count, 6)
         guard remainingCount > 0 else { return visible }
         return localized("contacts.moreNamesFormat", visible, remainingCount)
+    }
+
+    private func contactListSummaryText(_ summary: TS3ContactListSummary) -> String {
+        var parts = [
+            localized("contacts.summary.friendsFormat", summary.friendCount),
+            localized("contacts.summary.blockedFormat", summary.blockedCount),
+            localized("contacts.summary.ignoredFormat", summary.ignoredCount),
+            localized("contacts.summary.neutralFormat", summary.neutralCount),
+            localized("contacts.summary.notesFormat", summary.notedCount)
+        ]
+        if let latestUpdate = summary.latestUpdate {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            parts.append(localized("contacts.summary.updatedFormat", formatter.string(from: latestUpdate)))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func applyPreset(_ preset: TS3ContactFilterPreset) {
