@@ -24656,19 +24656,19 @@ struct BanEntryRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 if let duration = entry.durationSeconds {
-                    Text("Duration: \(TS3BanEntrySummary.durationText(duration))")
+                    Text(localized("ban.row.durationFormat", TS3BanEntrySummary.durationText(duration)))
                 }
                 if let invoker = entry.invokerName, !invoker.isEmpty {
-                    Text("Invoker: \(invoker)")
+                    Text(localized("ban.row.invokerFormat", invoker))
                 }
                 if let enforcements = entry.enforcements {
-                    Text("Enforcements: \(enforcements)")
+                    Text(localized("ban.row.enforcementsFormat", enforcements))
                 }
             }
             .font(.caption)
             .foregroundColor(.secondary)
 
-            Button("Delete Ban") {
+            Button(localized("ban.row.deleteBan")) {
                 isConfirmingDelete = true
             }
             .buttonStyle(.borderless)
@@ -24679,37 +24679,37 @@ struct BanEntryRow: View {
         .padding(.vertical, 4)
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete Ban?"),
+                title: Text(localized("ban.row.deleteAlert.title")),
                 message: Text(entry.displayTitle),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deleteBan(entry)
                 },
                 secondaryButton: .cancel()
             )
         }
         .contextMenu {
-            Button("Use as Ban Draft") {
+            Button(localized("ban.row.useAsDraft")) {
                 useAsDraft()
             }
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
             if let ip = entry.ip, !ip.isEmpty {
-                Button("Copy IP") {
+                Button(localized("ban.row.copyIP")) {
                     TS3PlatformSupport.copyToPasteboard(ip)
                 }
             }
             if let uniqueIdentifier = entry.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Button("Copy Unique ID") {
+                Button(localized("contacts.row.copyUniqueId")) {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                 }
             }
             if let reason = entry.reason, !reason.isEmpty {
-                Button("Copy Reason") {
+                Button(localized("ban.row.copyReason")) {
                     TS3PlatformSupport.copyToPasteboard(reason)
                 }
             }
-            Button("Delete Ban") {
+            Button(localized("ban.row.deleteBan")) {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
@@ -24718,19 +24718,23 @@ struct BanEntryRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.displayTitle)
         .accessibilityValue(entry.accessibilityValue)
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
         }
-        .accessibilityAction(named: "Use as Ban Draft") {
+        .accessibilityAction(named: localized("ban.row.useAsDraft")) {
             useAsDraft()
         }
-        .accessibilityAction(named: "Delete Ban") {
+        .accessibilityAction(named: localized("ban.row.deleteBan")) {
             if model.state == .connected {
                 isConfirmingDelete = true
             }
         }
     }
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 struct WhisperSheet: View {

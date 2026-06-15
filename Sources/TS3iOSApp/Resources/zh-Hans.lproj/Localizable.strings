@@ -2293,6 +2293,14 @@
 "ban.deleteVisibleAlert.title" = "删除可见封禁？";
 "ban.deleteVisibleAlert.messageFormat" = "这会从服务器移除 %d 条封禁。";
 "ban.deleteAllPresetsAlert.title" = "删除所有封禁筛选预设？";
+"ban.row.durationFormat" = "时长：%@";
+"ban.row.invokerFormat" = "执行者：%@";
+"ban.row.enforcementsFormat" = "命中次数：%d";
+"ban.row.deleteBan" = "删除封禁";
+"ban.row.deleteAlert.title" = "删除封禁？";
+"ban.row.useAsDraft" = "用作封禁草稿";
+"ban.row.copyIP" = "复制 IP";
+"ban.row.copyReason" = "复制原因";
 "ban.filter.all" = "所有封禁";
 "ban.filter.ip" = "IP";
 "ban.filter.name" = "名称";
