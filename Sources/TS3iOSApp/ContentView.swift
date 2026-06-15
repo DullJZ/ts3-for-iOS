@@ -19569,6 +19569,11 @@ struct FileEntryRow: View {
     @State private var newName = ""
     @State private var destinationDirectory = "/"
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
@@ -19594,31 +19599,31 @@ struct FileEntryRow: View {
 
             HStack {
                 if !entry.isDirectory {
-                    Button("Download") {
+                    Button(localized("files.download")) {
                         model.downloadFileEntry(entry)
                     }
                     .buttonStyle(.borderless)
                 }
-                Button(isSelected ? "Deselect" : "Select") {
+                Button(isSelected ? localized("files.deselect") : localized("files.select")) {
                     onSelectionToggle()
                 }
                 .buttonStyle(.borderless)
-                Button("Rename") {
+                Button(localized("files.rename")) {
                     newName = entry.name
                     isRenaming = true
                 }
                 .buttonStyle(.borderless)
-                Button("Move") {
+                Button(localized("files.move.action")) {
                     destinationDirectory = model.fileBrowserPath
                     isMoving = true
                 }
                 .buttonStyle(.borderless)
-                Button("Info") {
+                Button(localized("files.info")) {
                     isShowingInfo = true
                 }
                 .buttonStyle(.borderless)
                 Spacer()
-                Button("Delete") {
+                Button(localized("files.delete")) {
                     isConfirmingDelete = true
                 }
                 .buttonStyle(.borderless)
@@ -19630,35 +19635,35 @@ struct FileEntryRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.name)
         .accessibilityValue(entry.accessibilityValue)
-        .accessibilityAction(named: entry.isDirectory ? "Open Directory" : "Download") {
+        .accessibilityAction(named: entry.isDirectory ? localized("files.openDirectory") : localized("files.download")) {
             if entry.isDirectory {
                 model.enterFileDirectory(entry)
             } else {
                 model.downloadFileEntry(entry)
             }
         }
-        .accessibilityAction(named: isSelected ? "Deselect" : "Select") {
+        .accessibilityAction(named: isSelected ? localized("files.deselect") : localized("files.select")) {
             onSelectionToggle()
         }
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("common.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
         }
-        .accessibilityAction(named: "Rename") {
+        .accessibilityAction(named: localized("files.rename")) {
             newName = entry.name
             isRenaming = true
         }
-        .accessibilityAction(named: "Move") {
+        .accessibilityAction(named: localized("files.move.action")) {
             destinationDirectory = model.fileBrowserPath
             isMoving = true
         }
-        .accessibilityAction(named: "Delete") {
+        .accessibilityAction(named: localized("files.delete")) {
             isConfirmingDelete = true
         }
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
-                title: Text("Delete File Entry?"),
+                title: Text(localized("files.deleteEntryAlert.title")),
                 message: Text(entry.name),
-                primaryButton: .destructive(Text("Delete")) {
+                primaryButton: .destructive(Text(localized("files.delete"))) {
                     model.deleteFileEntry(entry)
                 },
                 secondaryButton: .cancel()
@@ -19680,44 +19685,44 @@ struct FileEntryRow: View {
         }
         .contextMenu {
             if entry.isDirectory {
-                Button("Open Directory") {
+                Button(localized("files.openDirectory")) {
                     model.enterFileDirectory(entry)
                 }
             } else {
-                Button("Download") {
+                Button(localized("files.download")) {
                     model.downloadFileEntry(entry)
                 }
             }
-            Button(isSelected ? "Deselect" : "Select") {
+            Button(isSelected ? localized("files.deselect") : localized("files.select")) {
                 onSelectionToggle()
             }
-            Button("Copy Name") {
+            Button(localized("files.copyName")) {
                 TS3PlatformSupport.copyToPasteboard(entry.name)
             }
-            Button("Copy Path") {
+            Button(localized("files.copyPath")) {
                 TS3PlatformSupport.copyToPasteboard(entry.path)
             }
-            Button("Copy Parent Path") {
+            Button(localized("files.copyParentPath")) {
                 TS3PlatformSupport.copyToPasteboard(entry.parentPath)
             }
-            Button("Copy Size") {
+            Button(localized("files.copySize")) {
                 TS3PlatformSupport.copyToPasteboard(entry.sizeText)
             }
-            Button("Copy Summary") {
+            Button(localized("common.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
-            Button("Info") {
+            Button(localized("files.info")) {
                 isShowingInfo = true
             }
-            Button("Rename") {
+            Button(localized("files.rename")) {
                 newName = entry.name
                 isRenaming = true
             }
-            Button("Move") {
+            Button(localized("files.move.action")) {
                 destinationDirectory = model.fileBrowserPath
                 isMoving = true
             }
-            Button("Delete") {
+            Button(localized("files.delete")) {
                 isConfirmingDelete = true
             }
             .foregroundColor(.red)
@@ -19726,9 +19731,9 @@ struct FileEntryRow: View {
 
     private var detailText: String {
         var parts: [String] = []
-        parts.append(entry.isDirectory ? "Directory" : entry.sizeText)
+        parts.append(entry.isDirectory ? localized("files.directory") : entry.sizeText)
         if entry.isStillUploading {
-            parts.append("Uploading")
+            parts.append(localized("files.uploading"))
         }
         if let modifiedAt = entry.modifiedAt {
             parts.append(Self.dateText(modifiedAt))
@@ -19748,38 +19753,43 @@ struct FileEntryInfoSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     let entry: TS3FileEntrySummary
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(entry.name)) {
-                    infoRow("Type", value: entry.isDirectory ? "Directory" : "File")
-                    infoRow("Remote Path", value: entry.path)
-                    infoRow("Parent Path", value: entry.parentPath)
-                    infoRow("Channel ID", value: "\(entry.channelId)")
+                    infoRow(localized("files.info.type"), value: entry.isDirectory ? localized("files.directory") : localized("files.file"))
+                    infoRow(localized("files.info.remotePath"), value: entry.path)
+                    infoRow(localized("files.info.parentPath"), value: entry.parentPath)
+                    infoRow(localized("files.info.channelId"), value: "\(entry.channelId)")
                     if !entry.isDirectory {
-                        infoRow("Size", value: Self.sizeText(entry.size))
+                        infoRow(localized("files.info.size"), value: Self.sizeText(entry.size))
                     }
                     if entry.isStillUploading {
-                        infoRow("Status", value: "Uploading")
+                        infoRow(localized("files.info.status"), value: localized("files.uploading"))
                     }
                     if let modifiedAt = entry.modifiedAt {
-                        infoRow("Modified", value: Self.dateText(modifiedAt))
+                        infoRow(localized("files.info.modified"), value: Self.dateText(modifiedAt))
                     }
                 }
                 Section {
-                    Button("Copy Remote Path") {
+                    Button(localized("files.copyRemotePath")) {
                         TS3PlatformSupport.copyToPasteboard(entry.path)
                     }
-                    Button("Copy Name") {
+                    Button(localized("files.copyName")) {
                         TS3PlatformSupport.copyToPasteboard(entry.name)
                     }
                 }
             }
-            .navigationTitle("File Info")
+            .navigationTitle(localized("files.info.title"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Done") {
+                    Button(localized("common.done")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
