@@ -27493,6 +27493,26 @@ struct ChannelEditorSheet: View {
                         Button(localized("channelEditor.importDraft")) {
                             isImportingDraft = true
                         }
+                        if case .edit = mode {
+                            Divider()
+                            if draftChangeRows.isEmpty {
+                                Text(localized("channelEditor.noDraftChanges"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text(localized("channelEditor.draftChangeCountFormat", draftChangeRows.count))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                ForEach(draftChangeRows.prefix(6), id: \.self) { row in
+                                    Text(row)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Button(localized("channelEditor.copyDraftChanges")) {
+                                    TS3PlatformSupport.copyToPasteboard(draftChangeSummary)
+                                }
+                            }
+                        }
                     } label: {
                         Label(localized("channelEditor.draft"), systemImage: "doc.text")
                     }
@@ -27939,6 +27959,111 @@ struct ChannelEditorSheet: View {
         }.joined(separator: "\n")
     }
 
+    private var draftChangeRows: [String] {
+        draftChangeRows(for: currentDraft)
+    }
+
+    private var draftChangeSummary: String {
+        let rows = draftChangeRows
+        guard !rows.isEmpty else { return localized("channelEditor.noDraftChanges") }
+        return rows.joined(separator: "\n")
+    }
+
+    private func draftChangeRows(for draft: ChannelDraft) -> [String] {
+        guard case let .edit(channel) = mode else { return [] }
+        return [
+            changeRow(label: localized("channelEditor.name"), current: channel.name, draft: draft.name),
+            changeRow(label: localized("channelEditor.phoneticName"), current: channel.phoneticName, draft: draft.phoneticName),
+            changeRow(label: localized("channelEditor.topic"), current: channel.topic, draft: draft.topic),
+            changeRow(label: localized("channelEditor.description"), current: channel.description, draft: draft.description),
+            changeRow(label: localized("channelEditor.filePath"), current: channel.filePath, draft: draft.filePath),
+            passwordChangeRow(for: channel, draft: draft),
+            changeRow(label: localized("channelEditor.type"), current: channelTypeTitle(channelType(for: channel)), draft: channelTypeTitle(draft.channelType)),
+            changeRow(label: localized("channelEditor.defaultChannel"), current: boolTitle(channel.isDefault), draft: boolTitle(draft.isDefault)),
+            changeRow(label: localized("channelEditor.position"), current: positionTitle(for: normalizedOrderId(channel.order).map(String.init) ?? ""), draft: positionTitle(for: draft.order ?? "")),
+            changeRow(label: localized("channelEditor.iconId"), current: channel.iconId, draft: draft.iconId),
+            changeRow(label: localized("channelEditor.bannerGraphicURL"), current: channel.bannerGraphicsURL, draft: draft.bannerGraphicsURL),
+            changeRow(label: localized("channelEditor.bannerMode"), current: channel.bannerMode.map(bannerModeTitle), draft: bannerModeTitle(draft.bannerMode ?? "")),
+            changeRow(label: localized("channelEditor.codec"), current: channel.codec.map(codecTitle), draft: codecTitle(for: draft.codec)),
+            changeRow(label: localized("channelEditor.codecQuality"), current: channel.codecQuality.map { codecQualityTitle(for: String($0)) }, draft: codecQualityTitle(for: draft.codecQuality)),
+            changeRow(label: localized("channelEditor.codecLatencyFactor"), current: channel.codecLatencyFactor, draft: draft.codecLatencyFactor),
+            changeRow(label: localized("channelEditor.codecProfile"), current: codecConfigurationProfileText(codecConfiguration(for: channel).profile), draft: codecConfigurationProfileText),
+            changeRow(label: localized("channelEditor.unencryptedVoice"), current: boolTitle(channel.isCodecUnencrypted ?? false), draft: boolTitle(draft.isCodecUnencrypted ?? false)),
+            changeRow(label: localized("channelEditor.neededTalkPower"), current: channel.neededTalkPower, draft: draft.neededTalkPower),
+            changeRow(label: localized("channelEditor.neededJoinPower"), current: channel.neededJoinPower, draft: draft.neededJoinPower),
+            changeRow(label: localized("channelEditor.neededSubscribePower"), current: channel.neededSubscribePower, draft: draft.neededSubscribePower),
+            changeRow(label: localized("channelEditor.neededModifyPower"), current: channel.neededModifyPower, draft: draft.neededModifyPower),
+            changeRow(label: localized("channelEditor.neededDeletePower"), current: channel.neededDeletePower, draft: draft.neededDeletePower),
+            changeRow(label: localized("channelEditor.neededDescriptionViewPower"), current: channel.neededDescriptionViewPower, draft: draft.neededDescriptionViewPower),
+            changeRow(label: localized("channelEditor.deleteDelaySeconds"), current: channel.deleteDelaySeconds, draft: draft.deleteDelaySeconds),
+            changeRow(label: localized("channelEditor.maxClients"), current: directLimitTitle(maxClients: channel.maxClients, unlimited: channel.maxClientsUnlimited), draft: directLimitTitle(maxClients: parsedOptionalInt(draft.maxClients), unlimited: draft.maxClientsUnlimited)),
+            changeRow(label: localized("channelEditor.maxFamilyClients"), current: familyLimitTitle(maxFamilyClients: channel.maxFamilyClients, unlimited: channel.maxFamilyClientsUnlimited, inherited: channel.maxFamilyClientsInherited), draft: familyLimitTitle(maxFamilyClients: parsedOptionalInt(draft.maxFamilyClients), unlimited: draft.maxFamilyClientsUnlimited, inherited: draft.maxFamilyClientsInherited))
+        ].compactMap { $0 }
+    }
+
+    private func changeRow(label: String, current: String?, draft: String?) -> String? {
+        let currentText = normalizedDraftValue(current)
+        let draftText = normalizedDraftValue(draft)
+        guard currentText != draftText else { return nil }
+        return localized(
+            "channelEditor.changeFormat",
+            label,
+            displayDraftValue(currentText),
+            displayDraftValue(draftText)
+        )
+    }
+
+    private func changeRow(label: String, current: Int?, draft: String?) -> String? {
+        changeRow(label: label, current: current.map(String.init), draft: draft)
+    }
+
+    private func passwordChangeRow(for channel: TS3ChannelSummary, draft: ChannelDraft) -> String? {
+        if draft.clearPassword {
+            return localized(
+                "channelEditor.changeFormat",
+                localized("channelEditor.password"),
+                channel.isPasswordProtected ? localized("channelEditor.protected") : localized("channelEditor.emptyValue"),
+                localized("channelEditor.clearExistingPassword")
+            )
+        }
+        guard !draft.password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return localized(
+            "channelEditor.changeFormat",
+            localized("channelEditor.password"),
+            channel.isPasswordProtected ? localized("channelEditor.protected") : localized("channelEditor.emptyValue"),
+            localized("channelEditor.newPasswordSet")
+        )
+    }
+
+    private func normalizedDraftValue(_ value: String?) -> String {
+        value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func displayDraftValue(_ value: String) -> String {
+        value.isEmpty ? localized("channelEditor.emptyValue") : value
+    }
+
+    private func boolTitle(_ value: Bool) -> String {
+        value ? localized("channelEditor.yes") : localized("channelEditor.no")
+    }
+
+    private func directLimitTitle(maxClients: Int?, unlimited: Bool?) -> String {
+        if unlimited == true {
+            return localized("channelEditor.unlimited")
+        }
+        return maxClients.map(String.init) ?? ""
+    }
+
+    private func familyLimitTitle(maxFamilyClients: Int?, unlimited: Bool?, inherited: Bool?) -> String {
+        if inherited == true {
+            return localized("channelEditor.inherited")
+        }
+        if unlimited == true {
+            return localized("channelEditor.unlimited")
+        }
+        return maxFamilyClients.map(String.init) ?? ""
+    }
+
     private var canSubmit: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isOptionalInt(neededTalkPower)
@@ -28219,6 +28344,15 @@ struct ChannelEditorSheet: View {
             codecQuality: parsedOptionalInt(codecQuality),
             codecLatencyFactor: parsedOptionalInt(codecLatencyFactor),
             isCodecUnencrypted: isCodecUnencrypted
+        )
+    }
+
+    private func codecConfiguration(for channel: TS3ChannelSummary) -> TS3ChannelCodecConfigurationSummary {
+        TS3ChannelCodecConfigurationSummary(
+            codec: channel.codec,
+            codecQuality: channel.codecQuality,
+            codecLatencyFactor: channel.codecLatencyFactor,
+            isCodecUnencrypted: channel.isCodecUnencrypted
         )
     }
 

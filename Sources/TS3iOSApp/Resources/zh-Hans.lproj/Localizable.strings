@@ -498,6 +498,7 @@
 "channelEditor.editChannel" = "编辑频道";
 "channelEditor.draft" = "草稿";
 "channelEditor.copySnapshot" = "复制频道快照";
+"channelEditor.copyDraftChanges" = "复制草稿变更";
 "channelEditor.exportSnapshot" = "导出频道快照";
 "channelEditor.exportDraft" = "导出频道草稿";
 "channelEditor.importDraft" = "导入频道草稿";
@@ -549,6 +550,11 @@
 "channelEditor.mode" = "模式";
 "channelEditor.newPasswordSet" = "已设置新密码";
 "channelEditor.unchanged" = "不更改";
+"channelEditor.noDraftChanges" = "没有草稿变更";
+"channelEditor.draftChangeCountFormat" = "%d 项草稿变更";
+"channelEditor.changeFormat" = "%@：%@ -> %@";
+"channelEditor.emptyValue" = "空";
+"channelEditor.protected" = "已保护";
 "channelEditor.yes" = "是";
 "channelEditor.no" = "否";
 "channelEditor.codecProfile" = "编解码配置";

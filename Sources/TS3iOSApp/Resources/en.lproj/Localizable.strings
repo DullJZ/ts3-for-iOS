@@ -498,6 +498,7 @@
 "channelEditor.editChannel" = "Edit Channel";
 "channelEditor.draft" = "Draft";
 "channelEditor.copySnapshot" = "Copy Channel Snapshot";
+"channelEditor.copyDraftChanges" = "Copy Draft Changes";
 "channelEditor.exportSnapshot" = "Export Channel Snapshot";
 "channelEditor.exportDraft" = "Export Channel Draft";
 "channelEditor.importDraft" = "Import Channel Draft";
@@ -549,6 +550,11 @@
 "channelEditor.mode" = "Mode";
 "channelEditor.newPasswordSet" = "New Password Set";
 "channelEditor.unchanged" = "Unchanged";
+"channelEditor.noDraftChanges" = "No draft changes";
+"channelEditor.draftChangeCountFormat" = "%d draft changes";
+"channelEditor.changeFormat" = "%@: %@ -> %@";
+"channelEditor.emptyValue" = "Empty";
+"channelEditor.protected" = "Protected";
 "channelEditor.yes" = "Yes";
 "channelEditor.no" = "No";
 "channelEditor.codecProfile" = "Codec Profile";
