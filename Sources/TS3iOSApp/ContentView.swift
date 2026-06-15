@@ -19546,6 +19546,16 @@ struct MoveFileEntrySheet: View {
                     }
                 }
                 Section {
+                    Button {
+                        model.refreshCachedFileDirectory(
+                            channelId: entry.channelId,
+                            path: normalizedDestinationDirectory
+                        )
+                    } label: {
+                        Label(localized("files.move.loadDestinationPreview"), systemImage: "arrow.clockwise")
+                    }
+                    .disabled(destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
                     Button(localized("files.move.action")) {
                         model.moveFileEntry(entry, toDirectory: destinationDirectory)
                         presentationMode.wrappedValue.dismiss()
@@ -19656,6 +19666,16 @@ struct MoveFileEntriesSheet: View {
                     }
                 }
                 Section {
+                    Button {
+                        model.refreshCachedFileDirectory(
+                            channelId: entries.first?.channelId,
+                            path: normalizedDestinationDirectory
+                        )
+                    } label: {
+                        Label(localized("files.move.loadDestinationPreview"), systemImage: "arrow.clockwise")
+                    }
+                    .disabled(destinationDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
                     Button(localized("files.move.selectedAction")) {
                         onMove()
                         presentationMode.wrappedValue.dismiss()

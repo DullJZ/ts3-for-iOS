@@ -66,9 +66,9 @@ Status legend:
 
 | Area | Status | Current Evidence | Remaining Work |
 | --- | --- | --- | --- |
-| Channel file browser | Done | Localized browse-by-channel/path/password UI, server file status summary, bookmarks, search/sort/filter preset backup import/export with localized selectable restore preview, move/rename conflict previews, localized directory/status snapshots, row copy summaries, and VoiceOver file-entry actions | Add deeper cross-directory conflict previews if needed. |
+| Channel file browser | Done | Localized browse-by-channel/path/password UI, server file status summary, bookmarks, search/sort/filter preset backup import/export with localized selectable restore preview, move/rename conflict previews with on-demand destination-directory preview loading, localized directory/status snapshots, row copy summaries, and VoiceOver file-entry actions | Add deeper cross-directory conflict previews if needed. |
 | Upload/download | Done | Transfer socket, localized upload importer, localized upload conflict resume/overwrite sheet, download queue, retry/cancel, localized queue export, row copy summaries, and VoiceOver queue actions | Add folder upload/download if server protocol and platform sandbox allow it. |
-| File operations | Done | Rename, move, delete, create directory, batch actions, rename plus single/batch move conflict previews, cached cross-directory conflict previews for previously loaded directories, localized selected-entry delete confirmation, and upload overwrite/resume conflict details | Validate conflict behavior against real servers and expand previews for destinations that have never been loaded. |
+| File operations | Done | Rename, move, delete, create directory, batch actions, rename plus single/batch move conflict previews, cached cross-directory conflict previews, on-demand destination-directory loading before single or batch moves, localized selected-entry delete confirmation, and upload overwrite/resume conflict details | Validate conflict behavior against real servers. |
 | Local downloaded files | Done | Localized persistent recent download history, downloads folder open/copy/cleanup actions, export/open/copy/remove actions, queue row open local file | Add richer downloads folder organization if needed. |
 
 ## Identity, Contacts, Bookmarks, And Migration

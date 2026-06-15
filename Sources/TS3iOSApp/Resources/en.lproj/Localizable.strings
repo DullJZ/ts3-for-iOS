@@ -1974,6 +1974,7 @@
 "files.move.directoryIntoItself" = "Cannot move a directory into itself.";
 "files.move.conflictFormat" = "Conflicts with %@ in the destination.";
 "files.move.destinationUnknown" = "Destination contents are not loaded; the server will still validate conflicts when moving.";
+"files.move.loadDestinationPreview" = "Load Destination Preview";
 "files.move.selectedEntriesFormat" = "%d Selected Entries";
 "files.move.noEntriesMoved" = "No entries will be moved.";
 "files.move.entries" = "Entries";

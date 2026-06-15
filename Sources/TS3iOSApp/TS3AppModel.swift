@@ -11540,6 +11540,27 @@ final class TS3AppModel: ObservableObject {
         return fileDirectoryEntryCache[fileDirectoryCacheKey(channelId: channelId, path: directoryPath)]
     }
 
+    func refreshCachedFileDirectory(channelId: Int?, path directoryPath: String) {
+        guard let channelId else {
+            lastError = "No channel is selected for file browsing."
+            return
+        }
+        let path = normalizedFileDirectoryPath(directoryPath)
+        let password = trimmedFileBrowserPassword
+        runClientCommand { client in
+            let entries = try await client.refreshFileList(channelId: channelId, path: path, password: password)
+            await MainActor.run {
+                let summaries = entries
+                    .map { TS3FileEntrySummary(entry: $0) }
+                    .sorted {
+                        if $0.isDirectory != $1.isDirectory { return $0.isDirectory && !$1.isDirectory }
+                        return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                    }
+                self.fileDirectoryEntryCache[self.fileDirectoryCacheKey(channelId: channelId, path: path)] = summaries
+            }
+        }
+    }
+
     func enterFileDirectory(_ entry: TS3FileEntrySummary) {
         guard entry.isDirectory else { return }
         fileBrowserChannelId = entry.channelId

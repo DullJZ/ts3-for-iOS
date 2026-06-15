@@ -1974,6 +1974,7 @@
 "files.move.directoryIntoItself" = "不能将目录移动到自身内部。";
 "files.move.conflictFormat" = "与目标目录中的 %@ 冲突。";
 "files.move.destinationUnknown" = "目标目录内容尚未加载；移动时服务器仍会校验冲突。";
+"files.move.loadDestinationPreview" = "加载目标目录预览";
 "files.move.selectedEntriesFormat" = "已选择 %d 项";
 "files.move.noEntriesMoved" = "没有条目会被移动。";
 "files.move.entries" = "条目";
