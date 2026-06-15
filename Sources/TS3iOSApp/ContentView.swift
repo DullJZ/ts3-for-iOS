@@ -25771,6 +25771,10 @@ struct WhisperSheet: View {
         return sortedWhisperPresets(presets)
     }
 
+    private var visibleWhisperPresetSummary: TS3WhisperPresetListSummary {
+        TS3WhisperPresetListSummary(presets: filteredWhisperPresets)
+    }
+
     private var whisperRouteSnapshot: String {
         var rows = [
             localized("whisper.snapshot.routeFormat", model.whisperRouteDescription),
@@ -26024,6 +26028,22 @@ struct WhisperSheet: View {
                     Button(localized("whisper.importPresetBackup")) {
                         isImportingPresetBackup = true
                     }
+                    ServerInfoDetailRow(
+                        label: localized("whisper.visibleSummary"),
+                        value: localized(
+                            "whisper.visibleSummaryFormat",
+                            visibleWhisperPresetSummary.totalCount,
+                            visibleWhisperPresetSummary.distinctChannelTargets,
+                            visibleWhisperPresetSummary.distinctClientTargets
+                        )
+                    )
+                    Text(whisperPresetListSummaryText(visibleWhisperPresetSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("whisper.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleWhisperPresetSummary.clipboardSummary)
+                    }
+                    .disabled(filteredWhisperPresets.isEmpty)
                     Menu {
                         Button(localized("whisper.selectVisiblePresets")) {
                             selectVisibleWhisperPresets()
@@ -26497,6 +26517,21 @@ struct WhisperSheet: View {
             return channelText
         }
         return "\(channelText), \(userText)"
+    }
+
+    private func whisperPresetListSummaryText(_ summary: TS3WhisperPresetListSummary) -> String {
+        [
+            localized("whisper.summaryChannelOnlyFormat", summary.channelOnlyCount),
+            localized("whisper.summaryUserOnlyFormat", summary.clientOnlyCount),
+            localized("whisper.summaryMixedFormat", summary.mixedCount),
+            localized("whisper.summaryEmptyFormat", summary.emptyCount),
+            localized("whisper.summaryTargetRefsFormat", summary.totalChannelTargets, summary.totalClientTargets),
+            localized("whisper.summaryLargestPresetFormat", summary.largestTargetCount),
+            localized(
+                "whisper.summaryLatestUpdateFormat",
+                summary.latestUpdatedAt.map(Self.dateText) ?? localized("common.none")
+            )
+        ].joined(separator: " · ")
     }
 
     private func presetFilterTitle(_ filter: WhisperPresetFilter) -> String {

@@ -1603,6 +1603,16 @@
 "whisper.saveSelectedTargets" = "Save Selected Targets";
 "whisper.exportPresetBackup" = "Export Preset Backup";
 "whisper.importPresetBackup" = "Import Preset Backup";
+"whisper.visibleSummary" = "Visible Summary";
+"whisper.visibleSummaryFormat" = "%d visible, %d channels, %d users";
+"whisper.summaryChannelOnlyFormat" = "Channel-only: %d";
+"whisper.summaryUserOnlyFormat" = "User-only: %d";
+"whisper.summaryMixedFormat" = "Mixed: %d";
+"whisper.summaryEmptyFormat" = "Empty: %d";
+"whisper.summaryTargetRefsFormat" = "Target refs: %d channels / %d users";
+"whisper.summaryLargestPresetFormat" = "Largest preset: %d targets";
+"whisper.summaryLatestUpdateFormat" = "Latest update: %@";
+"whisper.copyVisibleSummary" = "Copy Visible Whisper Summary";
 "whisper.selectVisiblePresets" = "Select Visible Presets";
 "whisper.deleteVisiblePresets" = "Delete Visible Presets";
 "whisper.visiblePresets" = "Visible Presets";

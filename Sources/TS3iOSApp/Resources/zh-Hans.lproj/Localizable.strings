@@ -1603,6 +1603,16 @@
 "whisper.saveSelectedTargets" = "保存所选目标";
 "whisper.exportPresetBackup" = "导出预设备份";
 "whisper.importPresetBackup" = "导入预设备份";
+"whisper.visibleSummary" = "可见摘要";
+"whisper.visibleSummaryFormat" = "%d 个可见，%d 个频道，%d 个用户";
+"whisper.summaryChannelOnlyFormat" = "仅频道：%d";
+"whisper.summaryUserOnlyFormat" = "仅用户：%d";
+"whisper.summaryMixedFormat" = "混合：%d";
+"whisper.summaryEmptyFormat" = "空预设：%d";
+"whisper.summaryTargetRefsFormat" = "目标引用：%d 个频道 / %d 个用户";
+"whisper.summaryLargestPresetFormat" = "最大预设：%d 个目标";
+"whisper.summaryLatestUpdateFormat" = "最近更新：%@";
+"whisper.copyVisibleSummary" = "复制可见密语摘要";
 "whisper.selectVisiblePresets" = "选择可见预设";
 "whisper.deleteVisiblePresets" = "删除可见预设";
 "whisper.visiblePresets" = "可见预设";

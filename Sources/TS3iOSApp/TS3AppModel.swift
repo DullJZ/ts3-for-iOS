@@ -8505,6 +8505,86 @@ struct TS3WhisperPreset: Identifiable, Codable {
     }
 }
 
+struct TS3WhisperPresetListSummary {
+    let presets: [TS3WhisperPreset]
+
+    var totalCount: Int {
+        presets.count
+    }
+
+    var channelOnlyCount: Int {
+        presets.filter { !$0.channelIds.isEmpty && $0.clientIds.isEmpty }.count
+    }
+
+    var clientOnlyCount: Int {
+        presets.filter { $0.channelIds.isEmpty && !$0.clientIds.isEmpty }.count
+    }
+
+    var mixedCount: Int {
+        presets.filter { !$0.channelIds.isEmpty && !$0.clientIds.isEmpty }.count
+    }
+
+    var emptyCount: Int {
+        presets.filter { $0.channelIds.isEmpty && $0.clientIds.isEmpty }.count
+    }
+
+    var totalChannelTargets: Int {
+        presets.reduce(0) { total, preset in
+            total + Set(preset.channelIds.filter { $0 > 0 }).count
+        }
+    }
+
+    var totalClientTargets: Int {
+        presets.reduce(0) { total, preset in
+            total + Set(preset.clientIds.filter { $0 > 0 }).count
+        }
+    }
+
+    var distinctChannelTargets: Int {
+        Set(presets.flatMap { $0.channelIds.filter { $0 > 0 } }).count
+    }
+
+    var distinctClientTargets: Int {
+        Set(presets.flatMap { $0.clientIds.filter { $0 > 0 } }).count
+    }
+
+    var largestTargetCount: Int {
+        presets.map { Set($0.channelIds.filter { $0 > 0 }).count + Set($0.clientIds.filter { $0 > 0 }).count }.max() ?? 0
+    }
+
+    var latestUpdatedAt: Date? {
+        presets.map(\.updatedAt).max()
+    }
+
+    var needsAttention: Bool {
+        emptyCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "whisperPresets=\(totalCount)",
+            "channelOnly=\(channelOnlyCount)",
+            "clientOnly=\(clientOnlyCount)",
+            "mixed=\(mixedCount)",
+            "empty=\(emptyCount)",
+            "channelTargets=\(totalChannelTargets)",
+            "clientTargets=\(totalClientTargets)",
+            "distinctChannels=\(distinctChannelTargets)",
+            "distinctClients=\(distinctClientTargets)",
+            "largestPresetTargets=\(largestTargetCount)",
+            "latestUpdated=\(latestUpdatedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(presets: [TS3WhisperPreset]) {
+        var seen = Set<UUID>()
+        self.presets = presets.filter { preset in
+            seen.insert(preset.id).inserted
+        }
+    }
+}
+
 struct TS3WhisperFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String

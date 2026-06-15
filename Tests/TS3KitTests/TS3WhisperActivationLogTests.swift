@@ -2,6 +2,63 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3WhisperActivationLogTests: XCTestCase {
+    func testWhisperPresetListSummaryDeduplicatesAndCountsVisiblePresets() throws {
+        let channelId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000021"))
+        let clientId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000022"))
+        let mixedId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000023"))
+        let emptyId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000024"))
+        let latest = Date(timeIntervalSince1970: 1_700_000_000)
+        let channelPreset = TS3WhisperPreset(
+            id: channelId,
+            name: "Channels",
+            channelIds: [1, 1, 2, -1],
+            clientIds: [],
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+        let summary = TS3WhisperPresetListSummary(presets: [
+            channelPreset,
+            channelPreset,
+            TS3WhisperPreset(
+                id: clientId,
+                name: "Users",
+                channelIds: [],
+                clientIds: [7, 7, 8, 0],
+                updatedAt: Date(timeIntervalSince1970: 20)
+            ),
+            TS3WhisperPreset(
+                id: mixedId,
+                name: "Mixed",
+                channelIds: [2, 3],
+                clientIds: [8, 9],
+                updatedAt: latest
+            ),
+            TS3WhisperPreset(
+                id: emptyId,
+                name: "Empty",
+                channelIds: [],
+                clientIds: [],
+                updatedAt: Date(timeIntervalSince1970: 30)
+            )
+        ])
+
+        XCTAssertEqual(summary.totalCount, 4)
+        XCTAssertEqual(summary.channelOnlyCount, 1)
+        XCTAssertEqual(summary.clientOnlyCount, 1)
+        XCTAssertEqual(summary.mixedCount, 1)
+        XCTAssertEqual(summary.emptyCount, 1)
+        XCTAssertEqual(summary.totalChannelTargets, 4)
+        XCTAssertEqual(summary.totalClientTargets, 4)
+        XCTAssertEqual(summary.distinctChannelTargets, 3)
+        XCTAssertEqual(summary.distinctClientTargets, 3)
+        XCTAssertEqual(summary.largestTargetCount, 4)
+        XCTAssertEqual(summary.latestUpdatedAt, latest)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "whisperPresets=4 | channelOnly=1 | clientOnly=1 | mixed=1 | empty=1 | channelTargets=4 | clientTargets=4 | distinctChannels=3 | distinctClients=3 | largestPresetTargets=4 | latestUpdated=2023-11-14T22:13:20Z | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testWhisperPresetBackupPreviewSanitizesCandidates() throws {
         let existingId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
