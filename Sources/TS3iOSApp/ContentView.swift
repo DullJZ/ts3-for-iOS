@@ -139,6 +139,7 @@ struct ContentView: View {
                     .environmentObject(model)
             }
         }
+        .background(TS3WhisperShortcutCaptureView(model: model))
         .ts3InlineNavigationTitle()
     }
 }
@@ -244,6 +245,7 @@ struct TS3KeyboardShortcutSummary: Identifiable {
 struct TS3KeyboardShortcutDescriptor {
     let key: KeyEquivalent
     let modifiers: EventModifiers
+    let normalizedKeyName: String
 
     init?(_ rawValue: String) {
         let parts = rawValue
@@ -271,10 +273,11 @@ struct TS3KeyboardShortcutDescriptor {
         guard let key = Self.keyEquivalent(for: keyName) else { return nil }
         self.key = key
         self.modifiers = modifiers
+        self.normalizedKeyName = Self.normalizedKeyName(for: keyName)
     }
 
     private static func keyEquivalent(for keyName: String) -> KeyEquivalent? {
-        switch keyName.lowercased() {
+        switch normalizedKeyName(for: keyName) {
         case "return", "enter":
             return .return
         case "escape", "esc":
@@ -290,7 +293,135 @@ struct TS3KeyboardShortcutDescriptor {
             return KeyEquivalent(character)
         }
     }
+
+    private static func normalizedKeyName(for keyName: String) -> String {
+        keyName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 }
+
+#if canImport(UIKit)
+private extension TS3KeyboardShortcutDescriptor {
+    func matches(_ key: UIKey) -> Bool {
+        guard matchesModifiers(key.modifierFlags) else { return false }
+        let characters = key.charactersIgnoringModifiers.lowercased()
+        switch normalizedKeyName {
+        case "return", "enter":
+            return characters == "\r" || characters == "\n"
+        case "escape", "esc":
+            return characters == "\u{1B}"
+        case "space":
+            return characters == " "
+        case "tab":
+            return characters == "\t"
+        case "delete", "backspace":
+            return characters == "\u{8}" || characters == "\u{7F}"
+        default:
+            return characters == normalizedKeyName
+        }
+    }
+
+    private func matchesModifiers(_ flags: UIKeyModifierFlags) -> Bool {
+        var expected: UIKeyModifierFlags = []
+        if modifiers.contains(.command) {
+            expected.insert(.command)
+        }
+        if modifiers.contains(.shift) {
+            expected.insert(.shift)
+        }
+        if modifiers.contains(.option) {
+            expected.insert(.alternate)
+        }
+        if modifiers.contains(.control) {
+            expected.insert(.control)
+        }
+        let relevant: UIKeyModifierFlags = [.command, .shift, .alternate, .control]
+        return flags.intersection(relevant) == expected
+    }
+}
+
+private struct TS3WhisperShortcutCaptureView: UIViewRepresentable {
+    @ObservedObject var model: TS3AppModel
+
+    func makeUIView(context: Context) -> TS3WhisperShortcutCaptureUIView {
+        let view = TS3WhisperShortcutCaptureUIView()
+        view.model = model
+        DispatchQueue.main.async {
+            view.becomeFirstResponder()
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: TS3WhisperShortcutCaptureUIView, context: Context) {
+        uiView.model = model
+    }
+}
+
+private final class TS3WhisperShortcutCaptureUIView: UIView {
+    weak var model: TS3AppModel?
+    private var isHoldingWhisperShortcut = false
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            becomeFirstResponder()
+        }
+    }
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        guard let model,
+              model.whisperActivationMode == .holdToWhisper,
+              model.state == .connected,
+              model.whisperRoute != .none,
+              !model.isWhisperActivationActive,
+              containsWhisperStartShortcut(in: presses) else {
+            super.pressesBegan(presses, with: event)
+            return
+        }
+        isHoldingWhisperShortcut = true
+        model.beginCurrentWhisperActivation()
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if isHoldingWhisperShortcut, containsWhisperStartShortcut(in: presses) {
+            isHoldingWhisperShortcut = false
+            model?.endWhisperActivation()
+            return
+        }
+        super.pressesEnded(presses, with: event)
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if isHoldingWhisperShortcut, containsWhisperStartShortcut(in: presses) {
+            isHoldingWhisperShortcut = false
+            model?.endWhisperActivation()
+            return
+        }
+        super.pressesCancelled(presses, with: event)
+    }
+
+    private func containsWhisperStartShortcut(in presses: Set<UIPress>) -> Bool {
+        guard let shortcut = model?.keyboardShortcuts.first(where: { $0.actionId == "start-whisper-activation" }),
+              shortcut.isEnabled,
+              let descriptor = TS3KeyboardShortcutDescriptor(shortcut.keys) else {
+            return false
+        }
+        return presses.contains { press in
+            guard let key = press.key else { return false }
+            return descriptor.matches(key)
+        }
+    }
+}
+#else
+private struct TS3WhisperShortcutCaptureView: View {
+    let model: TS3AppModel
+
+    var body: some View {
+        EmptyView()
+    }
+}
+#endif
 
 extension View {
     @ViewBuilder

@@ -1491,7 +1491,7 @@
 "whisper.activationMode" = "Activation Mode";
 "whisper.activationMode.holdToWhisper" = "Hold to Whisper";
 "whisper.activationMode.tapToToggle" = "Tap to Toggle";
-"whisper.activationMode.holdDetail" = "Hold the whisper control or shortcut to keep the temporary whisper route active.";
+"whisper.activationMode.holdDetail" = "Hold the whisper control, or hold the configured start shortcut on Catalyst and release it to stop.";
 "whisper.activationMode.toggleDetail" = "Tap the whisper control or shortcut once to start, then tap again to stop.";
 "whisper.start" = "Start Whisper";
 "whisper.stop" = "Stop Whisper";

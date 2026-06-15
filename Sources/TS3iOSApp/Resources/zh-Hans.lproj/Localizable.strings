@@ -1491,7 +1491,7 @@
 "whisper.activationMode" = "激活模式";
 "whisper.activationMode.holdToWhisper" = "按住密语";
 "whisper.activationMode.tapToToggle" = "点击切换";
-"whisper.activationMode.holdDetail" = "按住密语控件或快捷键时保持临时密语路由激活。";
+"whisper.activationMode.holdDetail" = "按住密语控件，或在 Catalyst 上按住已配置的开始快捷键，松开后停止。";
 "whisper.activationMode.toggleDetail" = "点击密语控件或快捷键一次开始，再次点击停止。";
 "whisper.start" = "开始密语";
 "whisper.stop" = "停止密语";

@@ -63,7 +63,7 @@ enum TS3WhisperActivationMode: String, CaseIterable, Identifiable, Codable {
     var detail: String {
         switch self {
         case .holdToWhisper:
-            return "Press and hold the on-screen control, or use separate start and stop shortcuts on Catalyst."
+            return "Press and hold the on-screen control, or hold the configured start shortcut on Catalyst and release it to stop."
         case .tapToToggle:
             return "Tap once to start temporary whisper and tap again to stop it."
         }

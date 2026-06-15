@@ -37,6 +37,16 @@ final class TS3KeyboardShortcutTests: XCTestCase {
     }
 
     @MainActor
+    func testWhisperHoldShortcutUsesConfiguredStartBinding() throws {
+        let shortcut = try XCTUnwrap(TS3AppModel.defaultKeyboardShortcuts.first { $0.actionId == "start-whisper-activation" })
+        let descriptor = try XCTUnwrap(TS3KeyboardShortcutDescriptor(shortcut.defaultKeys))
+
+        XCTAssertEqual(shortcut.defaultKeys, "Command-Option-H")
+        XCTAssertTrue(descriptor.modifiers.contains(.command))
+        XCTAssertTrue(descriptor.modifiers.contains(.option))
+    }
+
+    @MainActor
     func testKeyboardShortcutImportBackfillsNewCatalystMenuActions() throws {
         let model = TS3AppModel()
         let legacyJSON = """
