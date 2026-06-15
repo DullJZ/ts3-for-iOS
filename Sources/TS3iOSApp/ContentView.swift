@@ -16465,13 +16465,13 @@ struct DatabaseClientRow: View {
                 }
                 HStack(spacing: 8) {
                     if contactStatus == .friend {
-                        Text("Friend")
+                        Text(localized("contacts.status.friend"))
                     }
                     if contactStatus == .blocked {
-                        Text("Blocked")
+                        Text(localized("contacts.status.blocked"))
                     }
                     if let note = model.contactNote(for: record) {
-                        Text("Note: \(note)")
+                        Text(localized("clientActions.noteFormat", note))
                     }
                 }
                 .font(.caption)
@@ -16481,69 +16481,69 @@ struct DatabaseClientRow: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Copy Nickname") {
+            Button(localized("contacts.row.copyNickname")) {
                 TS3PlatformSupport.copyToPasteboard(record.nickname)
             }
-            Button("Copy Database ID") {
+            Button(localized("groups.members.row.copyDatabaseId")) {
                 TS3PlatformSupport.copyToPasteboard("\(record.id)")
             }
-            Button("Copy Summary") {
+            Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
             }
             if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Button("Copy Unique ID") {
+                Button(localized("contacts.row.copyUniqueId")) {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                 }
-                Menu("Contact") {
-                    Button("Mark as Friend") {
+                Menu(localized("groups.members.row.contact")) {
+                    Button(localized("groups.members.row.markFriend")) {
                         model.setContactStatus(.friend, for: record)
                     }
                     .disabled(contactStatus == .friend)
-                    Button("Block Contact") {
+                    Button(localized("groups.members.row.blockContact")) {
                         model.setContactStatus(.blocked, for: record)
                     }
                     .disabled(contactStatus == .blocked)
-                    Button("Ignore Contact") {
+                    Button(localized("groups.members.row.ignoreContact")) {
                         model.setContactStatus(.ignored, for: record)
                     }
                     .disabled(contactStatus == .ignored)
-                    Button("Set Neutral") {
+                    Button(localized("groups.members.row.setNeutral")) {
                         model.setContactStatus(.neutral, for: record)
                     }
                     .disabled(contactStatus == .neutral && model.contactNote(for: record) == nil)
-                    Button("Edit Note") {
+                    Button(localized("groups.members.row.editNote")) {
                         databaseActionMode = .contactNote
                     }
                 }
             }
-            Button("Send Offline Message") {
+            Button(localized("groups.members.row.sendOfflineMessage")) {
                 databaseActionMode = .offlineMessage
             }
             .disabled(!model.canSendOfflineMessage(to: record))
-            Button("Submit Complaint") {
+            Button(localized("groups.members.row.submitComplaint")) {
                 databaseActionMode = .complain
             }
-            Button("View Complaints") {
+            Button(localized("database.viewComplaints")) {
                 model.refreshComplaints(for: record)
                 isShowingComplaints = true
             }
-            Button("Ban Unique ID") {
+            Button(localized("groups.members.row.banUniqueId")) {
                 databaseActionMode = .ban
             }
             .disabled(!model.canBanDatabaseClient(record))
             if model.hasOnlineClientActions(for: record) {
-                Button("Poke Online Client") {
+                Button(localized("groups.members.row.pokeOnlineClient")) {
                     onlineActionMode = .poke
                 }
-                Button("Send Private Message") {
+                Button(localized("contacts.row.sendPrivateMessage")) {
                     onlineActionMode = .privateMessage
                 }
-                Button("Client Info") {
+                Button(localized("contacts.row.clientInfo")) {
                     onlineActionMode = .info
                 }
             }
             if !model.serverGroups.isEmpty {
-                Menu("Add Server Group") {
+                Menu(localized("database.addServerGroup")) {
                     ForEach(model.serverGroups) { group in
                         Button(group.name) {
                             model.addServerGroup(group, to: record)
@@ -16555,33 +16555,33 @@ struct DatabaseClientRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(record.nickname)
         .accessibilityValue(record.accessibilityValue)
-        .accessibilityAction(named: "Open Details") {
+        .accessibilityAction(named: localized("clientActions.details")) {
             model.loadDatabaseClientDetails(record)
         }
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
         }
-        .accessibilityAction(named: "Copy Database ID") {
+        .accessibilityAction(named: localized("groups.members.row.copyDatabaseId")) {
             TS3PlatformSupport.copyToPasteboard("\(record.id)")
         }
-        .accessibilityAction(named: "Edit Contact Note") {
+        .accessibilityAction(named: localized("groups.members.row.editContactNote")) {
             if record.uniqueIdentifier?.isEmpty == false {
                 databaseActionMode = .contactNote
             }
         }
-        .accessibilityAction(named: "Send Offline Message") {
+        .accessibilityAction(named: localized("groups.members.row.sendOfflineMessage")) {
             if model.canSendOfflineMessage(to: record) {
                 databaseActionMode = .offlineMessage
             }
         }
-        .accessibilityAction(named: "Submit Complaint") {
+        .accessibilityAction(named: localized("groups.members.row.submitComplaint")) {
             databaseActionMode = .complain
         }
-        .accessibilityAction(named: "View Complaints") {
+        .accessibilityAction(named: localized("database.viewComplaints")) {
             model.refreshComplaints(for: record)
             isShowingComplaints = true
         }
-        .accessibilityAction(named: "Ban Unique ID") {
+        .accessibilityAction(named: localized("groups.members.row.banUniqueId")) {
             if model.canBanDatabaseClient(record) {
                 databaseActionMode = .ban
             }
@@ -16600,6 +16600,11 @@ struct DatabaseClientRow: View {
             ComplaintListSheet()
                 .environmentObject(model)
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
