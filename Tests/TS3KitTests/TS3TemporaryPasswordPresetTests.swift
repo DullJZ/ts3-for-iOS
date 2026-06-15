@@ -121,6 +121,55 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
         )
     }
 
+    func testTemporaryPasswordListSummaryDeduplicatesAndCountsVisiblePasswords() {
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let channelPassword = TS3TemporaryServerPasswordSummary(
+            id: "channel-pass",
+            password: "channel-pass",
+            creatorUniqueIdentifier: "creator-uid",
+            creatorDatabaseId: nil,
+            creatorName: nil,
+            targetChannelId: 12,
+            targetChannelPassword: "room-secret",
+            createdAt: createdAt,
+            durationSeconds: 3_600,
+            description: "Guest access"
+        )
+        let summary = TS3TemporaryServerPasswordListSummary(passwords: [
+            channelPassword,
+            channelPassword,
+            TS3TemporaryServerPasswordSummary(
+                id: "server-pass",
+                password: "server-pass",
+                creatorUniqueIdentifier: nil,
+                creatorDatabaseId: 91,
+                creatorName: nil,
+                targetChannelId: nil,
+                targetChannelPassword: nil,
+                createdAt: nil,
+                durationSeconds: nil,
+                description: nil
+            )
+        ])
+
+        XCTAssertEqual(summary.totalCount, 2)
+        XCTAssertEqual(summary.serverDefaultCount, 1)
+        XCTAssertEqual(summary.channelTargetCount, 1)
+        XCTAssertEqual(summary.describedCount, 1)
+        XCTAssertEqual(summary.withCreatorCount, 2)
+        XCTAssertEqual(summary.withExpirationCount, 1)
+        XCTAssertEqual(summary.withTargetChannelPasswordCount, 1)
+        XCTAssertEqual(summary.withCreatedAtCount, 1)
+        XCTAssertEqual(summary.distinctTargetChannelCount, 1)
+        XCTAssertEqual(summary.earliestCreatedAt, createdAt)
+        XCTAssertEqual(summary.latestCreatedAt, createdAt)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "temporaryPasswords=2 | serverDefault=1 | channelTarget=1 | withDescription=1 | withCreator=2 | withExpiration=1 | withTargetChannelPassword=1 | withCreatedAt=1 | distinctTargetChannels=1 | createdRange=2023-11-14T22:13:20Z-2023-11-14T22:13:20Z | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testTemporaryPasswordFullInviteLinkUsesTargetChannelAndPassword() throws {
         let model = TS3AppModel()

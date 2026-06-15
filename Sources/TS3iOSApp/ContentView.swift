@@ -21811,6 +21811,10 @@ struct TemporaryServerPasswordsSheet: View {
         filteredPasswords.map { $0.clipboardSummary(channels: model.channels) }.joined(separator: "\n")
     }
 
+    private var visiblePasswordSummary: TS3TemporaryServerPasswordListSummary {
+        TS3TemporaryServerPasswordListSummary(passwords: filteredPasswords)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -21874,6 +21878,17 @@ struct TemporaryServerPasswordsSheet: View {
                     Toggle(localized("groups.ascending"), isOn: $sortAscending)
                     TextField(localized("temporaryPasswords.searchPasswords"), text: $searchText)
                         .ts3PlainTextField()
+                    ServerInfoDetailRow(
+                        label: localized("temporaryPasswords.visibleSummary"),
+                        value: localized(
+                            "temporaryPasswords.visibleSummaryFormat",
+                            visiblePasswordSummary.totalCount,
+                            visiblePasswordSummary.channelTargetCount
+                        )
+                    )
+                    Text(temporaryPasswordListSummaryText(visiblePasswordSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Menu {
                         TextField(localized("groups.presetName"), text: $presetName)
                         Button(localized("groups.saveCurrentFilters")) {
@@ -21932,6 +21947,10 @@ struct TemporaryServerPasswordsSheet: View {
                             searchText = ""
                         }
                     }
+                    Button(localized("temporaryPasswords.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visiblePasswordSummary.clipboardSummary)
+                    }
+                    .disabled(filteredPasswords.isEmpty)
                     Button(localized("temporaryPasswords.copyVisiblePasswords")) {
                         TS3PlatformSupport.copyToPasteboard(passwordsSnapshot)
                     }
@@ -22304,6 +22323,23 @@ struct TemporaryServerPasswordsSheet: View {
         case .description:
             return localized("temporaryPasswords.sort.description")
         }
+    }
+
+    private func temporaryPasswordListSummaryText(_ summary: TS3TemporaryServerPasswordListSummary) -> String {
+        [
+            localized("temporaryPasswords.summaryServerDefaultFormat", summary.serverDefaultCount),
+            localized("temporaryPasswords.summaryChannelTargetFormat", summary.channelTargetCount),
+            localized("temporaryPasswords.summaryWithDescriptionFormat", summary.describedCount),
+            localized("temporaryPasswords.summaryWithCreatorFormat", summary.withCreatorCount),
+            localized("temporaryPasswords.summaryWithExpirationFormat", summary.withExpirationCount),
+            localized("temporaryPasswords.summaryTargetPasswordsFormat", summary.withTargetChannelPasswordCount),
+            localized("temporaryPasswords.summaryTargetChannelsFormat", summary.distinctTargetChannelCount),
+            localized(
+                "temporaryPasswords.summaryCreatedRangeFormat",
+                summary.earliestCreatedAt.map(TS3TemporaryServerPasswordSummary.dateText) ?? localized("common.none"),
+                summary.latestCreatedAt.map(TS3TemporaryServerPasswordSummary.dateText) ?? localized("common.none")
+            )
+        ].joined(separator: " · ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

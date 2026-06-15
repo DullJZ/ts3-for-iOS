@@ -4253,6 +4253,98 @@ struct TS3TemporaryServerPasswordSummary: Identifiable, Codable {
     }
 }
 
+struct TS3TemporaryServerPasswordListSummary {
+    let passwords: [TS3TemporaryServerPasswordSummary]
+
+    var totalCount: Int {
+        passwords.count
+    }
+
+    var serverDefaultCount: Int {
+        passwords.filter { ($0.targetChannelId ?? 0) == 0 }.count
+    }
+
+    var channelTargetCount: Int {
+        passwords.filter { ($0.targetChannelId ?? 0) > 0 }.count
+    }
+
+    var describedCount: Int {
+        passwords.filter { normalized($0.description) != nil }.count
+    }
+
+    var withCreatorCount: Int {
+        passwords.filter {
+            normalized($0.creatorName) != nil
+                || normalized($0.creatorUniqueIdentifier) != nil
+                || $0.creatorDatabaseId != nil
+        }.count
+    }
+
+    var withExpirationCount: Int {
+        passwords.filter { ($0.durationSeconds ?? 0) > 0 }.count
+    }
+
+    var withTargetChannelPasswordCount: Int {
+        passwords.filter { normalized($0.targetChannelPassword) != nil }.count
+    }
+
+    var withCreatedAtCount: Int {
+        passwords.filter { $0.createdAt != nil }.count
+    }
+
+    var distinctTargetChannelCount: Int {
+        Set(passwords.compactMap { targetChannelId in
+            let id = targetChannelId.targetChannelId ?? 0
+            return id > 0 ? id : nil
+        }).count
+    }
+
+    var earliestCreatedAt: Date? {
+        passwords.compactMap(\.createdAt).min()
+    }
+
+    var latestCreatedAt: Date? {
+        passwords.compactMap(\.createdAt).max()
+    }
+
+    var needsAttention: Bool {
+        withExpirationCount < totalCount || withTargetChannelPasswordCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "temporaryPasswords=\(totalCount)",
+            "serverDefault=\(serverDefaultCount)",
+            "channelTarget=\(channelTargetCount)",
+            "withDescription=\(describedCount)",
+            "withCreator=\(withCreatorCount)",
+            "withExpiration=\(withExpirationCount)",
+            "withTargetChannelPassword=\(withTargetChannelPasswordCount)",
+            "withCreatedAt=\(withCreatedAtCount)",
+            "distinctTargetChannels=\(distinctTargetChannelCount)",
+            "createdRange=\(dateText(earliestCreatedAt))-\(dateText(latestCreatedAt))",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(passwords: [TS3TemporaryServerPasswordSummary]) {
+        var seen = Set<String>()
+        self.passwords = passwords.filter { password in
+            seen.insert(password.id).inserted
+        }
+    }
+
+    private func dateText(_ date: Date?) -> String {
+        date.map { ISO8601DateFormatter().string(from: $0) } ?? "none"
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 private struct TS3PrivilegeKeyBackupEntry: Codable {
     var key: String
     var type: Int?
