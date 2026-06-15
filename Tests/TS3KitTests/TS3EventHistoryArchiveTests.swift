@@ -269,6 +269,62 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         )
     }
 
+    func testPokeListSummaryDeduplicatesAndCountsVisiblePokes() {
+        let duplicateId = UUID()
+        let summary = TS3PokeListSummary(pokes: [
+            TS3PokeSummary(
+                id: duplicateId,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                senderId: 9,
+                senderName: "Morgan",
+                senderUniqueIdentifier: "uid-m",
+                message: "Ping",
+                isOwnPoke: false
+            ),
+            TS3PokeSummary(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                senderId: nil,
+                senderName: "Avery",
+                senderUniqueIdentifier: nil,
+                message: " ",
+                isOwnPoke: true
+            ),
+            TS3PokeSummary(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_200),
+                senderId: 10,
+                senderName: "Morgan",
+                senderUniqueIdentifier: " uid-m ",
+                message: "Again",
+                isOwnPoke: false
+            ),
+            TS3PokeSummary(
+                id: duplicateId,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_300),
+                senderId: 11,
+                senderName: "Duplicate",
+                senderUniqueIdentifier: nil,
+                message: "Duplicate",
+                isOwnPoke: true
+            )
+        ])
+
+        XCTAssertEqual(summary.totalCount, 3)
+        XCTAssertEqual(summary.incomingCount, 2)
+        XCTAssertEqual(summary.outgoingCount, 1)
+        XCTAssertEqual(summary.withUniqueIdCount, 2)
+        XCTAssertEqual(summary.withoutUniqueIdCount, 1)
+        XCTAssertEqual(summary.defaultMessageCount, 1)
+        XCTAssertEqual(summary.customMessageCount, 2)
+        XCTAssertEqual(summary.distinctParticipantCount, 2)
+        XCTAssertEqual(summary.earliestTimestamp, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(summary.latestTimestamp, Date(timeIntervalSince1970: 1_700_000_200))
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "pokes=3 | incoming=2 | outgoing=1 | withUid=2 | withoutUid=1 | defaultMessage=1 | customMessage=2 | distinctParticipants=2 | earliestTimestamp=1700000000 | latestTimestamp=1700000200 | needsAttention=true"
+        )
+    }
+
     func testPokeDraftValidatorRejectsMissingTargetAndMultilineMessage() {
         XCTAssertEqual(
             TS3PokeDraftValidator.validationMessages(

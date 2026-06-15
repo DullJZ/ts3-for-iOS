@@ -1176,6 +1176,83 @@ struct TS3PokeSummary: Identifiable, Codable {
     }
 }
 
+struct TS3PokeListSummary {
+    let pokes: [TS3PokeSummary]
+
+    var totalCount: Int {
+        pokes.count
+    }
+
+    var incomingCount: Int {
+        pokes.filter { !$0.isOwnPoke }.count
+    }
+
+    var outgoingCount: Int {
+        pokes.filter(\.isOwnPoke).count
+    }
+
+    var withUniqueIdCount: Int {
+        pokes.filter { $0.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var withoutUniqueIdCount: Int {
+        totalCount - withUniqueIdCount
+    }
+
+    var defaultMessageCount: Int {
+        pokes.filter { $0.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+    }
+
+    var customMessageCount: Int {
+        totalCount - defaultMessageCount
+    }
+
+    var distinctParticipantCount: Int {
+        Set(pokes.map { poke in
+            if let senderUniqueIdentifier = poke.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !senderUniqueIdentifier.isEmpty {
+                return senderUniqueIdentifier
+            }
+            return poke.senderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        }).count
+    }
+
+    var earliestTimestamp: Date? {
+        pokes.map(\.timestamp).min()
+    }
+
+    var latestTimestamp: Date? {
+        pokes.map(\.timestamp).max()
+    }
+
+    var needsAttention: Bool {
+        incomingCount > 0 || withoutUniqueIdCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "pokes=\(totalCount)",
+            "incoming=\(incomingCount)",
+            "outgoing=\(outgoingCount)",
+            "withUid=\(withUniqueIdCount)",
+            "withoutUid=\(withoutUniqueIdCount)",
+            "defaultMessage=\(defaultMessageCount)",
+            "customMessage=\(customMessageCount)",
+            "distinctParticipants=\(distinctParticipantCount)",
+            "earliestTimestamp=\(earliestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "latestTimestamp=\(latestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(pokes: [TS3PokeSummary]) {
+        var seen = Set<UUID>()
+        self.pokes = pokes.filter { poke in
+            seen.insert(poke.id).inserted
+        }
+    }
+}
+
 enum TS3PokeDraftValidator {
     static func validationMessages(
         targetName: String?,

@@ -9130,6 +9130,10 @@ struct EventsSheet: View {
         !visibleActivityEvents.isEmpty || !visiblePokeEvents.isEmpty
     }
 
+    private var visiblePokeSummary: TS3PokeListSummary {
+        TS3PokeListSummary(pokes: visiblePokeEvents)
+    }
+
     private var visibleEventsSnapshot: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -9197,6 +9201,17 @@ struct EventsSheet: View {
                             searchText = ""
                         }
                     }
+                    ServerInfoDetailRow(
+                        label: localized("events.visiblePokeSummary"),
+                        value: localized("events.visiblePokeSummaryFormat", visiblePokeSummary.totalCount)
+                    )
+                    Text(pokeSummaryText(visiblePokeSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("events.copyVisiblePokeSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visiblePokeSummary.clipboardSummary)
+                    }
+                    .disabled(visiblePokeEvents.isEmpty)
                 }
 
                 Section(header: Text(localized("groups.filterPresets"))) {
@@ -9506,6 +9521,18 @@ struct EventsSheet: View {
             parts.append(localized("events.searchPresetSummaryFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func pokeSummaryText(_ summary: TS3PokeListSummary) -> String {
+        [
+            localized("events.pokeSummaryIncomingFormat", summary.incomingCount),
+            localized("events.pokeSummaryOutgoingFormat", summary.outgoingCount),
+            localized("events.pokeSummaryWithUidFormat", summary.withUniqueIdCount),
+            localized("events.pokeSummaryWithoutUidFormat", summary.withoutUniqueIdCount),
+            localized("events.pokeSummaryDefaultMessageFormat", summary.defaultMessageCount),
+            localized("events.pokeSummaryCustomMessageFormat", summary.customMessageCount),
+            localized("events.pokeSummaryParticipantsFormat", summary.distinctParticipantCount)
+        ].joined(separator: " · ")
     }
 
     private func exportPresets() {

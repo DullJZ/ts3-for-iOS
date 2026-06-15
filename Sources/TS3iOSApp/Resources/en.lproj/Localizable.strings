@@ -344,6 +344,16 @@
 "events.newestFirst" = "Newest First";
 "events.searchEvents" = "Search events";
 "events.clearFilters" = "Clear Filters";
+"events.visiblePokeSummary" = "Visible Poke Summary";
+"events.visiblePokeSummaryFormat" = "%d visible pokes";
+"events.pokeSummaryIncomingFormat" = "Incoming: %d";
+"events.pokeSummaryOutgoingFormat" = "Outgoing: %d";
+"events.pokeSummaryWithUidFormat" = "With UID: %d";
+"events.pokeSummaryWithoutUidFormat" = "Without UID: %d";
+"events.pokeSummaryDefaultMessageFormat" = "Default message: %d";
+"events.pokeSummaryCustomMessageFormat" = "Custom message: %d";
+"events.pokeSummaryParticipantsFormat" = "Participants: %d";
+"events.copyVisiblePokeSummary" = "Copy Visible Poke Summary";
 "events.noSavedFilterPresets" = "No saved event filter presets";
 "events.noActivity" = "No activity";
 "events.noMatchingActivity" = "No matching activity";
