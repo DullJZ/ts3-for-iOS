@@ -22344,6 +22344,10 @@ struct PrivilegeKeysSheet: View {
             .joined(separator: "\n")
     }
 
+    private var visiblePrivilegeKeySummary: TS3PrivilegeKeyListSummary {
+        TS3PrivilegeKeyListSummary(keys: filteredPrivilegeKeys)
+    }
+
     init(
         initialTargetType: TS3PrivilegeKeyTargetType? = nil,
         initialServerGroupId: Int? = nil,
@@ -22526,6 +22530,24 @@ struct PrivilegeKeysSheet: View {
                             searchText = ""
                         }
                     }
+                    if !filteredPrivilegeKeys.isEmpty {
+                        ServerInfoDetailRow(
+                            label: localized("privilegeKeys.visibleSummary"),
+                            value: localized(
+                                "privilegeKeys.visibleSummaryFormat",
+                                visiblePrivilegeKeySummary.totalCount,
+                                visiblePrivilegeKeySummary.channelScopedCount
+                            )
+                        )
+                        Text(privilegeKeyListSummaryText(visiblePrivilegeKeySummary))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Button(localized("privilegeKeys.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visiblePrivilegeKeySummary.clipboardSummary)
+                    }
+                    .disabled(filteredPrivilegeKeys.isEmpty)
 
                     Button(localized("privilegeKeys.copyVisibleKeys")) {
                         TS3PlatformSupport.copyToPasteboard(privilegeKeysSnapshot)
@@ -22882,6 +22904,23 @@ struct PrivilegeKeysSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private func privilegeKeyListSummaryText(_ summary: TS3PrivilegeKeyListSummary) -> String {
+        var parts = [
+            localized("privilegeKeys.summary.serverGroupFormat", summary.serverGroupCount),
+            localized("privilegeKeys.summary.channelGroupFormat", summary.channelGroupCount),
+            localized("privilegeKeys.summary.unknownFormat", summary.unknownTypeCount),
+            localized("privilegeKeys.summary.describedFormat", summary.describedCount),
+            localized("privilegeKeys.summary.customSetFormat", summary.customSetCount)
+        ]
+        if let latestCreatedAt = summary.latestCreatedAt {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            parts.append(localized("privilegeKeys.summary.createdFormat", formatter.string(from: latestCreatedAt)))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func privilegeKeyBackupPreviewMessage(_ preview: TS3PrivilegeKeyBackupPreview) -> String {

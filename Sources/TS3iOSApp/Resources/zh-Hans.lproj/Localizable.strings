@@ -411,6 +411,15 @@
 "privilegeKeys.existingKeys" = "现有密钥";
 "privilegeKeys.searchKeys" = "搜索密钥";
 "privilegeKeys.noSavedFilterPresets" = "没有已保存的权限密钥筛选预设";
+"privilegeKeys.visibleSummary" = "可见摘要";
+"privilegeKeys.visibleSummaryFormat" = "%d 个可见，%d 个限定频道";
+"privilegeKeys.summary.serverGroupFormat" = "%d 个服务器组";
+"privilegeKeys.summary.channelGroupFormat" = "%d 个频道组";
+"privilegeKeys.summary.unknownFormat" = "%d 个未知";
+"privilegeKeys.summary.describedFormat" = "%d 个有描述";
+"privilegeKeys.summary.customSetFormat" = "%d 个有自定义权限集";
+"privilegeKeys.summary.createdFormat" = "创建于 %@";
+"privilegeKeys.copyVisibleSummary" = "复制可见密钥摘要";
 "privilegeKeys.copyVisibleKeys" = "复制可见密钥";
 "privilegeKeys.exportVisibleKeys" = "导出可见密钥";
 "privilegeKeys.exportBackup" = "导出权限密钥备份";

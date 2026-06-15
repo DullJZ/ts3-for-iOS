@@ -3437,6 +3437,71 @@ extension TS3PrivilegeKeySummary {
     }
 }
 
+struct TS3PrivilegeKeyListSummary {
+    let keys: [TS3PrivilegeKeySummary]
+
+    var totalCount: Int {
+        keys.count
+    }
+
+    var serverGroupCount: Int {
+        keys.filter { $0.type == .serverGroup }.count
+    }
+
+    var channelGroupCount: Int {
+        keys.filter { $0.type == .channelGroup }.count
+    }
+
+    var unknownTypeCount: Int {
+        keys.filter { $0.type == nil }.count
+    }
+
+    var describedCount: Int {
+        keys.filter { $0.description?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var customSetCount: Int {
+        keys.filter { $0.customSet?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var channelScopedCount: Int {
+        keys.filter { ($0.channelId ?? 0) > 0 }.count
+    }
+
+    var latestCreatedAt: Date? {
+        keys.compactMap(\.createdAt).max()
+    }
+
+    var needsAttention: Bool {
+        unknownTypeCount > 0 || customSetCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "keys=\(totalCount)",
+            "serverGroup=\(serverGroupCount)",
+            "channelGroup=\(channelGroupCount)",
+            "unknown=\(unknownTypeCount)",
+            "withDescription=\(describedCount)",
+            "withCustomSet=\(customSetCount)",
+            "channelScoped=\(channelScopedCount)",
+            "latestCreated=\(latestCreatedAt.map { Self.dateText($0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(keys: [TS3PrivilegeKeySummary]) {
+        var seen = Set<String>()
+        self.keys = keys.filter { key in
+            seen.insert(key.key).inserted
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+}
+
 struct TS3TemporaryServerPasswordSummary: Identifiable, Codable {
     let id: String
     let password: String

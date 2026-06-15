@@ -266,6 +266,46 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyListSummaryDeduplicatesAndCountsVisibleKeys() {
+        let serverKey = makeKey(
+            key: "server-key",
+            type: .serverGroup,
+            groupId: 6,
+            channelId: nil,
+            description: "admins"
+        )
+        let channelKey = makeKey(
+            key: "channel-key",
+            type: .channelGroup,
+            groupId: 9,
+            channelId: 12,
+            customSet: "token_custom"
+        )
+        let unknownKey = makeKey(key: "unknown-key", type: nil, groupId: 99, channelId: nil)
+        let duplicate = makeKey(
+            key: "server-key",
+            type: .channelGroup,
+            groupId: 10,
+            channelId: 13,
+            customSet: "ignored"
+        )
+
+        let summary = TS3PrivilegeKeyListSummary(keys: [serverKey, channelKey, unknownKey, duplicate])
+
+        XCTAssertEqual(summary.totalCount, 3)
+        XCTAssertEqual(summary.serverGroupCount, 1)
+        XCTAssertEqual(summary.channelGroupCount, 1)
+        XCTAssertEqual(summary.unknownTypeCount, 1)
+        XCTAssertEqual(summary.describedCount, 1)
+        XCTAssertEqual(summary.customSetCount, 1)
+        XCTAssertEqual(summary.channelScopedCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "keys=3 | serverGroup=1 | channelGroup=1 | unknown=1 | withDescription=1 | withCustomSet=1 | channelScoped=1 | latestCreated=2023-11-14T22:13:20Z | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testSaveCurrentConnectionPrivilegeKeyTrimsAndIgnoresEmptyValues() {
         let model = TS3AppModel()

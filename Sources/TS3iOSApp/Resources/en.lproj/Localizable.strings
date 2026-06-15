@@ -411,6 +411,15 @@
 "privilegeKeys.existingKeys" = "Existing Keys";
 "privilegeKeys.searchKeys" = "Search keys";
 "privilegeKeys.noSavedFilterPresets" = "No saved privilege key filter presets";
+"privilegeKeys.visibleSummary" = "Visible Summary";
+"privilegeKeys.visibleSummaryFormat" = "%d visible, %d channel-scoped";
+"privilegeKeys.summary.serverGroupFormat" = "%d server group";
+"privilegeKeys.summary.channelGroupFormat" = "%d channel group";
+"privilegeKeys.summary.unknownFormat" = "%d unknown";
+"privilegeKeys.summary.describedFormat" = "%d with description";
+"privilegeKeys.summary.customSetFormat" = "%d with custom set";
+"privilegeKeys.summary.createdFormat" = "Created %@";
+"privilegeKeys.copyVisibleSummary" = "Copy Visible Key Summary";
 "privilegeKeys.copyVisibleKeys" = "Copy Visible Keys";
 "privilegeKeys.exportVisibleKeys" = "Export Visible Keys";
 "privilegeKeys.exportBackup" = "Export Privilege Key Backup";
