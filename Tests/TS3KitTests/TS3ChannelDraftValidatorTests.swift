@@ -201,6 +201,50 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorImpactSummaryCountsAreasValidationAndCodecWarnings() {
+        let summary = TS3ChannelEditorImpactSummary(
+            areaChangeCounts: [
+                .channel: 3,
+                .voice: 2,
+                .permissionGates: 0,
+                .limits: 1
+            ],
+            validationIssueCount: 1,
+            codecWarningCount: 2
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 6)
+        XCTAssertEqual(summary.affectedAreaCount, 3)
+        XCTAssertEqual(summary.validationIssueCount, 1)
+        XCTAssertEqual(summary.codecWarningCount, 2)
+        XCTAssertTrue(summary.needsReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "changes=6 | affectedAreas=3 | validationIssues=1 | codecWarnings=2 | areas=channel:3,voice:2,limits:1 | needsReview=true"
+        )
+    }
+
+    func testChannelEditorImpactSummaryOmitsEmptyAreasAndClampsIssueCounts() {
+        let summary = TS3ChannelEditorImpactSummary(
+            areaChangeCounts: [
+                .channel: 0,
+                .voice: -1
+            ],
+            validationIssueCount: -2,
+            codecWarningCount: -3
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.affectedAreaCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.codecWarningCount, 0)
+        XCTAssertFalse(summary.needsReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "changes=0 | affectedAreas=0 | validationIssues=0 | codecWarnings=0 | areas=none | needsReview=false"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",

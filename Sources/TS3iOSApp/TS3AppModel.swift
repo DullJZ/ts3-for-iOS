@@ -856,6 +856,58 @@ enum TS3ServerSettingsDraftValidator {
     }
 }
 
+enum TS3ChannelEditorImpactArea: String, CaseIterable, Codable {
+    case channel
+    case voice
+    case permissionGates
+    case limits
+}
+
+struct TS3ChannelEditorImpactSummary {
+    let areaChangeCounts: [TS3ChannelEditorImpactArea: Int]
+    let validationIssueCount: Int
+    let codecWarningCount: Int
+
+    var totalChangeCount: Int {
+        areaChangeCounts.values.reduce(0, +)
+    }
+
+    var affectedAreaCount: Int {
+        areaChangeCounts.values.filter { $0 > 0 }.count
+    }
+
+    var needsReview: Bool {
+        totalChangeCount > 0 || validationIssueCount > 0 || codecWarningCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3ChannelEditorImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaChangeCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "changes=\(totalChangeCount)",
+            "affectedAreas=\(affectedAreaCount)",
+            "validationIssues=\(validationIssueCount)",
+            "codecWarnings=\(codecWarningCount)",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsReview=\(needsReview ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        areaChangeCounts: [TS3ChannelEditorImpactArea: Int],
+        validationIssueCount: Int,
+        codecWarningCount: Int
+    ) {
+        self.areaChangeCounts = areaChangeCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.codecWarningCount = max(0, codecWarningCount)
+    }
+}
+
 enum TS3ServerSettingsImpactArea: String, CaseIterable, Codable {
     case general
     case hostBranding

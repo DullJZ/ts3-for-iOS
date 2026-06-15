@@ -27758,6 +27758,24 @@ struct ChannelEditorSheet: View {
                         }
                         if case .edit = mode {
                             Divider()
+                            ServerInfoDetailRow(
+                                label: localized("channelEditor.impactSummary"),
+                                value: localized(
+                                    "channelEditor.impactSummaryFormat",
+                                    channelImpactSummary.totalChangeCount,
+                                    channelImpactSummary.affectedAreaCount,
+                                    channelImpactSummary.validationIssueCount,
+                                    channelImpactSummary.codecWarningCount
+                                )
+                            )
+                            Text(channelImpactSummaryText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button(localized("channelEditor.copyImpactSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(channelImpactSummaryClipboard)
+                            }
+                            .disabled(!channelImpactSummary.needsReview)
+
                             if draftChangeRows.isEmpty {
                                 Text(localized("channelEditor.noDraftChanges"))
                                     .font(.caption)
@@ -28261,6 +28279,32 @@ struct ChannelEditorSheet: View {
         return rows.joined(separator: "\n")
     }
 
+    private var channelImpactSummary: TS3ChannelEditorImpactSummary {
+        channelImpactSummary(for: currentDraft)
+    }
+
+    private var channelImpactSummaryText: String {
+        channelImpactSummaryText(for: channelImpactSummary)
+    }
+
+    private var channelImpactSummaryClipboard: String {
+        let impact = channelImpactSummary
+        let affectedAreas = TS3ChannelEditorImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = impact.areaChangeCounts[area], count > 0 else { return nil }
+                return localized("channelEditor.impactAreaClipboardFormat", title(for: area), count)
+            }
+            .joined(separator: "\n")
+        return [
+            localized("channelEditor.impactSummary"),
+            impact.clipboardSummary,
+            affectedAreas
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
+    }
+
     private var permissionGateSummary: TS3ChannelPermissionGateSummary {
         TS3ChannelPermissionGateSummary(
             neededTalkPower: parsedOptionalInt(neededTalkPower),
@@ -28307,7 +28351,62 @@ struct ChannelEditorSheet: View {
 
     private func draftChangeRows(for draft: ChannelDraft) -> [String] {
         guard case let .edit(channel) = mode else { return [] }
-        return [
+        return channelChangeRows(for: channel, draft: draft)
+            + voiceChangeRows(for: channel, draft: draft)
+            + permissionGateChangeRows(for: channel, draft: draft)
+            + limitChangeRows(for: channel, draft: draft)
+    }
+
+    private func channelImpactSummary(for draft: ChannelDraft) -> TS3ChannelEditorImpactSummary {
+        guard case let .edit(channel) = mode else {
+            return TS3ChannelEditorImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: draftValidationMessages(for: draft).count,
+                codecWarningCount: codecDiagnosticMessages.count
+            )
+        }
+        return TS3ChannelEditorImpactSummary(
+            areaChangeCounts: [
+                .channel: channelChangeRows(for: channel, draft: draft).count,
+                .voice: voiceChangeRows(for: channel, draft: draft).count,
+                .permissionGates: permissionGateChangeRows(for: channel, draft: draft).count,
+                .limits: limitChangeRows(for: channel, draft: draft).count
+            ],
+            validationIssueCount: draftValidationMessages(for: draft).count,
+            codecWarningCount: codecDiagnosticMessages.count
+        )
+    }
+
+    private func channelImpactSummaryText(for summary: TS3ChannelEditorImpactSummary) -> String {
+        guard summary.needsReview else { return localized("channelEditor.impactNoChanges") }
+        var parts = TS3ChannelEditorImpactArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
+            return localized("channelEditor.impactAreaFormat", title(for: area), count)
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("channelEditor.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.codecWarningCount > 0 {
+            parts.append(localized("channelEditor.codecWarningCountFormat", summary.codecWarningCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func title(for area: TS3ChannelEditorImpactArea) -> String {
+        switch area {
+        case .channel:
+            return localized("channelEditor.channel")
+        case .voice:
+            return localized("channelEditor.voice")
+        case .permissionGates:
+            return localized("channelEditor.permissionGates")
+        case .limits:
+            return localized("channelEditor.limits")
+        }
+    }
+
+    private func channelChangeRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        [
             changeRow(label: localized("channelEditor.name"), current: channel.name, draft: draft.name),
             changeRow(label: localized("channelEditor.phoneticName"), current: channel.phoneticName, draft: draft.phoneticName),
             changeRow(label: localized("channelEditor.topic"), current: channel.topic, draft: draft.topic),
@@ -28319,19 +28418,34 @@ struct ChannelEditorSheet: View {
             changeRow(label: localized("channelEditor.position"), current: positionTitle(for: normalizedOrderId(channel.order).map(String.init) ?? ""), draft: positionTitle(for: draft.order ?? "")),
             changeRow(label: localized("channelEditor.iconId"), current: channel.iconId, draft: draft.iconId),
             changeRow(label: localized("channelEditor.bannerGraphicURL"), current: channel.bannerGraphicsURL, draft: draft.bannerGraphicsURL),
-            changeRow(label: localized("channelEditor.bannerMode"), current: channel.bannerMode.map(bannerModeTitle), draft: bannerModeTitle(draft.bannerMode ?? "")),
+            changeRow(label: localized("channelEditor.bannerMode"), current: channel.bannerMode.map(bannerModeTitle), draft: bannerModeTitle(draft.bannerMode ?? ""))
+        ].compactMap { $0 }
+    }
+
+    private func voiceChangeRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        [
             changeRow(label: localized("channelEditor.codec"), current: channel.codec.map(codecTitle), draft: codecTitle(for: draft.codec)),
             changeRow(label: localized("channelEditor.codecQuality"), current: channel.codecQuality.map { codecQualityTitle(for: String($0)) }, draft: codecQualityTitle(for: draft.codecQuality)),
             changeRow(label: localized("channelEditor.codecLatencyFactor"), current: channel.codecLatencyFactor, draft: draft.codecLatencyFactor),
             changeRow(label: localized("channelEditor.codecProfile"), current: codecConfigurationProfileText(codecConfiguration(for: channel).profile), draft: codecConfigurationProfileText),
             changeRow(label: localized("channelEditor.unencryptedVoice"), current: boolTitle(channel.isCodecUnencrypted ?? false), draft: boolTitle(draft.isCodecUnencrypted ?? false)),
+            changeRow(label: localized("channelEditor.deleteDelaySeconds"), current: channel.deleteDelaySeconds, draft: draft.deleteDelaySeconds)
+        ].compactMap { $0 }
+    }
+
+    private func permissionGateChangeRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        [
             changeRow(label: localized("channelEditor.neededTalkPower"), current: channel.neededTalkPower, draft: draft.neededTalkPower),
             changeRow(label: localized("channelEditor.neededJoinPower"), current: channel.neededJoinPower, draft: draft.neededJoinPower),
             changeRow(label: localized("channelEditor.neededSubscribePower"), current: channel.neededSubscribePower, draft: draft.neededSubscribePower),
             changeRow(label: localized("channelEditor.neededModifyPower"), current: channel.neededModifyPower, draft: draft.neededModifyPower),
             changeRow(label: localized("channelEditor.neededDeletePower"), current: channel.neededDeletePower, draft: draft.neededDeletePower),
-            changeRow(label: localized("channelEditor.neededDescriptionViewPower"), current: channel.neededDescriptionViewPower, draft: draft.neededDescriptionViewPower),
-            changeRow(label: localized("channelEditor.deleteDelaySeconds"), current: channel.deleteDelaySeconds, draft: draft.deleteDelaySeconds),
+            changeRow(label: localized("channelEditor.neededDescriptionViewPower"), current: channel.neededDescriptionViewPower, draft: draft.neededDescriptionViewPower)
+        ].compactMap { $0 }
+    }
+
+    private func limitChangeRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        [
             changeRow(label: localized("channelEditor.maxClients"), current: directLimitTitle(maxClients: channel.maxClients, unlimited: channel.maxClientsUnlimited), draft: directLimitTitle(maxClients: parsedOptionalInt(draft.maxClients), unlimited: draft.maxClientsUnlimited)),
             changeRow(label: localized("channelEditor.maxFamilyClients"), current: familyLimitTitle(maxFamilyClients: channel.maxFamilyClients, unlimited: channel.maxFamilyClientsUnlimited, inherited: channel.maxFamilyClientsInherited), draft: familyLimitTitle(maxFamilyClients: parsedOptionalInt(draft.maxFamilyClients), unlimited: draft.maxFamilyClientsUnlimited, inherited: draft.maxFamilyClientsInherited))
         ].compactMap { $0 }

@@ -543,6 +543,7 @@
 "channelEditor.neededModifyPower" = "所需修改权限值";
 "channelEditor.neededDeletePower" = "所需删除权限值";
 "channelEditor.neededDescriptionViewPower" = "所需描述查看权限值";
+"channelEditor.permissionGates" = "权限门槛";
 "channelEditor.permissionGateSummary" = "权限门槛摘要";
 "channelEditor.permissionGateSummaryFormat" = "已设置 %d 项，继承 %d 项";
 "channelEditor.highestPermissionGate" = "最高权限门槛";
@@ -568,6 +569,14 @@
 "channelEditor.unchanged" = "不更改";
 "channelEditor.noDraftChanges" = "没有草稿变更";
 "channelEditor.draftChangeCountFormat" = "%d 项草稿变更";
+"channelEditor.impactSummary" = "影响摘要";
+"channelEditor.impactSummaryFormat" = "%d 项变化，%d 个区域，%d 个校验问题，%d 个编解码警告";
+"channelEditor.impactNoChanges" = "没有频道设置影响";
+"channelEditor.impactAreaFormat" = "%@: %d 项变化";
+"channelEditor.impactAreaClipboardFormat" = "%@: %d 项变化";
+"channelEditor.validationIssueCountFormat" = "%d 个校验问题";
+"channelEditor.codecWarningCountFormat" = "%d 个编解码警告";
+"channelEditor.copyImpactSummary" = "复制影响摘要";
 "channelEditor.changeFormat" = "%@：%@ -> %@";
 "channelEditor.emptyValue" = "空";
 "channelEditor.protected" = "已保护";

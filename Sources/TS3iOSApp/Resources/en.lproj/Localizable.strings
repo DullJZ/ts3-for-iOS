@@ -543,6 +543,7 @@
 "channelEditor.neededModifyPower" = "Needed Modify Power";
 "channelEditor.neededDeletePower" = "Needed Delete Power";
 "channelEditor.neededDescriptionViewPower" = "Needed Description View Power";
+"channelEditor.permissionGates" = "Permission Gates";
 "channelEditor.permissionGateSummary" = "Permission Gate Summary";
 "channelEditor.permissionGateSummaryFormat" = "%d set, %d inherited";
 "channelEditor.highestPermissionGate" = "Highest Permission Gate";
@@ -568,6 +569,14 @@
 "channelEditor.unchanged" = "Unchanged";
 "channelEditor.noDraftChanges" = "No draft changes";
 "channelEditor.draftChangeCountFormat" = "%d draft changes";
+"channelEditor.impactSummary" = "Impact Summary";
+"channelEditor.impactSummaryFormat" = "%d changes, %d areas, %d validation issues, %d codec warnings";
+"channelEditor.impactNoChanges" = "No channel setting impacts";
+"channelEditor.impactAreaFormat" = "%@: %d changes";
+"channelEditor.impactAreaClipboardFormat" = "%@: %d changes";
+"channelEditor.validationIssueCountFormat" = "%d validation issues";
+"channelEditor.codecWarningCountFormat" = "%d codec warnings";
+"channelEditor.copyImpactSummary" = "Copy Impact Summary";
 "channelEditor.changeFormat" = "%@: %@ -> %@";
 "channelEditor.emptyValue" = "Empty";
 "channelEditor.protected" = "Protected";
