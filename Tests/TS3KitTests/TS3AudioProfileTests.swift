@@ -3,6 +3,59 @@ import XCTest
 import TS3Kit
 
 final class TS3AudioProfileTests: XCTestCase {
+    func testVoiceActivationCalibrationSummaryReportsGateMarginAndRecommendation() {
+        let openSummary = TS3VoiceActivationCalibrationSummary(
+            inputLevel: 0.040,
+            threshold: 0.030,
+            isGateOpen: true
+        )
+
+        XCTAssertEqual(openSummary.suggestedThreshold, 0.054, accuracy: 0.0001)
+        XCTAssertEqual(openSummary.margin, 0.010, accuracy: 0.0001)
+        XCTAssertEqual(openSummary.marginText, "+0.010")
+        XCTAssertEqual(openSummary.state, "open")
+        XCTAssertEqual(openSummary.recommendation, "raise threshold if background noise opens the gate")
+        XCTAssertEqual(
+            openSummary.clipboardSummary,
+            "input=0.040 | threshold=0.030 | margin=+0.010 | gate=open | suggestedThreshold=0.054 | recommendation=raise threshold if background noise opens the gate"
+        )
+
+        let closedSummary = TS3VoiceActivationCalibrationSummary(
+            inputLevel: 0.020,
+            threshold: 0.030,
+            isGateOpen: false
+        )
+
+        XCTAssertEqual(closedSummary.marginText, "-0.010")
+        XCTAssertEqual(closedSummary.state, "closed")
+        XCTAssertEqual(closedSummary.recommendation, "lower threshold or increase input gain if speech does not open the gate")
+    }
+
+    func testVoiceActivationCalibrationSummaryHandlesIdleNearThresholdAndClamp() {
+        let idleSummary = TS3VoiceActivationCalibrationSummary(
+            inputLevel: 0,
+            threshold: 0.030,
+            isGateOpen: false
+        )
+        XCTAssertEqual(idleSummary.suggestedThreshold, 0.001, accuracy: 0.0001)
+        XCTAssertEqual(idleSummary.recommendation, "capture idle")
+
+        let nearThresholdSummary = TS3VoiceActivationCalibrationSummary(
+            inputLevel: 0.031,
+            threshold: 0.030,
+            isGateOpen: true
+        )
+        XCTAssertTrue(nearThresholdSummary.isNearThreshold)
+        XCTAssertEqual(nearThresholdSummary.recommendation, "near threshold")
+
+        let loudSummary = TS3VoiceActivationCalibrationSummary(
+            inputLevel: 0.8,
+            threshold: 0.5,
+            isGateOpen: true
+        )
+        XCTAssertEqual(loudSummary.suggestedThreshold, 0.5, accuracy: 0.0001)
+    }
+
     func testAudioRouteDeviceSummariesAreCopyableAndAccessible() {
         let selectedDevice = TS3AudioRouteDeviceSummary(
             id: "built-in-mic",

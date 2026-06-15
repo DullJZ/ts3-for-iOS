@@ -4980,6 +4980,64 @@ struct TS3AudioSettingsImportPreview {
     }
 }
 
+struct TS3VoiceActivationCalibrationSummary: Equatable {
+    let inputLevel: Double
+    let threshold: Double
+    let isGateOpen: Bool
+
+    var suggestedThreshold: Double {
+        min(max(inputLevel * 1.35, 0.001), 0.5)
+    }
+
+    var margin: Double {
+        inputLevel - threshold
+    }
+
+    var isNearThreshold: Bool {
+        abs(margin) <= 0.005
+    }
+
+    var state: String {
+        isGateOpen ? "open" : "closed"
+    }
+
+    var recommendation: String {
+        if inputLevel <= 0.0005 {
+            return "capture idle"
+        }
+        if isNearThreshold {
+            return "near threshold"
+        }
+        if isGateOpen {
+            return "raise threshold if background noise opens the gate"
+        }
+        return "lower threshold or increase input gain if speech does not open the gate"
+    }
+
+    var clipboardSummary: String {
+        [
+            "input=\(Self.levelText(inputLevel))",
+            "threshold=\(Self.levelText(threshold))",
+            "margin=\(marginText)",
+            "gate=\(state)",
+            "suggestedThreshold=\(Self.levelText(suggestedThreshold))",
+            "recommendation=\(recommendation)"
+        ].joined(separator: " | ")
+    }
+
+    var marginText: String {
+        Self.signedLevelText(margin)
+    }
+
+    static func levelText(_ value: Double) -> String {
+        String(format: "%.3f", value)
+    }
+
+    private static func signedLevelText(_ value: Double) -> String {
+        String(format: "%+.3f", value)
+    }
+}
+
 struct TS3AudioRouteDeviceSummary: Identifiable, Equatable {
     let id: String
     let name: String
@@ -9749,6 +9807,14 @@ final class TS3AppModel: ObservableObject {
 
     var inputLevelText: String {
         String(format: "%.3f", inputLevel)
+    }
+
+    var voiceActivationCalibrationSummary: TS3VoiceActivationCalibrationSummary {
+        TS3VoiceActivationCalibrationSummary(
+            inputLevel: inputLevel,
+            threshold: voiceActivationThreshold,
+            isGateOpen: isVoiceActivationTriggered
+        )
     }
 
     func refreshServerView() {

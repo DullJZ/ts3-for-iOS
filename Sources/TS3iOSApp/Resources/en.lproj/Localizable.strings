@@ -1631,6 +1631,7 @@
 "audio.diagnostics" = "Diagnostics";
 "audio.transmitMode" = "Transmit Mode";
 "audio.voiceActivation" = "Voice Activation";
+"audio.voiceActivationCalibration" = "Voice Activation Calibration";
 "audio.inputLevel" = "Input Level";
 "audio.inputGain" = "Input Gain";
 "audio.playbackVolume" = "Playback Volume";
@@ -1658,6 +1659,7 @@
 "audio.closed" = "Closed";
 "audio.threshold" = "Threshold";
 "audio.setThresholdFromCurrentInput" = "Set Threshold From Current Input";
+"audio.copyVoiceActivationCalibration" = "Copy Voice Activation Calibration";
 "audio.microphone" = "Microphone";
 "audio.receivedAudio" = "Received Audio";
 "audio.userPlayback" = "User Playback";
@@ -1680,9 +1682,15 @@
 "audio.copyDeviceSummary" = "Copy Device Summary";
 "audio.voiceActivation.enabledFormat" = "Enabled, threshold %@";
 "audio.voiceActivation.configuredFormat" = "Configured threshold %@";
+"audio.voiceActivation.calibrationFormat" = "Suggested %@ | margin %@ | %@";
+"audio.voiceActivation.recommendation.idle" = "capture idle";
+"audio.voiceActivation.recommendation.nearThreshold" = "near threshold";
+"audio.voiceActivation.recommendation.raiseThreshold" = "raise threshold if background noise opens the gate";
+"audio.voiceActivation.recommendation.lowerThreshold" = "lower threshold or increase input gain if speech does not open the gate";
 "audio.millisecondsFormat" = "%@ ms";
 "audio.snapshot.transmitModeFormat" = "Transmit Mode: %@";
 "audio.snapshot.voiceActivationFormat" = "Voice Activation: %@";
+"audio.snapshot.voiceActivationCalibrationFormat" = "Voice Activation Calibration: %@";
 "audio.snapshot.inputLevelFormat" = "Input Level: %@";
 "audio.snapshot.inputGainFormat" = "Input Gain: %@";
 "audio.snapshot.playbackVolumeFormat" = "Playback Volume: %@";

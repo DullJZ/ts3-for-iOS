@@ -1631,6 +1631,7 @@
 "audio.diagnostics" = "诊断";
 "audio.transmitMode" = "发言模式";
 "audio.voiceActivation" = "语音激活";
+"audio.voiceActivationCalibration" = "语音激活校准";
 "audio.inputLevel" = "输入电平";
 "audio.inputGain" = "输入增益";
 "audio.playbackVolume" = "播放音量";
@@ -1658,6 +1659,7 @@
 "audio.closed" = "关闭";
 "audio.threshold" = "阈值";
 "audio.setThresholdFromCurrentInput" = "用当前输入设置阈值";
+"audio.copyVoiceActivationCalibration" = "复制语音激活校准";
 "audio.microphone" = "麦克风";
 "audio.receivedAudio" = "接收音频";
 "audio.userPlayback" = "用户播放";
@@ -1680,9 +1682,15 @@
 "audio.copyDeviceSummary" = "复制设备摘要";
 "audio.voiceActivation.enabledFormat" = "已启用，阈值 %@";
 "audio.voiceActivation.configuredFormat" = "已配置阈值 %@";
+"audio.voiceActivation.calibrationFormat" = "建议 %@ | 余量 %@ | %@";
+"audio.voiceActivation.recommendation.idle" = "采集空闲";
+"audio.voiceActivation.recommendation.nearThreshold" = "接近阈值";
+"audio.voiceActivation.recommendation.raiseThreshold" = "如果背景噪声打开门限，请提高阈值";
+"audio.voiceActivation.recommendation.lowerThreshold" = "如果说话无法打开门限，请降低阈值或提高输入增益";
 "audio.millisecondsFormat" = "%@ ms";
 "audio.snapshot.transmitModeFormat" = "发言模式：%@";
 "audio.snapshot.voiceActivationFormat" = "语音激活：%@";
+"audio.snapshot.voiceActivationCalibrationFormat" = "语音激活校准：%@";
 "audio.snapshot.inputLevelFormat" = "输入电平：%@";
 "audio.snapshot.inputGainFormat" = "输入增益：%@";
 "audio.snapshot.playbackVolumeFormat" = "播放音量：%@";

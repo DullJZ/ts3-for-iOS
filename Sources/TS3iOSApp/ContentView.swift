@@ -29819,6 +29819,7 @@ struct AudioSettingsSheet: View {
                 Section(header: Text(localized("audio.diagnostics"))) {
                     ServerInfoDetailRow(label: localized("audio.transmitMode"), value: transmitModeTitle(model.audioTransmitMode))
                     ServerInfoDetailRow(label: localized("audio.voiceActivation"), value: voiceActivationDiagnosticText)
+                    ServerInfoDetailRow(label: localized("audio.voiceActivationCalibration"), value: voiceActivationCalibrationText)
                     ServerInfoDetailRow(label: localized("audio.inputLevel"), value: model.inputLevelText)
                     ServerInfoDetailRow(label: localized("audio.inputGain"), value: model.inputGainPercentText)
                     ServerInfoDetailRow(label: localized("audio.playbackVolume"), value: model.playbackVolumePercentText)
@@ -29892,6 +29893,9 @@ struct AudioSettingsSheet: View {
                         .foregroundColor(.secondary)
                         .font(.caption)
                         if model.audioTransmitMode == .voiceActivation {
+                            Text(voiceActivationCalibrationText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                             HStack {
                                 Text(localized("audio.threshold"))
                                 Spacer()
@@ -29904,6 +29908,9 @@ struct AudioSettingsSheet: View {
                                 model.calibrateVoiceActivationThresholdFromInput()
                             }
                             .disabled(!model.isTalking)
+                            Button(localized("audio.copyVoiceActivationCalibration")) {
+                                TS3PlatformSupport.copyToPasteboard(model.voiceActivationCalibrationSummary.clipboardSummary)
+                            }
                         }
                     }
                     .padding(.vertical, 4)
@@ -30280,6 +30287,7 @@ struct AudioSettingsSheet: View {
         [
             localized("audio.snapshot.transmitModeFormat", transmitModeTitle(model.audioTransmitMode)),
             localized("audio.snapshot.voiceActivationFormat", voiceActivationDiagnosticText),
+            localized("audio.snapshot.voiceActivationCalibrationFormat", voiceActivationCalibrationText),
             localized("audio.snapshot.inputLevelFormat", model.inputLevelText),
             localized("audio.snapshot.inputGainFormat", model.inputGainPercentText),
             localized("audio.snapshot.playbackVolumeFormat", model.playbackVolumePercentText),
@@ -30304,6 +30312,31 @@ struct AudioSettingsSheet: View {
             return localized("audio.voiceActivation.enabledFormat", model.voiceActivationThresholdText)
         }
         return localized("audio.voiceActivation.configuredFormat", model.voiceActivationThresholdText)
+    }
+
+    private var voiceActivationCalibrationText: String {
+        let summary = model.voiceActivationCalibrationSummary
+        return localized(
+            "audio.voiceActivation.calibrationFormat",
+            TS3VoiceActivationCalibrationSummary.levelText(summary.suggestedThreshold),
+            summary.marginText,
+            localizedVoiceActivationRecommendation(summary.recommendation)
+        )
+    }
+
+    private func localizedVoiceActivationRecommendation(_ recommendation: String) -> String {
+        switch recommendation {
+        case "capture idle":
+            return localized("audio.voiceActivation.recommendation.idle")
+        case "near threshold":
+            return localized("audio.voiceActivation.recommendation.nearThreshold")
+        case "raise threshold if background noise opens the gate":
+            return localized("audio.voiceActivation.recommendation.raiseThreshold")
+        case "lower threshold or increase input gain if speech does not open the gate":
+            return localized("audio.voiceActivation.recommendation.lowerThreshold")
+        default:
+            return recommendation
+        }
     }
 
     private var selectedInputDeviceName: String {
