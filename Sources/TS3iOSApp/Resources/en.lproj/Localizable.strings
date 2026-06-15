@@ -2036,6 +2036,10 @@
 "serverLogs.controls" = "Controls";
 "serverLogs.lines" = "Lines";
 "serverLogs.beginPosition" = "Begin Position";
+"serverLogs.previousPage" = "Previous Page";
+"serverLogs.nextPage" = "Next Page";
+"serverLogs.previousPageRefresh" = "Previous and Refresh";
+"serverLogs.nextPageRefresh" = "Next and Refresh";
 "serverLogs.reverseOrder" = "Reverse Order";
 "serverLogs.instanceLogs" = "Instance Logs";
 "serverLogs.levelFilter" = "Level Filter";

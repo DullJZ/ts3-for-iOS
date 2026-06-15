@@ -2036,6 +2036,10 @@
 "serverLogs.controls" = "控制";
 "serverLogs.lines" = "行数";
 "serverLogs.beginPosition" = "起始位置";
+"serverLogs.previousPage" = "上一页";
+"serverLogs.nextPage" = "下一页";
+"serverLogs.previousPageRefresh" = "上一页并刷新";
+"serverLogs.nextPageRefresh" = "下一页并刷新";
 "serverLogs.reverseOrder" = "倒序";
 "serverLogs.instanceLogs" = "实例日志";
 "serverLogs.levelFilter" = "级别筛选";

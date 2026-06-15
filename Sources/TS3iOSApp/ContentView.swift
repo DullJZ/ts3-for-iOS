@@ -11653,6 +11653,40 @@ struct ServerLogsSheet: View {
                     TextField(localized("serverLogs.beginPosition"), text: $beginPosition)
                         .ts3NumericKeyboard()
                         .ts3PlainTextField()
+                    HStack {
+                        Button {
+                            moveLogPage(by: -1, refresh: false)
+                        } label: {
+                            Label(localized("serverLogs.previousPage"), systemImage: "chevron.left")
+                        }
+                        .disabled(!canMoveToPreviousPage)
+
+                        Spacer()
+
+                        Button {
+                            moveLogPage(by: 1, refresh: false)
+                        } label: {
+                            Label(localized("serverLogs.nextPage"), systemImage: "chevron.right")
+                        }
+                        .disabled(!canRunQuery)
+                    }
+                    HStack {
+                        Button {
+                            moveLogPage(by: -1, refresh: true)
+                        } label: {
+                            Label(localized("serverLogs.previousPageRefresh"), systemImage: "chevron.left.circle")
+                        }
+                        .disabled(model.state != .connected || !canMoveToPreviousPage)
+
+                        Spacer()
+
+                        Button {
+                            moveLogPage(by: 1, refresh: true)
+                        } label: {
+                            Label(localized("serverLogs.nextPageRefresh"), systemImage: "chevron.right.circle")
+                        }
+                        .disabled(model.state != .connected || !canRunQuery)
+                    }
                     Toggle(localized("serverLogs.reverseOrder"), isOn: $reverseOrder)
                     Toggle(localized("serverLogs.instanceLogs"), isOn: $instanceLogs)
                     Picker(localized("serverLogs.levelFilter"), selection: $levelFilter) {
@@ -12011,6 +12045,10 @@ struct ServerLogsSheet: View {
         queryValidationMessages.isEmpty
     }
 
+    private var canMoveToPreviousPage: Bool {
+        canRunQuery && parsedBeginPosition > 0
+    }
+
     private var normalizedSearchText: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
@@ -12081,6 +12119,19 @@ struct ServerLogsSheet: View {
                 beginPosition: preset.beginPosition
             )
         }
+    }
+
+    private func moveLogPage(by direction: Int, refresh: Bool) {
+        guard canRunQuery else { return }
+        let nextPosition = max(0, min(1_000_000, parsedBeginPosition + parsedLineLimit * direction))
+        beginPosition = String(nextPosition)
+        guard refresh, model.state == .connected else { return }
+        model.refreshServerLogs(
+            limit: parsedLineLimit,
+            reverse: reverseOrder,
+            instance: instanceLogs,
+            beginPosition: nextPosition
+        )
     }
 
     private func exportLogArchive() {
