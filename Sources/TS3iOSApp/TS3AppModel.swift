@@ -908,6 +908,44 @@ struct TS3ChannelEditorImpactSummary {
     }
 }
 
+struct TS3ChannelEditorReviewSummary {
+    let reviewItems: [String]
+    let validationIssueCount: Int
+    let codecWarningCount: Int
+
+    var sensitiveChangeCount: Int {
+        reviewItems.count
+    }
+
+    var totalReviewCount: Int {
+        sensitiveChangeCount + validationIssueCount + codecWarningCount
+    }
+
+    var needsAttention: Bool {
+        totalReviewCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "sensitiveChanges=\(sensitiveChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "codecWarnings=\(codecWarningCount)",
+            "reviewItems=\(reviewItems.isEmpty ? "none" : reviewItems.joined(separator: " || "))",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(reviewItems: [String], validationIssueCount: Int, codecWarningCount: Int) {
+        var seen = Set<String>()
+        self.reviewItems = reviewItems
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { seen.insert($0).inserted }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.codecWarningCount = max(0, codecWarningCount)
+    }
+}
+
 enum TS3ServerSettingsImpactArea: String, CaseIterable, Codable {
     case general
     case hostBranding

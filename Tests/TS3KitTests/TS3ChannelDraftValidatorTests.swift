@@ -245,6 +245,51 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorReviewSummaryDeduplicatesSensitiveChanges() {
+        let summary = TS3ChannelEditorReviewSummary(
+            reviewItems: [
+                " Codec: Opus Voice -> Opus Music ",
+                "Codec: Opus Voice -> Opus Music",
+                "Needed Join Power: 0 -> 25"
+            ],
+            validationIssueCount: 1,
+            codecWarningCount: 2
+        )
+
+        XCTAssertEqual(summary.reviewItems, [
+            "Codec: Opus Voice -> Opus Music",
+            "Needed Join Power: 0 -> 25"
+        ])
+        XCTAssertEqual(summary.sensitiveChangeCount, 2)
+        XCTAssertEqual(summary.validationIssueCount, 1)
+        XCTAssertEqual(summary.codecWarningCount, 2)
+        XCTAssertEqual(summary.totalReviewCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sensitiveChanges=2 | validationIssues=1 | codecWarnings=2 | reviewItems=Codec: Opus Voice -> Opus Music || Needed Join Power: 0 -> 25 | needsAttention=true"
+        )
+    }
+
+    func testChannelEditorReviewSummaryHandlesCleanDraft() {
+        let summary = TS3ChannelEditorReviewSummary(
+            reviewItems: ["", "   "],
+            validationIssueCount: -1,
+            codecWarningCount: -2
+        )
+
+        XCTAssertTrue(summary.reviewItems.isEmpty)
+        XCTAssertEqual(summary.sensitiveChangeCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.codecWarningCount, 0)
+        XCTAssertEqual(summary.totalReviewCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sensitiveChanges=0 | validationIssues=0 | codecWarnings=0 | reviewItems=none | needsAttention=false"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",

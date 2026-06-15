@@ -587,6 +587,11 @@
 "channelEditor.validationIssueCountFormat" = "%d 个校验问题";
 "channelEditor.codecWarningCountFormat" = "%d 个编解码警告";
 "channelEditor.copyImpactSummary" = "复制影响摘要";
+"channelEditor.reviewSummary" = "保存复核";
+"channelEditor.reviewSummaryFormat" = "%d 项敏感变更，%d 个校验问题，%d 个编解码警告";
+"channelEditor.reviewNoAttention" = "没有敏感频道设置变更";
+"channelEditor.sensitiveChangeCountFormat" = "%d 项敏感变更";
+"channelEditor.copyReviewSummary" = "复制保存复核";
 "channelEditor.changeFormat" = "%@：%@ -> %@";
 "channelEditor.emptyValue" = "空";
 "channelEditor.protected" = "已保护";

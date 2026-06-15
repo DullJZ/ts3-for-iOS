@@ -587,6 +587,11 @@
 "channelEditor.validationIssueCountFormat" = "%d validation issues";
 "channelEditor.codecWarningCountFormat" = "%d codec warnings";
 "channelEditor.copyImpactSummary" = "Copy Impact Summary";
+"channelEditor.reviewSummary" = "Save Review";
+"channelEditor.reviewSummaryFormat" = "%d sensitive changes, %d validation issues, %d codec warnings";
+"channelEditor.reviewNoAttention" = "No sensitive channel setting changes";
+"channelEditor.sensitiveChangeCountFormat" = "%d sensitive changes";
+"channelEditor.copyReviewSummary" = "Copy Save Review";
 "channelEditor.changeFormat" = "%@: %@ -> %@";
 "channelEditor.emptyValue" = "Empty";
 "channelEditor.protected" = "Protected";
