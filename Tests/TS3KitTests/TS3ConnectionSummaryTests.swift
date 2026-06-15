@@ -49,6 +49,35 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testSavingContactBookmarkCarriesContactAuditNote() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = ""
+        model.nickname = "Avery"
+        model.defaultChannel = "Ops/Lobby"
+        let contact = TS3ContactEntry(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Riley",
+            status: .friend,
+            note: "raid lead",
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        model.saveContactBookmark(for: contact)
+
+        let bookmark = try XCTUnwrap(model.bookmarks.first)
+        XCTAssertEqual(bookmark.name, "Riley @ voice.example.test")
+        XCTAssertEqual(bookmark.folder, "Contacts")
+        XCTAssertEqual(bookmark.host, "voice.example.test")
+        XCTAssertEqual(bookmark.port, "9987")
+        XCTAssertEqual(bookmark.nickname, "Avery")
+        XCTAssertEqual(bookmark.defaultChannel, "Ops/Lobby")
+        XCTAssertEqual(bookmark.note, "contactUid=uid-contact | contactStatus=Friend | contactNote=raid lead")
+        XCTAssertTrue(model.contactBookmarkSummary(for: contact).contains("folder=Contacts"))
+        XCTAssertNil(model.lastError)
+    }
+
     func testConnectionFilterPresetSummaryAndAccessibilityText() {
         let preset = makeConnectionFilterPreset(
             id: UUID(),

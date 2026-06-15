@@ -1194,6 +1194,8 @@
 "contacts.row.clientInfo" = "Client Info";
 "contacts.row.editContact" = "Edit Contact";
 "contacts.row.findDatabaseClient" = "Find Database Record";
+"contacts.row.saveContactBookmark" = "Save Contact Bookmark";
+"contacts.row.copyContactBookmark" = "Copy Contact Bookmark Summary";
 "contacts.row.banUniqueId" = "Ban Unique ID";
 "contacts.row.copyNickname" = "Copy Nickname";
 "contacts.row.copyUniqueId" = "Copy Unique ID";

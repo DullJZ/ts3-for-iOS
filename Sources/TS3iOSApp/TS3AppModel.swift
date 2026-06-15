@@ -8928,6 +8928,51 @@ final class TS3AppModel: ObservableObject {
         saveBookmarks()
     }
 
+    func contactBookmarkSummary(for contact: TS3ContactEntry) -> String {
+        contactBookmark(for: contact)?.clipboardSummary ?? contact.clipboardSummary()
+    }
+
+    func saveContactBookmark(for contact: TS3ContactEntry) {
+        guard let bookmark = contactBookmark(for: contact) else {
+            lastError = "Connect to or enter a server before saving a contact bookmark."
+            return
+        }
+        bookmarks.removeAll {
+            $0.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
+                && $0.port == bookmark.port
+                && $0.note.contains("contactUid=\(contact.uniqueIdentifier)")
+        }
+        bookmarks.insert(bookmark, at: 0)
+        saveBookmarks()
+        lastError = nil
+    }
+
+    private func contactBookmark(for contact: TS3ContactEntry) -> TS3BookmarkSummary? {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else { return nil }
+        let contactNote = contact.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        var noteParts = [
+            "contactUid=\(contact.uniqueIdentifier)",
+            "contactStatus=\(contact.status.title)"
+        ]
+        if !contactNote.isEmpty {
+            noteParts.append("contactNote=\(contactNote)")
+        }
+        return TS3BookmarkSummary(
+            name: "\(contact.nickname) @ \(host)",
+            folder: "Contacts",
+            note: noteParts.joined(separator: " | "),
+            host: host,
+            port: serverPort.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "9987" : serverPort.trimmingCharacters(in: .whitespacesAndNewlines),
+            nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneticNickname: phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            serverPassword: serverPassword,
+            defaultChannel: defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines),
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey
+        )
+    }
+
     func saveBookmarks(from snapshots: [TS3ConnectionSnapshot], folder: String = "") {
         let folder = folder.trimmingCharacters(in: .whitespacesAndNewlines)
         var merged = bookmarks

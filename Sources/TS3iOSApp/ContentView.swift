@@ -7106,6 +7106,13 @@ struct ContactRow: View {
                     model.findDatabaseClient(for: contact)
                     isShowingClientDatabase = true
                 }
+                Button(localized("contacts.row.saveContactBookmark")) {
+                    model.saveContactBookmark(for: contact)
+                }
+                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button(localized("contacts.row.copyContactBookmark")) {
+                    TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
+                }
                 Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(contact.nickname)
                 }
@@ -7194,6 +7201,13 @@ struct ContactRow: View {
                 model.findDatabaseClient(for: contact)
                 isShowingClientDatabase = true
             }
+            Button(localized("contacts.row.saveContactBookmark")) {
+                model.saveContactBookmark(for: contact)
+            }
+            .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button(localized("contacts.row.copyContactBookmark")) {
+                TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
+            }
             Button(localized("contacts.row.deleteContact")) {
                 model.deleteContact(contact)
             }
@@ -7210,6 +7224,12 @@ struct ContactRow: View {
         .accessibilityAction(named: localized("contacts.row.findDatabaseClient")) {
             model.findDatabaseClient(for: contact)
             isShowingClientDatabase = true
+        }
+        .accessibilityAction(named: localized("contacts.row.saveContactBookmark")) {
+            model.saveContactBookmark(for: contact)
+        }
+        .accessibilityAction(named: localized("contacts.row.copyContactBookmark")) {
+            TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
         }
         .accessibilityAction(named: localized("clientActions.sendOfflineMessage")) {
             isShowingOfflineMessage = true
