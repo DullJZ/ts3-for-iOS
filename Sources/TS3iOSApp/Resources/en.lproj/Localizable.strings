@@ -2498,6 +2498,7 @@
 "permissions.restore.preview" = "Preview";
 "permissions.restore.copyBackupPreview" = "Copy Backup Preview";
 "permissions.restore.selectedEntriesFormat" = "Selected restore entries: %d";
+"permissions.restore.inheritanceImpactFormat" = "%d negated entries, %d inheritance stops";
 "permissions.restore.copyPlan" = "Copy Restore Plan";
 "permissions.restore.exportPlan" = "Export Restore Plan";
 "permissions.restore.entryFlagsFormat" = "Value %d | Negated %@ | Skip %@";

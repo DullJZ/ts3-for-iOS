@@ -2498,6 +2498,7 @@
 "permissions.restore.preview" = "预览";
 "permissions.restore.copyBackupPreview" = "复制备份预览";
 "permissions.restore.selectedEntriesFormat" = "所选恢复条目：%d";
+"permissions.restore.inheritanceImpactFormat" = "%d 条取反，%d 条阻断继承";
 "permissions.restore.copyPlan" = "复制恢复计划";
 "permissions.restore.exportPlan" = "导出恢复计划";
 "permissions.restore.entryFlagsFormat" = "值 %d | 取反 %@ | 跳过 %@";

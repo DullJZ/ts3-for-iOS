@@ -21061,6 +21061,13 @@ private struct PermissionBackupImportSheet: View {
                     if let plan {
                         Text(localized("permissions.restore.selectedEntriesFormat", plan.permissionCount))
                             .font(.caption.weight(.semibold))
+                        Text(localized(
+                            "permissions.restore.inheritanceImpactFormat",
+                            plan.negatedEntryCount,
+                            plan.inheritanceStopEntryCount
+                        ))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                         if !plan.entries.isEmpty {
                             Button(localized("permissions.restore.copyPlan")) {
                                 TS3PlatformSupport.copyToPasteboard(plan.auditSummary)
@@ -21084,6 +21091,9 @@ private struct PermissionBackupImportSheet: View {
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                     Text(entry.changeSummary ?? entry.restoreReason)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(entry.inheritanceEffectDescription)
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }

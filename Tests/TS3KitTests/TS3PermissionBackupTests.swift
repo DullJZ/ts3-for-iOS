@@ -371,12 +371,14 @@ final class TS3PermissionBackupTests: XCTestCase {
             Restore new permissions: Yes
             Restore without comparison: Yes
             Selected restore entries: 2
+            Negated entries selected: 1
+            Inheritance stops selected: 1
             Changed existing available: 1
             New permissions available: 1
             Unchanged skipped: 0
 
-            name=i_channel_join_power value=50 negated=false skip=false reason=changed existing change=value 25 -> 50
-            name=i_client_kick_power value=75 negated=true skip=true reason=new permission
+            name=i_channel_join_power value=50 negated=false skip=false reason=changed existing effect=Direct value; inherited permissions may still apply around this entry. change=value 25 -> 50
+            name=i_client_kick_power value=75 negated=true skip=true reason=new permission effect=Negates earlier grants and blocks lower inherited permissions.
             """
         )
         XCTAssertEqual(plan.auditSummary, plan.clipboardSummary)
@@ -471,12 +473,14 @@ final class TS3PermissionBackupTests: XCTestCase {
             Restore new permissions: Yes
             Restore without comparison: Yes
             Selected restore entries: 2
+            Negated entries selected: 1
+            Inheritance stops selected: 1
             Changed existing available: 1
             New permissions available: 1
             Unchanged skipped: 0
 
-            name=i_channel_join_power value=50 negated=true skip=false reason=changed existing change=value 10 -> 50, negated off -> on
-            name=i_client_kick_power value=75 negated=false skip=true reason=new permission
+            name=i_channel_join_power value=50 negated=true skip=false reason=changed existing effect=Negates earlier grants while later channel or client entries can still override it. change=value 10 -> 50, negated off -> on
+            name=i_client_kick_power value=75 negated=false skip=true reason=new permission effect=Allows this value and stops lower inherited permissions from overriding it.
             """
         )
     }

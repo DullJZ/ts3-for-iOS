@@ -4825,12 +4825,17 @@ struct TS3PermissionBackupRestoreEntry: Equatable {
             "value=\(value)",
             "negated=\(isNegated ? "true" : "false")",
             "skip=\(isSkipped ? "true" : "false")",
-            "reason=\(restoreReason)"
+            "reason=\(restoreReason)",
+            "effect=\(inheritanceEffectDescription)"
         ]
         if let changeSummary, !changeSummary.isEmpty {
             parts.append("change=\(changeSummary)")
         }
         return parts.joined(separator: " ")
+    }
+
+    var inheritanceEffectDescription: String {
+        TS3PermissionSummary.inheritanceEffectDescription(isNegated: isNegated, isSkipped: isSkipped)
     }
 }
 
@@ -4852,6 +4857,14 @@ struct TS3PermissionBackupRestorePlan {
         entries.count
     }
 
+    var negatedEntryCount: Int {
+        entries.filter(\.isNegated).count
+    }
+
+    var inheritanceStopEntryCount: Int {
+        entries.filter(\.isSkipped).count
+    }
+
     var clipboardSummary: String {
         auditSummary
     }
@@ -4863,7 +4876,9 @@ struct TS3PermissionBackupRestorePlan {
             "Restore changed existing: \(options.changedExisting ? "Yes" : "No")",
             "Restore new permissions: \(options.newPermissions ? "Yes" : "No")",
             "Restore without comparison: \(options.restoreWhenTargetCannotBeCompared ? "Yes" : "No")",
-            "Selected restore entries: \(permissionCount)"
+            "Selected restore entries: \(permissionCount)",
+            "Negated entries selected: \(negatedEntryCount)",
+            "Inheritance stops selected: \(inheritanceStopEntryCount)"
         ]
         if let changedCount {
             lines.append("Changed existing available: \(changedCount)")
