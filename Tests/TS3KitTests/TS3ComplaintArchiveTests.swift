@@ -85,6 +85,50 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(complaint.accessibilityValue, "Source database ID 44. Target database ID 22")
     }
 
+    func testComplaintListSummaryDeduplicatesAndCountsVisibleComplaints() {
+        let named = TS3ComplaintSummary(
+            id: "target-22-source-44",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 44,
+            sourceName: "Reporter",
+            message: "Abuse",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let anonymous = TS3ComplaintSummary(
+            id: "target-23-source-45",
+            targetClientDatabaseId: 23,
+            targetName: nil,
+            sourceClientDatabaseId: 45,
+            sourceName: nil,
+            message: nil,
+            timestamp: nil
+        )
+        let duplicate = TS3ComplaintSummary(
+            id: "target-22-source-44",
+            targetClientDatabaseId: 22,
+            targetName: "Duplicate",
+            sourceClientDatabaseId: 46,
+            sourceName: "Ignored",
+            message: "Ignored duplicate",
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let summary = TS3ComplaintListSummary(complaints: [named, anonymous, duplicate])
+
+        XCTAssertEqual(summary.totalCount, 2)
+        XCTAssertEqual(summary.targetCount, 2)
+        XCTAssertEqual(summary.namedSourceCount, 1)
+        XCTAssertEqual(summary.anonymousSourceCount, 1)
+        XCTAssertEqual(summary.messageCount, 1)
+        XCTAssertEqual(summary.datedCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "complaints=2 | targets=2 | namedSources=1 | anonymousSources=1 | withMessages=1 | withDates=1 | latestTimestamp=2023-11-14T22:13:20Z | needsAttention=true"
+        )
+    }
+
     func testComplaintFilterPresetSummaryAndAccessibilityText() {
         let preset = makeComplaintFilterPreset(
             id: UUID(),

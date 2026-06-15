@@ -24238,6 +24238,10 @@ struct ComplaintListSheet: View {
         filteredComplaintEntries.map(\.clipboardSummary).joined(separator: "\n")
     }
 
+    private var visibleComplaintSummary: TS3ComplaintListSummary {
+        TS3ComplaintListSummary(complaints: filteredComplaintEntries)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -24366,6 +24370,23 @@ struct ComplaintListSheet: View {
                         Text(localized("complaints.noComplaints"))
                             .foregroundColor(.secondary)
                     } else {
+                        ServerInfoDetailRow(
+                            label: localized("complaints.visibleSummary"),
+                            value: localized(
+                                "complaints.visibleSummaryFormat",
+                                visibleComplaintSummary.totalCount,
+                                visibleComplaintSummary.targetCount
+                            )
+                        )
+                        Text(complaintListSummaryText(visibleComplaintSummary))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Button(localized("complaints.copyVisibleSummary")) {
+                            TS3PlatformSupport.copyToPasteboard(visibleComplaintSummary.clipboardSummary)
+                        }
+                        .disabled(filteredComplaintEntries.isEmpty)
+
                         Button(localized("complaints.copyVisible")) {
                             TS3PlatformSupport.copyToPasteboard(complaintSnapshot)
                         }
@@ -24647,6 +24668,22 @@ struct ComplaintListSheet: View {
             targetDatabaseId: target.databaseId,
             message: newComplaintMessage
         )
+    }
+
+    private func complaintListSummaryText(_ summary: TS3ComplaintListSummary) -> String {
+        var parts = [
+            localized("complaints.summary.namedSourcesFormat", summary.namedSourceCount),
+            localized("complaints.summary.anonymousSourcesFormat", summary.anonymousSourceCount),
+            localized("complaints.summary.withMessagesFormat", summary.messageCount),
+            localized("complaints.summary.withDatesFormat", summary.datedCount)
+        ]
+        if let latestTimestamp = summary.latestTimestamp {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            parts.append(localized("complaints.summary.latestFormat", formatter.string(from: latestTimestamp)))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func applyPreset(_ preset: TS3ComplaintFilterPreset) {

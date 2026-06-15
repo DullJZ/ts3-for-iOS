@@ -2428,6 +2428,14 @@
 "complaints.noSavedFilterPresets" = "没有已保存的投诉筛选预设";
 "complaints.importArchive" = "导入投诉归档";
 "complaints.noComplaints" = "没有投诉";
+"complaints.visibleSummary" = "可见摘要";
+"complaints.visibleSummaryFormat" = "%d 个可见，%d 个目标";
+"complaints.summary.namedSourcesFormat" = "%d 个有名来源";
+"complaints.summary.anonymousSourcesFormat" = "%d 个匿名来源";
+"complaints.summary.withMessagesFormat" = "%d 个有消息";
+"complaints.summary.withDatesFormat" = "%d 个有日期";
+"complaints.summary.latestFormat" = "最新 %@";
+"complaints.copyVisibleSummary" = "复制可见投诉摘要";
 "complaints.copyVisible" = "复制可见投诉";
 "complaints.exportVisible" = "导出可见投诉";
 "complaints.exportArchive" = "导出投诉归档";

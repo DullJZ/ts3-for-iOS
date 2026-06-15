@@ -2345,6 +2345,66 @@ struct TS3ComplaintSummary: Identifiable, Codable {
     }
 }
 
+struct TS3ComplaintListSummary {
+    let complaints: [TS3ComplaintSummary]
+
+    var totalCount: Int {
+        complaints.count
+    }
+
+    var targetCount: Int {
+        Set(complaints.map(\.targetClientDatabaseId)).count
+    }
+
+    var namedSourceCount: Int {
+        complaints.filter { $0.sourceName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var anonymousSourceCount: Int {
+        totalCount - namedSourceCount
+    }
+
+    var messageCount: Int {
+        complaints.filter { $0.message?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var datedCount: Int {
+        complaints.filter { $0.timestamp != nil }.count
+    }
+
+    var latestTimestamp: Date? {
+        complaints.compactMap(\.timestamp).max()
+    }
+
+    var needsAttention: Bool {
+        totalCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "complaints=\(totalCount)",
+            "targets=\(targetCount)",
+            "namedSources=\(namedSourceCount)",
+            "anonymousSources=\(anonymousSourceCount)",
+            "withMessages=\(messageCount)",
+            "withDates=\(datedCount)",
+            "latestTimestamp=\(latestTimestamp.map { Self.dateText($0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(complaints: [TS3ComplaintSummary]) {
+        var seen = Set<String>()
+        self.complaints = complaints.filter { complaint in
+            seen.insert(complaint.id).inserted
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+}
+
 enum TS3ComplaintDraftValidator {
     static func validationMessages(
         targetName: String?,
