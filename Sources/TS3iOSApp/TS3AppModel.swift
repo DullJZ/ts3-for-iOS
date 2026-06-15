@@ -8212,6 +8212,19 @@ final class TS3AppModel: ObservableObject {
         updateContact(for: sender, status: status, note: note)
     }
 
+    func banContact(_ contact: TS3ContactEntry, durationSeconds: Int?, reason: String?, isCustomDuration: Bool = false) {
+        addBan(
+            ip: "",
+            name: "",
+            uniqueIdentifier: contact.uniqueIdentifier,
+            myTeamSpeakId: "",
+            lastNickname: contact.nickname,
+            durationSeconds: durationSeconds,
+            reason: reason ?? "",
+            isCustomDuration: isCustomDuration
+        )
+    }
+
     func updateContact(_ contact: TS3ContactEntry, status: TS3ContactStatus, note: String) {
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         if status == .neutral && trimmedNote.isEmpty {

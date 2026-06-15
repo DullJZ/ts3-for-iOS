@@ -345,6 +345,16 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertFalse(model.isShowingClientDatabase)
     }
 
+    @MainActor
+    func testContactUniqueIdBanUsesBanDraftValidation() {
+        let model = TS3AppModel()
+        let contact = makeContact(uniqueIdentifier: " contact-uid ", nickname: "Contact")
+
+        model.banContact(contact, durationSeconds: nil, reason: "line one\nline two")
+
+        XCTAssertEqual(model.lastError, "Ban reason must be a single line.")
+    }
+
     private func makeUser(
         id: Int = 12,
         databaseId: Int? = 44,

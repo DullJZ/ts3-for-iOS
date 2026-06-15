@@ -6895,6 +6895,7 @@ struct ContactRow: View {
     let contact: TS3ContactEntry
     @State private var isEditing = false
     @State private var isShowingOfflineMessage = false
+    @State private var isShowingBanContact = false
     @State private var isShowingClientDatabase = false
     @State private var onlineActionMode: UserActionMode?
 
@@ -6964,6 +6965,9 @@ struct ContactRow: View {
                 Button(localized("clientActions.sendOfflineMessage")) {
                     isShowingOfflineMessage = true
                 }
+                Button(localized("contacts.row.banUniqueId")) {
+                    isShowingBanContact = true
+                }
                 Button(localized("contacts.row.editContact")) {
                     isEditing = true
                 }
@@ -7020,6 +7024,10 @@ struct ContactRow: View {
             ContactOfflineMessageSheet(contact: contact)
                 .environmentObject(model)
         }
+        .sheet(isPresented: $isShowingBanContact) {
+            ContactBanSheet(contact: contact)
+                .environmentObject(model)
+        }
         .sheet(isPresented: $isShowingClientDatabase) {
             ClientDatabaseSheet()
                 .environmentObject(model)
@@ -7035,6 +7043,9 @@ struct ContactRow: View {
             }
             Button(localized("clientActions.sendOfflineMessage")) {
                 isShowingOfflineMessage = true
+            }
+            Button(localized("contacts.row.banUniqueId")) {
+                isShowingBanContact = true
             }
             Button(localized("contacts.row.copyNickname")) {
                 TS3PlatformSupport.copyToPasteboard(contact.nickname)
@@ -7071,6 +7082,9 @@ struct ContactRow: View {
         }
         .accessibilityAction(named: localized("clientActions.sendOfflineMessage")) {
             isShowingOfflineMessage = true
+        }
+        .accessibilityAction(named: localized("contacts.row.banUniqueId")) {
+            isShowingBanContact = true
         }
         .accessibilityAction(named: localized("contacts.row.deleteContact")) {
             model.deleteContact(contact)
@@ -7190,6 +7204,106 @@ struct ContactOfflineMessageSheet: View {
             recipientUniqueIdentifier: contact.uniqueIdentifier,
             subject: subject,
             message: message
+        )
+    }
+}
+
+struct ContactBanSheet: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @EnvironmentObject private var model: TS3AppModel
+    let contact: TS3ContactEntry
+    @State private var reason = ""
+    @State private var duration: TS3BanDuration = .permanent
+    @State private var customBanMinutes = "60"
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text(contact.nickname)) {
+                    Text(contact.uniqueIdentifier)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Picker(localized("ban.duration"), selection: $duration) {
+                        ForEach(TS3BanDuration.allCases) { duration in
+                            Text(duration.title).tag(duration)
+                        }
+                    }
+                    if duration == .custom {
+                        TextField(localized("ban.minutes"), text: $customBanMinutes)
+                            .ts3PlainTextField()
+                            .ts3NumericKeyboard()
+                    }
+                    TextField(localized("ban.reason"), text: $reason)
+                        .ts3PlainTextField()
+                    Text(banDraftSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("ban.copyRuleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(banDraftSummary)
+                    }
+                    ForEach(banDraftValidationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle(localized("contacts.row.banUniqueId"))
+            .ts3InlineNavigationTitle()
+            .toolbar {
+                ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
+                    Button(NSLocalizedString("common.cancel", comment: "")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
+                    Button(localized("clientActions.ban")) {
+                        model.banContact(
+                            contact,
+                            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+                            reason: reason,
+                            isCustomDuration: duration == .custom
+                        )
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .disabled(isBanDisabled)
+                }
+            }
+        }
+    }
+
+    private var isBanDisabled: Bool {
+        !banDraftValidationMessages.isEmpty
+    }
+
+    private var banDraftValidationMessages: [String] {
+        TS3BanDraftValidator.validationMessages(
+            ip: "",
+            name: "",
+            uniqueIdentifier: contact.uniqueIdentifier,
+            myTeamSpeakId: "",
+            lastNickname: contact.nickname,
+            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+            isCustomDuration: duration == .custom,
+            reason: reason
+        )
+    }
+
+    private var banDraftSummary: String {
+        TS3BanDraftValidator.creationSummary(
+            ip: "",
+            name: "",
+            uniqueIdentifier: contact.uniqueIdentifier,
+            myTeamSpeakId: "",
+            lastNickname: contact.nickname,
+            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
+            isPermanent: duration == .permanent,
+            reason: reason
         )
     }
 }

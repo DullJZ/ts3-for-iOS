@@ -1188,6 +1188,7 @@
 "contacts.row.clientInfo" = "客户端信息";
 "contacts.row.editContact" = "编辑联系人";
 "contacts.row.findDatabaseClient" = "查找数据库记录";
+"contacts.row.banUniqueId" = "封禁唯一 ID";
 "contacts.row.copyNickname" = "复制昵称";
 "contacts.row.copyUniqueId" = "复制唯一 ID";
 "contacts.row.copySummary" = "复制摘要";
