@@ -15480,6 +15480,21 @@ struct ClientDatabaseSheet: View {
                     Toggle(localized("groups.ascending"), isOn: $sortAscending)
                     TextField(localized("database.filterLoadedRecords"), text: $localFilterText)
                         .ts3PlainTextField()
+                    ServerInfoDetailRow(
+                        label: localized("database.visibleSummary"),
+                        value: localized(
+                            "database.visibleSummaryFormat",
+                            visibleDatabaseClientSummary.totalCount,
+                            visibleDatabaseClientSummary.uniqueIdentifierCount
+                        )
+                    )
+                    Text(databaseClientListSummaryText(visibleDatabaseClientSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("database.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleDatabaseClientSummary.clipboardSummary)
+                    }
+                    .disabled(displayedRecords.isEmpty)
                     Menu {
                         TextField(localized("groups.presetName"), text: $presetName)
                         Button(localized("database.saveCurrentView")) {
@@ -15991,6 +16006,27 @@ struct ClientDatabaseSheet: View {
             return rows.joined(separator: "\n")
         }
         .joined(separator: "\n\n")
+    }
+
+    private var visibleDatabaseClientSummary: TS3DatabaseClientListSummary {
+        TS3DatabaseClientListSummary(clients: displayedRecords)
+    }
+
+    private func databaseClientListSummaryText(_ summary: TS3DatabaseClientListSummary) -> String {
+        var parts = [
+            localized("database.summary.descriptionsFormat", summary.descriptionCount),
+            localized("database.summary.lastIPsFormat", summary.lastIPCount),
+            localized("database.summary.connectionsFormat", summary.connectionCount),
+            localized("database.summary.createdDatesFormat", summary.createdCount),
+            localized("database.summary.lastConnectedDatesFormat", summary.lastConnectedCount)
+        ]
+        if let latestConnection = summary.latestConnection {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            parts.append(localized("database.summary.latestConnectionFormat", formatter.string(from: latestConnection)))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func databaseClientSnapshot(for record: TS3DatabaseClientSummary) -> String {

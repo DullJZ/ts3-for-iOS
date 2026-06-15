@@ -1332,6 +1332,15 @@
 "database.findByUniqueId" = "Find by Unique ID";
 "database.listView" = "List View";
 "database.filterLoadedRecords" = "Filter loaded records";
+"database.visibleSummary" = "Visible Summary";
+"database.visibleSummaryFormat" = "%d visible, %d with UID";
+"database.copyVisibleSummary" = "Copy Visible Summary";
+"database.summary.descriptionsFormat" = "%d with descriptions";
+"database.summary.lastIPsFormat" = "%d with last IPs";
+"database.summary.connectionsFormat" = "%d with connection counts";
+"database.summary.createdDatesFormat" = "%d with created dates";
+"database.summary.lastConnectedDatesFormat" = "%d with last connected dates";
+"database.summary.latestConnectionFormat" = "Latest %@";
 "database.saveCurrentView" = "Save Current View";
 "database.noSavedFilterPresets" = "No saved database filter presets";
 "database.clearListView" = "Clear List View";

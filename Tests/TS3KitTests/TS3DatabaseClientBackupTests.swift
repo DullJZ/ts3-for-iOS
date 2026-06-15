@@ -48,6 +48,54 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         )
     }
 
+    func testDatabaseClientListSummaryDeduplicatesAndCountsVisibleRecords() {
+        let beta = TS3DatabaseClientSummary(
+            id: 7,
+            uniqueIdentifier: "uid-b",
+            nickname: "Beta",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            lastConnectedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            totalConnections: 5,
+            description: "Has note",
+            lastIP: "203.0.113.7"
+        )
+        let alpha = TS3DatabaseClientSummary(
+            id: 6,
+            uniqueIdentifier: nil,
+            nickname: "Alpha",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        let duplicate = TS3DatabaseClientSummary(
+            id: 7,
+            uniqueIdentifier: "ignored",
+            nickname: "Duplicate",
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000),
+            lastConnectedAt: Date(timeIntervalSince1970: 1_800_000_100),
+            totalConnections: 10,
+            description: "Ignored",
+            lastIP: "198.51.100.9"
+        )
+
+        let summary = TS3DatabaseClientListSummary(clients: [beta, alpha, duplicate])
+
+        XCTAssertEqual(summary.totalCount, 2)
+        XCTAssertEqual(summary.uniqueIdentifierCount, 1)
+        XCTAssertEqual(summary.descriptionCount, 1)
+        XCTAssertEqual(summary.lastIPCount, 1)
+        XCTAssertEqual(summary.connectionCount, 1)
+        XCTAssertEqual(summary.createdCount, 1)
+        XCTAssertEqual(summary.lastConnectedCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "databaseClients=2 | withUID=1 | withDescription=1 | withLastIP=1 | withConnections=1 | withCreatedDate=1 | withLastConnectedDate=1 | latestConnection=2023-11-14T22:15:00Z | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testDatabaseClientBackupPreviewSanitizesCountsAndSummaries() throws {
         let model = TS3AppModel()

@@ -1332,6 +1332,15 @@
 "database.findByUniqueId" = "按唯一 ID 查找";
 "database.listView" = "列表视图";
 "database.filterLoadedRecords" = "筛选已加载记录";
+"database.visibleSummary" = "可见摘要";
+"database.visibleSummaryFormat" = "%d 个可见，%d 个有 UID";
+"database.copyVisibleSummary" = "复制可见摘要";
+"database.summary.descriptionsFormat" = "%d 个有描述";
+"database.summary.lastIPsFormat" = "%d 个有最后 IP";
+"database.summary.connectionsFormat" = "%d 个有连接次数";
+"database.summary.createdDatesFormat" = "%d 个有创建日期";
+"database.summary.lastConnectedDatesFormat" = "%d 个有最后连接日期";
+"database.summary.latestConnectionFormat" = "最新 %@";
 "database.saveCurrentView" = "保存当前视图";
 "database.noSavedFilterPresets" = "没有已保存的数据库筛选预设";
 "database.clearListView" = "清除列表视图";

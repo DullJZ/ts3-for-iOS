@@ -2886,6 +2886,71 @@ struct TS3DatabaseClientSummary: Identifiable {
     }
 }
 
+struct TS3DatabaseClientListSummary {
+    let clients: [TS3DatabaseClientSummary]
+
+    var totalCount: Int {
+        clients.count
+    }
+
+    var uniqueIdentifierCount: Int {
+        clients.filter { $0.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var descriptionCount: Int {
+        clients.filter { $0.description?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var lastIPCount: Int {
+        clients.filter { $0.lastIP?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var connectionCount: Int {
+        clients.filter { $0.totalConnections != nil }.count
+    }
+
+    var createdCount: Int {
+        clients.filter { $0.createdAt != nil }.count
+    }
+
+    var lastConnectedCount: Int {
+        clients.filter { $0.lastConnectedAt != nil }.count
+    }
+
+    var latestConnection: Date? {
+        clients.compactMap(\.lastConnectedAt).max()
+    }
+
+    var needsAttention: Bool {
+        totalCount > 0 && uniqueIdentifierCount < totalCount
+    }
+
+    var clipboardSummary: String {
+        [
+            "databaseClients=\(totalCount)",
+            "withUID=\(uniqueIdentifierCount)",
+            "withDescription=\(descriptionCount)",
+            "withLastIP=\(lastIPCount)",
+            "withConnections=\(connectionCount)",
+            "withCreatedDate=\(createdCount)",
+            "withLastConnectedDate=\(lastConnectedCount)",
+            "latestConnection=\(latestConnection.map { Self.dateText($0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(clients: [TS3DatabaseClientSummary]) {
+        var seen = Set<Int>()
+        self.clients = clients.filter { client in
+            seen.insert(client.id).inserted
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+}
+
 struct TS3DatabaseClientBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: Int
