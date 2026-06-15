@@ -1090,6 +1090,13 @@
 "serverSettings.noDraftChanges" = "No draft changes";
 "serverSettings.draftChangeCountFormat" = "%d draft changes";
 "serverSettings.copyDraftChanges" = "Copy Draft Changes";
+"serverSettings.impactSummary" = "Impact Summary";
+"serverSettings.impactSummaryFormat" = "%d changes, %d areas, %d validation issues";
+"serverSettings.impactNoChanges" = "No server setting impacts";
+"serverSettings.impactAreaFormat" = "%@: %d changes";
+"serverSettings.impactAreaClipboardFormat" = "%@: %d changes";
+"serverSettings.validationIssueCountFormat" = "%d validation issues";
+"serverSettings.copyImpactSummary" = "Copy Impact Summary";
 "serverSettings.changeFormat" = "%@: %@ -> %@";
 "serverSettings.emptyValue" = "Empty";
 "serverSettings.groupFormat" = "Group %@";

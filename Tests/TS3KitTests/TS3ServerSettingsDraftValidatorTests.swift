@@ -95,6 +95,47 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsImpactSummaryCountsAreasAndValidationIssues() {
+        let summary = TS3ServerSettingsImpactSummary(
+            areaChangeCounts: [
+                .general: 2,
+                .hostBranding: 0,
+                .limitsAndSecurity: 1,
+                .defaultGroups: 1,
+                .serverLogOptions: 3
+            ],
+            validationIssueCount: 2
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 7)
+        XCTAssertEqual(summary.affectedAreaCount, 4)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertTrue(summary.needsReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "changes=7 | affectedAreas=4 | validationIssues=2 | areas=general:2,limitsAndSecurity:1,defaultGroups:1,serverLogOptions:3 | needsReview=true"
+        )
+    }
+
+    func testServerSettingsImpactSummaryOmitsEmptyAreas() {
+        let summary = TS3ServerSettingsImpactSummary(
+            areaChangeCounts: [
+                .general: 0,
+                .hostBranding: -1
+            ],
+            validationIssueCount: -4
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.affectedAreaCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "changes=0 | affectedAreas=0 | validationIssues=0 | areas=none | needsReview=false"
+        )
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",

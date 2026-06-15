@@ -1090,6 +1090,13 @@
 "serverSettings.noDraftChanges" = "没有草稿变更";
 "serverSettings.draftChangeCountFormat" = "%d 项草稿变更";
 "serverSettings.copyDraftChanges" = "复制草稿变更";
+"serverSettings.impactSummary" = "影响摘要";
+"serverSettings.impactSummaryFormat" = "%d 项变化，%d 个区域，%d 个校验问题";
+"serverSettings.impactNoChanges" = "没有服务器设置影响";
+"serverSettings.impactAreaFormat" = "%@: %d 项变化";
+"serverSettings.impactAreaClipboardFormat" = "%@: %d 项变化";
+"serverSettings.validationIssueCountFormat" = "%d 个校验问题";
+"serverSettings.copyImpactSummary" = "复制影响摘要";
 "serverSettings.changeFormat" = "%@：%@ -> %@";
 "serverSettings.emptyValue" = "空";
 "serverSettings.groupFormat" = "组 %@";

@@ -17004,6 +17004,23 @@ struct ServerSettingsEditorSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(localized("serverSettings.draft"))) {
+                    ServerInfoDetailRow(
+                        label: localized("serverSettings.impactSummary"),
+                        value: localized(
+                            "serverSettings.impactSummaryFormat",
+                            settingsImpactSummary.totalChangeCount,
+                            settingsImpactSummary.affectedAreaCount,
+                            settingsImpactSummary.validationIssueCount
+                        )
+                    )
+                    Text(settingsImpactSummaryText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("serverSettings.copyImpactSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsImpactSummaryClipboard)
+                    }
+                    .disabled(!settingsImpactSummary.needsReview)
+
                     if draftChangeRows.isEmpty {
                         Text(localized("serverSettings.noDraftChanges"))
                             .font(.caption)
@@ -17465,7 +17482,86 @@ struct ServerSettingsEditorSheet: View {
         draftChangeSummary(for: currentDraft)
     }
 
+    private var settingsImpactSummary: TS3ServerSettingsImpactSummary {
+        settingsImpactSummary(for: currentDraft)
+    }
+
+    private var settingsImpactSummaryText: String {
+        settingsImpactSummaryText(for: settingsImpactSummary)
+    }
+
+    private var settingsImpactSummaryClipboard: String {
+        let impact = settingsImpactSummary
+        let affectedAreas = TS3ServerSettingsImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = impact.areaChangeCounts[area], count > 0 else { return nil }
+                return localized("serverSettings.impactAreaClipboardFormat", title(for: area), count)
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.impactSummary"),
+            impact.clipboardSummary,
+            affectedAreas
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private func draftChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        generalChangeRows(for: draft)
+            + hostBrandingChangeRows(for: draft)
+            + limitsAndSecurityChangeRows(for: draft)
+            + defaultGroupChangeRows(for: draft)
+            + antiFloodAndComplaintChangeRows(for: draft)
+            + serverLogOptionChangeRows(for: draft)
+    }
+
+    private func settingsImpactSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsImpactSummary {
+        TS3ServerSettingsImpactSummary(
+            areaChangeCounts: [
+                .general: generalChangeRows(for: draft).count,
+                .hostBranding: hostBrandingChangeRows(for: draft).count,
+                .limitsAndSecurity: limitsAndSecurityChangeRows(for: draft).count,
+                .defaultGroups: defaultGroupChangeRows(for: draft).count,
+                .antiFloodAndComplaints: antiFloodAndComplaintChangeRows(for: draft).count,
+                .serverLogOptions: serverLogOptionChangeRows(for: draft).count
+            ],
+            validationIssueCount: serverDraftValidationMessages(for: draft).count
+        )
+    }
+
+    private func settingsImpactSummaryText(for summary: TS3ServerSettingsImpactSummary) -> String {
+        guard summary.needsReview else { return localized("serverSettings.impactNoChanges") }
+        var parts = TS3ServerSettingsImpactArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
+            return localized("serverSettings.impactAreaFormat", title(for: area), count)
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func title(for area: TS3ServerSettingsImpactArea) -> String {
+        switch area {
+        case .general:
+            return localized("serverSettings.general")
+        case .hostBranding:
+            return localized("serverSettings.hostBranding")
+        case .limitsAndSecurity:
+            return localized("serverSettings.limitsAndSecurity")
+        case .defaultGroups:
+            return localized("serverSettings.defaultGroups")
+        case .antiFloodAndComplaints:
+            return localized("serverSettings.antiFloodAndComplaints")
+        case .serverLogOptions:
+            return localized("serverSettings.serverLogOptions")
+        }
+    }
+
+    private func generalChangeRows(for draft: ServerSettingsDraft) -> [String] {
         [
             changeRow(label: localized("serverSettings.serverName"), current: model.serverInfo.name, draft: draft.name),
             changeRow(label: localized("serverSettings.phoneticName"), current: model.serverInfo.phoneticName, draft: draft.phoneticName ?? ""),
@@ -17477,7 +17573,12 @@ struct ServerSettingsEditorSheet: View {
             optionalChangeRow(label: localized("serverSettings.reservedSlots"), current: model.serverInfo.reservedSlots, draft: draft.reservedSlots),
             passwordChangeRow(for: draft),
             optionalChangeRow(label: localized("serverSettings.iconId"), current: model.serverInfo.iconId, draft: draft.iconId),
-            changeRow(label: localized("serverSettings.serverList"), current: model.serverInfo.isWeblistEnabled, draft: Self.boolDraftValue(draft.weblistEnabled)),
+            changeRow(label: localized("serverSettings.serverList"), current: model.serverInfo.isWeblistEnabled, draft: Self.boolDraftValue(draft.weblistEnabled))
+        ].compactMap { $0 }
+    }
+
+    private func hostBrandingChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        [
             changeRow(label: localized("serverSettings.hostMessageMode"), current: model.serverInfo.hostMessageMode, draft: TS3HostMessageMode.value(forDraft: draft.hostMessageMode)),
             changeRow(label: localized("serverSettings.hostMessage"), current: model.serverInfo.hostMessage, draft: draft.hostMessage),
             changeRow(label: localized("serverSettings.bannerLinkURL"), current: model.serverInfo.hostBannerURL, draft: draft.hostBannerURL),
@@ -17486,7 +17587,12 @@ struct ServerSettingsEditorSheet: View {
             optionalChangeRow(label: localized("serverSettings.bannerRefreshSeconds"), current: model.serverInfo.hostBannerGraphicsInterval, draft: draft.hostBannerGraphicsInterval ?? ""),
             changeRow(label: localized("serverSettings.hostButtonTooltip"), current: model.serverInfo.hostButtonTooltip, draft: draft.hostButtonTooltip),
             changeRow(label: localized("serverSettings.hostButtonURL"), current: model.serverInfo.hostButtonURL, draft: draft.hostButtonURL),
-            changeRow(label: localized("serverSettings.hostButtonImageURL"), current: model.serverInfo.hostButtonGraphicsURL, draft: draft.hostButtonGraphicsURL),
+            changeRow(label: localized("serverSettings.hostButtonImageURL"), current: model.serverInfo.hostButtonGraphicsURL, draft: draft.hostButtonGraphicsURL)
+        ].compactMap { $0 }
+    }
+
+    private func limitsAndSecurityChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        [
             optionalChangeRow(label: localized("serverSettings.downloadQuotaBytes"), current: model.serverInfo.downloadQuota, draft: draft.downloadQuota),
             optionalChangeRow(label: localized("serverSettings.uploadQuotaBytes"), current: model.serverInfo.uploadQuota, draft: draft.uploadQuota),
             optionalChangeRow(label: localized("serverSettings.maxDownloadBandwidthBytes"), current: model.serverInfo.maxDownloadTotalBandwidth, draft: draft.maxDownloadTotalBandwidth ?? ""),
@@ -17495,10 +17601,20 @@ struct ServerSettingsEditorSheet: View {
             optionalChangeRow(label: localized("serverSettings.minimumClientVersion"), current: model.serverInfo.minClientVersion, draft: draft.minClientVersion ?? ""),
             optionalChangeRow(label: localized("serverSettings.minimumAndroidVersion"), current: model.serverInfo.minAndroidVersion, draft: draft.minAndroidVersion ?? ""),
             optionalChangeRow(label: localized("serverSettings.minimumIOSVersion"), current: model.serverInfo.minIOSVersion, draft: draft.minIOSVersion ?? ""),
-            changeRow(label: localized("serverSettings.codecEncryptionMode"), current: model.serverInfo.codecEncryptionMode, draft: TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode)),
+            changeRow(label: localized("serverSettings.codecEncryptionMode"), current: model.serverInfo.codecEncryptionMode, draft: TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode))
+        ].compactMap { $0 }
+    }
+
+    private func defaultGroupChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        [
             optionalChangeRow(label: localized("serverSettings.defaultServerGroup"), current: model.serverInfo.defaultServerGroupId, draft: draft.defaultServerGroupId ?? ""),
             optionalChangeRow(label: localized("serverSettings.defaultChannelGroup"), current: model.serverInfo.defaultChannelGroupId, draft: draft.defaultChannelGroupId ?? ""),
-            optionalChangeRow(label: localized("serverSettings.defaultChannelAdmin"), current: model.serverInfo.defaultChannelAdminGroupId, draft: draft.defaultChannelAdminGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelAdmin"), current: model.serverInfo.defaultChannelAdminGroupId, draft: draft.defaultChannelAdminGroupId ?? "")
+        ].compactMap { $0 }
+    }
+
+    private func antiFloodAndComplaintChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        [
             optionalChangeRow(label: localized("serverSettings.autoBanComplaintCount"), current: model.serverInfo.complainAutoBanCount, draft: draft.complainAutoBanCount),
             optionalChangeRow(label: localized("serverSettings.autoBanSeconds"), current: model.serverInfo.complainAutoBanTime, draft: draft.complainAutoBanTime),
             optionalChangeRow(label: localized("serverSettings.complaintRemoveSeconds"), current: model.serverInfo.complainRemoveTime, draft: draft.complainRemoveTime),
@@ -17507,7 +17623,12 @@ struct ServerSettingsEditorSheet: View {
             optionalChangeRow(label: localized("serverSettings.antiFloodTickReduce"), current: model.serverInfo.antiFloodPointsTickReduce, draft: draft.antiFloodPointsTickReduce ?? ""),
             optionalChangeRow(label: localized("serverSettings.antiFloodCommandBlock"), current: model.serverInfo.antiFloodPointsNeededCommandBlock, draft: draft.antiFloodPointsNeededCommandBlock ?? ""),
             optionalChangeRow(label: localized("serverSettings.antiFloodIPBlock"), current: model.serverInfo.antiFloodPointsNeededIPBlock, draft: draft.antiFloodPointsNeededIPBlock ?? ""),
-            optionalChangeRow(label: localized("serverSettings.antiFloodPluginBlock"), current: model.serverInfo.antiFloodPointsNeededPluginBlock, draft: draft.antiFloodPointsNeededPluginBlock ?? ""),
+            optionalChangeRow(label: localized("serverSettings.antiFloodPluginBlock"), current: model.serverInfo.antiFloodPointsNeededPluginBlock, draft: draft.antiFloodPointsNeededPluginBlock ?? "")
+        ].compactMap { $0 }
+    }
+
+    private func serverLogOptionChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        [
             changeRow(label: localized("serverSettings.clientLog"), current: model.serverInfo.isClientLoggingEnabled, draft: Self.boolDraftValue(draft.logClient)),
             changeRow(label: localized("serverSettings.queryLog"), current: model.serverInfo.isQueryLoggingEnabled, draft: Self.boolDraftValue(draft.logQuery)),
             changeRow(label: localized("serverSettings.channelLog"), current: model.serverInfo.isChannelLoggingEnabled, draft: Self.boolDraftValue(draft.logChannel)),
