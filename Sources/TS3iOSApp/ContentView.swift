@@ -19899,42 +19899,47 @@ struct RenameFileEntrySheet: View {
     let entry: TS3FileEntrySummary
     @Binding var newName: String
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(entry.name)) {
-                    TextField("New Name", text: $newName)
+                    TextField(localized("files.rename.newName"), text: $newName)
                         .ts3PlainTextField()
                 }
-                Section(header: Text("Preview")) {
+                Section(header: Text(localized("files.rename.preview"))) {
                     if trimmedNewName.isEmpty {
-                        Text("Enter a new file name.")
+                        Text(localized("files.rename.enterName"))
                             .foregroundColor(.secondary)
                     } else if trimmedNewName == entry.name {
-                        Text("Name is unchanged.")
+                        Text(localized("files.rename.unchanged"))
                             .foregroundColor(.secondary)
                     } else if renameConflict != nil {
-                        Text("\(trimmedNewName) already exists in this directory.")
+                        Text(localized("files.rename.conflictFormat", trimmedNewName))
                             .foregroundColor(.red)
                     } else {
-                        Text("\(entry.path) -> \(newPath)")
+                        Text(localized("files.rename.previewFormat", entry.path, newPath))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
                 Section {
-                    Button("Rename") {
+                    Button(localized("files.rename")) {
                         model.renameFileEntry(entry, to: newName)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(trimmedNewName.isEmpty || trimmedNewName == entry.name || renameConflict != nil)
                 }
             }
-            .navigationTitle("Rename")
+            .navigationTitle(localized("files.rename"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }

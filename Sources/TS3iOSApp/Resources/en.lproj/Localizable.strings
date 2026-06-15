@@ -2040,6 +2040,12 @@
 "files.select" = "Select";
 "files.deselect" = "Deselect";
 "files.rename" = "Rename";
+"files.rename.newName" = "New Name";
+"files.rename.preview" = "Preview";
+"files.rename.enterName" = "Enter a new file name.";
+"files.rename.unchanged" = "Name is unchanged.";
+"files.rename.conflictFormat" = "%@ already exists in this directory.";
+"files.rename.previewFormat" = "%@ -> %@";
 "files.delete" = "Delete";
 "files.info" = "Info";
 "files.openDirectory" = "Open Directory";

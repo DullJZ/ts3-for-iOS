@@ -2040,6 +2040,12 @@
 "files.select" = "选择";
 "files.deselect" = "取消选择";
 "files.rename" = "重命名";
+"files.rename.newName" = "新名称";
+"files.rename.preview" = "预览";
+"files.rename.enterName" = "请输入新的文件名。";
+"files.rename.unchanged" = "名称未变化。";
+"files.rename.conflictFormat" = "%@ 已存在于此目录。";
+"files.rename.previewFormat" = "%@ -> %@";
 "files.delete" = "删除";
 "files.info" = "信息";
 "files.openDirectory" = "打开目录";
