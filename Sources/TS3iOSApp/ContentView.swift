@@ -23750,6 +23750,10 @@ struct BanListSheet: View {
         filteredBanEntries.map(\.clipboardSummary).joined(separator: "\n")
     }
 
+    private var visibleBanSummary: TS3BanListSummary {
+        TS3BanListSummary(entries: filteredBanEntries)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -23872,6 +23876,17 @@ struct BanListSheet: View {
                         .foregroundColor(.secondary)
                 } else {
                     Section(header: Text(localized("ban.visibleBans"))) {
+                        ServerInfoDetailRow(
+                            label: localized("ban.visibleSummary"),
+                            value: localized("ban.visibleSummaryFormat", visibleBanSummary.totalCount)
+                        )
+                        Text(banListSummaryText(visibleBanSummary))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button(localized("ban.copyVisibleSummary")) {
+                            TS3PlatformSupport.copyToPasteboard(visibleBanSummary.clipboardSummary)
+                        }
+                        .disabled(filteredBanEntries.isEmpty)
                         Button(localized("ban.copyVisibleBans")) {
                             TS3PlatformSupport.copyToPasteboard(visibleBanSnapshot)
                         }
@@ -24144,6 +24159,23 @@ struct BanListSheet: View {
             parts.append(localized("events.searchPresetSummaryFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func banListSummaryText(_ summary: TS3BanListSummary) -> String {
+        [
+            localized("ban.summaryIPFormat", summary.ipRuleCount),
+            localized("ban.summaryNameFormat", summary.nameRuleCount),
+            localized("ban.summaryUniqueIdFormat", summary.uniqueIdentifierRuleCount),
+            localized("ban.summaryPermanentFormat", summary.permanentCount),
+            localized("ban.summaryTemporaryFormat", summary.temporaryCount),
+            localized("ban.summaryWithReasonFormat", summary.withReasonCount),
+            localized("ban.summaryEnforcementsFormat", summary.enforcementCount),
+            localized(
+                "ban.summaryIdRangeFormat",
+                summary.lowestBanId.map(String.init) ?? localized("common.none"),
+                summary.highestBanId.map(String.init) ?? localized("common.none")
+            )
+        ].joined(separator: " · ")
     }
 
     private func exportPresets() {

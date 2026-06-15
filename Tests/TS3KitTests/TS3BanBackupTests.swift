@@ -116,6 +116,68 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(entry.accessibilityValue, "IP 203.0.113.9. Duration Permanent")
     }
 
+    func testBanListSummaryDeduplicatesAndCountsVisibleBans() {
+        let summary = TS3BanListSummary(entries: [
+            makeBan(
+                id: 17,
+                ip: "192.0.2.10",
+                uniqueIdentifier: "uid-bad",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+                durationSeconds: 0,
+                invokerName: "Admin",
+                reason: "spam",
+                enforcements: 2
+            ),
+            makeBan(
+                id: 18,
+                name: "Bad Guest",
+                lastNickname: "Recent Guest",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_100),
+                durationSeconds: 600,
+                reason: nil,
+                enforcements: 3
+            ),
+            makeBan(
+                id: 19,
+                uniqueIdentifier: "uid-only",
+                durationSeconds: nil,
+                invokerName: "Moderator",
+                reason: "abuse",
+                enforcements: nil
+            ),
+            makeBan(
+                id: 17,
+                ip: "198.51.100.5",
+                name: "Duplicate",
+                createdAt: Date(timeIntervalSince1970: 1_700_000_200),
+                durationSeconds: 60,
+                reason: "duplicate",
+                enforcements: 9
+            )
+        ])
+
+        XCTAssertEqual(summary.totalCount, 3)
+        XCTAssertEqual(summary.ipRuleCount, 1)
+        XCTAssertEqual(summary.nameRuleCount, 1)
+        XCTAssertEqual(summary.uniqueIdentifierRuleCount, 2)
+        XCTAssertEqual(summary.lastNicknameRuleCount, 1)
+        XCTAssertEqual(summary.permanentCount, 2)
+        XCTAssertEqual(summary.temporaryCount, 1)
+        XCTAssertEqual(summary.withReasonCount, 2)
+        XCTAssertEqual(summary.withInvokerCount, 2)
+        XCTAssertEqual(summary.withCreatedAtCount, 2)
+        XCTAssertEqual(summary.enforcementCount, 5)
+        XCTAssertEqual(summary.lowestBanId, 17)
+        XCTAssertEqual(summary.highestBanId, 19)
+        XCTAssertEqual(summary.earliestCreatedAt, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(summary.latestCreatedAt, Date(timeIntervalSince1970: 1_700_000_100))
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "bans=3 | ip=1 | name=1 | uid=2 | lastNickname=1 | permanent=2 | temporary=1 | withReason=2 | withInvoker=2 | withCreatedAt=2 | enforcements=5 | lowestBanId=17 | highestBanId=19 | earliestCreatedAt=1700000000 | latestCreatedAt=1700000100 | needsAttention=true"
+        )
+    }
+
     func testBanFilterPresetSummaryAndAccessibilityText() {
         let preset = makeBanFilterPreset(
             id: UUID(),

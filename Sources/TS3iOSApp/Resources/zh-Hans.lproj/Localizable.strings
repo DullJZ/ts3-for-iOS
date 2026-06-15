@@ -2428,6 +2428,17 @@
 "ban.noSavedFilterPresets" = "没有已保存的封禁筛选预设";
 "ban.noBans" = "没有封禁";
 "ban.visibleBans" = "可见封禁";
+"ban.visibleSummary" = "可见封禁摘要";
+"ban.visibleSummaryFormat" = "%d 条可见封禁";
+"ban.summaryIPFormat" = "IP：%d";
+"ban.summaryNameFormat" = "名称：%d";
+"ban.summaryUniqueIdFormat" = "唯一 ID：%d";
+"ban.summaryPermanentFormat" = "永久：%d";
+"ban.summaryTemporaryFormat" = "临时：%d";
+"ban.summaryWithReasonFormat" = "有原因：%d";
+"ban.summaryEnforcementsFormat" = "命中次数：%d";
+"ban.summaryIdRangeFormat" = "ID 范围：%1$@-%2$@";
+"ban.copyVisibleSummary" = "复制可见封禁摘要";
 "ban.copyVisibleBans" = "复制可见封禁";
 "ban.exportVisibleBans" = "导出可见封禁";
 "ban.exportBackup" = "导出封禁备份";

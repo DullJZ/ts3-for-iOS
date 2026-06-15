@@ -2280,6 +2280,109 @@ struct TS3BanEntrySummary: Identifiable, Codable {
     let enforcements: Int?
 }
 
+struct TS3BanListSummary {
+    let entries: [TS3BanEntrySummary]
+
+    var totalCount: Int {
+        entries.count
+    }
+
+    var ipRuleCount: Int {
+        entries.filter { normalized($0.ip) != nil }.count
+    }
+
+    var nameRuleCount: Int {
+        entries.filter { normalized($0.name) != nil }.count
+    }
+
+    var uniqueIdentifierRuleCount: Int {
+        entries.filter { normalized($0.uniqueIdentifier) != nil }.count
+    }
+
+    var lastNicknameRuleCount: Int {
+        entries.filter { normalized($0.lastNickname) != nil }.count
+    }
+
+    var permanentCount: Int {
+        entries.filter { $0.durationSeconds == nil || $0.durationSeconds == 0 }.count
+    }
+
+    var temporaryCount: Int {
+        entries.filter { ($0.durationSeconds ?? 0) > 0 }.count
+    }
+
+    var withReasonCount: Int {
+        entries.filter { normalized($0.reason) != nil }.count
+    }
+
+    var withInvokerCount: Int {
+        entries.filter { normalized($0.invokerName) != nil }.count
+    }
+
+    var withCreatedAtCount: Int {
+        entries.filter { $0.createdAt != nil }.count
+    }
+
+    var enforcementCount: Int {
+        entries.compactMap(\.enforcements).reduce(0, +)
+    }
+
+    var lowestBanId: Int? {
+        entries.map(\.id).min()
+    }
+
+    var highestBanId: Int? {
+        entries.map(\.id).max()
+    }
+
+    var earliestCreatedAt: Date? {
+        entries.compactMap(\.createdAt).min()
+    }
+
+    var latestCreatedAt: Date? {
+        entries.compactMap(\.createdAt).max()
+    }
+
+    var needsAttention: Bool {
+        permanentCount > 0 || withReasonCount < totalCount
+    }
+
+    var clipboardSummary: String {
+        [
+            "bans=\(totalCount)",
+            "ip=\(ipRuleCount)",
+            "name=\(nameRuleCount)",
+            "uid=\(uniqueIdentifierRuleCount)",
+            "lastNickname=\(lastNicknameRuleCount)",
+            "permanent=\(permanentCount)",
+            "temporary=\(temporaryCount)",
+            "withReason=\(withReasonCount)",
+            "withInvoker=\(withInvokerCount)",
+            "withCreatedAt=\(withCreatedAtCount)",
+            "enforcements=\(enforcementCount)",
+            "lowestBanId=\(lowestBanId.map(String.init) ?? "none")",
+            "highestBanId=\(highestBanId.map(String.init) ?? "none")",
+            "earliestCreatedAt=\(earliestCreatedAt.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "latestCreatedAt=\(latestCreatedAt.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(entries: [TS3BanEntrySummary]) {
+        var seen = Set<Int>()
+        self.entries = entries.filter { entry in
+            seen.insert(entry.id).inserted
+        }
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+}
+
 private struct TS3BanBackupEntry: Codable {
     var ip: String?
     var name: String?

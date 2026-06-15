@@ -2428,6 +2428,17 @@
 "ban.noSavedFilterPresets" = "No saved ban filter presets";
 "ban.noBans" = "No bans";
 "ban.visibleBans" = "Visible Bans";
+"ban.visibleSummary" = "Visible Ban Summary";
+"ban.visibleSummaryFormat" = "%d visible bans";
+"ban.summaryIPFormat" = "IP: %d";
+"ban.summaryNameFormat" = "Name: %d";
+"ban.summaryUniqueIdFormat" = "Unique ID: %d";
+"ban.summaryPermanentFormat" = "Permanent: %d";
+"ban.summaryTemporaryFormat" = "Temporary: %d";
+"ban.summaryWithReasonFormat" = "With reason: %d";
+"ban.summaryEnforcementsFormat" = "Enforcements: %d";
+"ban.summaryIdRangeFormat" = "ID range: %@-%@";
+"ban.copyVisibleSummary" = "Copy Visible Ban Summary";
 "ban.copyVisibleBans" = "Copy Visible Bans";
 "ban.exportVisibleBans" = "Export Visible Bans";
 "ban.exportBackup" = "Export Ban Backup";
