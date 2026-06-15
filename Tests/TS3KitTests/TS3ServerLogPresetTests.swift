@@ -390,6 +390,65 @@ final class TS3ServerLogPresetTests: XCTestCase {
         )
     }
 
+    func testServerLogListSummaryDeduplicatesAndCountsVisibleEntries() {
+        let summary = TS3ServerLogListSummary(entries: [
+            TS3ServerLogSummary(
+                id: 17,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                level: "warning",
+                channel: "Server",
+                message: "Auth failed",
+                rawLine: "2023 warning Server Auth failed"
+            ),
+            TS3ServerLogSummary(
+                id: 18,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                level: "error",
+                channel: "VirtualSvrMgr",
+                message: "Permission denied",
+                rawLine: "Permission denied"
+            ),
+            TS3ServerLogSummary(
+                id: 19,
+                timestamp: nil,
+                level: " ",
+                channel: nil,
+                message: "Unparsed line",
+                rawLine: "Unparsed line"
+            ),
+            TS3ServerLogSummary(
+                id: 17,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_200),
+                level: "info",
+                channel: "Duplicate",
+                message: "Duplicate",
+                rawLine: "Duplicate"
+            )
+        ])
+
+        XCTAssertEqual(summary.totalCount, 3)
+        XCTAssertEqual(summary.withLevelCount, 2)
+        XCTAssertEqual(summary.withoutLevelCount, 1)
+        XCTAssertEqual(summary.withChannelCount, 2)
+        XCTAssertEqual(summary.withoutChannelCount, 1)
+        XCTAssertEqual(summary.timestampCount, 2)
+        XCTAssertEqual(summary.missingTimestampCount, 1)
+        XCTAssertEqual(summary.warningCount, 1)
+        XCTAssertEqual(summary.errorCount, 1)
+        XCTAssertEqual(summary.rawLineCount, 1)
+        XCTAssertEqual(summary.distinctLevelCount, 2)
+        XCTAssertEqual(summary.distinctChannelCount, 2)
+        XCTAssertEqual(summary.lowestEntryId, 17)
+        XCTAssertEqual(summary.highestEntryId, 19)
+        XCTAssertEqual(summary.earliestTimestamp, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(summary.latestTimestamp, Date(timeIntervalSince1970: 1_700_000_100))
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "entries=3 | withLevel=2 | withoutLevel=1 | withChannel=2 | withoutChannel=1 | withTimestamp=2 | missingTimestamp=1 | warnings=1 | errors=1 | rawLines=1 | distinctLevels=2 | distinctChannels=2 | lowestEntryId=17 | highestEntryId=19 | earliestTimestamp=1700000000 | latestTimestamp=1700000100 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testServerLogArchiveImportReplacesLocalCachedResults() throws {
         let model = TS3AppModel()

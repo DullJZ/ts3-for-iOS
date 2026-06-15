@@ -2169,6 +2169,17 @@
 "serverLogs.currentLogQuery" = "Current log query";
 "serverLogs.clearFilters" = "Clear Filters";
 "serverLogs.copyQuerySummary" = "Copy Query Summary";
+"serverLogs.visibleSummary" = "Visible Log Summary";
+"serverLogs.visibleSummaryFormat" = "%d visible log entries";
+"serverLogs.summaryWithLevelFormat" = "With level: %d";
+"serverLogs.summaryWithChannelFormat" = "With channel: %d";
+"serverLogs.summaryWithTimestampFormat" = "With timestamp: %d";
+"serverLogs.summaryWarningsFormat" = "Warnings: %d";
+"serverLogs.summaryErrorsFormat" = "Errors: %d";
+"serverLogs.summaryRawLinesFormat" = "Raw lines: %d";
+"serverLogs.summaryDistinctChannelsFormat" = "Channels: %d";
+"serverLogs.summaryEntryRangeFormat" = "ID range: %@-%@";
+"serverLogs.copyVisibleSummary" = "Copy Visible Log Summary";
 "serverLogs.refresh" = "Refresh";
 "serverLogs.copyVisibleLogs" = "Copy Visible Logs";
 "serverLogs.exportVisibleLogs" = "Export Visible Logs";

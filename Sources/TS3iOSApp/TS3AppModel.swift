@@ -7515,6 +7515,124 @@ struct TS3ServerLogSummary: Identifiable, Codable {
     }
 }
 
+struct TS3ServerLogListSummary {
+    let entries: [TS3ServerLogSummary]
+
+    var totalCount: Int {
+        entries.count
+    }
+
+    var withLevelCount: Int {
+        entries.filter { $0.level?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var withoutLevelCount: Int {
+        totalCount - withLevelCount
+    }
+
+    var withChannelCount: Int {
+        entries.filter { $0.channel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var withoutChannelCount: Int {
+        totalCount - withChannelCount
+    }
+
+    var timestampCount: Int {
+        entries.filter { $0.timestamp != nil }.count
+    }
+
+    var missingTimestampCount: Int {
+        totalCount - timestampCount
+    }
+
+    var warningCount: Int {
+        count(level: "warning")
+    }
+
+    var errorCount: Int {
+        count(level: "error")
+    }
+
+    var rawLineCount: Int {
+        entries.filter { !$0.rawLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.rawLine != $0.message }.count
+    }
+
+    var distinctLevelCount: Int {
+        Set(entries.compactMap(Self.normalizedValue)).count
+    }
+
+    var distinctChannelCount: Int {
+        Set(entries.compactMap { entry in
+            Self.normalized(entry.channel)
+        }).count
+    }
+
+    var lowestEntryId: Int? {
+        entries.map(\.id).min()
+    }
+
+    var highestEntryId: Int? {
+        entries.map(\.id).max()
+    }
+
+    var earliestTimestamp: Date? {
+        entries.compactMap(\.timestamp).min()
+    }
+
+    var latestTimestamp: Date? {
+        entries.compactMap(\.timestamp).max()
+    }
+
+    var needsAttention: Bool {
+        warningCount > 0 || errorCount > 0 || missingTimestampCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "entries=\(totalCount)",
+            "withLevel=\(withLevelCount)",
+            "withoutLevel=\(withoutLevelCount)",
+            "withChannel=\(withChannelCount)",
+            "withoutChannel=\(withoutChannelCount)",
+            "withTimestamp=\(timestampCount)",
+            "missingTimestamp=\(missingTimestampCount)",
+            "warnings=\(warningCount)",
+            "errors=\(errorCount)",
+            "rawLines=\(rawLineCount)",
+            "distinctLevels=\(distinctLevelCount)",
+            "distinctChannels=\(distinctChannelCount)",
+            "lowestEntryId=\(lowestEntryId.map(String.init) ?? "none")",
+            "highestEntryId=\(highestEntryId.map(String.init) ?? "none")",
+            "earliestTimestamp=\(earliestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "latestTimestamp=\(latestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(entries: [TS3ServerLogSummary]) {
+        var seen = Set<Int>()
+        self.entries = entries.filter { entry in
+            seen.insert(entry.id).inserted
+        }
+    }
+
+    private func count(level: String) -> Int {
+        entries.filter { Self.normalizedValue($0)?.caseInsensitiveCompare(level) == .orderedSame }.count
+    }
+
+    private static func normalizedValue(_ entry: TS3ServerLogSummary) -> String? {
+        normalized(entry.level)
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+}
+
 private struct TS3ServerLogArchive: Codable {
     var entries: [TS3ServerLogSummary]
 }

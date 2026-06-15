@@ -12083,6 +12083,17 @@ struct ServerLogsSheet: View {
                     Button(localized("serverLogs.copyQuerySummary")) {
                         TS3PlatformSupport.copyToPasteboard(currentQueryDraft.clipboardSummary)
                     }
+                    ServerInfoDetailRow(
+                        label: localized("serverLogs.visibleSummary"),
+                        value: localized("serverLogs.visibleSummaryFormat", visibleLogSummary.totalCount)
+                    )
+                    Text(serverLogListSummaryText(visibleLogSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("serverLogs.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleLogSummary.clipboardSummary)
+                    }
+                    .disabled(filteredEntries.isEmpty)
                     Button(localized("serverLogs.refresh")) {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
@@ -12444,6 +12455,10 @@ struct ServerLogsSheet: View {
         Self.transcript(from: filteredEntries)
     }
 
+    private var visibleLogSummary: TS3ServerLogListSummary {
+        TS3ServerLogListSummary(entries: filteredEntries)
+    }
+
     private var snapshot: String {
         var lines = currentQueryDraft.clipboardSummary.components(separatedBy: "\n")
         if !filteredEntries.isEmpty {
@@ -12599,6 +12614,23 @@ struct ServerLogsSheet: View {
 
     private func presetSummary(_ preset: TS3ServerLogQueryPreset) -> String {
         preset.queryDraft.inlineSummary
+    }
+
+    private func serverLogListSummaryText(_ summary: TS3ServerLogListSummary) -> String {
+        [
+            localized("serverLogs.summaryWithLevelFormat", summary.withLevelCount),
+            localized("serverLogs.summaryWithChannelFormat", summary.withChannelCount),
+            localized("serverLogs.summaryWithTimestampFormat", summary.timestampCount),
+            localized("serverLogs.summaryWarningsFormat", summary.warningCount),
+            localized("serverLogs.summaryErrorsFormat", summary.errorCount),
+            localized("serverLogs.summaryRawLinesFormat", summary.rawLineCount),
+            localized("serverLogs.summaryDistinctChannelsFormat", summary.distinctChannelCount),
+            localized(
+                "serverLogs.summaryEntryRangeFormat",
+                summary.lowestEntryId.map(String.init) ?? localized("common.none"),
+                summary.highestEntryId.map(String.init) ?? localized("common.none")
+            )
+        ].joined(separator: " · ")
     }
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]

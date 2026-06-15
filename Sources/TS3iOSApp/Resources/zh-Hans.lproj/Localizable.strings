@@ -2169,6 +2169,17 @@
 "serverLogs.currentLogQuery" = "当前日志查询";
 "serverLogs.clearFilters" = "清除筛选";
 "serverLogs.copyQuerySummary" = "复制查询摘要";
+"serverLogs.visibleSummary" = "可见日志摘要";
+"serverLogs.visibleSummaryFormat" = "%d 条可见日志";
+"serverLogs.summaryWithLevelFormat" = "带级别：%d";
+"serverLogs.summaryWithChannelFormat" = "带频道：%d";
+"serverLogs.summaryWithTimestampFormat" = "带时间戳：%d";
+"serverLogs.summaryWarningsFormat" = "警告：%d";
+"serverLogs.summaryErrorsFormat" = "错误：%d";
+"serverLogs.summaryRawLinesFormat" = "原始行：%d";
+"serverLogs.summaryDistinctChannelsFormat" = "频道：%d";
+"serverLogs.summaryEntryRangeFormat" = "ID 范围：%1$@-%2$@";
+"serverLogs.copyVisibleSummary" = "复制可见日志摘要";
 "serverLogs.refresh" = "刷新";
 "serverLogs.copyVisibleLogs" = "复制可见日志";
 "serverLogs.exportVisibleLogs" = "导出可见日志";
