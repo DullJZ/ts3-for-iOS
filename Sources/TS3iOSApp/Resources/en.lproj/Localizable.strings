@@ -1064,6 +1064,12 @@
 "serverSettings.importSettings" = "Import Settings";
 "serverSettings.import" = "Import";
 "serverSettings.draftValid" = "Draft Valid";
+"serverSettings.draftChanges" = "Draft Changes";
+"serverSettings.noDraftChanges" = "No draft changes";
+"serverSettings.draftChangeCountFormat" = "%d draft changes";
+"serverSettings.copyDraftChanges" = "Copy Draft Changes";
+"serverSettings.changeFormat" = "%@: %@ -> %@";
+"serverSettings.emptyValue" = "Empty";
 "serverSettings.groupFormat" = "Group %@";
 "serverSettings.valueWithNumberFormat" = "%@ (%d)";
 "serverSettings.unknownValueFormat" = "Unknown (%d)";

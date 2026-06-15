@@ -16943,6 +16943,22 @@ struct ServerSettingsEditorSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(localized("serverSettings.draft"))) {
+                    if draftChangeRows.isEmpty {
+                        Text(localized("serverSettings.noDraftChanges"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text(localized("serverSettings.draftChangeCountFormat", draftChangeRows.count))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        ForEach(draftChangeRows.prefix(6), id: \.self) { row in
+                            Text(row)
+                                .font(.caption)
+                        }
+                        Button(localized("serverSettings.copyDraftChanges")) {
+                            TS3PlatformSupport.copyToPasteboard(draftChangeSummary)
+                        }
+                    }
                     Button(localized("serverSettings.copySnapshot")) {
                         TS3PlatformSupport.copyToPasteboard(settingsSnapshot)
                     }
@@ -17380,6 +17396,72 @@ struct ServerSettingsEditorSheet: View {
         settingsSnapshotMessage(for: currentDraft, validationMessages: isDraftValid ? [] : serverDraftValidationMessages(for: currentDraft))
     }
 
+    private var draftChangeRows: [String] {
+        draftChangeRows(for: currentDraft)
+    }
+
+    private var draftChangeSummary: String {
+        draftChangeSummary(for: currentDraft)
+    }
+
+    private func draftChangeRows(for draft: ServerSettingsDraft) -> [String] {
+        [
+            changeRow(label: localized("serverSettings.serverName"), current: model.serverInfo.name, draft: draft.name),
+            changeRow(label: localized("serverSettings.phoneticName"), current: model.serverInfo.phoneticName, draft: draft.phoneticName ?? ""),
+            optionalChangeRow(label: localized("serverSettings.serverPort"), current: model.serverInfo.port, draft: draft.port ?? ""),
+            changeRow(label: localized("serverSettings.machineId"), current: model.serverInfo.machineId, draft: draft.machineId ?? ""),
+            changeRow(label: localized("serverSettings.autostart"), current: model.serverInfo.isAutoStartEnabled, draft: Self.boolDraftValue(draft.autostart)),
+            changeRow(label: localized("serverSettings.welcomeMessage"), current: model.serverInfo.welcomeMessage, draft: draft.welcomeMessage),
+            optionalChangeRow(label: localized("serverSettings.maxClients"), current: model.serverInfo.maxClients, draft: draft.maxClients),
+            optionalChangeRow(label: localized("serverSettings.reservedSlots"), current: model.serverInfo.reservedSlots, draft: draft.reservedSlots),
+            passwordChangeRow(for: draft),
+            optionalChangeRow(label: localized("serverSettings.iconId"), current: model.serverInfo.iconId, draft: draft.iconId),
+            changeRow(label: localized("serverSettings.serverList"), current: model.serverInfo.isWeblistEnabled, draft: Self.boolDraftValue(draft.weblistEnabled)),
+            changeRow(label: localized("serverSettings.hostMessageMode"), current: model.serverInfo.hostMessageMode, draft: TS3HostMessageMode.value(forDraft: draft.hostMessageMode)),
+            changeRow(label: localized("serverSettings.hostMessage"), current: model.serverInfo.hostMessage, draft: draft.hostMessage),
+            changeRow(label: localized("serverSettings.bannerLinkURL"), current: model.serverInfo.hostBannerURL, draft: draft.hostBannerURL),
+            changeRow(label: localized("serverSettings.bannerImageURL"), current: model.serverInfo.hostBannerGraphicsURL, draft: draft.hostBannerGraphicsURL),
+            changeRow(label: localized("serverSettings.bannerMode"), current: model.serverInfo.hostBannerMode, draft: TS3HostBannerMode.value(forDraft: draft.hostBannerMode ?? "")),
+            optionalChangeRow(label: localized("serverSettings.bannerRefreshSeconds"), current: model.serverInfo.hostBannerGraphicsInterval, draft: draft.hostBannerGraphicsInterval ?? ""),
+            changeRow(label: localized("serverSettings.hostButtonTooltip"), current: model.serverInfo.hostButtonTooltip, draft: draft.hostButtonTooltip),
+            changeRow(label: localized("serverSettings.hostButtonURL"), current: model.serverInfo.hostButtonURL, draft: draft.hostButtonURL),
+            changeRow(label: localized("serverSettings.hostButtonImageURL"), current: model.serverInfo.hostButtonGraphicsURL, draft: draft.hostButtonGraphicsURL),
+            optionalChangeRow(label: localized("serverSettings.downloadQuotaBytes"), current: model.serverInfo.downloadQuota, draft: draft.downloadQuota),
+            optionalChangeRow(label: localized("serverSettings.uploadQuotaBytes"), current: model.serverInfo.uploadQuota, draft: draft.uploadQuota),
+            optionalChangeRow(label: localized("serverSettings.maxDownloadBandwidthBytes"), current: model.serverInfo.maxDownloadTotalBandwidth, draft: draft.maxDownloadTotalBandwidth ?? ""),
+            optionalChangeRow(label: localized("serverSettings.maxUploadBandwidthBytes"), current: model.serverInfo.maxUploadTotalBandwidth, draft: draft.maxUploadTotalBandwidth ?? ""),
+            optionalChangeRow(label: localized("serverSettings.neededIdentitySecurityLevel"), current: model.serverInfo.neededIdentitySecurityLevel, draft: draft.neededIdentitySecurityLevel ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumClientVersion"), current: model.serverInfo.minClientVersion, draft: draft.minClientVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumAndroidVersion"), current: model.serverInfo.minAndroidVersion, draft: draft.minAndroidVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumIOSVersion"), current: model.serverInfo.minIOSVersion, draft: draft.minIOSVersion ?? ""),
+            changeRow(label: localized("serverSettings.codecEncryptionMode"), current: model.serverInfo.codecEncryptionMode, draft: TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode)),
+            optionalChangeRow(label: localized("serverSettings.defaultServerGroup"), current: model.serverInfo.defaultServerGroupId, draft: draft.defaultServerGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelGroup"), current: model.serverInfo.defaultChannelGroupId, draft: draft.defaultChannelGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelAdmin"), current: model.serverInfo.defaultChannelAdminGroupId, draft: draft.defaultChannelAdminGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.autoBanComplaintCount"), current: model.serverInfo.complainAutoBanCount, draft: draft.complainAutoBanCount),
+            optionalChangeRow(label: localized("serverSettings.autoBanSeconds"), current: model.serverInfo.complainAutoBanTime, draft: draft.complainAutoBanTime),
+            optionalChangeRow(label: localized("serverSettings.complaintRemoveSeconds"), current: model.serverInfo.complainRemoveTime, draft: draft.complainRemoveTime),
+            optionalChangeRow(label: localized("serverSettings.forcedSilenceClientCount"), current: model.serverInfo.minClientsInChannelBeforeForcedSilence, draft: draft.minClientsInChannelBeforeForcedSilence),
+            optionalChangeRow(label: localized("serverSettings.prioritySpeakerDimming"), current: model.serverInfo.prioritySpeakerDimmModificator.map(Self.decimalText), draft: draft.prioritySpeakerDimmModificator),
+            optionalChangeRow(label: localized("serverSettings.antiFloodTickReduce"), current: model.serverInfo.antiFloodPointsTickReduce, draft: draft.antiFloodPointsTickReduce ?? ""),
+            optionalChangeRow(label: localized("serverSettings.antiFloodCommandBlock"), current: model.serverInfo.antiFloodPointsNeededCommandBlock, draft: draft.antiFloodPointsNeededCommandBlock ?? ""),
+            optionalChangeRow(label: localized("serverSettings.antiFloodIPBlock"), current: model.serverInfo.antiFloodPointsNeededIPBlock, draft: draft.antiFloodPointsNeededIPBlock ?? ""),
+            optionalChangeRow(label: localized("serverSettings.antiFloodPluginBlock"), current: model.serverInfo.antiFloodPointsNeededPluginBlock, draft: draft.antiFloodPointsNeededPluginBlock ?? ""),
+            changeRow(label: localized("serverSettings.clientLog"), current: model.serverInfo.isClientLoggingEnabled, draft: Self.boolDraftValue(draft.logClient)),
+            changeRow(label: localized("serverSettings.queryLog"), current: model.serverInfo.isQueryLoggingEnabled, draft: Self.boolDraftValue(draft.logQuery)),
+            changeRow(label: localized("serverSettings.channelLog"), current: model.serverInfo.isChannelLoggingEnabled, draft: Self.boolDraftValue(draft.logChannel)),
+            changeRow(label: localized("serverSettings.permissionLog"), current: model.serverInfo.isPermissionLoggingEnabled, draft: Self.boolDraftValue(draft.logPermissions)),
+            changeRow(label: localized("serverSettings.serverLog"), current: model.serverInfo.isServerLoggingEnabled, draft: Self.boolDraftValue(draft.logServer)),
+            changeRow(label: localized("serverSettings.fileTransferLog"), current: model.serverInfo.isFileTransferLoggingEnabled, draft: Self.boolDraftValue(draft.logFileTransfer))
+        ].compactMap { $0 }
+    }
+
+    private func draftChangeSummary(for draft: ServerSettingsDraft) -> String {
+        let rows = draftChangeRows(for: draft)
+        guard !rows.isEmpty else { return localized("serverSettings.noDraftChanges") }
+        return rows.joined(separator: "\n")
+    }
+
     private func settingsSnapshotMessage(
         for draft: ServerSettingsDraft,
         validationMessages: [String]
@@ -17439,8 +17521,126 @@ struct ServerSettingsEditorSheet: View {
             guard !trimmed.isEmpty else { return nil }
             return "\(label): \(trimmed)"
         }.joined(separator: "\n")
-        guard !validationMessages.isEmpty else { return summary }
-        return "\(summary)\n\(validationMessages.joined(separator: "\n"))"
+        var sections = [summary]
+        let changeRows = draftChangeRows(for: draft)
+        if !changeRows.isEmpty {
+            sections.append("")
+            sections.append(localized("serverSettings.draftChanges"))
+            sections.append(changeRows.joined(separator: "\n"))
+        }
+        if !validationMessages.isEmpty {
+            sections.append(validationMessages.joined(separator: "\n"))
+        }
+        return sections.joined(separator: "\n")
+    }
+
+    private func changeRow(label: String, current: String?, draft: String?) -> String? {
+        let currentText = normalizedDraftValue(current)
+        let draftText = normalizedDraftValue(draft)
+        guard currentText != draftText else { return nil }
+        return localized(
+            "serverSettings.changeFormat",
+            label,
+            displayDraftValue(currentText),
+            displayDraftValue(draftText)
+        )
+    }
+
+    private func changeRow(label: String, current: Int?, draft: String?) -> String? {
+        let currentText = current.map(String.init) ?? ""
+        let draftText = normalizedDraftValue(draft)
+        guard currentText != draftText else { return nil }
+        return localized(
+            "serverSettings.changeFormat",
+            label,
+            displayDraftValue(currentText),
+            displayDraftValue(draftText)
+        )
+    }
+
+    private func optionalChangeRow(label: String, current: Int?, draft: String?) -> String? {
+        let draftText = normalizedDraftValue(draft)
+        guard !draftText.isEmpty else { return nil }
+        return changeRow(label: label, current: current, draft: draftText)
+    }
+
+    private func changeRow(label: String, current: Int?, draft: Int?) -> String? {
+        let currentText = current.map(String.init) ?? ""
+        let draftText = draft.map(String.init) ?? ""
+        guard currentText != draftText else { return nil }
+        return localized(
+            "serverSettings.changeFormat",
+            label,
+            displayDraftValue(currentText),
+            displayDraftValue(draftText)
+        )
+    }
+
+    private func optionalChangeRow(label: String, current: String?, draft: String?) -> String? {
+        let draftText = normalizedDraftValue(draft)
+        guard !draftText.isEmpty else { return nil }
+        return changeRow(label: label, current: current, draft: draftText)
+    }
+
+    private func changeRow(label: String, current: Int64?, draft: String?) -> String? {
+        let currentText = current.map(String.init) ?? ""
+        let draftText = normalizedDraftValue(draft)
+        guard currentText != draftText else { return nil }
+        return localized(
+            "serverSettings.changeFormat",
+            label,
+            displayDraftValue(currentText),
+            displayDraftValue(draftText)
+        )
+    }
+
+    private func optionalChangeRow(label: String, current: Int64?, draft: String?) -> String? {
+        let draftText = normalizedDraftValue(draft)
+        guard !draftText.isEmpty else { return nil }
+        return changeRow(label: label, current: current, draft: draftText)
+    }
+
+    private func changeRow(label: String, current: Bool?, draft: Bool?) -> String? {
+        let currentText = optionalBoolChangeText(current)
+        let draftText = optionalBoolChangeText(draft)
+        guard currentText != draftText else { return nil }
+        return localized(
+            "serverSettings.changeFormat",
+            label,
+            displayDraftValue(currentText),
+            displayDraftValue(draftText)
+        )
+    }
+
+    private func passwordChangeRow(for draft: ServerSettingsDraft) -> String? {
+        if draft.clearPassword {
+            return localized(
+                "serverSettings.changeFormat",
+                localized("serverSettings.password"),
+                localized("serverSettings.unchanged"),
+                localized("serverSettings.clearPassword")
+            )
+        }
+        guard !draft.password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return localized(
+            "serverSettings.changeFormat",
+            localized("serverSettings.password"),
+            localized("serverSettings.unchanged"),
+            localized("serverSettings.newPasswordSet")
+        )
+    }
+
+    private func normalizedDraftValue(_ value: String?) -> String {
+        value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func displayDraftValue(_ value: String) -> String {
+        value.isEmpty ? localized("serverSettings.emptyValue") : value
+    }
+
+    private func optionalBoolChangeText(_ value: Bool?) -> String {
+        guard let value else { return "" }
+        return value ? localized("serverSettings.enabled") : localized("serverSettings.disabled")
     }
 
     private func loadCurrentValues() {

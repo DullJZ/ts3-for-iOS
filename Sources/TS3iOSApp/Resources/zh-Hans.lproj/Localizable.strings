@@ -1064,6 +1064,12 @@
 "serverSettings.importSettings" = "导入设置";
 "serverSettings.import" = "导入";
 "serverSettings.draftValid" = "草稿有效";
+"serverSettings.draftChanges" = "草稿变更";
+"serverSettings.noDraftChanges" = "没有草稿变更";
+"serverSettings.draftChangeCountFormat" = "%d 项草稿变更";
+"serverSettings.copyDraftChanges" = "复制草稿变更";
+"serverSettings.changeFormat" = "%@：%@ -> %@";
+"serverSettings.emptyValue" = "空";
 "serverSettings.groupFormat" = "组 %@";
 "serverSettings.valueWithNumberFormat" = "%@ (%d)";
 "serverSettings.unknownValueFormat" = "未知 (%d)";
