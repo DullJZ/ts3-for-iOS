@@ -3096,6 +3096,69 @@ struct TS3GroupArchivePreview {
     }
 }
 
+struct TS3GroupListSummary {
+    let groups: [TS3GroupSummary]
+    let target: TS3GroupManagementTarget
+
+    var totalCount: Int {
+        groups.count
+    }
+
+    var templateCount: Int {
+        count(type: .template)
+    }
+
+    var regularCount: Int {
+        count(type: .regular)
+    }
+
+    var queryCount: Int {
+        count(type: .query)
+    }
+
+    var unknownTypeCount: Int {
+        groups.filter { $0.type == nil }.count
+    }
+
+    var lowestGroupId: Int? {
+        groups.map(\.id).min()
+    }
+
+    var highestGroupId: Int? {
+        groups.map(\.id).max()
+    }
+
+    var needsAttention: Bool {
+        unknownTypeCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "target=\(target.title)",
+            "groups=\(totalCount)",
+            "template=\(templateCount)",
+            "regular=\(regularCount)",
+            "query=\(queryCount)",
+            "unknown=\(unknownTypeCount)",
+            "lowestGroupId=\(lowestGroupId.map(String.init) ?? "none")",
+            "highestGroupId=\(highestGroupId.map(String.init) ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(groups: [TS3GroupSummary], target: TS3GroupManagementTarget) {
+        var seen = Set<Int>()
+        self.groups = groups.filter { group in
+            seen.insert(group.id).inserted
+        }
+        self.target = target
+    }
+
+    private func count(type: TS3PermissionGroupDatabaseType) -> Int {
+        groups.filter { $0.type == type }.count
+    }
+}
+
 struct TS3GroupClientSummary: Identifiable {
     let id: String
     let clientDatabaseId: Int

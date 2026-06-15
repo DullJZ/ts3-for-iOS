@@ -13354,6 +13354,10 @@ struct GroupManagementSheet: View {
         filteredGroups.map(\.clipboardSummary).joined(separator: "\n")
     }
 
+    private var visibleGroupSummary: TS3GroupListSummary {
+        TS3GroupListSummary(groups: filteredGroups, target: target)
+    }
+
     private var newGroupDraftValidationMessages: [String] {
         TS3GroupDraftValidator.validationMessages(
             operation: .create,
@@ -13494,6 +13498,21 @@ struct GroupManagementSheet: View {
                             searchText = ""
                         }
                     }
+                    ServerInfoDetailRow(
+                        label: localized("groups.visibleSummary"),
+                        value: localized(
+                            "groups.visibleSummaryFormat",
+                            visibleGroupSummary.totalCount,
+                            targetTitle(visibleGroupSummary.target)
+                        )
+                    )
+                    Text(groupListSummaryText(visibleGroupSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("groups.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleGroupSummary.clipboardSummary)
+                    }
+                    .disabled(filteredGroups.isEmpty)
                     Button(localized("groups.copyVisibleGroups")) {
                         TS3PlatformSupport.copyToPasteboard(visibleGroupsSnapshot)
                     }
@@ -13694,6 +13713,19 @@ struct GroupManagementSheet: View {
 
     private func presetSummary(_ preset: TS3GroupFilterPreset) -> String {
         preset.inlineSummary
+    }
+
+    private func groupListSummaryText(_ summary: TS3GroupListSummary) -> String {
+        var parts = [
+            localized("groups.summary.templateFormat", summary.templateCount),
+            localized("groups.summary.regularFormat", summary.regularCount),
+            localized("groups.summary.queryFormat", summary.queryCount),
+            localized("groups.summary.unknownFormat", summary.unknownTypeCount)
+        ]
+        if let lowestGroupId = summary.lowestGroupId, let highestGroupId = summary.highestGroupId {
+            parts.append(localized("groups.summary.idRangeFormat", lowestGroupId, highestGroupId))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func targetTitle(_ target: TS3GroupManagementTarget) -> String {

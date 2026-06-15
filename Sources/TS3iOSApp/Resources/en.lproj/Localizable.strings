@@ -2249,6 +2249,14 @@
 "groups.filterPresets" = "Filter Presets";
 "groups.filterPreset" = "Group filter preset";
 "groups.clearFilters" = "Clear Filters";
+"groups.visibleSummary" = "Visible Summary";
+"groups.visibleSummaryFormat" = "%d visible %@";
+"groups.copyVisibleSummary" = "Copy Visible Group Summary";
+"groups.summary.templateFormat" = "%d template";
+"groups.summary.regularFormat" = "%d regular";
+"groups.summary.queryFormat" = "%d query";
+"groups.summary.unknownFormat" = "%d unknown";
+"groups.summary.idRangeFormat" = "IDs %d-%d";
 "groups.copyVisibleGroups" = "Copy Visible Groups";
 "groups.exportVisibleGroups" = "Export Visible Groups";
 "groups.exportGroupArchive" = "Export Group Archive";

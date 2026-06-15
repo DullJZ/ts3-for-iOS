@@ -2249,6 +2249,14 @@
 "groups.filterPresets" = "筛选预设";
 "groups.filterPreset" = "组筛选预设";
 "groups.clearFilters" = "清除筛选";
+"groups.visibleSummary" = "可见摘要";
+"groups.visibleSummaryFormat" = "%d 个可见%@";
+"groups.copyVisibleSummary" = "复制可见组摘要";
+"groups.summary.templateFormat" = "%d 个模板";
+"groups.summary.regularFormat" = "%d 个常规";
+"groups.summary.queryFormat" = "%d 个查询";
+"groups.summary.unknownFormat" = "%d 个未知";
+"groups.summary.idRangeFormat" = "ID %d-%d";
 "groups.copyVisibleGroups" = "复制可见组";
 "groups.exportVisibleGroups" = "导出可见组";
 "groups.exportGroupArchive" = "导出组归档";

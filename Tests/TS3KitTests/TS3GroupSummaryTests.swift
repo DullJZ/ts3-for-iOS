@@ -158,6 +158,32 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupListSummaryDeduplicatesAndCountsVisibleGroups() {
+        let summary = TS3GroupListSummary(
+            groups: [
+                TS3GroupSummary(id: 6, name: "Admins", type: .regular),
+                TS3GroupSummary(id: 7, name: "Query", type: .query),
+                TS3GroupSummary(id: 8, name: "Template", type: .template),
+                TS3GroupSummary(id: 9, name: "Unknown", type: nil),
+                TS3GroupSummary(id: 6, name: "Duplicate", type: .query)
+            ],
+            target: .server
+        )
+
+        XCTAssertEqual(summary.totalCount, 4)
+        XCTAssertEqual(summary.templateCount, 1)
+        XCTAssertEqual(summary.regularCount, 1)
+        XCTAssertEqual(summary.queryCount, 1)
+        XCTAssertEqual(summary.unknownTypeCount, 1)
+        XCTAssertEqual(summary.lowestGroupId, 6)
+        XCTAssertEqual(summary.highestGroupId, 9)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "target=Server Groups | groups=4 | template=1 | regular=1 | query=1 | unknown=1 | lowestGroupId=6 | highestGroupId=9 | needsAttention=true"
+        )
+    }
+
     func testGroupClientClipboardSummaryIncludesGroupTargetAndChannel() {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
         let client = TS3GroupClientSummary(client: TS3GroupClient(
