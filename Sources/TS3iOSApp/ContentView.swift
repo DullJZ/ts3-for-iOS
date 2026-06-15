@@ -14360,6 +14360,10 @@ struct GroupClientListSheet: View {
         return lines.joined(separator: "\n")
     }
 
+    private var visibleMemberSummary: TS3GroupClientListSummary {
+        TS3GroupClientListSummary(clients: filteredClients, target: target)
+    }
+
     private var memberDraftOperation: TS3GroupMemberDraftValidator.Operation {
         target == .server ? .addServerMember : .setChannelGroup
     }
@@ -14486,6 +14490,21 @@ struct GroupClientListSheet: View {
                             searchText = ""
                         }
                     }
+                    ServerInfoDetailRow(
+                        label: localized("groups.members.visibleSummary"),
+                        value: localized(
+                            "groups.members.visibleSummaryFormat",
+                            visibleMemberSummary.totalCount,
+                            targetTitle(visibleMemberSummary.target)
+                        )
+                    )
+                    Text(memberListSummaryText(visibleMemberSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("groups.members.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleMemberSummary.clipboardSummary)
+                    }
+                    .disabled(filteredClients.isEmpty)
                     Button(localized("groups.members.copyVisibleMembers")) {
                         TS3PlatformSupport.copyToPasteboard(visibleMembersSnapshot)
                     }
@@ -14832,6 +14851,21 @@ struct GroupClientListSheet: View {
         case .withoutChannel:
             return localized("groups.members.filter.noChannel")
         }
+    }
+
+    private func memberListSummaryText(_ summary: TS3GroupClientListSummary) -> String {
+        [
+            localized("groups.members.summaryOnlineFormat", summary.onlineCount),
+            localized("groups.members.summaryOfflineFormat", summary.offlineCount),
+            localized("groups.members.summaryWithUidFormat", summary.withUniqueIdCount),
+            localized("groups.members.summaryWithoutUidFormat", summary.withoutUniqueIdCount),
+            localized("groups.members.summaryDistinctChannelsFormat", summary.distinctChannelCount),
+            localized(
+                "groups.members.summaryDatabaseRangeFormat",
+                summary.lowestClientDatabaseId.map(String.init) ?? localized("common.none"),
+                summary.highestClientDatabaseId.map(String.init) ?? localized("common.none")
+            )
+        ].joined(separator: " · ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

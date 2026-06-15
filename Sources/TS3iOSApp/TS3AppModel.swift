@@ -3179,6 +3179,75 @@ struct TS3GroupClientSummary: Identifiable {
     }
 }
 
+struct TS3GroupClientListSummary {
+    let clients: [TS3GroupClientSummary]
+    let target: TS3GroupManagementTarget
+
+    var totalCount: Int {
+        clients.count
+    }
+
+    var onlineCount: Int {
+        clients.filter { $0.channelId != nil }.count
+    }
+
+    var offlineCount: Int {
+        clients.filter { $0.channelId == nil }.count
+    }
+
+    var withUniqueIdCount: Int {
+        clients.filter { $0.uniqueIdentifier?.isEmpty == false }.count
+    }
+
+    var withoutUniqueIdCount: Int {
+        totalCount - withUniqueIdCount
+    }
+
+    var channelScopedCount: Int {
+        onlineCount
+    }
+
+    var distinctChannelCount: Int {
+        Set(clients.compactMap(\.channelId)).count
+    }
+
+    var lowestClientDatabaseId: Int? {
+        clients.map(\.clientDatabaseId).min()
+    }
+
+    var highestClientDatabaseId: Int? {
+        clients.map(\.clientDatabaseId).max()
+    }
+
+    var needsAttention: Bool {
+        withoutUniqueIdCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "target=\(target.title)",
+            "members=\(totalCount)",
+            "online=\(onlineCount)",
+            "offline=\(offlineCount)",
+            "withUid=\(withUniqueIdCount)",
+            "withoutUid=\(withoutUniqueIdCount)",
+            "channelScoped=\(channelScopedCount)",
+            "distinctChannels=\(distinctChannelCount)",
+            "lowestClientDb=\(lowestClientDatabaseId.map(String.init) ?? "none")",
+            "highestClientDb=\(highestClientDatabaseId.map(String.init) ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(clients: [TS3GroupClientSummary], target: TS3GroupManagementTarget) {
+        var seen = Set<Int>()
+        self.clients = clients.filter { client in
+            seen.insert(client.clientDatabaseId).inserted
+        }
+        self.target = target
+    }
+}
+
 extension TS3GroupSummary {
     static func name(for id: Int, in groups: [TS3GroupSummary]) -> String {
         groups.first { $0.id == id }?.name ?? "Group \(id)"

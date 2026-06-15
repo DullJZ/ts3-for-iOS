@@ -222,6 +222,53 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupClientListSummaryDeduplicatesAndCountsVisibleMembers() {
+        let summary = TS3GroupClientListSummary(
+            clients: [
+                TS3GroupClientSummary(client: TS3GroupClient(
+                    clientDatabaseId: 42,
+                    uniqueIdentifier: "uid-42",
+                    nickname: "Taylor",
+                    channelId: 9
+                )),
+                TS3GroupClientSummary(client: TS3GroupClient(
+                    clientDatabaseId: 43,
+                    uniqueIdentifier: nil,
+                    nickname: "Morgan",
+                    channelId: nil
+                )),
+                TS3GroupClientSummary(client: TS3GroupClient(
+                    clientDatabaseId: 44,
+                    uniqueIdentifier: "",
+                    nickname: nil,
+                    channelId: 10
+                )),
+                TS3GroupClientSummary(client: TS3GroupClient(
+                    clientDatabaseId: 42,
+                    uniqueIdentifier: "duplicate",
+                    nickname: "Duplicate",
+                    channelId: 11
+                ))
+            ],
+            target: .channel
+        )
+
+        XCTAssertEqual(summary.totalCount, 3)
+        XCTAssertEqual(summary.onlineCount, 2)
+        XCTAssertEqual(summary.offlineCount, 1)
+        XCTAssertEqual(summary.withUniqueIdCount, 1)
+        XCTAssertEqual(summary.withoutUniqueIdCount, 2)
+        XCTAssertEqual(summary.channelScopedCount, 2)
+        XCTAssertEqual(summary.distinctChannelCount, 2)
+        XCTAssertEqual(summary.lowestClientDatabaseId, 42)
+        XCTAssertEqual(summary.highestClientDatabaseId, 44)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "target=Channel Groups | members=3 | online=2 | offline=1 | withUid=1 | withoutUid=2 | channelScoped=2 | distinctChannels=2 | lowestClientDb=42 | highestClientDb=44 | needsAttention=true"
+        )
+    }
+
     func testGroupFilterPresetSummariesAreCopyableAndAccessible() {
         let preset = TS3GroupFilterPreset(
             name: "Server operators",

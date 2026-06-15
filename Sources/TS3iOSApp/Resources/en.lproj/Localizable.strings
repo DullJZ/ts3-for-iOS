@@ -2314,6 +2314,15 @@
 "groups.members.searchMembers" = "Search members";
 "groups.members.noSavedFilterPresets" = "No saved group member filter presets";
 "groups.members.filterPreset" = "Group member filter preset";
+"groups.members.visibleSummary" = "Visible Member Summary";
+"groups.members.visibleSummaryFormat" = "%d visible members in %@";
+"groups.members.summaryOnlineFormat" = "Online: %d";
+"groups.members.summaryOfflineFormat" = "Offline: %d";
+"groups.members.summaryWithUidFormat" = "With UID: %d";
+"groups.members.summaryWithoutUidFormat" = "Without UID: %d";
+"groups.members.summaryDistinctChannelsFormat" = "Channels: %d";
+"groups.members.summaryDatabaseRangeFormat" = "DB range: %@-%@";
+"groups.members.copyVisibleSummary" = "Copy Visible Member Summary";
 "groups.members.copyVisibleMembers" = "Copy Visible Members";
 "groups.members.exportVisibleMembers" = "Export Visible Members";
 "groups.members.clientDatabaseId" = "Client Database ID";

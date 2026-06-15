@@ -2314,6 +2314,15 @@
 "groups.members.searchMembers" = "搜索成员";
 "groups.members.noSavedFilterPresets" = "没有已保存的组成员筛选预设";
 "groups.members.filterPreset" = "组成员筛选预设";
+"groups.members.visibleSummary" = "可见成员摘要";
+"groups.members.visibleSummaryFormat" = "%2$@ 中有 %1$d 个可见成员";
+"groups.members.summaryOnlineFormat" = "在线：%d";
+"groups.members.summaryOfflineFormat" = "离线：%d";
+"groups.members.summaryWithUidFormat" = "有 UID：%d";
+"groups.members.summaryWithoutUidFormat" = "无 UID：%d";
+"groups.members.summaryDistinctChannelsFormat" = "频道：%d";
+"groups.members.summaryDatabaseRangeFormat" = "DB 范围：%1$@-%2$@";
+"groups.members.copyVisibleSummary" = "复制可见成员摘要";
 "groups.members.copyVisibleMembers" = "复制可见成员";
 "groups.members.exportVisibleMembers" = "导出可见成员";
 "groups.members.clientDatabaseId" = "客户端数据库 ID";
