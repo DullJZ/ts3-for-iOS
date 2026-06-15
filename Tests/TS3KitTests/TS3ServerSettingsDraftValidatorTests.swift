@@ -136,6 +136,47 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsReviewSummaryDeduplicatesSensitiveChanges() {
+        let summary = TS3ServerSettingsReviewSummary(
+            reviewItems: [
+                " Server Port: 9987 -> 9988 ",
+                "Server Port: 9987 -> 9988",
+                "Password: Unchanged -> New Password Set"
+            ],
+            validationIssueCount: 2
+        )
+
+        XCTAssertEqual(summary.reviewItems, [
+            "Server Port: 9987 -> 9988",
+            "Password: Unchanged -> New Password Set"
+        ])
+        XCTAssertEqual(summary.sensitiveChangeCount, 2)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertEqual(summary.totalReviewCount, 4)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sensitiveChanges=2 | validationIssues=2 | reviewItems=Server Port: 9987 -> 9988 || Password: Unchanged -> New Password Set | needsAttention=true"
+        )
+    }
+
+    func testServerSettingsReviewSummaryHandlesCleanDraft() {
+        let summary = TS3ServerSettingsReviewSummary(
+            reviewItems: ["", "   "],
+            validationIssueCount: -1
+        )
+
+        XCTAssertTrue(summary.reviewItems.isEmpty)
+        XCTAssertEqual(summary.sensitiveChangeCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.totalReviewCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sensitiveChanges=0 | validationIssues=0 | reviewItems=none | needsAttention=false"
+        )
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",

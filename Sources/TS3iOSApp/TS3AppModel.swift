@@ -955,6 +955,41 @@ struct TS3ServerSettingsImpactSummary {
     }
 }
 
+struct TS3ServerSettingsReviewSummary {
+    let reviewItems: [String]
+    let validationIssueCount: Int
+
+    var sensitiveChangeCount: Int {
+        reviewItems.count
+    }
+
+    var totalReviewCount: Int {
+        sensitiveChangeCount + validationIssueCount
+    }
+
+    var needsAttention: Bool {
+        totalReviewCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "sensitiveChanges=\(sensitiveChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "reviewItems=\(reviewItems.isEmpty ? "none" : reviewItems.joined(separator: " || "))",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(reviewItems: [String], validationIssueCount: Int) {
+        var seen = Set<String>()
+        self.reviewItems = reviewItems
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { seen.insert($0).inserted }
+        self.validationIssueCount = max(0, validationIssueCount)
+    }
+}
+
 enum TS3PermissionDraftValidator {
     static func validationMessages(
         scope: TS3PermissionEditScope,

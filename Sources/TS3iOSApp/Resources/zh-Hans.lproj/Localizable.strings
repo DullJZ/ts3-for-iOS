@@ -1116,6 +1116,11 @@
 "serverSettings.impactAreaClipboardFormat" = "%@: %d 项变化";
 "serverSettings.validationIssueCountFormat" = "%d 个校验问题";
 "serverSettings.copyImpactSummary" = "复制影响摘要";
+"serverSettings.reviewSummary" = "保存复核";
+"serverSettings.reviewSummaryFormat" = "%d 项敏感变更，%d 个校验问题";
+"serverSettings.reviewNoAttention" = "没有敏感服务器设置变更";
+"serverSettings.sensitiveChangeCountFormat" = "%d 项敏感变更";
+"serverSettings.copyReviewSummary" = "复制保存复核";
 "serverSettings.changeFormat" = "%@：%@ -> %@";
 "serverSettings.emptyValue" = "空";
 "serverSettings.groupFormat" = "组 %@";

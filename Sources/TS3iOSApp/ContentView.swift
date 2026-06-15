@@ -17213,6 +17213,21 @@ struct ServerSettingsEditorSheet: View {
                         TS3PlatformSupport.copyToPasteboard(settingsImpactSummaryClipboard)
                     }
                     .disabled(!settingsImpactSummary.needsReview)
+                    ServerInfoDetailRow(
+                        label: localized("serverSettings.reviewSummary"),
+                        value: localized(
+                            "serverSettings.reviewSummaryFormat",
+                            settingsReviewSummary.sensitiveChangeCount,
+                            settingsReviewSummary.validationIssueCount
+                        )
+                    )
+                    Text(settingsReviewSummaryText)
+                        .font(.caption)
+                        .foregroundColor(settingsReviewSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverSettings.copyReviewSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsReviewSummaryClipboard)
+                    }
+                    .disabled(!settingsReviewSummary.needsAttention)
 
                     if draftChangeRows.isEmpty {
                         Text(localized("serverSettings.noDraftChanges"))
@@ -17702,6 +17717,27 @@ struct ServerSettingsEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var settingsReviewSummary: TS3ServerSettingsReviewSummary {
+        settingsReviewSummary(for: currentDraft)
+    }
+
+    private var settingsReviewSummaryText: String {
+        settingsReviewSummaryText(for: settingsReviewSummary)
+    }
+
+    private var settingsReviewSummaryClipboard: String {
+        let summary = settingsReviewSummary
+        let lines = [
+            localized("serverSettings.reviewSummary"),
+            summary.clipboardSummary,
+            summary.reviewItems.joined(separator: "\n")
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private func draftChangeRows(for draft: ServerSettingsDraft) -> [String] {
         generalChangeRows(for: draft)
             + hostBrandingChangeRows(for: draft)
@@ -17725,6 +17761,34 @@ struct ServerSettingsEditorSheet: View {
         )
     }
 
+    private func settingsReviewSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsReviewSummary {
+        TS3ServerSettingsReviewSummary(
+            reviewItems: settingsReviewItems(for: draft),
+            validationIssueCount: serverDraftValidationMessages(for: draft).count
+        )
+    }
+
+    private func settingsReviewItems(for draft: ServerSettingsDraft) -> [String] {
+        [
+            optionalChangeRow(label: localized("serverSettings.serverPort"), current: model.serverInfo.port, draft: draft.port ?? ""),
+            passwordChangeRow(for: draft),
+            optionalChangeRow(label: localized("serverSettings.neededIdentitySecurityLevel"), current: model.serverInfo.neededIdentitySecurityLevel, draft: draft.neededIdentitySecurityLevel ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumClientVersion"), current: model.serverInfo.minClientVersion, draft: draft.minClientVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumAndroidVersion"), current: model.serverInfo.minAndroidVersion, draft: draft.minAndroidVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumIOSVersion"), current: model.serverInfo.minIOSVersion, draft: draft.minIOSVersion ?? ""),
+            changeRow(label: localized("serverSettings.codecEncryptionMode"), current: model.serverInfo.codecEncryptionMode, draft: TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode)),
+            optionalChangeRow(label: localized("serverSettings.defaultServerGroup"), current: model.serverInfo.defaultServerGroupId, draft: draft.defaultServerGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelGroup"), current: model.serverInfo.defaultChannelGroupId, draft: draft.defaultChannelGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelAdmin"), current: model.serverInfo.defaultChannelAdminGroupId, draft: draft.defaultChannelAdminGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.autoBanComplaintCount"), current: model.serverInfo.complainAutoBanCount, draft: draft.complainAutoBanCount),
+            optionalChangeRow(label: localized("serverSettings.autoBanSeconds"), current: model.serverInfo.complainAutoBanTime, draft: draft.complainAutoBanTime),
+            optionalChangeRow(label: localized("serverSettings.forcedSilenceClientCount"), current: model.serverInfo.minClientsInChannelBeforeForcedSilence, draft: draft.minClientsInChannelBeforeForcedSilence),
+            optionalChangeRow(label: localized("serverSettings.antiFloodCommandBlock"), current: model.serverInfo.antiFloodPointsNeededCommandBlock, draft: draft.antiFloodPointsNeededCommandBlock ?? ""),
+            optionalChangeRow(label: localized("serverSettings.antiFloodIPBlock"), current: model.serverInfo.antiFloodPointsNeededIPBlock, draft: draft.antiFloodPointsNeededIPBlock ?? ""),
+            optionalChangeRow(label: localized("serverSettings.antiFloodPluginBlock"), current: model.serverInfo.antiFloodPointsNeededPluginBlock, draft: draft.antiFloodPointsNeededPluginBlock ?? "")
+        ].compactMap { $0 }
+    }
+
     private func settingsImpactSummaryText(for summary: TS3ServerSettingsImpactSummary) -> String {
         guard summary.needsReview else { return localized("serverSettings.impactNoChanges") }
         var parts = TS3ServerSettingsImpactArea.allCases.compactMap { area -> String? in
@@ -17733,6 +17797,22 @@ struct ServerSettingsEditorSheet: View {
         }
         if summary.validationIssueCount > 0 {
             parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func settingsReviewSummaryText(for summary: TS3ServerSettingsReviewSummary) -> String {
+        guard summary.needsAttention else { return localized("serverSettings.reviewNoAttention") }
+        var parts: [String] = []
+        if summary.sensitiveChangeCount > 0 {
+            parts.append(localized("serverSettings.sensitiveChangeCountFormat", summary.sensitiveChangeCount))
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        let previewItems = summary.reviewItems.prefix(4).joined(separator: " · ")
+        if !previewItems.isEmpty {
+            parts.append(previewItems)
         }
         return parts.joined(separator: " · ")
     }
