@@ -1425,6 +1425,17 @@
 "offline.deleteAllPresets" = "Delete All Presets";
 "offline.filterPresets" = "Filter Presets";
 "offline.clearFilters" = "Clear Filters";
+"offline.visibleSummary" = "Visible Inbox Summary";
+"offline.visibleSummaryFormat" = "%d visible messages";
+"offline.summaryUnreadFormat" = "Unread: %d";
+"offline.summaryReadFormat" = "Read: %d";
+"offline.summaryWithBodyFormat" = "With body: %d";
+"offline.summaryBodyNotLoadedFormat" = "Body not loaded: %d";
+"offline.summaryReplyableFormat" = "Replyable: %d";
+"offline.summaryUnknownSenderFormat" = "Unknown sender: %d";
+"offline.summaryDistinctSendersFormat" = "Senders: %d";
+"offline.summaryMessageRangeFormat" = "ID range: %@-%@";
+"offline.copyVisibleSummary" = "Copy Visible Inbox Summary";
 "offline.cachedOnlyNotice" = "Showing locally cached offline messages. Connect to refresh, load message bodies, reply, mark read, or delete from the server.";
 "offline.noMessages" = "No offline messages";
 "offline.noMatchingMessages" = "No matching messages";

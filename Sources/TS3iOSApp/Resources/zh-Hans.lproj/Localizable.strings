@@ -1425,6 +1425,17 @@
 "offline.deleteAllPresets" = "删除所有预设";
 "offline.filterPresets" = "筛选预设";
 "offline.clearFilters" = "清除筛选";
+"offline.visibleSummary" = "可见收件箱摘要";
+"offline.visibleSummaryFormat" = "%d 条可见消息";
+"offline.summaryUnreadFormat" = "未读：%d";
+"offline.summaryReadFormat" = "已读：%d";
+"offline.summaryWithBodyFormat" = "有正文：%d";
+"offline.summaryBodyNotLoadedFormat" = "正文未加载：%d";
+"offline.summaryReplyableFormat" = "可回复：%d";
+"offline.summaryUnknownSenderFormat" = "未知发件人：%d";
+"offline.summaryDistinctSendersFormat" = "发件人：%d";
+"offline.summaryMessageRangeFormat" = "ID 范围：%1$@-%2$@";
+"offline.copyVisibleSummary" = "复制可见收件箱摘要";
 "offline.cachedOnlyNotice" = "正在显示本地缓存的离线消息。连接服务器后可刷新、加载消息正文、回复、标记已读或从服务器删除。";
 "offline.noMessages" = "没有离线消息";
 "offline.noMatchingMessages" = "没有匹配的消息";

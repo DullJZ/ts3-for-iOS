@@ -243,6 +243,65 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         )
     }
 
+    func testOfflineMessageListSummaryDeduplicatesAndCountsVisibleInbox() {
+        let summary = TS3OfflineMessageListSummary(messages: [
+            TS3OfflineMessageSummary(
+                id: 9,
+                senderUniqueIdentifier: "uid-a",
+                senderName: "Sender A",
+                subject: "Unread",
+                message: "Body",
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                isRead: false
+            ),
+            TS3OfflineMessageSummary(
+                id: 10,
+                senderUniqueIdentifier: nil,
+                senderName: nil,
+                subject: "Unknown",
+                message: nil,
+                timestamp: nil,
+                isRead: true
+            ),
+            TS3OfflineMessageSummary(
+                id: 11,
+                senderUniqueIdentifier: " uid-b ",
+                senderName: " ",
+                subject: "Replyable",
+                message: "   ",
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                isRead: false
+            ),
+            TS3OfflineMessageSummary(
+                id: 9,
+                senderUniqueIdentifier: "duplicate",
+                senderName: "Duplicate",
+                subject: "Duplicate",
+                message: "Duplicate",
+                timestamp: Date(timeIntervalSince1970: 1_700_000_200),
+                isRead: true
+            )
+        ])
+
+        XCTAssertEqual(summary.totalCount, 3)
+        XCTAssertEqual(summary.readCount, 1)
+        XCTAssertEqual(summary.unreadCount, 2)
+        XCTAssertEqual(summary.withBodyCount, 1)
+        XCTAssertEqual(summary.bodyNotLoadedCount, 2)
+        XCTAssertEqual(summary.replyableCount, 2)
+        XCTAssertEqual(summary.unknownSenderCount, 1)
+        XCTAssertEqual(summary.distinctSenderCount, 3)
+        XCTAssertEqual(summary.lowestMessageId, 9)
+        XCTAssertEqual(summary.highestMessageId, 11)
+        XCTAssertEqual(summary.earliestTimestamp, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(summary.latestTimestamp, Date(timeIntervalSince1970: 1_700_000_100))
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "messages=3 | unread=2 | read=1 | withBody=1 | bodyNotLoaded=2 | replyable=2 | unknownSender=1 | distinctSenders=3 | lowestMessageId=9 | highestMessageId=11 | earliestTimestamp=1700000000 | latestTimestamp=1700000100 | needsAttention=true"
+        )
+    }
+
     func testOfflineMessageFilterPresetSummaryAndAccessibilityText() {
         let preset = makeOfflineMessageFilterPreset(
             id: UUID(),

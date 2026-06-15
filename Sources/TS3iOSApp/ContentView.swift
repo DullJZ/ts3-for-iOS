@@ -10348,6 +10348,10 @@ struct OfflineMessagesSheet: View {
         .joined(separator: "\n\n")
     }
 
+    private var visibleInboxSummary: TS3OfflineMessageListSummary {
+        TS3OfflineMessageListSummary(messages: filteredMessages)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -10430,6 +10434,17 @@ struct OfflineMessagesSheet: View {
                             searchText = ""
                         }
                     }
+                    ServerInfoDetailRow(
+                        label: localized("offline.visibleSummary"),
+                        value: localized("offline.visibleSummaryFormat", visibleInboxSummary.totalCount)
+                    )
+                    Text(inboxSummaryText(visibleInboxSummary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("offline.copyVisibleSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleInboxSummary.clipboardSummary)
+                    }
+                    .disabled(filteredMessages.isEmpty)
                 }
 
                 if !canUseServerInboxActions {
@@ -10746,6 +10761,23 @@ struct OfflineMessagesSheet: View {
             parts.append(localized("offline.presetSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func inboxSummaryText(_ summary: TS3OfflineMessageListSummary) -> String {
+        [
+            localized("offline.summaryUnreadFormat", summary.unreadCount),
+            localized("offline.summaryReadFormat", summary.readCount),
+            localized("offline.summaryWithBodyFormat", summary.withBodyCount),
+            localized("offline.summaryBodyNotLoadedFormat", summary.bodyNotLoadedCount),
+            localized("offline.summaryReplyableFormat", summary.replyableCount),
+            localized("offline.summaryUnknownSenderFormat", summary.unknownSenderCount),
+            localized("offline.summaryDistinctSendersFormat", summary.distinctSenderCount),
+            localized(
+                "offline.summaryMessageRangeFormat",
+                summary.lowestMessageId.map(String.init) ?? localized("common.none"),
+                summary.highestMessageId.map(String.init) ?? localized("common.none")
+            )
+        ].joined(separator: " · ")
     }
 
     private func exportPresets() {

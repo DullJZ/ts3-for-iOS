@@ -1935,6 +1935,90 @@ struct TS3OfflineMessageSummary: Identifiable, Codable {
     let isRead: Bool
 }
 
+struct TS3OfflineMessageListSummary {
+    let messages: [TS3OfflineMessageSummary]
+
+    var totalCount: Int {
+        messages.count
+    }
+
+    var readCount: Int {
+        messages.filter(\.isRead).count
+    }
+
+    var unreadCount: Int {
+        totalCount - readCount
+    }
+
+    var withBodyCount: Int {
+        messages.filter { $0.message?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var bodyNotLoadedCount: Int {
+        totalCount - withBodyCount
+    }
+
+    var replyableCount: Int {
+        messages.filter { $0.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+    }
+
+    var unknownSenderCount: Int {
+        messages.filter { message in
+            message.senderName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+                && message.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+        }.count
+    }
+
+    var distinctSenderCount: Int {
+        Set(messages.map(\.senderDisplayName)).count
+    }
+
+    var earliestTimestamp: Date? {
+        messages.compactMap(\.timestamp).min()
+    }
+
+    var latestTimestamp: Date? {
+        messages.compactMap(\.timestamp).max()
+    }
+
+    var lowestMessageId: Int? {
+        messages.map(\.id).min()
+    }
+
+    var highestMessageId: Int? {
+        messages.map(\.id).max()
+    }
+
+    var needsAttention: Bool {
+        unreadCount > 0 || bodyNotLoadedCount > 0 || unknownSenderCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "messages=\(totalCount)",
+            "unread=\(unreadCount)",
+            "read=\(readCount)",
+            "withBody=\(withBodyCount)",
+            "bodyNotLoaded=\(bodyNotLoadedCount)",
+            "replyable=\(replyableCount)",
+            "unknownSender=\(unknownSenderCount)",
+            "distinctSenders=\(distinctSenderCount)",
+            "lowestMessageId=\(lowestMessageId.map(String.init) ?? "none")",
+            "highestMessageId=\(highestMessageId.map(String.init) ?? "none")",
+            "earliestTimestamp=\(earliestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "latestTimestamp=\(latestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(messages: [TS3OfflineMessageSummary]) {
+        var seen = Set<Int>()
+        self.messages = messages.filter { message in
+            seen.insert(message.id).inserted
+        }
+    }
+}
+
 private struct TS3OfflineMessageArchive: Codable {
     var messages: [TS3OfflineMessageSummary]
 }
