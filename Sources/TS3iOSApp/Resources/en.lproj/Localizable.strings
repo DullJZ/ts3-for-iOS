@@ -534,6 +534,13 @@
 "channelEditor.neededModifyPower" = "Needed Modify Power";
 "channelEditor.neededDeletePower" = "Needed Delete Power";
 "channelEditor.neededDescriptionViewPower" = "Needed Description View Power";
+"channelEditor.permissionGateSummary" = "Permission Gate Summary";
+"channelEditor.permissionGateSummaryFormat" = "%d set, %d inherited";
+"channelEditor.highestPermissionGate" = "Highest Permission Gate";
+"channelEditor.permissionGateValueFormat" = "%@: %d";
+"channelEditor.permissionGateConfiguredFormat" = "%@ is set to %d.";
+"channelEditor.permissionGateInheritedFormat" = "%@ is not set in this draft; the server or inherited effective value remains in control.";
+"channelEditor.copyPermissionGateSummary" = "Copy Permission Gate Summary";
 "channelEditor.deleteDelaySeconds" = "Delete Delay Seconds";
 "channelEditor.limits" = "Limits";
 "channelEditor.unlimitedClients" = "Unlimited Clients";

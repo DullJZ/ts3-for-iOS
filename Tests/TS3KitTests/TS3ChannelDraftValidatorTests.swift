@@ -181,6 +181,26 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelPermissionGateSummaryTracksConfiguredInheritedAndHighestGates() {
+        let summary = TS3ChannelPermissionGateSummary(
+            neededTalkPower: 20,
+            neededJoinPower: nil,
+            neededSubscribePower: 5,
+            neededModifyPower: 45,
+            neededDeletePower: nil,
+            neededDescriptionViewPower: nil
+        )
+
+        XCTAssertEqual(summary.configuredCount, 3)
+        XCTAssertEqual(summary.inheritedCount, 3)
+        XCTAssertEqual(summary.highestGate?.id, "i_channel_needed_modify_power")
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "configured=i_channel_needed_talk_power=20,i_channel_needed_subscribe_power=5,i_channel_needed_modify_power=45 | inherited=i_channel_needed_join_power,i_channel_needed_delete_power,i_channel_needed_description_view_power | highest=i_channel_needed_modify_power=45 | needsAttention=true"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",

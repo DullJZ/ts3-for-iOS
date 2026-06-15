@@ -257,6 +257,69 @@ struct TS3ChannelCodecConfigurationSummary {
     }
 }
 
+struct TS3ChannelPermissionGateSummary {
+    struct Gate: Identifiable, Equatable {
+        let id: String
+        let title: String
+        let value: Int?
+    }
+
+    let gates: [Gate]
+
+    var configuredGates: [Gate] {
+        gates.filter { $0.value != nil }
+    }
+
+    var inheritedGates: [Gate] {
+        gates.filter { $0.value == nil }
+    }
+
+    var highestGate: Gate? {
+        configuredGates.max { ($0.value ?? Int.min) < ($1.value ?? Int.min) }
+    }
+
+    var configuredCount: Int {
+        configuredGates.count
+    }
+
+    var inheritedCount: Int {
+        inheritedGates.count
+    }
+
+    var needsAttention: Bool {
+        inheritedCount > 0
+    }
+
+    var clipboardSummary: String {
+        let configured = configuredGates.map { "\($0.id)=\($0.value ?? 0)" }.joined(separator: ",")
+        let inherited = inheritedGates.map(\.id).joined(separator: ",")
+        return [
+            "configured=\(configured.isEmpty ? "none" : configured)",
+            "inherited=\(inherited.isEmpty ? "none" : inherited)",
+            "highest=\(highestGate.map { "\($0.id)=\($0.value ?? 0)" } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        neededTalkPower: Int?,
+        neededJoinPower: Int?,
+        neededSubscribePower: Int?,
+        neededModifyPower: Int?,
+        neededDeletePower: Int?,
+        neededDescriptionViewPower: Int?
+    ) {
+        gates = [
+            Gate(id: "i_channel_needed_talk_power", title: "Needed Talk Power", value: neededTalkPower),
+            Gate(id: "i_channel_needed_join_power", title: "Needed Join Power", value: neededJoinPower),
+            Gate(id: "i_channel_needed_subscribe_power", title: "Needed Subscribe Power", value: neededSubscribePower),
+            Gate(id: "i_channel_needed_modify_power", title: "Needed Modify Power", value: neededModifyPower),
+            Gate(id: "i_channel_needed_delete_power", title: "Needed Delete Power", value: neededDeletePower),
+            Gate(id: "i_channel_needed_description_view_power", title: "Needed Description View Power", value: neededDescriptionViewPower)
+        ]
+    }
+}
+
 struct TS3ChannelLimitSummary {
     enum LimitState: String {
         case unknown

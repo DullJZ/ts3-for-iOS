@@ -27659,6 +27659,34 @@ struct ChannelEditorSheet: View {
                             .ts3NumericKeyboard()
                         TextField(localized("channelEditor.neededDescriptionViewPower"), text: $neededDescriptionViewPower)
                             .ts3NumericKeyboard()
+                        if !permissionGateSummaryRows.isEmpty {
+                            ServerInfoDetailRow(
+                                label: localized("channelEditor.permissionGateSummary"),
+                                value: localized(
+                                    "channelEditor.permissionGateSummaryFormat",
+                                    permissionGateSummary.configuredCount,
+                                    permissionGateSummary.inheritedCount
+                                )
+                            )
+                            if let highestGate = permissionGateSummary.highestGate {
+                                ServerInfoDetailRow(
+                                    label: localized("channelEditor.highestPermissionGate"),
+                                    value: localized(
+                                        "channelEditor.permissionGateValueFormat",
+                                        permissionGateTitle(highestGate),
+                                        highestGate.value ?? 0
+                                    )
+                                )
+                            }
+                            ForEach(permissionGateSummaryRows, id: \.self) { row in
+                                Text(row)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Button(localized("channelEditor.copyPermissionGateSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(permissionGateSummary.clipboardSummary)
+                            }
+                        }
                         TextField(localized("channelEditor.deleteDelaySeconds"), text: $deleteDelaySeconds)
                             .ts3NumericKeyboard()
                     } label: {
@@ -27960,6 +27988,7 @@ struct ChannelEditorSheet: View {
             (localized("channelEditor.neededModifyPower"), draft.neededModifyPower ?? ""),
             (localized("channelEditor.neededDeletePower"), draft.neededDeletePower ?? ""),
             (localized("channelEditor.neededDescriptionViewPower"), draft.neededDescriptionViewPower ?? ""),
+            (localized("channelEditor.permissionGateSummary"), permissionGateSummary.clipboardSummary),
             (localized("channelEditor.codec"), codecTitle(for: draft.codec)),
             (localized("channelEditor.codecQuality"), codecQualityTitle(for: draft.codecQuality)),
             (localized("channelEditor.codecLatencyFactor"), draft.codecLatencyFactor ?? ""),
@@ -27992,6 +28021,50 @@ struct ChannelEditorSheet: View {
         let rows = draftChangeRows
         guard !rows.isEmpty else { return localized("channelEditor.noDraftChanges") }
         return rows.joined(separator: "\n")
+    }
+
+    private var permissionGateSummary: TS3ChannelPermissionGateSummary {
+        TS3ChannelPermissionGateSummary(
+            neededTalkPower: parsedOptionalInt(neededTalkPower),
+            neededJoinPower: parsedOptionalInt(neededJoinPower),
+            neededSubscribePower: parsedOptionalInt(neededSubscribePower),
+            neededModifyPower: parsedOptionalInt(neededModifyPower),
+            neededDeletePower: parsedOptionalInt(neededDeletePower),
+            neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower)
+        )
+    }
+
+    private var permissionGateSummaryRows: [String] {
+        let configuredRows = permissionGateSummary.configuredGates.map { gate in
+            localized(
+                "channelEditor.permissionGateConfiguredFormat",
+                permissionGateTitle(gate),
+                gate.value ?? 0
+            )
+        }
+        let inheritedRows = permissionGateSummary.inheritedGates.map { gate in
+            localized("channelEditor.permissionGateInheritedFormat", permissionGateTitle(gate))
+        }
+        return configuredRows + inheritedRows
+    }
+
+    private func permissionGateTitle(_ gate: TS3ChannelPermissionGateSummary.Gate) -> String {
+        switch gate.id {
+        case "i_channel_needed_talk_power":
+            return localized("channelEditor.neededTalkPower")
+        case "i_channel_needed_join_power":
+            return localized("channelEditor.neededJoinPower")
+        case "i_channel_needed_subscribe_power":
+            return localized("channelEditor.neededSubscribePower")
+        case "i_channel_needed_modify_power":
+            return localized("channelEditor.neededModifyPower")
+        case "i_channel_needed_delete_power":
+            return localized("channelEditor.neededDeletePower")
+        case "i_channel_needed_description_view_power":
+            return localized("channelEditor.neededDescriptionViewPower")
+        default:
+            return gate.title
+        }
     }
 
     private func draftChangeRows(for draft: ChannelDraft) -> [String] {
