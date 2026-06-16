@@ -24072,6 +24072,20 @@ struct BanListSheet: View {
                             .ts3PlainTextField()
                             .ts3NumericKeyboard()
                     }
+                    ServerInfoDetailRow(
+                        label: localized("ban.draftCoverage"),
+                        value: localized(
+                            "ban.draftCoverageFormat",
+                            banDraftCoverageSummary.targetFieldCount,
+                            banDraftCoverageSummary.validationIssueCount
+                        )
+                    )
+                    Text(banDraftCoverageText(banDraftCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(banDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("ban.copyDraftCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(banDraftCoverageSummary.clipboardSummary)
+                    }
                     Text(banDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -24381,6 +24395,32 @@ struct BanListSheet: View {
             isPermanent: duration == .permanent,
             reason: reason
         )
+    }
+
+    private var banDraftCoverageSummary: TS3BanDraftCoverageSummary {
+        TS3BanDraftCoverageSummary(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname,
+            reason: reason,
+            isPermanent: duration == .permanent,
+            isCustomDuration: duration == .custom,
+            validationMessages: banDraftValidationMessages
+        )
+    }
+
+    private func banDraftCoverageText(_ summary: TS3BanDraftCoverageSummary) -> String {
+        [
+            localized("ban.draftCoverageIPFormat", summary.hasIP ? 1 : 0),
+            localized("ban.draftCoverageNameFormat", summary.hasName ? 1 : 0),
+            localized("ban.draftCoverageUniqueIdFormat", summary.hasUniqueIdentifier ? 1 : 0),
+            localized("ban.draftCoverageMyTeamSpeakIdFormat", summary.hasMyTeamSpeakId ? 1 : 0),
+            localized("ban.draftCoverageLastNicknameFormat", summary.hasLastNickname ? 1 : 0),
+            localized("ban.draftCoverageDurationFormat", summary.isPermanent ? localized("ban.draftCoveragePermanent") : localized("ban.draftCoverageTemporary")),
+            localized("ban.draftCoverageReasonFormat", summary.hasReason ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func clearForm() {

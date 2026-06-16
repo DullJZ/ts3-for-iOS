@@ -67,6 +67,78 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(summary, "uid=uid-bad | duration=Permanent")
     }
 
+    func testBanDraftCoverageSummaryCountsAdvancedFieldsAndCustomDuration() {
+        let validationMessages = TS3BanDraftValidator.validationMessages(
+            ip: " 192.0.2.10 ",
+            name: " Bad Guest ",
+            uniqueIdentifier: " uid-bad ",
+            myTeamSpeakId: " myts-id ",
+            lastNickname: " Recent Guest ",
+            durationSeconds: 5 * 60,
+            isCustomDuration: true,
+            reason: " spam "
+        )
+        let summary = TS3BanDraftCoverageSummary(
+            ip: " 192.0.2.10 ",
+            name: " Bad Guest ",
+            uniqueIdentifier: " uid-bad ",
+            myTeamSpeakId: " myts-id ",
+            lastNickname: " Recent Guest ",
+            reason: " spam ",
+            isPermanent: false,
+            isCustomDuration: true,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.targetFieldCount, 5)
+        XCTAssertTrue(summary.hasIP)
+        XCTAssertTrue(summary.hasName)
+        XCTAssertTrue(summary.hasUniqueIdentifier)
+        XCTAssertTrue(summary.hasMyTeamSpeakId)
+        XCTAssertTrue(summary.hasLastNickname)
+        XCTAssertTrue(summary.hasReason)
+        XCTAssertFalse(summary.isPermanent)
+        XCTAssertTrue(summary.hasCustomDuration)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targets=5 | ip=true | name=true | uid=true | mytsid=true | lastNickname=true | duration=temporary | customDuration=true | reason=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testBanDraftCoverageSummaryFlagsInvalidMissingTarget() {
+        let validationMessages = TS3BanDraftValidator.validationMessages(
+            ip: "",
+            name: "",
+            uniqueIdentifier: "",
+            myTeamSpeakId: "",
+            lastNickname: "",
+            durationSeconds: nil,
+            isCustomDuration: true,
+            reason: "spam\nabuse"
+        )
+        let summary = TS3BanDraftCoverageSummary(
+            ip: "",
+            name: "",
+            uniqueIdentifier: "",
+            myTeamSpeakId: "",
+            lastNickname: "",
+            reason: "spam\nabuse",
+            isPermanent: true,
+            isCustomDuration: true,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.targetFieldCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 3)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targets=0 | ip=false | name=false | uid=false | mytsid=false | lastNickname=false | duration=permanent | customDuration=true | reason=true | validationIssues=3 | needsAttention=true"
+        )
+    }
+
     func testBanDurationDraftSelectionMapsOfficialDurationsAndCustomSeconds() {
         XCTAssertEqual(TS3BanDuration.draftSelection(for: nil).duration, .permanent)
         XCTAssertEqual(TS3BanDuration.draftSelection(for: 0).duration, .permanent)

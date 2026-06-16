@@ -2590,6 +2590,75 @@ struct TS3BanListSummary {
     }
 }
 
+struct TS3BanDraftCoverageSummary {
+    let hasIP: Bool
+    let hasName: Bool
+    let hasUniqueIdentifier: Bool
+    let hasMyTeamSpeakId: Bool
+    let hasLastNickname: Bool
+    let hasReason: Bool
+    let isPermanent: Bool
+    let hasCustomDuration: Bool
+    let validationIssueCount: Int
+
+    var targetFieldCount: Int {
+        [
+            hasIP,
+            hasName,
+            hasUniqueIdentifier,
+            hasMyTeamSpeakId,
+            hasLastNickname
+        ].filter { $0 }.count
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || targetFieldCount == 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "targets=\(targetFieldCount)",
+            "ip=\(hasIP ? "true" : "false")",
+            "name=\(hasName ? "true" : "false")",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "mytsid=\(hasMyTeamSpeakId ? "true" : "false")",
+            "lastNickname=\(hasLastNickname ? "true" : "false")",
+            "duration=\(isPermanent ? "permanent" : "temporary")",
+            "customDuration=\(hasCustomDuration ? "true" : "false")",
+            "reason=\(hasReason ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        ip: String,
+        name: String,
+        uniqueIdentifier: String,
+        myTeamSpeakId: String,
+        lastNickname: String,
+        reason: String,
+        isPermanent: Bool,
+        isCustomDuration: Bool,
+        validationMessages: [String]
+    ) {
+        self.hasIP = Self.normalized(ip) != nil
+        self.hasName = Self.normalized(name) != nil
+        self.hasUniqueIdentifier = Self.normalized(uniqueIdentifier) != nil
+        self.hasMyTeamSpeakId = Self.normalized(myTeamSpeakId) != nil
+        self.hasLastNickname = Self.normalized(lastNickname) != nil
+        self.hasReason = Self.normalized(reason) != nil
+        self.isPermanent = isPermanent
+        self.hasCustomDuration = isCustomDuration
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 private struct TS3BanBackupEntry: Codable {
     var ip: String?
     var name: String?
