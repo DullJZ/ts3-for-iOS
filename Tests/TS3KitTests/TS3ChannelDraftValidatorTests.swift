@@ -245,6 +245,59 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorCoverageSummaryCountsCoveredChangedAreasAndWarnings() {
+        let summary = TS3ChannelEditorCoverageSummary(
+            coveredAreas: [
+                .channel,
+                .voice,
+                .voice,
+                .permissionGates
+            ],
+            changedAreaCounts: [
+                .channel: 2,
+                .voice: 1,
+                .permissionGates: 0,
+                .limits: 3
+            ],
+            validationIssueCount: 1,
+            codecWarningCount: 2
+        )
+
+        XCTAssertEqual(summary.coveredAreaCount, 3)
+        XCTAssertEqual(summary.totalOfficialAreaCount, 4)
+        XCTAssertEqual(summary.uncoveredAreaCount, 1)
+        XCTAssertEqual(summary.changedAreaCount, 3)
+        XCTAssertEqual(summary.totalChangeCount, 6)
+        XCTAssertEqual(summary.validationIssueCount, 1)
+        XCTAssertEqual(summary.codecWarningCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "coveredAreas=3/4 | uncoveredAreas=1 | changedAreas=3 | changes=6 | validationIssues=1 | codecWarnings=2 | covered=channel,voice,permissionGates | changed=channel:2,voice:1,limits:3 | needsAttention=true"
+        )
+    }
+
+    func testChannelEditorCoverageSummaryHandlesCompleteCleanCoverage() {
+        let summary = TS3ChannelEditorCoverageSummary(
+            changedAreaCounts: [:],
+            validationIssueCount: -1,
+            codecWarningCount: -2
+        )
+
+        XCTAssertEqual(summary.coveredAreaCount, 4)
+        XCTAssertEqual(summary.totalOfficialAreaCount, 4)
+        XCTAssertEqual(summary.uncoveredAreaCount, 0)
+        XCTAssertEqual(summary.changedAreaCount, 0)
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.codecWarningCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "coveredAreas=4/4 | uncoveredAreas=0 | changedAreas=0 | changes=0 | validationIssues=0 | codecWarnings=0 | covered=channel,voice,permissionGates,limits | changed=none | needsAttention=false"
+        )
+    }
+
     func testChannelEditorReviewSummaryDeduplicatesSensitiveChanges() {
         let summary = TS3ChannelEditorReviewSummary(
             reviewItems: [

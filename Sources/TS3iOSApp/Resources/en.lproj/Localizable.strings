@@ -587,6 +587,12 @@
 "channelEditor.unchanged" = "Unchanged";
 "channelEditor.noDraftChanges" = "No draft changes";
 "channelEditor.draftChangeCountFormat" = "%d draft changes";
+"channelEditor.coverageSummary" = "Official Area Coverage";
+"channelEditor.coverageSummaryFormat" = "%d of %d areas, %d changed";
+"channelEditor.coverageAreaFormat" = "%d/%d official areas covered";
+"channelEditor.coverageChangedAreaFormat" = "%d changed areas, %d fields";
+"channelEditor.coverageUncoveredFormat" = "%d uncovered areas";
+"channelEditor.copyCoverageSummary" = "Copy Coverage Summary";
 "channelEditor.impactSummary" = "Impact Summary";
 "channelEditor.impactSummaryFormat" = "%d changes, %d areas, %d validation issues, %d codec warnings";
 "channelEditor.impactNoChanges" = "No channel setting impacts";

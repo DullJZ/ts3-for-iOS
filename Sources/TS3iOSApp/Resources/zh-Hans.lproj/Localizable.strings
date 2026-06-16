@@ -587,6 +587,12 @@
 "channelEditor.unchanged" = "不更改";
 "channelEditor.noDraftChanges" = "没有草稿变更";
 "channelEditor.draftChangeCountFormat" = "%d 项草稿变更";
+"channelEditor.coverageSummary" = "官方区域覆盖";
+"channelEditor.coverageSummaryFormat" = "%d / %d 个区域，%d 个已变更";
+"channelEditor.coverageAreaFormat" = "已覆盖 %d/%d 个官方区域";
+"channelEditor.coverageChangedAreaFormat" = "%d 个变更区域，%d 个字段";
+"channelEditor.coverageUncoveredFormat" = "%d 个未覆盖区域";
+"channelEditor.copyCoverageSummary" = "复制覆盖摘要";
 "channelEditor.impactSummary" = "影响摘要";
 "channelEditor.impactSummaryFormat" = "%d 项变化，%d 个区域，%d 个校验问题，%d 个编解码警告";
 "channelEditor.impactNoChanges" = "没有频道设置影响";

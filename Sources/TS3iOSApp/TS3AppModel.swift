@@ -908,6 +908,75 @@ struct TS3ChannelEditorImpactSummary {
     }
 }
 
+struct TS3ChannelEditorCoverageSummary {
+    let coveredAreas: [TS3ChannelEditorImpactArea]
+    let changedAreaCounts: [TS3ChannelEditorImpactArea: Int]
+    let validationIssueCount: Int
+    let codecWarningCount: Int
+
+    var coveredAreaCount: Int {
+        Set(coveredAreas).count
+    }
+
+    var totalOfficialAreaCount: Int {
+        TS3ChannelEditorImpactArea.allCases.count
+    }
+
+    var changedAreaCount: Int {
+        changedAreaCounts.values.filter { $0 > 0 }.count
+    }
+
+    var totalChangeCount: Int {
+        changedAreaCounts.values.reduce(0, +)
+    }
+
+    var uncoveredAreaCount: Int {
+        max(0, totalOfficialAreaCount - coveredAreaCount)
+    }
+
+    var needsAttention: Bool {
+        uncoveredAreaCount > 0 || validationIssueCount > 0 || codecWarningCount > 0
+    }
+
+    var clipboardSummary: String {
+        let covered = orderedCoveredAreas.map(\.rawValue).joined(separator: ",")
+        let changed = TS3ChannelEditorImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = changedAreaCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "coveredAreas=\(coveredAreaCount)/\(totalOfficialAreaCount)",
+            "uncoveredAreas=\(uncoveredAreaCount)",
+            "changedAreas=\(changedAreaCount)",
+            "changes=\(totalChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "codecWarnings=\(codecWarningCount)",
+            "covered=\(covered.isEmpty ? "none" : covered)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        coveredAreas: [TS3ChannelEditorImpactArea] = TS3ChannelEditorImpactArea.allCases,
+        changedAreaCounts: [TS3ChannelEditorImpactArea: Int],
+        validationIssueCount: Int,
+        codecWarningCount: Int
+    ) {
+        var seen = Set<TS3ChannelEditorImpactArea>()
+        self.coveredAreas = coveredAreas.filter { seen.insert($0).inserted }
+        self.changedAreaCounts = changedAreaCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.codecWarningCount = max(0, codecWarningCount)
+    }
+
+    private var orderedCoveredAreas: [TS3ChannelEditorImpactArea] {
+        TS3ChannelEditorImpactArea.allCases.filter { coveredAreas.contains($0) }
+    }
+}
+
 struct TS3ChannelEditorReviewSummary {
     let reviewItems: [String]
     let validationIssueCount: Int
