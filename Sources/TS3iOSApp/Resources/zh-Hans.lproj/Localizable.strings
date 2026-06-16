@@ -2723,6 +2723,15 @@
 "permissions.addPermission" = "添加权限";
 "permissions.permissionName" = "权限名称";
 "permissions.value" = "值";
+"permissions.draftCoverage" = "草稿覆盖";
+"permissions.draftCoverageFormat" = "%d / %d 个必填字段，%d 个生效标记，%d 个校验问题";
+"permissions.draftCoverageScopeFormat" = "范围：%@";
+"permissions.draftCoverageTargetFormat" = "目标：%d";
+"permissions.draftCoverageNameFormat" = "名称：%d";
+"permissions.draftCoverageValueFormat" = "数字值：%d";
+"permissions.draftCoverageNegatedFormat" = "取反：%d / 支持 %d";
+"permissions.draftCoverageSkipFormat" = "跳过：%d / 支持 %d";
+"permissions.copyDraftCoverage" = "复制权限草稿覆盖";
 "permissions.copyDraft" = "复制权限草稿";
 "permissions.addOrUpdate" = "添加或更新权限";
 "permissions.directory" = "权限目录";

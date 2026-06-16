@@ -21220,6 +21220,13 @@ struct PermissionsSheet: View {
         permissionDraft.validationMessages
     }
 
+    var permissionDraftCoverageSummary: TS3PermissionDraftCoverageSummary {
+        TS3PermissionDraftCoverageSummary(
+            draft: permissionDraft,
+            validationMessages: permissionDraftValidationMessages
+        )
+    }
+
     var exportFilename: String {
         switch model.permissionEditScope {
         case .ownClient:
@@ -21476,6 +21483,22 @@ struct PermissionsSheet: View {
                     Text(permissionEffectDescription(isNegated: permissionDraft.effectiveNegated, isSkipped: permissionDraft.effectiveSkip))
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    ServerInfoDetailRow(
+                        label: localized("permissions.draftCoverage"),
+                        value: localized(
+                            "permissions.draftCoverageFormat",
+                            permissionDraftCoverageSummary.requiredFieldCount,
+                            permissionDraftCoverageSummary.requiredFieldTotal,
+                            permissionDraftCoverageSummary.effectiveFlagCount,
+                            permissionDraftCoverageSummary.validationIssueCount
+                        )
+                    )
+                    Text(permissionDraftCoverageText(permissionDraftCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(permissionDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("permissions.copyDraftCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(permissionDraftCoverageSummary.clipboardSummary)
+                    }
                     if !permissionDraftValidationMessages.isEmpty {
                         ForEach(permissionDraftValidationMessages, id: \.self) { message in
                             Text(message)
@@ -21865,6 +21888,17 @@ struct PermissionsSheet: View {
         case (false, false):
             return localized("permissions.effect.direct")
         }
+    }
+
+    private func permissionDraftCoverageText(_ summary: TS3PermissionDraftCoverageSummary) -> String {
+        [
+            localized("permissions.draftCoverageScopeFormat", scopeTitle(summary.scope)),
+            localized("permissions.draftCoverageTargetFormat", summary.hasTarget ? 1 : 0),
+            localized("permissions.draftCoverageNameFormat", summary.hasName ? 1 : 0),
+            localized("permissions.draftCoverageValueFormat", summary.hasNumericValue ? 1 : 0),
+            localized("permissions.draftCoverageNegatedFormat", summary.usesNegated ? 1 : 0, summary.supportsNegated ? 1 : 0),
+            localized("permissions.draftCoverageSkipFormat", summary.usesSkip ? 1 : 0, summary.supportsSkip ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

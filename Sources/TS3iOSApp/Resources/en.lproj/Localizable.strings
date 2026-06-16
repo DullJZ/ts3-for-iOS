@@ -2723,6 +2723,15 @@
 "permissions.addPermission" = "Add Permission";
 "permissions.permissionName" = "Permission Name";
 "permissions.value" = "Value";
+"permissions.draftCoverage" = "Draft Coverage";
+"permissions.draftCoverageFormat" = "%d of %d required fields, %d active flags, %d validation issues";
+"permissions.draftCoverageScopeFormat" = "Scope: %@";
+"permissions.draftCoverageTargetFormat" = "Target: %d";
+"permissions.draftCoverageNameFormat" = "Name: %d";
+"permissions.draftCoverageValueFormat" = "Numeric value: %d";
+"permissions.draftCoverageNegatedFormat" = "Negated: %d / supported %d";
+"permissions.draftCoverageSkipFormat" = "Skip: %d / supported %d";
+"permissions.copyDraftCoverage" = "Copy Permission Draft Coverage";
 "permissions.copyDraft" = "Copy Permission Draft";
 "permissions.addOrUpdate" = "Add or Update Permission";
 "permissions.directory" = "Permission Directory";

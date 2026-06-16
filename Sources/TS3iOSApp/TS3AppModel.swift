@@ -5152,6 +5152,81 @@ struct TS3PermissionEditDraft {
     }
 }
 
+struct TS3PermissionDraftCoverageSummary {
+    let scope: TS3PermissionEditScope
+    let hasTarget: Bool
+    let hasName: Bool
+    let hasNumericValue: Bool
+    let supportsNegated: Bool
+    let usesNegated: Bool
+    let supportsSkip: Bool
+    let usesSkip: Bool
+    let validationIssueCount: Int
+
+    var requiredFieldCount: Int {
+        [hasTarget, hasName, hasNumericValue].filter { $0 }.count
+    }
+
+    var requiredFieldTotal: Int {
+        3
+    }
+
+    var effectiveFlagCount: Int {
+        [usesNegated, usesSkip].filter { $0 }.count
+    }
+
+    var unsupportedRequestedFlagCount: Int {
+        (usesNegated && !supportsNegated ? 1 : 0) + (usesSkip && !supportsSkip ? 1 : 0)
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0
+            || requiredFieldCount < requiredFieldTotal
+            || unsupportedRequestedFlagCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.title)",
+            "requiredFields=\(requiredFieldCount)/\(requiredFieldTotal)",
+            "target=\(hasTarget ? "true" : "false")",
+            "name=\(hasName ? "true" : "false")",
+            "numericValue=\(hasNumericValue ? "true" : "false")",
+            "supportsNegated=\(supportsNegated ? "true" : "false")",
+            "usesNegated=\(usesNegated ? "true" : "false")",
+            "supportsSkip=\(supportsSkip ? "true" : "false")",
+            "usesSkip=\(usesSkip ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(draft: TS3PermissionEditDraft, validationMessages: [String]) {
+        self.scope = draft.scope
+        self.hasTarget = !draft.target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        self.hasName = !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        self.hasNumericValue = draft.parsedValue != nil
+        self.supportsNegated = Self.supportsNegated(scope: draft.scope)
+        self.usesNegated = draft.negated
+        self.supportsSkip = Self.supportsSkip(scope: draft.scope)
+        self.usesSkip = draft.skip
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func supportsNegated(scope: TS3PermissionEditScope) -> Bool {
+        switch scope {
+        case .serverGroup, .channelGroup:
+            return true
+        case .ownClient, .databaseClient, .channel, .channelClient:
+            return false
+        }
+    }
+
+    private static func supportsSkip(scope: TS3PermissionEditScope) -> Bool {
+        scope != .channel
+    }
+}
+
 struct TS3FileEntrySummary: Identifiable {
     let id: String
     let channelId: Int
