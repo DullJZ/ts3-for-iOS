@@ -1356,6 +1356,14 @@
 "clientActions.copyClientInformation" = "Copy Client Information";
 "clientActions.exportClientInformation" = "Export Client Information";
 "clientActions.subject" = "Subject";
+"clientActions.offlineDraftCoverage" = "Offline Message Draft Coverage";
+"clientActions.offlineDraftCoverageFormat" = "%d recipient fields, %d of 2 content fields, %d validation issues";
+"clientActions.offlineDraftCoverageRecipientNameFormat" = "Recipient name: %d";
+"clientActions.offlineDraftCoverageRecipientUidFormat" = "Recipient UID: %d";
+"clientActions.offlineDraftCoverageLookupFormat" = "Lookup: %d";
+"clientActions.offlineDraftCoverageSubjectFormat" = "Subject: %d";
+"clientActions.offlineDraftCoverageBodyFormat" = "Body: %d";
+"clientActions.copyOfflineDraftCoverage" = "Copy Offline Message Draft Coverage";
 "clientActions.copyOfflineMessageSummary" = "Copy Offline Message Summary";
 "clientActions.pokeDraftCoverage" = "Poke Draft Coverage";
 "clientActions.pokeDraftCoverageFormat" = "%d target fields, %d validation issues";

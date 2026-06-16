@@ -50,6 +50,69 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         XCTAssertEqual(summary, "recipient=Saved User | recipientUid=uid-saved | subject=Status | body=7 chars")
     }
 
+    func testOfflineMessageDraftCoverageSummaryCountsLookupAndContentFields() {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true
+        )
+        let summary = TS3OfflineMessageDraftCoverageSummary(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.recipientFieldCount, 2)
+        XCTAssertEqual(summary.requiredContentFieldCount, 2)
+        XCTAssertTrue(summary.hasRecipientName)
+        XCTAssertFalse(summary.hasRecipientUniqueIdentifier)
+        XCTAssertTrue(summary.allowsRecipientLookup)
+        XCTAssertTrue(summary.hasSubject)
+        XCTAssertTrue(summary.hasBody)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "recipientFields=2 | recipientName=true | recipientUid=false | recipientLookup=true | contentFields=2/2 | subject=true | body=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testOfflineMessageDraftCoverageSummaryFlagsInvalidDraft() {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: " ",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello\nagain",
+            message: " "
+        )
+        let summary = TS3OfflineMessageDraftCoverageSummary(
+            recipientName: " ",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello\nagain",
+            message: " ",
+            allowsRecipientLookup: false,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.recipientFieldCount, 0)
+        XCTAssertEqual(summary.requiredContentFieldCount, 1)
+        XCTAssertFalse(summary.hasRecipientName)
+        XCTAssertFalse(summary.hasRecipientUniqueIdentifier)
+        XCTAssertFalse(summary.allowsRecipientLookup)
+        XCTAssertTrue(summary.hasSubject)
+        XCTAssertFalse(summary.hasBody)
+        XCTAssertEqual(summary.validationIssueCount, 4)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "recipientFields=0 | recipientName=false | recipientUid=false | recipientLookup=false | contentFields=1/2 | subject=true | body=false | validationIssues=4 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testOfflineMessageArchivePreviewSanitizesCountsAndFirstDetails() throws {
         let model = TS3AppModel()

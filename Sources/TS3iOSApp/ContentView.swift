@@ -5850,6 +5850,21 @@ struct UserActionSheet: View {
                         TextField(fieldTitle, text: $text)
                             .ts3PlainTextField()
                         if mode == .offlineMessage {
+                            ServerInfoDetailRow(
+                                label: localized("clientActions.offlineDraftCoverage"),
+                                value: localized(
+                                    "clientActions.offlineDraftCoverageFormat",
+                                    offlineMessageDraftCoverageSummary.recipientFieldCount,
+                                    offlineMessageDraftCoverageSummary.requiredContentFieldCount,
+                                    offlineMessageDraftCoverageSummary.validationIssueCount
+                                )
+                            )
+                            Text(offlineMessageDraftCoverageText(offlineMessageDraftCoverageSummary))
+                                .font(.caption)
+                                .foregroundColor(offlineMessageDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("clientActions.copyOfflineDraftCoverage")) {
+                                TS3PlatformSupport.copyToPasteboard(offlineMessageDraftCoverageSummary.clipboardSummary)
+                            }
                             Text(offlineMessageDraftSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -6045,6 +6060,27 @@ struct UserActionSheet: View {
             message: text,
             allowsRecipientLookup: true
         )
+    }
+
+    private var offlineMessageDraftCoverageSummary: TS3OfflineMessageDraftCoverageSummary {
+        TS3OfflineMessageDraftCoverageSummary(
+            recipientName: user.nickname,
+            recipientUniqueIdentifier: user.uniqueIdentifier,
+            subject: subject,
+            message: text,
+            allowsRecipientLookup: true,
+            validationMessages: offlineMessageDraftValidationMessages
+        )
+    }
+
+    private func offlineMessageDraftCoverageText(_ summary: TS3OfflineMessageDraftCoverageSummary) -> String {
+        [
+            localized("clientActions.offlineDraftCoverageRecipientNameFormat", summary.hasRecipientName ? 1 : 0),
+            localized("clientActions.offlineDraftCoverageRecipientUidFormat", summary.hasRecipientUniqueIdentifier ? 1 : 0),
+            localized("clientActions.offlineDraftCoverageLookupFormat", summary.allowsRecipientLookup ? 1 : 0),
+            localized("clientActions.offlineDraftCoverageSubjectFormat", summary.hasSubject ? 1 : 0),
+            localized("clientActions.offlineDraftCoverageBodyFormat", summary.hasBody ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private var pokeDraftValidationMessages: [String] {

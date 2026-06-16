@@ -1356,6 +1356,14 @@
 "clientActions.copyClientInformation" = "复制客户端信息";
 "clientActions.exportClientInformation" = "导出客户端信息";
 "clientActions.subject" = "主题";
+"clientActions.offlineDraftCoverage" = "离线消息草稿覆盖";
+"clientActions.offlineDraftCoverageFormat" = "%d 个收件人字段，%d / 2 个内容字段，%d 个校验问题";
+"clientActions.offlineDraftCoverageRecipientNameFormat" = "收件人名称：%d";
+"clientActions.offlineDraftCoverageRecipientUidFormat" = "收件人 UID：%d";
+"clientActions.offlineDraftCoverageLookupFormat" = "运行时查找：%d";
+"clientActions.offlineDraftCoverageSubjectFormat" = "主题：%d";
+"clientActions.offlineDraftCoverageBodyFormat" = "正文：%d";
+"clientActions.copyOfflineDraftCoverage" = "复制离线消息草稿覆盖";
 "clientActions.copyOfflineMessageSummary" = "复制离线消息摘要";
 "clientActions.pokeDraftCoverage" = "戳一戳草稿覆盖";
 "clientActions.pokeDraftCoverageFormat" = "%d 个目标字段，%d 个校验问题";

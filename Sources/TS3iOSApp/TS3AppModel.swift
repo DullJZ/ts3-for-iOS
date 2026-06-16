@@ -2518,6 +2518,63 @@ enum TS3OfflineMessageDraftValidator {
     }
 }
 
+struct TS3OfflineMessageDraftCoverageSummary {
+    let hasRecipientName: Bool
+    let hasRecipientUniqueIdentifier: Bool
+    let allowsRecipientLookup: Bool
+    let hasSubject: Bool
+    let hasBody: Bool
+    let validationIssueCount: Int
+
+    var recipientFieldCount: Int {
+        [hasRecipientName, hasRecipientUniqueIdentifier, allowsRecipientLookup && !hasRecipientUniqueIdentifier].filter { $0 }.count
+    }
+
+    var requiredContentFieldCount: Int {
+        [hasSubject, hasBody].filter { $0 }.count
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || recipientFieldCount == 0 || requiredContentFieldCount < 2
+    }
+
+    var clipboardSummary: String {
+        [
+            "recipientFields=\(recipientFieldCount)",
+            "recipientName=\(hasRecipientName ? "true" : "false")",
+            "recipientUid=\(hasRecipientUniqueIdentifier ? "true" : "false")",
+            "recipientLookup=\(allowsRecipientLookup ? "true" : "false")",
+            "contentFields=\(requiredContentFieldCount)/2",
+            "subject=\(hasSubject ? "true" : "false")",
+            "body=\(hasBody ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        recipientName: String?,
+        recipientUniqueIdentifier: String?,
+        subject: String,
+        message: String,
+        allowsRecipientLookup: Bool,
+        validationMessages: [String]
+    ) {
+        self.hasRecipientName = Self.normalized(recipientName) != nil
+        self.hasRecipientUniqueIdentifier = Self.normalized(recipientUniqueIdentifier) != nil
+        self.allowsRecipientLookup = allowsRecipientLookup
+        self.hasSubject = Self.normalized(subject) != nil
+        self.hasBody = Self.normalized(message) != nil
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TS3BanEntrySummary: Identifiable, Codable {
     let id: Int
     let ip: String?
