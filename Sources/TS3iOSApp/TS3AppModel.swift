@@ -2347,6 +2347,68 @@ struct TS3OfflineMessageListSummary {
     }
 }
 
+struct TS3OfflineMessageBulkActionSummary {
+    let visibleMessages: [TS3OfflineMessageSummary]
+    let allMessages: [TS3OfflineMessageSummary]
+
+    var visibleCount: Int {
+        visibleMessages.count
+    }
+
+    var loadBodyCount: Int {
+        visibleMessages.filter { $0.message?.isEmpty != false }.count
+    }
+
+    var markReadCount: Int {
+        visibleMessages.filter { !$0.isRead }.count
+    }
+
+    var markUnreadCount: Int {
+        visibleMessages.filter(\.isRead).count
+    }
+
+    var deleteVisibleCount: Int {
+        visibleCount
+    }
+
+    var deleteReadCount: Int {
+        allMessages.filter(\.isRead).count
+    }
+
+    var requiresServerCount: Int {
+        [loadBodyCount, markReadCount, markUnreadCount, deleteVisibleCount, deleteReadCount].filter { $0 > 0 }.count
+    }
+
+    var needsAttention: Bool {
+        visibleCount == 0 || requiresServerCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "visible=\(visibleCount)",
+            "loadBodies=\(loadBodyCount)",
+            "markRead=\(markReadCount)",
+            "markUnread=\(markUnreadCount)",
+            "deleteVisible=\(deleteVisibleCount)",
+            "deleteRead=\(deleteReadCount)",
+            "serverActions=\(requiresServerCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(visibleMessages: [TS3OfflineMessageSummary], allMessages: [TS3OfflineMessageSummary]) {
+        self.visibleMessages = Self.deduplicated(visibleMessages)
+        self.allMessages = Self.deduplicated(allMessages)
+    }
+
+    private static func deduplicated(_ messages: [TS3OfflineMessageSummary]) -> [TS3OfflineMessageSummary] {
+        var seen = Set<Int>()
+        return messages.filter { message in
+            seen.insert(message.id).inserted
+        }
+    }
+}
+
 private struct TS3OfflineMessageArchive: Codable {
     var messages: [TS3OfflineMessageSummary]
 }

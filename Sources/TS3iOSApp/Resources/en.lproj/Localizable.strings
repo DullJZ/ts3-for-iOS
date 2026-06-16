@@ -1514,6 +1514,14 @@
 "offline.summaryDistinctSendersFormat" = "Senders: %d";
 "offline.summaryMessageRangeFormat" = "ID range: %@-%@";
 "offline.copyVisibleSummary" = "Copy Visible Inbox Summary";
+"offline.bulkSummary" = "Bulk Action Impact";
+"offline.bulkSummaryFormat" = "%d visible messages, %d server actions available";
+"offline.bulkLoadBodiesFormat" = "Load bodies: %d";
+"offline.bulkMarkReadFormat" = "Mark read: %d";
+"offline.bulkMarkUnreadFormat" = "Mark unread: %d";
+"offline.bulkDeleteVisibleFormat" = "Delete visible: %d";
+"offline.bulkDeleteReadFormat" = "Delete read: %d";
+"offline.copyBulkSummary" = "Copy Bulk Action Impact";
 "offline.cachedOnlyNotice" = "Showing locally cached offline messages. Connect to refresh, load message bodies, reply, mark read, or delete from the server.";
 "offline.noMessages" = "No offline messages";
 "offline.noMatchingMessages" = "No matching messages";

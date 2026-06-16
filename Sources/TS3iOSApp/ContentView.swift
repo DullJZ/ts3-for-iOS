@@ -10536,6 +10536,13 @@ struct OfflineMessagesSheet: View {
         TS3OfflineMessageListSummary(messages: filteredMessages)
     }
 
+    private var bulkActionSummary: TS3OfflineMessageBulkActionSummary {
+        TS3OfflineMessageBulkActionSummary(
+            visibleMessages: filteredMessages,
+            allMessages: model.offlineMessages
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -10629,6 +10636,21 @@ struct OfflineMessagesSheet: View {
                         TS3PlatformSupport.copyToPasteboard(visibleInboxSummary.clipboardSummary)
                     }
                     .disabled(filteredMessages.isEmpty)
+                    ServerInfoDetailRow(
+                        label: localized("offline.bulkSummary"),
+                        value: localized(
+                            "offline.bulkSummaryFormat",
+                            bulkActionSummary.visibleCount,
+                            bulkActionSummary.requiresServerCount
+                        )
+                    )
+                    Text(bulkActionSummaryText(bulkActionSummary))
+                        .font(.caption)
+                        .foregroundColor(bulkActionSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("offline.copyBulkSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(bulkActionSummary.clipboardSummary)
+                    }
+                    .disabled(filteredMessages.isEmpty && model.offlineMessages.isEmpty)
                 }
 
                 if !canUseServerInboxActions {
@@ -10961,6 +10983,16 @@ struct OfflineMessagesSheet: View {
                 summary.lowestMessageId.map(String.init) ?? localized("common.none"),
                 summary.highestMessageId.map(String.init) ?? localized("common.none")
             )
+        ].joined(separator: " · ")
+    }
+
+    private func bulkActionSummaryText(_ summary: TS3OfflineMessageBulkActionSummary) -> String {
+        [
+            localized("offline.bulkLoadBodiesFormat", summary.loadBodyCount),
+            localized("offline.bulkMarkReadFormat", summary.markReadCount),
+            localized("offline.bulkMarkUnreadFormat", summary.markUnreadCount),
+            localized("offline.bulkDeleteVisibleFormat", summary.deleteVisibleCount),
+            localized("offline.bulkDeleteReadFormat", summary.deleteReadCount)
         ].joined(separator: " · ")
     }
 

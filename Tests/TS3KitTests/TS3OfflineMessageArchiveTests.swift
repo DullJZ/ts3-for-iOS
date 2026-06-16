@@ -365,6 +365,63 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         )
     }
 
+    func testOfflineMessageBulkActionSummaryCountsVisibleAndServerActions() {
+        let unreadWithoutBody = TS3OfflineMessageSummary(
+            id: 9,
+            senderUniqueIdentifier: "uid-a",
+            senderName: "Sender A",
+            subject: "Unread",
+            message: nil,
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            isRead: false
+        )
+        let readWithBody = TS3OfflineMessageSummary(
+            id: 10,
+            senderUniqueIdentifier: "uid-b",
+            senderName: "Sender B",
+            subject: "Read",
+            message: "Body",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+            isRead: true
+        )
+        let hiddenRead = TS3OfflineMessageSummary(
+            id: 11,
+            senderUniqueIdentifier: "uid-c",
+            senderName: "Sender C",
+            subject: "Hidden",
+            message: nil,
+            timestamp: Date(timeIntervalSince1970: 1_700_000_200),
+            isRead: true
+        )
+        let duplicateVisible = TS3OfflineMessageSummary(
+            id: 9,
+            senderUniqueIdentifier: "duplicate",
+            senderName: "Duplicate",
+            subject: "Duplicate",
+            message: "Duplicate",
+            timestamp: nil,
+            isRead: true
+        )
+
+        let summary = TS3OfflineMessageBulkActionSummary(
+            visibleMessages: [unreadWithoutBody, readWithBody, duplicateVisible],
+            allMessages: [unreadWithoutBody, readWithBody, hiddenRead]
+        )
+
+        XCTAssertEqual(summary.visibleCount, 2)
+        XCTAssertEqual(summary.loadBodyCount, 1)
+        XCTAssertEqual(summary.markReadCount, 1)
+        XCTAssertEqual(summary.markUnreadCount, 1)
+        XCTAssertEqual(summary.deleteVisibleCount, 2)
+        XCTAssertEqual(summary.deleteReadCount, 2)
+        XCTAssertEqual(summary.requiresServerCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "visible=2 | loadBodies=1 | markRead=1 | markUnread=1 | deleteVisible=2 | deleteRead=2 | serverActions=5 | needsAttention=true"
+        )
+    }
+
     func testOfflineMessageFilterPresetSummaryAndAccessibilityText() {
         let preset = makeOfflineMessageFilterPreset(
             id: UUID(),

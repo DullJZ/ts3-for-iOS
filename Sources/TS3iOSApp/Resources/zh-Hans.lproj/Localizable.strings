@@ -1514,6 +1514,14 @@
 "offline.summaryDistinctSendersFormat" = "发件人：%d";
 "offline.summaryMessageRangeFormat" = "ID 范围：%1$@-%2$@";
 "offline.copyVisibleSummary" = "复制可见收件箱摘要";
+"offline.bulkSummary" = "批量操作影响";
+"offline.bulkSummaryFormat" = "%d 条可见消息，%d 个可用服务器操作";
+"offline.bulkLoadBodiesFormat" = "加载正文：%d";
+"offline.bulkMarkReadFormat" = "标记已读：%d";
+"offline.bulkMarkUnreadFormat" = "标记未读：%d";
+"offline.bulkDeleteVisibleFormat" = "删除可见：%d";
+"offline.bulkDeleteReadFormat" = "删除已读：%d";
+"offline.copyBulkSummary" = "复制批量操作影响";
 "offline.cachedOnlyNotice" = "正在显示本地缓存的离线消息。连接服务器后可刷新、加载消息正文、回复、标记已读或从服务器删除。";
 "offline.noMessages" = "没有离线消息";
 "offline.noMatchingMessages" = "没有匹配的消息";
