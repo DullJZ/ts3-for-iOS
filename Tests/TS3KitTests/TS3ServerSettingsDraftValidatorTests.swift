@@ -136,6 +136,56 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsCoverageSummaryCountsCoveredAndChangedAreas() {
+        let summary = TS3ServerSettingsCoverageSummary(
+            coveredAreas: [
+                .general,
+                .hostBranding,
+                .hostBranding,
+                .limitsAndSecurity,
+                .defaultGroups
+            ],
+            changedAreaCounts: [
+                .general: 2,
+                .hostBranding: 0,
+                .limitsAndSecurity: 1,
+                .serverLogOptions: 3
+            ],
+            validationIssueCount: 2
+        )
+
+        XCTAssertEqual(summary.coveredAreaCount, 4)
+        XCTAssertEqual(summary.totalOfficialAreaCount, 6)
+        XCTAssertEqual(summary.uncoveredAreaCount, 2)
+        XCTAssertEqual(summary.changedAreaCount, 3)
+        XCTAssertEqual(summary.totalChangeCount, 6)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "coveredAreas=4/6 | uncoveredAreas=2 | changedAreas=3 | changes=6 | validationIssues=2 | covered=general,hostBranding,limitsAndSecurity,defaultGroups | changed=general:2,limitsAndSecurity:1,serverLogOptions:3 | needsAttention=true"
+        )
+    }
+
+    func testServerSettingsCoverageSummaryHandlesCompleteCleanCoverage() {
+        let summary = TS3ServerSettingsCoverageSummary(
+            changedAreaCounts: [:],
+            validationIssueCount: -1
+        )
+
+        XCTAssertEqual(summary.coveredAreaCount, 6)
+        XCTAssertEqual(summary.totalOfficialAreaCount, 6)
+        XCTAssertEqual(summary.uncoveredAreaCount, 0)
+        XCTAssertEqual(summary.changedAreaCount, 0)
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "coveredAreas=6/6 | uncoveredAreas=0 | changedAreas=0 | changes=0 | validationIssues=0 | covered=general,hostBranding,limitsAndSecurity,defaultGroups,antiFloodAndComplaints,serverLogOptions | changed=none | needsAttention=false"
+        )
+    }
+
     func testServerSettingsReviewSummaryDeduplicatesSensitiveChanges() {
         let summary = TS3ServerSettingsReviewSummary(
             reviewItems: [

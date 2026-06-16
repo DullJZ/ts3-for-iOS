@@ -17285,6 +17285,21 @@ struct ServerSettingsEditorSheet: View {
             Form {
                 Section(header: Text(localized("serverSettings.draft"))) {
                     ServerInfoDetailRow(
+                        label: localized("serverSettings.coverageSummary"),
+                        value: localized(
+                            "serverSettings.coverageSummaryFormat",
+                            settingsCoverageSummary.coveredAreaCount,
+                            settingsCoverageSummary.totalOfficialAreaCount,
+                            settingsCoverageSummary.changedAreaCount
+                        )
+                    )
+                    Text(settingsCoverageSummaryText)
+                        .font(.caption)
+                        .foregroundColor(settingsCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverSettings.copyCoverageSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsCoverageSummaryClipboard)
+                    }
+                    ServerInfoDetailRow(
                         label: localized("serverSettings.impactSummary"),
                         value: localized(
                             "serverSettings.impactSummaryFormat",
@@ -17781,6 +17796,23 @@ struct ServerSettingsEditorSheet: View {
         settingsImpactSummary(for: currentDraft)
     }
 
+    private var settingsCoverageSummary: TS3ServerSettingsCoverageSummary {
+        settingsCoverageSummary(for: currentDraft)
+    }
+
+    private var settingsCoverageSummaryText: String {
+        settingsCoverageSummaryText(for: settingsCoverageSummary)
+    }
+
+    private var settingsCoverageSummaryClipboard: String {
+        let summary = settingsCoverageSummary
+        let lines = [
+            localized("serverSettings.coverageSummary"),
+            summary.clipboardSummary
+        ]
+        return lines.joined(separator: "\n")
+    }
+
     private var settingsImpactSummaryText: String {
         settingsImpactSummaryText(for: settingsImpactSummary)
     }
@@ -17836,16 +17868,27 @@ struct ServerSettingsEditorSheet: View {
 
     private func settingsImpactSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsImpactSummary {
         TS3ServerSettingsImpactSummary(
-            areaChangeCounts: [
-                .general: generalChangeRows(for: draft).count,
-                .hostBranding: hostBrandingChangeRows(for: draft).count,
-                .limitsAndSecurity: limitsAndSecurityChangeRows(for: draft).count,
-                .defaultGroups: defaultGroupChangeRows(for: draft).count,
-                .antiFloodAndComplaints: antiFloodAndComplaintChangeRows(for: draft).count,
-                .serverLogOptions: serverLogOptionChangeRows(for: draft).count
-            ],
+            areaChangeCounts: settingsAreaChangeCounts(for: draft),
             validationIssueCount: serverDraftValidationMessages(for: draft).count
         )
+    }
+
+    private func settingsCoverageSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsCoverageSummary {
+        TS3ServerSettingsCoverageSummary(
+            changedAreaCounts: settingsAreaChangeCounts(for: draft),
+            validationIssueCount: serverDraftValidationMessages(for: draft).count
+        )
+    }
+
+    private func settingsAreaChangeCounts(for draft: ServerSettingsDraft) -> [TS3ServerSettingsImpactArea: Int] {
+        [
+            .general: generalChangeRows(for: draft).count,
+            .hostBranding: hostBrandingChangeRows(for: draft).count,
+            .limitsAndSecurity: limitsAndSecurityChangeRows(for: draft).count,
+            .defaultGroups: defaultGroupChangeRows(for: draft).count,
+            .antiFloodAndComplaints: antiFloodAndComplaintChangeRows(for: draft).count,
+            .serverLogOptions: serverLogOptionChangeRows(for: draft).count
+        ]
     }
 
     private func settingsReviewSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsReviewSummary {
@@ -17884,6 +17927,20 @@ struct ServerSettingsEditorSheet: View {
         }
         if summary.validationIssueCount > 0 {
             parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func settingsCoverageSummaryText(for summary: TS3ServerSettingsCoverageSummary) -> String {
+        var parts = [
+            localized("serverSettings.coverageAreaFormat", summary.coveredAreaCount, summary.totalOfficialAreaCount),
+            localized("serverSettings.coverageChangedAreaFormat", summary.changedAreaCount, summary.totalChangeCount)
+        ]
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.uncoveredAreaCount > 0 {
+            parts.append(localized("serverSettings.coverageUncoveredFormat", summary.uncoveredAreaCount))
         }
         return parts.joined(separator: " · ")
     }

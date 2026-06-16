@@ -1122,6 +1122,12 @@
 "serverSettings.noDraftChanges" = "No draft changes";
 "serverSettings.draftChangeCountFormat" = "%d draft changes";
 "serverSettings.copyDraftChanges" = "Copy Draft Changes";
+"serverSettings.coverageSummary" = "Official Tab Coverage";
+"serverSettings.coverageSummaryFormat" = "%d of %d areas, %d changed";
+"serverSettings.coverageAreaFormat" = "%d/%d official areas covered";
+"serverSettings.coverageChangedAreaFormat" = "%d changed areas, %d fields";
+"serverSettings.coverageUncoveredFormat" = "%d uncovered areas";
+"serverSettings.copyCoverageSummary" = "Copy Coverage Summary";
 "serverSettings.impactSummary" = "Impact Summary";
 "serverSettings.impactSummaryFormat" = "%d changes, %d areas, %d validation issues";
 "serverSettings.impactNoChanges" = "No server setting impacts";

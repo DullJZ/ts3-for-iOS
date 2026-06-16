@@ -993,6 +993,71 @@ struct TS3ServerSettingsImpactSummary {
     }
 }
 
+struct TS3ServerSettingsCoverageSummary {
+    let coveredAreas: [TS3ServerSettingsImpactArea]
+    let changedAreaCounts: [TS3ServerSettingsImpactArea: Int]
+    let validationIssueCount: Int
+
+    var coveredAreaCount: Int {
+        Set(coveredAreas).count
+    }
+
+    var totalOfficialAreaCount: Int {
+        TS3ServerSettingsImpactArea.allCases.count
+    }
+
+    var changedAreaCount: Int {
+        changedAreaCounts.values.filter { $0 > 0 }.count
+    }
+
+    var totalChangeCount: Int {
+        changedAreaCounts.values.reduce(0, +)
+    }
+
+    var uncoveredAreaCount: Int {
+        max(0, totalOfficialAreaCount - coveredAreaCount)
+    }
+
+    var needsAttention: Bool {
+        uncoveredAreaCount > 0 || validationIssueCount > 0
+    }
+
+    var clipboardSummary: String {
+        let covered = orderedCoveredAreas.map(\.rawValue).joined(separator: ",")
+        let changed = TS3ServerSettingsImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = changedAreaCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "coveredAreas=\(coveredAreaCount)/\(totalOfficialAreaCount)",
+            "uncoveredAreas=\(uncoveredAreaCount)",
+            "changedAreas=\(changedAreaCount)",
+            "changes=\(totalChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "covered=\(covered.isEmpty ? "none" : covered)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        coveredAreas: [TS3ServerSettingsImpactArea] = TS3ServerSettingsImpactArea.allCases,
+        changedAreaCounts: [TS3ServerSettingsImpactArea: Int],
+        validationIssueCount: Int
+    ) {
+        var seen = Set<TS3ServerSettingsImpactArea>()
+        self.coveredAreas = coveredAreas.filter { seen.insert($0).inserted }
+        self.changedAreaCounts = changedAreaCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+    }
+
+    private var orderedCoveredAreas: [TS3ServerSettingsImpactArea] {
+        TS3ServerSettingsImpactArea.allCases.filter { coveredAreas.contains($0) }
+    }
+}
+
 struct TS3ServerSettingsReviewSummary {
     let reviewItems: [String]
     let validationIssueCount: Int

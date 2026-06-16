@@ -1122,6 +1122,12 @@
 "serverSettings.noDraftChanges" = "没有草稿变更";
 "serverSettings.draftChangeCountFormat" = "%d 项草稿变更";
 "serverSettings.copyDraftChanges" = "复制草稿变更";
+"serverSettings.coverageSummary" = "官方页签覆盖";
+"serverSettings.coverageSummaryFormat" = "%d / %d 个区域，%d 个已变更";
+"serverSettings.coverageAreaFormat" = "已覆盖 %d/%d 个官方区域";
+"serverSettings.coverageChangedAreaFormat" = "%d 个变更区域，%d 个字段";
+"serverSettings.coverageUncoveredFormat" = "%d 个未覆盖区域";
+"serverSettings.copyCoverageSummary" = "复制覆盖摘要";
 "serverSettings.impactSummary" = "影响摘要";
 "serverSettings.impactSummaryFormat" = "%d 项变化，%d 个区域，%d 个校验问题";
 "serverSettings.impactNoChanges" = "没有服务器设置影响";
