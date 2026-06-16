@@ -212,6 +212,16 @@ final class TS3KeyboardShortcutTests: XCTestCase {
         XCTAssertEqual(preview.invalidShortcutCount, 1)
         XCTAssertEqual(preview.duplicateShortcutCount, 2)
         XCTAssertEqual(preview.unknownShortcutCount, 1)
+        XCTAssertEqual(preview.selectableShortcutCount, 4)
+        XCTAssertEqual(
+            preview.candidates.map(\.summary),
+            [
+                "action=Talk / Stop Talking | group=Voice | keys=Hyper-T | enabled=true | changed=true | invalid=true | duplicate=false",
+                "action=Mute / Unmute Sound | group=Voice | keys=Command-Shift-S | enabled=false | changed=true | invalid=false | duplicate=false",
+                "action=Open Chat | group=Messaging | keys=Command-Option-T | enabled=true | changed=true | invalid=false | duplicate=true",
+                "action=Open Events | group=Messaging | keys=Command-Option-T | enabled=true | changed=true | invalid=false | duplicate=true"
+            ]
+        )
         XCTAssertEqual(
             preview.changedSummaries,
             [
@@ -235,11 +245,16 @@ final class TS3KeyboardShortcutTests: XCTestCase {
             """
             Shortcuts: \(TS3AppModel.defaultKeyboardShortcuts.count)
             Imported shortcuts: 4
+            Selectable shortcuts: 4
             Changed shortcuts: 4
             Disabled shortcuts: 1
             Invalid enabled shortcuts: 1
             Duplicate enabled shortcuts: 2
             Unknown imported shortcuts: 1
+            candidate action=Talk / Stop Talking | group=Voice | keys=Hyper-T | enabled=true | changed=true | invalid=true | duplicate=false
+            candidate action=Mute / Unmute Sound | group=Voice | keys=Command-Shift-S | enabled=false | changed=true | invalid=false | duplicate=false
+            candidate action=Open Chat | group=Messaging | keys=Command-Option-T | enabled=true | changed=true | invalid=false | duplicate=true
+            candidate action=Open Events | group=Messaging | keys=Command-Option-T | enabled=true | changed=true | invalid=false | duplicate=true
             changed action=Talk / Stop Talking keys=Hyper-T enabled=true
             changed action=Mute / Unmute Sound keys=Command-Shift-S enabled=false
             changed action=Open Chat keys=Command-Option-T enabled=true
@@ -250,5 +265,47 @@ final class TS3KeyboardShortcutTests: XCTestCase {
             unknown actionId=legacy-action
             """
         )
+    }
+
+    @MainActor
+    func testKeyboardShortcutImportCanRestoreSelectedActionsOnly() throws {
+        let model = TS3AppModel()
+        model.resetKeyboardShortcuts()
+        let openChat = try XCTUnwrap(model.keyboardShortcuts.first { $0.actionId == "open-chat" })
+        let openEvents = try XCTUnwrap(model.keyboardShortcuts.first { $0.actionId == "open-events" })
+        model.updateKeyboardShortcut(openChat, keys: "Command-Option-C", isEnabled: true)
+        model.updateKeyboardShortcut(openEvents, keys: "Command-Option-E", isEnabled: false)
+        let backupJSON = """
+        [
+          {
+            "actionId": "open-chat",
+            "group": "Messaging",
+            "action": "Open Chat",
+            "defaultKeys": "Command-Shift-T",
+            "keys": "Command-Shift-X",
+            "isEnabled": false
+          },
+          {
+            "actionId": "open-events",
+            "group": "Messaging",
+            "action": "Open Events",
+            "defaultKeys": "Command-Shift-E",
+            "keys": "Command-Shift-Y",
+            "isEnabled": true
+          }
+        ]
+        """
+
+        try model.importKeyboardShortcuts(
+            from: Data(backupJSON.utf8),
+            selectedActionIds: ["open-chat"]
+        )
+
+        let restoredChat = try XCTUnwrap(model.keyboardShortcuts.first { $0.actionId == "open-chat" })
+        let preservedEvents = try XCTUnwrap(model.keyboardShortcuts.first { $0.actionId == "open-events" })
+        XCTAssertEqual(restoredChat.keys, "Command-Shift-X")
+        XCTAssertFalse(restoredChat.isEnabled)
+        XCTAssertEqual(preservedEvents.keys, "Command-Option-E")
+        XCTAssertFalse(preservedEvents.isEnabled)
     }
 }

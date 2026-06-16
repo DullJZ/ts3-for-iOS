@@ -626,8 +626,8 @@ struct KeyboardShortcutsSheet: View {
             .sheet(item: $pendingShortcutImport) { confirmation in
                 ShortcutImportPreviewSheet(
                     preview: confirmation.preview,
-                    importBackup: {
-                        importShortcutBackup(data: confirmation.data)
+                    importBackup: { selectedActionIds in
+                        importShortcutBackup(data: confirmation.data, selectedActionIds: selectedActionIds)
                         pendingShortcutImport = nil
                     },
                     cancel: {
@@ -758,9 +758,9 @@ struct KeyboardShortcutsSheet: View {
         }
     }
 
-    private func importShortcutBackup(data: Data) {
+    private func importShortcutBackup(data: Data, selectedActionIds: Set<String>) {
         do {
-            try model.importKeyboardShortcuts(from: data)
+            try model.importKeyboardShortcuts(from: data, selectedActionIds: selectedActionIds)
         } catch {
             model.lastError = error.localizedDescription
         }
@@ -769,8 +769,20 @@ struct KeyboardShortcutsSheet: View {
 
 private struct ShortcutImportPreviewSheet: View {
     let preview: TS3KeyboardShortcutImportPreview
-    let importBackup: () -> Void
+    let importBackup: (Set<String>) -> Void
     let cancel: () -> Void
+    @State private var selectedActionIds: Set<String>
+
+    init(
+        preview: TS3KeyboardShortcutImportPreview,
+        importBackup: @escaping (Set<String>) -> Void,
+        cancel: @escaping () -> Void
+    ) {
+        self.preview = preview
+        self.importBackup = importBackup
+        self.cancel = cancel
+        _selectedActionIds = State(initialValue: Set(preview.candidates.map(\.id)))
+    }
 
     var body: some View {
         NavigationView {
@@ -781,6 +793,40 @@ private struct ShortcutImportPreviewSheet: View {
                         .foregroundColor(.secondary)
                     Button("shortcuts.copyImportSummary") {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
+                    }
+                }
+
+                if !preview.candidates.isEmpty {
+                    Section(header: Text("shortcuts.restoreEntries")) {
+                        Toggle("shortcuts.selectAll", isOn: Binding(
+                            get: { selectedActionIds.count == preview.candidates.count },
+                            set: { isSelected in
+                                selectedActionIds = isSelected ? Set(preview.candidates.map(\.id)) : []
+                            }
+                        ))
+                        ForEach(preview.candidates) { candidate in
+                            Toggle(isOn: Binding(
+                                get: { selectedActionIds.contains(candidate.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedActionIds.insert(candidate.id)
+                                    } else {
+                                        selectedActionIds.remove(candidate.id)
+                                    }
+                                }
+                            )) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(candidate.action)
+                                        .font(.caption.weight(.semibold))
+                                    Text(candidate.keys)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(shortcutCandidateDetail(candidate))
+                                        .font(.caption2)
+                                        .foregroundColor(candidate.isInvalid || candidate.isDuplicate ? .orange : .secondary)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -835,11 +881,24 @@ private struct ShortcutImportPreviewSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button("shortcuts.import") {
-                        importBackup()
+                        importBackup(selectedActionIds)
                     }
+                    .disabled(selectedActionIds.isEmpty)
                 }
             }
         }
+    }
+
+    private func shortcutCandidateDetail(_ candidate: TS3KeyboardShortcutImportPreview.Candidate) -> String {
+        [
+            candidate.group,
+            candidate.isEnabled ? NSLocalizedString("shortcuts.enabled", comment: "") : NSLocalizedString("shortcuts.disabled", comment: ""),
+            candidate.isChanged ? NSLocalizedString("shortcuts.changed", comment: "") : NSLocalizedString("shortcuts.unchanged", comment: ""),
+            candidate.isInvalid ? NSLocalizedString("shortcuts.invalid", comment: "") : nil,
+            candidate.isDuplicate ? NSLocalizedString("shortcuts.duplicate", comment: "") : nil
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
     }
 }
 
