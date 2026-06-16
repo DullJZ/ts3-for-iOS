@@ -256,6 +256,91 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupMemberDraftCoverageSummaryTracksServerMemberReadiness() {
+        let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .addServerMember,
+            target: .server,
+            group: group,
+            clientDatabaseId: " 42 ",
+            channelId: nil
+        )
+        let summary = TS3GroupMemberDraftCoverageSummary(
+            operation: .addServerMember,
+            target: .server,
+            group: group,
+            clientDatabaseId: " 42 ",
+            channelId: nil,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 2)
+        XCTAssertEqual(summary.requiredFieldTotal, 2)
+        XCTAssertFalse(summary.requiresChannel)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Add Member | target=Server Groups | requiredFields=2/2 | group=true | clientDb=true | channelRequired=false | channel=false | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testGroupMemberDraftCoverageSummaryTracksChannelMemberReadiness() {
+        let group = TS3GroupSummary(id: 7, name: "Channel Admin", type: .regular)
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: group,
+            clientDatabaseId: "43",
+            channelId: 9
+        )
+        let summary = TS3GroupMemberDraftCoverageSummary(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: group,
+            clientDatabaseId: "43",
+            channelId: 9,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 3)
+        XCTAssertEqual(summary.requiredFieldTotal, 3)
+        XCTAssertTrue(summary.requiresChannel)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Set Channel Group | target=Channel Groups | requiredFields=3/3 | group=true | clientDb=true | channelRequired=true | channel=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testGroupMemberDraftCoverageSummaryFlagsIncompleteDrafts() {
+        let brokenGroup = TS3GroupSummary(id: 0, name: "Broken", type: nil)
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: brokenGroup,
+            clientDatabaseId: "abc",
+            channelId: nil
+        )
+        let summary = TS3GroupMemberDraftCoverageSummary(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: brokenGroup,
+            clientDatabaseId: "abc",
+            channelId: nil,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 0)
+        XCTAssertEqual(summary.requiredFieldTotal, 3)
+        XCTAssertTrue(summary.requiresChannel)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(summary.validationIssueCount, 3)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Set Channel Group | target=Channel Groups | requiredFields=0/3 | group=false | clientDb=false | channelRequired=true | channel=false | validationIssues=3 | needsAttention=true"
+        )
+    }
+
     func testGroupClipboardSummaryIncludesIdNameAndType() {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
 

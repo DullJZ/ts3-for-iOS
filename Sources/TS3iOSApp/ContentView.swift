@@ -14657,6 +14657,17 @@ struct GroupClientListSheet: View {
         )
     }
 
+    private var memberDraftCoverageSummary: TS3GroupMemberDraftCoverageSummary {
+        TS3GroupMemberDraftCoverageSummary(
+            operation: memberDraftOperation,
+            target: target,
+            group: group,
+            clientDatabaseId: newMemberDatabaseId,
+            channelId: target == .channel ? selectedNewMemberChannelId : nil,
+            validationMessages: memberDraftValidationMessages
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -14785,6 +14796,7 @@ struct GroupClientListSheet: View {
                     if target == .server {
                         TextField(localized("groups.members.clientDatabaseId"), text: $newMemberDatabaseId)
                             .ts3NumericKeyboard()
+                        memberDraftCoverageView
                         Text(memberDraftSummary)
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -14814,6 +14826,7 @@ struct GroupClientListSheet: View {
                         }
                         TextField(localized("groups.members.clientDatabaseId"), text: $newMemberDatabaseId)
                             .ts3NumericKeyboard()
+                        memberDraftCoverageView
                         Text(memberDraftSummary)
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -15134,6 +15147,44 @@ struct GroupClientListSheet: View {
                 summary.highestClientDatabaseId.map(String.init) ?? localized("common.none")
             )
         ].joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private var memberDraftCoverageView: some View {
+        ServerInfoDetailRow(
+            label: localized("groups.members.draftCoverage"),
+            value: localized(
+                "groups.members.draftCoverageFormat",
+                memberDraftCoverageSummary.requiredFieldCount,
+                memberDraftCoverageSummary.requiredFieldTotal,
+                memberDraftCoverageSummary.validationIssueCount
+            )
+        )
+        Text(memberDraftCoverageText(memberDraftCoverageSummary))
+            .font(.caption)
+            .foregroundColor(memberDraftCoverageSummary.needsAttention ? .orange : .secondary)
+        Button(localized("groups.members.copyDraftCoverage")) {
+            TS3PlatformSupport.copyToPasteboard(memberDraftCoverageSummary.clipboardSummary)
+        }
+    }
+
+    private func memberDraftOperationTitle(_ operation: TS3GroupMemberDraftValidator.Operation) -> String {
+        switch operation {
+        case .addServerMember:
+            return localized("groups.members.operation.addServerMember")
+        case .setChannelGroup:
+            return localized("groups.members.operation.setChannelGroup")
+        }
+    }
+
+    private func memberDraftCoverageText(_ summary: TS3GroupMemberDraftCoverageSummary) -> String {
+        [
+            localized("groups.members.draftCoverageOperationFormat", memberDraftOperationTitle(summary.operation)),
+            localized("groups.members.draftCoverageTargetFormat", targetTitle(summary.target)),
+            localized("groups.members.draftCoverageGroupFormat", summary.hasGroup ? 1 : 0),
+            localized("groups.members.draftCoverageClientDatabaseIdFormat", summary.hasClientDatabaseId ? 1 : 0),
+            localized("groups.members.draftCoverageChannelFormat", summary.hasChannel ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

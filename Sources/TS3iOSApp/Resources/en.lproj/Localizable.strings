@@ -2447,6 +2447,16 @@
 "groups.members.copyVisibleMembers" = "Copy Visible Members";
 "groups.members.exportVisibleMembers" = "Export Visible Members";
 "groups.members.clientDatabaseId" = "Client Database ID";
+"groups.members.draftCoverage" = "Member Draft Coverage";
+"groups.members.draftCoverageFormat" = "%d of %d required fields, %d validation issues";
+"groups.members.draftCoverageOperationFormat" = "Operation: %@";
+"groups.members.draftCoverageTargetFormat" = "Target: %@";
+"groups.members.draftCoverageGroupFormat" = "Group: %d";
+"groups.members.draftCoverageClientDatabaseIdFormat" = "Client DB: %d";
+"groups.members.draftCoverageChannelFormat" = "Channel: %d";
+"groups.members.copyDraftCoverage" = "Copy Member Draft Coverage";
+"groups.members.operation.addServerMember" = "Add Member";
+"groups.members.operation.setChannelGroup" = "Set Channel Group";
 "groups.members.copyMemberChangeSummary" = "Copy Member Change Summary";
 "groups.members.addByDatabaseId" = "Add Member by Database ID";
 "groups.members.removeVisibleMembers" = "Remove Visible Members";

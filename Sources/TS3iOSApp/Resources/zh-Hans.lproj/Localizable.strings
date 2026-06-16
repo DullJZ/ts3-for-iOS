@@ -2447,6 +2447,16 @@
 "groups.members.copyVisibleMembers" = "复制可见成员";
 "groups.members.exportVisibleMembers" = "导出可见成员";
 "groups.members.clientDatabaseId" = "客户端数据库 ID";
+"groups.members.draftCoverage" = "成员草稿覆盖";
+"groups.members.draftCoverageFormat" = "%d / %d 个必填字段，%d 个校验问题";
+"groups.members.draftCoverageOperationFormat" = "操作：%@";
+"groups.members.draftCoverageTargetFormat" = "目标：%@";
+"groups.members.draftCoverageGroupFormat" = "组：%d";
+"groups.members.draftCoverageClientDatabaseIdFormat" = "客户端 DB：%d";
+"groups.members.draftCoverageChannelFormat" = "频道：%d";
+"groups.members.copyDraftCoverage" = "复制成员草稿覆盖";
+"groups.members.operation.addServerMember" = "添加成员";
+"groups.members.operation.setChannelGroup" = "设置频道组";
 "groups.members.copyMemberChangeSummary" = "复制成员变更摘要";
 "groups.members.addByDatabaseId" = "按数据库 ID 添加成员";
 "groups.members.removeVisibleMembers" = "移除可见成员";

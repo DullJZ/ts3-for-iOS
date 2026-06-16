@@ -4223,6 +4223,70 @@ enum TS3GroupMemberDraftValidator {
     }
 }
 
+struct TS3GroupMemberDraftCoverageSummary {
+    let operation: TS3GroupMemberDraftValidator.Operation
+    let target: TS3GroupManagementTarget
+    let hasGroup: Bool
+    let hasClientDatabaseId: Bool
+    let hasChannel: Bool
+    let validationIssueCount: Int
+
+    var requiredFieldCount: Int {
+        if requiresChannel {
+            return [hasGroup, hasClientDatabaseId, hasChannel].filter { $0 }.count
+        }
+        return [hasGroup, hasClientDatabaseId].filter { $0 }.count
+    }
+
+    var requiredFieldTotal: Int {
+        requiresChannel ? 3 : 2
+    }
+
+    var requiresChannel: Bool {
+        operation == .setChannelGroup
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || requiredFieldCount < requiredFieldTotal
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=\(operation.rawValue)",
+            "target=\(target.title)",
+            "requiredFields=\(requiredFieldCount)/\(requiredFieldTotal)",
+            "group=\(hasGroup ? "true" : "false")",
+            "clientDb=\(hasClientDatabaseId ? "true" : "false")",
+            "channelRequired=\(requiresChannel ? "true" : "false")",
+            "channel=\(hasChannel ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        operation: TS3GroupMemberDraftValidator.Operation,
+        target: TS3GroupManagementTarget,
+        group: TS3GroupSummary,
+        clientDatabaseId: String,
+        channelId: Int?,
+        validationMessages: [String]
+    ) {
+        self.operation = operation
+        self.target = target
+        self.hasGroup = group.id > 0
+        self.hasClientDatabaseId = Self.normalizedPositiveInt(clientDatabaseId) != nil
+        self.hasChannel = channelId != nil
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalizedPositiveInt(_ value: String) -> Int? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = Int(trimmed), parsed > 0 else { return nil }
+        return parsed
+    }
+}
+
 extension TS3GroupClientSummary {
     func clipboardSummary(group: TS3GroupSummary, target: TS3GroupManagementTarget, channelName: String?) -> String {
         var parts = [
