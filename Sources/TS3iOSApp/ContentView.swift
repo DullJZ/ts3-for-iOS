@@ -24982,6 +24982,20 @@ struct ComplaintListSheet: View {
                     Section(header: Text(localized("complaints.newComplaint"))) {
                         TextField(localized("complaints.complaint"), text: $newComplaintMessage)
                             .ts3PlainTextField()
+                        ServerInfoDetailRow(
+                            label: localized("complaints.draftCoverage"),
+                            value: localized(
+                                "complaints.draftCoverageFormat",
+                                complaintDraftCoverageSummary(for: target).targetFieldCount,
+                                complaintDraftCoverageSummary(for: target).validationIssueCount
+                            )
+                        )
+                        Text(complaintDraftCoverageText(complaintDraftCoverageSummary(for: target)))
+                            .font(.caption)
+                            .foregroundColor(complaintDraftCoverageSummary(for: target).needsAttention ? .orange : .secondary)
+                        Button(localized("complaints.copyDraftCoverage")) {
+                            TS3PlatformSupport.copyToPasteboard(complaintDraftCoverageSummary(for: target).clipboardSummary)
+                        }
                         Text(complaintDraftSummary(for: target))
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -25382,6 +25396,25 @@ struct ComplaintListSheet: View {
             targetDatabaseId: target.databaseId,
             message: newComplaintMessage
         )
+    }
+
+    private func complaintDraftCoverageSummary(for target: TS3UserSummary) -> TS3ComplaintDraftCoverageSummary {
+        TS3ComplaintDraftCoverageSummary(
+            targetName: target.nickname,
+            targetClientId: target.id,
+            targetDatabaseId: target.databaseId,
+            message: newComplaintMessage,
+            validationMessages: complaintDraftValidationMessages(for: target)
+        )
+    }
+
+    private func complaintDraftCoverageText(_ summary: TS3ComplaintDraftCoverageSummary) -> String {
+        [
+            localized("complaints.draftCoverageTargetNameFormat", summary.hasTargetName ? 1 : 0),
+            localized("complaints.draftCoverageClientIdFormat", summary.hasTargetClientId ? 1 : 0),
+            localized("complaints.draftCoverageDatabaseIdFormat", summary.hasTargetDatabaseId ? 1 : 0),
+            localized("complaints.draftCoverageMessageFormat", summary.hasMessage ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func complaintListSummaryText(_ summary: TS3ComplaintListSummary) -> String {

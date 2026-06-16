@@ -3092,6 +3092,54 @@ enum TS3ComplaintDraftValidator {
     }
 }
 
+struct TS3ComplaintDraftCoverageSummary {
+    let hasTargetName: Bool
+    let hasTargetClientId: Bool
+    let hasTargetDatabaseId: Bool
+    let hasMessage: Bool
+    let validationIssueCount: Int
+
+    var targetFieldCount: Int {
+        [hasTargetName, hasTargetClientId, hasTargetDatabaseId].filter { $0 }.count
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || targetFieldCount == 0 || !hasMessage
+    }
+
+    var clipboardSummary: String {
+        [
+            "targetFields=\(targetFieldCount)",
+            "targetName=\(hasTargetName ? "true" : "false")",
+            "clientId=\(hasTargetClientId ? "true" : "false")",
+            "databaseId=\(hasTargetDatabaseId ? "true" : "false")",
+            "message=\(hasMessage ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        targetName: String?,
+        targetClientId: Int?,
+        targetDatabaseId: Int?,
+        message: String,
+        validationMessages: [String]
+    ) {
+        self.hasTargetName = Self.normalized(targetName) != nil
+        self.hasTargetClientId = targetClientId != nil
+        self.hasTargetDatabaseId = targetDatabaseId != nil
+        self.hasMessage = Self.normalized(message) != nil
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 private struct TS3ComplaintArchive: Codable {
     var entries: [TS3ComplaintSummary]
 }

@@ -2584,6 +2584,13 @@
 "complaints.selectedUser" = "Selected user";
 "complaints.newComplaint" = "New Complaint";
 "complaints.complaint" = "Complaint";
+"complaints.draftCoverage" = "Draft Coverage";
+"complaints.draftCoverageFormat" = "%d target fields, %d validation issues";
+"complaints.draftCoverageTargetNameFormat" = "Target name: %d";
+"complaints.draftCoverageClientIdFormat" = "Client ID: %d";
+"complaints.draftCoverageDatabaseIdFormat" = "Database ID: %d";
+"complaints.draftCoverageMessageFormat" = "Message: %d";
+"complaints.copyDraftCoverage" = "Copy Complaint Draft Coverage";
 "complaints.copyComplaintSummary" = "Copy Complaint Summary";
 "complaints.searchComplaints" = "Search complaints";
 "complaints.noSavedFilterPresets" = "No saved complaint filter presets";

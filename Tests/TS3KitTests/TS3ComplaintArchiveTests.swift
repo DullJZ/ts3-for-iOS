@@ -47,6 +47,62 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(summary, "target=Target | clientId=12 | message=Missing")
     }
 
+    func testComplaintDraftCoverageSummaryCountsTargetAndMessageFields() {
+        let validationMessages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse "
+        )
+        let summary = TS3ComplaintDraftCoverageSummary(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse ",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.targetFieldCount, 3)
+        XCTAssertTrue(summary.hasTargetName)
+        XCTAssertTrue(summary.hasTargetClientId)
+        XCTAssertTrue(summary.hasTargetDatabaseId)
+        XCTAssertTrue(summary.hasMessage)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targetFields=3 | targetName=true | clientId=true | databaseId=true | message=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testComplaintDraftCoverageSummaryFlagsMissingInvalidDraft() {
+        let validationMessages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: " ",
+            targetClientId: nil,
+            targetDatabaseId: nil,
+            message: " \n "
+        )
+        let summary = TS3ComplaintDraftCoverageSummary(
+            targetName: " ",
+            targetClientId: nil,
+            targetDatabaseId: nil,
+            message: " \n ",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.targetFieldCount, 0)
+        XCTAssertFalse(summary.hasTargetName)
+        XCTAssertFalse(summary.hasTargetClientId)
+        XCTAssertFalse(summary.hasTargetDatabaseId)
+        XCTAssertFalse(summary.hasMessage)
+        XCTAssertEqual(summary.validationIssueCount, 3)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targetFields=0 | targetName=false | clientId=false | databaseId=false | message=false | validationIssues=3 | needsAttention=true"
+        )
+    }
+
     func testComplaintSummaryCopyAndAccessibilityText() {
         let complaint = TS3ComplaintSummary(
             id: "complaint",

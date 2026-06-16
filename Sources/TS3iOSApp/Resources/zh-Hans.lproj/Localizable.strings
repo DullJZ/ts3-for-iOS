@@ -2584,6 +2584,13 @@
 "complaints.selectedUser" = "已选用户";
 "complaints.newComplaint" = "新投诉";
 "complaints.complaint" = "投诉";
+"complaints.draftCoverage" = "草稿覆盖";
+"complaints.draftCoverageFormat" = "%d 个目标字段，%d 个校验问题";
+"complaints.draftCoverageTargetNameFormat" = "目标名称：%d";
+"complaints.draftCoverageClientIdFormat" = "客户端 ID：%d";
+"complaints.draftCoverageDatabaseIdFormat" = "数据库 ID：%d";
+"complaints.draftCoverageMessageFormat" = "消息：%d";
+"complaints.copyDraftCoverage" = "复制投诉草稿覆盖";
 "complaints.copyComplaintSummary" = "复制投诉摘要";
 "complaints.searchComplaints" = "搜索投诉";
 "complaints.noSavedFilterPresets" = "没有已保存的投诉筛选预设";
