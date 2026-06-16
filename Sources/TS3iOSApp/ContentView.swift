@@ -22096,6 +22096,21 @@ struct TemporaryServerPasswordsSheet: View {
                         }
                     }
                     SecureField(localized("temporaryPasswords.targetChannelPassword"), text: $targetChannelPassword)
+                    ServerInfoDetailRow(
+                        label: localized("temporaryPasswords.draftCoverage"),
+                        value: localized(
+                            "temporaryPasswords.draftCoverageFormat",
+                            temporaryPasswordDraftCoverageSummary.requiredFieldCount,
+                            temporaryPasswordDraftCoverageSummary.optionalFieldCount,
+                            temporaryPasswordDraftCoverageSummary.validationIssueCount
+                        )
+                    )
+                    Text(temporaryPasswordDraftCoverageText(temporaryPasswordDraftCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(temporaryPasswordDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("temporaryPasswords.copyDraftCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(temporaryPasswordDraftCoverageSummary.clipboardSummary)
+                    }
                     Text(temporaryPasswordDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -22349,6 +22364,27 @@ struct TemporaryServerPasswordsSheet: View {
             targetChannelName: targetChannelId == 0 ? nil : channelName(targetChannelId),
             targetChannelPassword: targetChannelPassword
         )
+    }
+
+    private var temporaryPasswordDraftCoverageSummary: TS3TemporaryServerPasswordDraftCoverageSummary {
+        TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: password,
+            durationSeconds: duration.seconds(customMinutes: customMinutes),
+            description: description,
+            targetChannelId: targetChannelId == 0 ? nil : targetChannelId,
+            targetChannelPassword: targetChannelPassword,
+            validationMessages: temporaryPasswordDraftValidationMessages
+        )
+    }
+
+    private func temporaryPasswordDraftCoverageText(_ summary: TS3TemporaryServerPasswordDraftCoverageSummary) -> String {
+        [
+            localized("temporaryPasswords.draftCoveragePasswordFormat", summary.hasPassword ? 1 : 0),
+            localized("temporaryPasswords.draftCoverageDurationFormat", summary.hasDuration ? 1 : 0),
+            localized("temporaryPasswords.draftCoverageDescriptionFormat", summary.hasDescription ? 1 : 0),
+            localized("temporaryPasswords.draftCoverageTargetChannelFormat", summary.hasTargetChannel ? 1 : 0),
+            localized("temporaryPasswords.draftCoverageTargetPasswordFormat", summary.hasTargetChannelPassword ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private var normalizedSearchText: String {

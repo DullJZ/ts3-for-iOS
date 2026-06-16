@@ -5507,6 +5507,62 @@ enum TS3TemporaryServerPasswordDraftValidator {
     }
 }
 
+struct TS3TemporaryServerPasswordDraftCoverageSummary {
+    let hasPassword: Bool
+    let hasDuration: Bool
+    let hasDescription: Bool
+    let hasTargetChannel: Bool
+    let hasTargetChannelPassword: Bool
+    let validationIssueCount: Int
+
+    var optionalFieldCount: Int {
+        [hasDescription, hasTargetChannel, hasTargetChannelPassword].filter { $0 }.count
+    }
+
+    var requiredFieldCount: Int {
+        [hasPassword, hasDuration].filter { $0 }.count
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || requiredFieldCount < 2
+    }
+
+    var clipboardSummary: String {
+        [
+            "requiredFields=\(requiredFieldCount)/2",
+            "password=\(hasPassword ? "true" : "false")",
+            "duration=\(hasDuration ? "true" : "false")",
+            "optionalFields=\(optionalFieldCount)",
+            "description=\(hasDescription ? "true" : "false")",
+            "targetChannel=\(hasTargetChannel ? "true" : "false")",
+            "targetChannelPassword=\(hasTargetChannelPassword ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        password: String,
+        durationSeconds: Int?,
+        description: String,
+        targetChannelId: Int?,
+        targetChannelPassword: String,
+        validationMessages: [String]
+    ) {
+        self.hasPassword = Self.normalized(password) != nil
+        self.hasDuration = (durationSeconds ?? 0) > 0
+        self.hasDescription = Self.normalized(description) != nil
+        self.hasTargetChannel = (targetChannelId ?? 0) > 0
+        self.hasTargetChannelPassword = Self.normalized(targetChannelPassword) != nil
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TS3TemporaryServerPasswordFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String

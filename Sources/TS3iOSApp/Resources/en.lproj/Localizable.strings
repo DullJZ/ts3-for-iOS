@@ -2763,6 +2763,14 @@
 "temporaryPasswords.targetChannel" = "Target Channel";
 "temporaryPasswords.targetChannelPassword" = "Target Channel Password";
 "temporaryPasswords.serverDefault" = "Server Default";
+"temporaryPasswords.draftCoverage" = "Draft Coverage";
+"temporaryPasswords.draftCoverageFormat" = "%d required fields, %d optional fields, %d validation issues";
+"temporaryPasswords.draftCoveragePasswordFormat" = "Password: %d";
+"temporaryPasswords.draftCoverageDurationFormat" = "Duration: %d";
+"temporaryPasswords.draftCoverageDescriptionFormat" = "Description: %d";
+"temporaryPasswords.draftCoverageTargetChannelFormat" = "Target channel: %d";
+"temporaryPasswords.draftCoverageTargetPasswordFormat" = "Target password: %d";
+"temporaryPasswords.copyDraftCoverage" = "Copy Temporary Password Draft Coverage";
 "temporaryPasswords.copyCreationSummary" = "Copy Creation Summary";
 "temporaryPasswords.createTemporaryPassword" = "Create Temporary Password";
 "temporaryPasswords.searchPasswords" = "Search passwords";

@@ -59,6 +59,70 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
         XCTAssertEqual(summary, "password=server-pass | duration=10m | target=Server Default")
     }
 
+    func testTemporaryPasswordDraftCoverageSummaryCountsRequiredAndOptionalFields() {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: " guest-pass ",
+            durationSeconds: 3_600,
+            description: " Guest access ",
+            targetChannelId: 12,
+            targetChannelPassword: " secret "
+        )
+        let summary = TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: " guest-pass ",
+            durationSeconds: 3_600,
+            description: " Guest access ",
+            targetChannelId: 12,
+            targetChannelPassword: " secret ",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 2)
+        XCTAssertEqual(summary.optionalFieldCount, 3)
+        XCTAssertTrue(summary.hasPassword)
+        XCTAssertTrue(summary.hasDuration)
+        XCTAssertTrue(summary.hasDescription)
+        XCTAssertTrue(summary.hasTargetChannel)
+        XCTAssertTrue(summary.hasTargetChannelPassword)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "requiredFields=2/2 | password=true | duration=true | optionalFields=3 | description=true | targetChannel=true | targetChannelPassword=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testTemporaryPasswordDraftCoverageSummaryFlagsInvalidDraft() {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: "  ",
+            durationSeconds: nil,
+            description: "Guest\naccess",
+            targetChannelId: nil,
+            targetChannelPassword: "secret\nagain"
+        )
+        let summary = TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: "  ",
+            durationSeconds: nil,
+            description: "Guest\naccess",
+            targetChannelId: nil,
+            targetChannelPassword: "secret\nagain",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 0)
+        XCTAssertEqual(summary.optionalFieldCount, 2)
+        XCTAssertFalse(summary.hasPassword)
+        XCTAssertFalse(summary.hasDuration)
+        XCTAssertTrue(summary.hasDescription)
+        XCTAssertFalse(summary.hasTargetChannel)
+        XCTAssertTrue(summary.hasTargetChannelPassword)
+        XCTAssertEqual(summary.validationIssueCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "requiredFields=0/2 | password=false | duration=false | optionalFields=2 | description=true | targetChannel=false | targetChannelPassword=true | validationIssues=5 | needsAttention=true"
+        )
+    }
+
     func testTemporaryPasswordSummaryCopyAndAccessibilityText() {
         let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = TS3TemporaryServerPasswordSummary(

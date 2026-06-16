@@ -2763,6 +2763,14 @@
 "temporaryPasswords.targetChannel" = "目标频道";
 "temporaryPasswords.targetChannelPassword" = "目标频道密码";
 "temporaryPasswords.serverDefault" = "服务器默认";
+"temporaryPasswords.draftCoverage" = "草稿覆盖";
+"temporaryPasswords.draftCoverageFormat" = "%d 个必填字段，%d 个可选字段，%d 个校验问题";
+"temporaryPasswords.draftCoveragePasswordFormat" = "密码：%d";
+"temporaryPasswords.draftCoverageDurationFormat" = "有效期：%d";
+"temporaryPasswords.draftCoverageDescriptionFormat" = "描述：%d";
+"temporaryPasswords.draftCoverageTargetChannelFormat" = "目标频道：%d";
+"temporaryPasswords.draftCoverageTargetPasswordFormat" = "目标频道密码：%d";
+"temporaryPasswords.copyDraftCoverage" = "复制临时密码草稿覆盖";
 "temporaryPasswords.copyCreationSummary" = "复制创建摘要";
 "temporaryPasswords.createTemporaryPassword" = "创建临时密码";
 "temporaryPasswords.searchPasswords" = "搜索密码";
