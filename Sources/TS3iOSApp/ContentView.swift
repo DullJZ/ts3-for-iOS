@@ -6475,6 +6475,10 @@ struct ContactsSheet: View {
         )
     }
 
+    private var contactBulkActionSummary: TS3ContactBulkActionSummary {
+        TS3ContactBulkActionSummary(contacts: visibleContacts)
+    }
+
     private var canMarkVisibleFriends: Bool {
         visibleContacts.contains { $0.status != .friend }
     }
@@ -6594,6 +6598,20 @@ struct ContactsSheet: View {
                         Text(contactListSummaryText(visibleContactSummary))
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        ServerInfoDetailRow(
+                            label: localized("contacts.bulkSummary"),
+                            value: localized(
+                                "contacts.bulkSummaryFormat",
+                                contactBulkActionSummary.visibleCount,
+                                contactBulkActionSummary.effectiveActionCount
+                            )
+                        )
+                        Text(contactBulkActionSummaryText(contactBulkActionSummary))
+                            .font(.caption)
+                            .foregroundColor(contactBulkActionSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("contacts.copyBulkSummary")) {
+                            TS3PlatformSupport.copyToPasteboard(contactBulkActionSummary.clipboardSummary)
+                        }
                     }
                 }
 
@@ -6951,6 +6969,17 @@ struct ContactsSheet: View {
             parts.append(localized("contacts.summary.updatedFormat", formatter.string(from: latestUpdate)))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func contactBulkActionSummaryText(_ summary: TS3ContactBulkActionSummary) -> String {
+        [
+            localized("contacts.bulkFriendFormat", summary.markFriendCount),
+            localized("contacts.bulkBlockFormat", summary.blockCount),
+            localized("contacts.bulkIgnoreFormat", summary.ignoreCount),
+            localized("contacts.bulkNeutralFormat", summary.neutralCount),
+            localized("contacts.bulkNoteFormat", summary.appendNoteCount),
+            localized("contacts.bulkDeleteFormat", summary.deleteVisibleCount)
+        ].joined(separator: " · ")
     }
 
     private func applyPreset(_ preset: TS3ContactFilterPreset) {

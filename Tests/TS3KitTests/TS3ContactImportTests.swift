@@ -240,6 +240,29 @@ final class TS3ContactImportTests: XCTestCase {
         )
     }
 
+    func testContactBulkActionSummaryCountsVisibleActions() {
+        let friend = makeContact(uniqueIdentifier: "uid-friend", nickname: "Friend", status: .friend, note: "")
+        let blocked = makeContact(uniqueIdentifier: "uid-blocked", nickname: "Blocked", status: .blocked, note: "review")
+        let neutral = makeContact(uniqueIdentifier: "uid-neutral", nickname: "Neutral", status: .neutral, note: "")
+        let duplicate = makeContact(uniqueIdentifier: "uid-friend", nickname: "Friend Copy", status: .ignored, note: "")
+
+        let summary = TS3ContactBulkActionSummary(contacts: [friend, blocked, neutral, duplicate])
+
+        XCTAssertEqual(summary.visibleCount, 3)
+        XCTAssertEqual(summary.markFriendCount, 2)
+        XCTAssertEqual(summary.blockCount, 2)
+        XCTAssertEqual(summary.ignoreCount, 3)
+        XCTAssertEqual(summary.neutralCount, 2)
+        XCTAssertEqual(summary.appendNoteCount, 3)
+        XCTAssertEqual(summary.deleteVisibleCount, 3)
+        XCTAssertEqual(summary.effectiveActionCount, 6)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "visible=3 | markFriend=2 | block=2 | ignore=3 | neutral=2 | appendNote=3 | deleteVisible=3 | actions=6 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testAppendNoteDraftAppliesDeduplicatedVisibleContacts() {
         let model = TS3AppModel()

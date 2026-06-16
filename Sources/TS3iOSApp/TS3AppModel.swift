@@ -1960,6 +1960,67 @@ struct TS3ContactListSummary {
     }
 }
 
+struct TS3ContactBulkActionSummary {
+    let contacts: [TS3ContactEntry]
+
+    var visibleCount: Int {
+        contacts.count
+    }
+
+    var markFriendCount: Int {
+        contacts.filter { $0.status != .friend }.count
+    }
+
+    var blockCount: Int {
+        contacts.filter { $0.status != .blocked }.count
+    }
+
+    var ignoreCount: Int {
+        contacts.filter { $0.status != .ignored }.count
+    }
+
+    var neutralCount: Int {
+        contacts.filter { $0.status != .neutral }.count
+    }
+
+    var appendNoteCount: Int {
+        visibleCount
+    }
+
+    var deleteVisibleCount: Int {
+        visibleCount
+    }
+
+    var effectiveActionCount: Int {
+        [markFriendCount, blockCount, ignoreCount, neutralCount, appendNoteCount, deleteVisibleCount].filter { $0 > 0 }.count
+    }
+
+    var needsAttention: Bool {
+        visibleCount == 0 || effectiveActionCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "visible=\(visibleCount)",
+            "markFriend=\(markFriendCount)",
+            "block=\(blockCount)",
+            "ignore=\(ignoreCount)",
+            "neutral=\(neutralCount)",
+            "appendNote=\(appendNoteCount)",
+            "deleteVisible=\(deleteVisibleCount)",
+            "actions=\(effectiveActionCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(contacts: [TS3ContactEntry]) {
+        var seen = Set<String>()
+        self.contacts = contacts.filter { contact in
+            seen.insert(contact.uniqueIdentifier).inserted
+        }
+    }
+}
+
 struct TS3ContactImportPreview {
     let importedCount: Int
     let validCount: Int

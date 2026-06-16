@@ -1238,6 +1238,15 @@
 "contacts.clearFilters" = "Clear Filters";
 "contacts.copySnapshot" = "Copy Contact Snapshot";
 "contacts.copyVisibleSummary" = "Copy Visible Contact Summary";
+"contacts.bulkSummary" = "Bulk Action Impact";
+"contacts.bulkSummaryFormat" = "%d visible contacts, %d actions available";
+"contacts.bulkFriendFormat" = "Mark friends: %d";
+"contacts.bulkBlockFormat" = "Block: %d";
+"contacts.bulkIgnoreFormat" = "Ignore: %d";
+"contacts.bulkNeutralFormat" = "Neutral: %d";
+"contacts.bulkNoteFormat" = "Append note: %d";
+"contacts.bulkDeleteFormat" = "Delete visible: %d";
+"contacts.copyBulkSummary" = "Copy Bulk Action Impact";
 "contacts.exportSnapshot" = "Export Contact Snapshot";
 "contacts.exportBackup" = "Export Contacts Backup";
 "contacts.exportVisibleBackup" = "Export Visible Contacts Backup";
