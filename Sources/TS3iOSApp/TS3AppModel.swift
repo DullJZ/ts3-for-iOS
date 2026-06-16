@@ -1502,6 +1502,50 @@ enum TS3PokeDraftValidator {
     }
 }
 
+struct TS3PokeDraftCoverageSummary {
+    let hasTargetName: Bool
+    let hasTargetClientId: Bool
+    let hasCustomMessage: Bool
+    let validationIssueCount: Int
+
+    var targetFieldCount: Int {
+        [hasTargetName, hasTargetClientId].filter { $0 }.count
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || targetFieldCount == 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "targetFields=\(targetFieldCount)",
+            "targetName=\(hasTargetName ? "true" : "false")",
+            "clientId=\(hasTargetClientId ? "true" : "false")",
+            "customMessage=\(hasCustomMessage ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        targetName: String?,
+        targetClientId: Int?,
+        message: String,
+        validationMessages: [String]
+    ) {
+        self.hasTargetName = Self.normalized(targetName) != nil
+        self.hasTargetClientId = (targetClientId ?? 0) > 0
+        self.hasCustomMessage = Self.normalized(message) != nil
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TS3ActivitySummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date

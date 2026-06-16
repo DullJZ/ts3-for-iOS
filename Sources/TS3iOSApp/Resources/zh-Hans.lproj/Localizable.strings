@@ -1357,6 +1357,12 @@
 "clientActions.exportClientInformation" = "导出客户端信息";
 "clientActions.subject" = "主题";
 "clientActions.copyOfflineMessageSummary" = "复制离线消息摘要";
+"clientActions.pokeDraftCoverage" = "戳一戳草稿覆盖";
+"clientActions.pokeDraftCoverageFormat" = "%d 个目标字段，%d 个校验问题";
+"clientActions.pokeDraftCoverageTargetNameFormat" = "目标名称：%d";
+"clientActions.pokeDraftCoverageClientIdFormat" = "客户端 ID：%d";
+"clientActions.pokeDraftCoverageCustomMessageFormat" = "自定义消息：%d";
+"clientActions.copyPokeDraftCoverage" = "复制戳一戳草稿覆盖";
 "clientActions.copyPokeSummary" = "复制戳一戳摘要";
 "clientActions.clientId" = "客户端 ID";
 "clientActions.uniqueId" = "唯一 ID";

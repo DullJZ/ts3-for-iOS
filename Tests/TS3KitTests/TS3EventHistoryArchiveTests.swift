@@ -368,6 +368,56 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         )
     }
 
+    func testPokeDraftCoverageSummaryCountsTargetAndCustomMessage() {
+        let validationMessages = TS3PokeDraftValidator.validationMessages(
+            targetName: " Taylor ",
+            targetClientId: 12,
+            message: " Wake up "
+        )
+        let summary = TS3PokeDraftCoverageSummary(
+            targetName: " Taylor ",
+            targetClientId: 12,
+            message: " Wake up ",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.targetFieldCount, 2)
+        XCTAssertTrue(summary.hasTargetName)
+        XCTAssertTrue(summary.hasTargetClientId)
+        XCTAssertTrue(summary.hasCustomMessage)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targetFields=2 | targetName=true | clientId=true | customMessage=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testPokeDraftCoverageSummaryFlagsMissingInvalidDraft() {
+        let validationMessages = TS3PokeDraftValidator.validationMessages(
+            targetName: " ",
+            targetClientId: nil,
+            message: "Wake\nup"
+        )
+        let summary = TS3PokeDraftCoverageSummary(
+            targetName: " ",
+            targetClientId: nil,
+            message: "Wake\nup",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.targetFieldCount, 0)
+        XCTAssertFalse(summary.hasTargetName)
+        XCTAssertFalse(summary.hasTargetClientId)
+        XCTAssertTrue(summary.hasCustomMessage)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targetFields=0 | targetName=false | clientId=false | customMessage=true | validationIssues=2 | needsAttention=true"
+        )
+    }
+
     func testEventFilterPresetSummaryAndAccessibilityText() {
         let preset = makeEventFilterPreset(
             id: UUID(),

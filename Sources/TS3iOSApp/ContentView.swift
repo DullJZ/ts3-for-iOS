@@ -5863,6 +5863,20 @@ struct UserActionSheet: View {
                             }
                         }
                         if mode == .poke {
+                            ServerInfoDetailRow(
+                                label: localized("clientActions.pokeDraftCoverage"),
+                                value: localized(
+                                    "clientActions.pokeDraftCoverageFormat",
+                                    pokeDraftCoverageSummary.targetFieldCount,
+                                    pokeDraftCoverageSummary.validationIssueCount
+                                )
+                            )
+                            Text(pokeDraftCoverageText(pokeDraftCoverageSummary))
+                                .font(.caption)
+                                .foregroundColor(pokeDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("clientActions.copyPokeDraftCoverage")) {
+                                TS3PlatformSupport.copyToPasteboard(pokeDraftCoverageSummary.clipboardSummary)
+                            }
                             Text(pokeDraftSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -6047,6 +6061,23 @@ struct UserActionSheet: View {
             targetClientId: user.id,
             message: text
         )
+    }
+
+    private var pokeDraftCoverageSummary: TS3PokeDraftCoverageSummary {
+        TS3PokeDraftCoverageSummary(
+            targetName: user.nickname,
+            targetClientId: user.id,
+            message: text,
+            validationMessages: pokeDraftValidationMessages
+        )
+    }
+
+    private func pokeDraftCoverageText(_ summary: TS3PokeDraftCoverageSummary) -> String {
+        [
+            localized("clientActions.pokeDraftCoverageTargetNameFormat", summary.hasTargetName ? 1 : 0),
+            localized("clientActions.pokeDraftCoverageClientIdFormat", summary.hasTargetClientId ? 1 : 0),
+            localized("clientActions.pokeDraftCoverageCustomMessageFormat", summary.hasCustomMessage ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private var infoSnapshot: String {

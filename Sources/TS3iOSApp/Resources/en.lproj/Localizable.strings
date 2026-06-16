@@ -1357,6 +1357,12 @@
 "clientActions.exportClientInformation" = "Export Client Information";
 "clientActions.subject" = "Subject";
 "clientActions.copyOfflineMessageSummary" = "Copy Offline Message Summary";
+"clientActions.pokeDraftCoverage" = "Poke Draft Coverage";
+"clientActions.pokeDraftCoverageFormat" = "%d target fields, %d validation issues";
+"clientActions.pokeDraftCoverageTargetNameFormat" = "Target name: %d";
+"clientActions.pokeDraftCoverageClientIdFormat" = "Client ID: %d";
+"clientActions.pokeDraftCoverageCustomMessageFormat" = "Custom message: %d";
+"clientActions.copyPokeDraftCoverage" = "Copy Poke Draft Coverage";
 "clientActions.copyPokeSummary" = "Copy Poke Summary";
 "clientActions.clientId" = "Client ID";
 "clientActions.uniqueId" = "Unique ID";
