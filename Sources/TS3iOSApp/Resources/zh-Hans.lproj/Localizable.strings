@@ -1355,6 +1355,15 @@
 "database.visibleSummary" = "可见摘要";
 "database.visibleSummaryFormat" = "%d 个可见，%d 个有 UID";
 "database.copyVisibleSummary" = "复制可见摘要";
+"database.actionSummary" = "可用操作";
+"database.actionSummaryFormat" = "%d 个操作，%d 个在线操作";
+"database.actionSummaryIdentityFormat" = "身份：%d";
+"database.actionSummaryContactFormat" = "联系人：%@";
+"database.actionSummaryMessagingFormat" = "消息：%d";
+"database.actionSummaryAdminFormat" = "管理：%d";
+"database.actionSummaryHasNote" = "已保存联系人备注";
+"database.actionSummaryNeedsUid" = "需要唯一 ID 才能使用更多操作";
+"database.copyActionSummary" = "复制操作摘要";
 "database.summary.descriptionsFormat" = "%d 个有描述";
 "database.summary.lastIPsFormat" = "%d 个有最后 IP";
 "database.summary.connectionsFormat" = "%d 个有连接次数";

@@ -96,6 +96,78 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         )
     }
 
+    func testDatabaseClientActionSummaryCountsAvailableActions() {
+        let client = TS3DatabaseClientSummary(
+            id: 7,
+            uniqueIdentifier: "uid-b",
+            nickname: "Beta",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+
+        let summary = TS3DatabaseClientActionSummary(
+            record: client,
+            isOnline: true,
+            canSendOfflineMessage: true,
+            canBan: true,
+            contactStatus: .friend,
+            hasContactNote: true,
+            serverGroupCount: 3
+        )
+
+        XCTAssertTrue(summary.hasUniqueIdentifier)
+        XCTAssertEqual(summary.identityActionCount, 5)
+        XCTAssertEqual(summary.contactActionCount, 5)
+        XCTAssertEqual(summary.messagingActionCount, 3)
+        XCTAssertEqual(summary.adminActionCount, 8)
+        XCTAssertEqual(summary.onlineActionCount, 3)
+        XCTAssertEqual(summary.availableActionCount, 21)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "db=7 | nickname=Beta | actions=21 | identity=5 | contact=5 | messaging=3 | admin=8 | online=3 | status=friend | note=true | uid=true | needsAttention=false"
+        )
+    }
+
+    func testDatabaseClientActionSummaryFlagsMissingUniqueIdentifier() {
+        let client = TS3DatabaseClientSummary(
+            id: 6,
+            uniqueIdentifier: " ",
+            nickname: "Alpha",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+
+        let summary = TS3DatabaseClientActionSummary(
+            record: client,
+            isOnline: false,
+            canSendOfflineMessage: false,
+            canBan: false,
+            contactStatus: .neutral,
+            hasContactNote: false,
+            serverGroupCount: 3
+        )
+
+        XCTAssertFalse(summary.hasUniqueIdentifier)
+        XCTAssertEqual(summary.identityActionCount, 3)
+        XCTAssertEqual(summary.contactActionCount, 0)
+        XCTAssertEqual(summary.messagingActionCount, 0)
+        XCTAssertEqual(summary.adminActionCount, 4)
+        XCTAssertEqual(summary.onlineActionCount, 1)
+        XCTAssertEqual(summary.availableActionCount, 7)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "db=6 | nickname=Alpha | actions=7 | identity=3 | contact=0 | messaging=0 | admin=4 | online=1 | status=neutral | note=false | uid=false | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testDatabaseClientBackupPreviewSanitizesCountsAndSummaries() throws {
         let model = TS3AppModel()

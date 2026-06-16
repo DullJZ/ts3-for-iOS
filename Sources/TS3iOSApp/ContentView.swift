@@ -15739,6 +15739,21 @@ struct ClientDatabaseSheet: View {
                 if let selected = model.selectedDatabaseClient {
                     Section(header: Text(localized("database.selectedClient"))) {
                         DatabaseClientDetailRows(record: selected)
+                        let actionSummary = databaseClientActionSummary(for: selected)
+                        ServerInfoDetailRow(
+                            label: localized("database.actionSummary"),
+                            value: localized(
+                                "database.actionSummaryFormat",
+                                actionSummary.availableActionCount,
+                                actionSummary.onlineActionCount
+                            )
+                        )
+                        Text(databaseClientActionSummaryText(actionSummary))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button(localized("database.copyActionSummary")) {
+                            TS3PlatformSupport.copyToPasteboard(actionSummary.clipboardSummary)
+                        }
                         Button(localized("database.copySelectedSnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(databaseClientSnapshot(for: selected))
                         }
@@ -16184,6 +16199,47 @@ struct ClientDatabaseSheet: View {
             parts.append(localized("database.summary.latestConnectionFormat", formatter.string(from: latestConnection)))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func databaseClientActionSummary(for record: TS3DatabaseClientSummary) -> TS3DatabaseClientActionSummary {
+        TS3DatabaseClientActionSummary(
+            record: record,
+            isOnline: model.hasOnlineClientActions(for: record),
+            canSendOfflineMessage: model.canSendOfflineMessage(to: record),
+            canBan: model.canBanDatabaseClient(record),
+            contactStatus: model.contactStatus(for: record),
+            hasContactNote: model.contactNote(for: record) != nil,
+            serverGroupCount: model.serverGroups.count
+        )
+    }
+
+    private func databaseClientActionSummaryText(_ summary: TS3DatabaseClientActionSummary) -> String {
+        var parts = [
+            localized("database.actionSummaryIdentityFormat", summary.identityActionCount),
+            localized("database.actionSummaryContactFormat", localizedContactStatusTitle(summary.contactStatus)),
+            localized("database.actionSummaryMessagingFormat", summary.messagingActionCount),
+            localized("database.actionSummaryAdminFormat", summary.adminActionCount)
+        ]
+        if summary.hasContactNote {
+            parts.append(localized("database.actionSummaryHasNote"))
+        }
+        if !summary.hasUniqueIdentifier {
+            parts.append(localized("database.actionSummaryNeedsUid"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func localizedContactStatusTitle(_ status: TS3ContactStatus) -> String {
+        switch status {
+        case .neutral:
+            return localized("contacts.status.neutral")
+        case .friend:
+            return localized("contacts.status.friend")
+        case .ignored:
+            return localized("contacts.status.ignored")
+        case .blocked:
+            return localized("contacts.status.blocked")
+        }
     }
 
     private func databaseClientSnapshot(for record: TS3DatabaseClientSummary) -> String {

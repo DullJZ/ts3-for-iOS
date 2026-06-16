@@ -1355,6 +1355,15 @@
 "database.visibleSummary" = "Visible Summary";
 "database.visibleSummaryFormat" = "%d visible, %d with UID";
 "database.copyVisibleSummary" = "Copy Visible Summary";
+"database.actionSummary" = "Available Actions";
+"database.actionSummaryFormat" = "%d actions, %d online";
+"database.actionSummaryIdentityFormat" = "Identity: %d";
+"database.actionSummaryContactFormat" = "Contact: %@";
+"database.actionSummaryMessagingFormat" = "Messaging: %d";
+"database.actionSummaryAdminFormat" = "Admin: %d";
+"database.actionSummaryHasNote" = "Contact note saved";
+"database.actionSummaryNeedsUid" = "Unique ID required for more actions";
+"database.copyActionSummary" = "Copy Action Summary";
 "database.summary.descriptionsFormat" = "%d with descriptions";
 "database.summary.lastIPsFormat" = "%d with last IPs";
 "database.summary.connectionsFormat" = "%d with connection counts";

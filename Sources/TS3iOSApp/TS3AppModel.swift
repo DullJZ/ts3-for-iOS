@@ -3288,6 +3288,65 @@ struct TS3DatabaseClientListSummary {
     }
 }
 
+struct TS3DatabaseClientActionSummary {
+    let record: TS3DatabaseClientSummary
+    let isOnline: Bool
+    let canSendOfflineMessage: Bool
+    let canBan: Bool
+    let contactStatus: TS3ContactStatus
+    let hasContactNote: Bool
+    let serverGroupCount: Int
+
+    var hasUniqueIdentifier: Bool {
+        record.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var identityActionCount: Int {
+        3 + (hasUniqueIdentifier ? 2 : 0)
+    }
+
+    var contactActionCount: Int {
+        hasUniqueIdentifier ? 5 : 0
+    }
+
+    var messagingActionCount: Int {
+        (canSendOfflineMessage ? 1 : 0) + (isOnline ? 2 : 0)
+    }
+
+    var adminActionCount: Int {
+        4 + (canBan ? 1 : 0) + (hasUniqueIdentifier ? serverGroupCount : 0)
+    }
+
+    var onlineActionCount: Int {
+        isOnline ? 3 : 1
+    }
+
+    var availableActionCount: Int {
+        identityActionCount + contactActionCount + messagingActionCount + adminActionCount
+    }
+
+    var needsAttention: Bool {
+        !hasUniqueIdentifier || (!isOnline && !canSendOfflineMessage)
+    }
+
+    var clipboardSummary: String {
+        [
+            "db=\(record.id)",
+            "nickname=\(record.nickname)",
+            "actions=\(availableActionCount)",
+            "identity=\(identityActionCount)",
+            "contact=\(contactActionCount)",
+            "messaging=\(messagingActionCount)",
+            "admin=\(adminActionCount)",
+            "online=\(onlineActionCount)",
+            "status=\(contactStatus.rawValue)",
+            "note=\(hasContactNote ? "true" : "false")",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3DatabaseClientBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: Int
