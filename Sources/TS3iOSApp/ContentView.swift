@@ -12326,6 +12326,21 @@ struct ServerLogsSheet: View {
                         TS3PlatformSupport.copyToPasteboard(visibleLogSummary.clipboardSummary)
                     }
                     .disabled(filteredEntries.isEmpty)
+                    ServerInfoDetailRow(
+                        label: localized("serverLogs.clearImpact"),
+                        value: localized(
+                            "serverLogs.clearImpactFormat",
+                            clearImpactSummary.visibleCount,
+                            clearImpactSummary.hiddenCount
+                        )
+                    )
+                    Text(serverLogClearImpactText(clearImpactSummary))
+                        .font(.caption)
+                        .foregroundColor(clearImpactSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverLogs.copyClearImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(clearImpactSummary.clipboardSummary)
+                    }
+                    .disabled(filteredEntries.isEmpty)
                     Button(localized("serverLogs.refresh")) {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
@@ -12709,6 +12724,10 @@ struct ServerLogsSheet: View {
         TS3ServerLogListSummary(entries: filteredEntries)
     }
 
+    private var clearImpactSummary: TS3ServerLogClearImpactSummary {
+        TS3ServerLogClearImpactSummary(allEntries: model.serverLogEntries, visibleEntries: filteredEntries)
+    }
+
     private var snapshot: String {
         var lines = currentQueryDraft.clipboardSummary.components(separatedBy: "\n")
         if !filteredEntries.isEmpty {
@@ -12881,6 +12900,19 @@ struct ServerLogsSheet: View {
                 summary.highestEntryId.map(String.init) ?? localized("common.none")
             )
         ].joined(separator: " · ")
+    }
+
+    private func serverLogClearImpactText(_ summary: TS3ServerLogClearImpactSummary) -> String {
+        var parts = [
+            localized("serverLogs.clearImpactWarningsFormat", summary.visibleWarningCount),
+            localized("serverLogs.clearImpactErrorsFormat", summary.visibleErrorCount),
+            localized("serverLogs.clearImpactRawLinesFormat", summary.visibleRawLineCount),
+            localized("serverLogs.clearImpactChannelsFormat", summary.distinctVisibleChannelCount)
+        ]
+        if summary.clearsAllCachedResults {
+            parts.append(localized("serverLogs.clearImpactAllCached"))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]

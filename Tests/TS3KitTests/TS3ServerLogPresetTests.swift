@@ -497,6 +497,64 @@ final class TS3ServerLogPresetTests: XCTestCase {
         )
     }
 
+    func testServerLogClearImpactSummaryCountsVisibleRemoval() {
+        let allEntries = [
+            TS3ServerLogSummary(
+                id: 17,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                level: "warning",
+                channel: "Server",
+                message: "Auth failed",
+                rawLine: "2023 warning Server Auth failed"
+            ),
+            TS3ServerLogSummary(
+                id: 18,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                level: "error",
+                channel: "Query",
+                message: "Permission denied",
+                rawLine: "Permission denied"
+            ),
+            TS3ServerLogSummary(
+                id: 19,
+                timestamp: nil,
+                level: "info",
+                channel: "Server",
+                message: "Keep hidden",
+                rawLine: "Keep hidden"
+            )
+        ]
+        let summary = TS3ServerLogClearImpactSummary(
+            allEntries: allEntries,
+            visibleEntries: [
+                allEntries[0],
+                allEntries[1],
+                TS3ServerLogSummary(
+                    id: 17,
+                    timestamp: nil,
+                    level: "info",
+                    channel: "Duplicate",
+                    message: "Duplicate",
+                    rawLine: "Duplicate"
+                )
+            ]
+        )
+
+        XCTAssertEqual(summary.totalCachedCount, 3)
+        XCTAssertEqual(summary.visibleCount, 2)
+        XCTAssertEqual(summary.hiddenCount, 1)
+        XCTAssertEqual(summary.visibleWarningCount, 1)
+        XCTAssertEqual(summary.visibleErrorCount, 1)
+        XCTAssertEqual(summary.visibleRawLineCount, 1)
+        XCTAssertEqual(summary.distinctVisibleChannelCount, 2)
+        XCTAssertFalse(summary.clearsAllCachedResults)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "cached=3 | visible=2 | hidden=1 | visibleWarnings=1 | visibleErrors=1 | visibleRawLines=1 | visibleChannels=2 | clearsAllCachedResults=false | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testServerLogArchiveImportReplacesLocalCachedResults() throws {
         let model = TS3AppModel()

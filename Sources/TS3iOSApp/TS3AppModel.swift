@@ -8943,6 +8943,50 @@ struct TS3ServerLogListSummary {
     }
 }
 
+struct TS3ServerLogClearImpactSummary {
+    let totalCachedCount: Int
+    let visibleCount: Int
+    let hiddenCount: Int
+    let visibleWarningCount: Int
+    let visibleErrorCount: Int
+    let visibleRawLineCount: Int
+    let distinctVisibleChannelCount: Int
+
+    var clearsAllCachedResults: Bool {
+        visibleCount > 0 && hiddenCount == 0
+    }
+
+    var needsAttention: Bool {
+        visibleCount == 0 || visibleWarningCount > 0 || visibleErrorCount > 0 || clearsAllCachedResults
+    }
+
+    var clipboardSummary: String {
+        [
+            "cached=\(totalCachedCount)",
+            "visible=\(visibleCount)",
+            "hidden=\(hiddenCount)",
+            "visibleWarnings=\(visibleWarningCount)",
+            "visibleErrors=\(visibleErrorCount)",
+            "visibleRawLines=\(visibleRawLineCount)",
+            "visibleChannels=\(distinctVisibleChannelCount)",
+            "clearsAllCachedResults=\(clearsAllCachedResults ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(allEntries: [TS3ServerLogSummary], visibleEntries: [TS3ServerLogSummary]) {
+        let allSummary = TS3ServerLogListSummary(entries: allEntries)
+        let visibleSummary = TS3ServerLogListSummary(entries: visibleEntries)
+        totalCachedCount = allSummary.totalCount
+        visibleCount = visibleSummary.totalCount
+        hiddenCount = max(0, totalCachedCount - visibleCount)
+        visibleWarningCount = visibleSummary.warningCount
+        visibleErrorCount = visibleSummary.errorCount
+        visibleRawLineCount = visibleSummary.rawLineCount
+        distinctVisibleChannelCount = visibleSummary.distinctChannelCount
+    }
+}
+
 private struct TS3ServerLogArchive: Codable {
     var entries: [TS3ServerLogSummary]
 }

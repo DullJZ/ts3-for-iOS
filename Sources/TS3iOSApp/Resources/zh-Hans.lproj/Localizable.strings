@@ -2282,6 +2282,14 @@
 "serverLogs.summaryDistinctChannelsFormat" = "频道：%d";
 "serverLogs.summaryEntryRangeFormat" = "ID 范围：%1$@-%2$@";
 "serverLogs.copyVisibleSummary" = "复制可见日志摘要";
+"serverLogs.clearImpact" = "清除影响";
+"serverLogs.clearImpactFormat" = "%d 条可见，%d 条隐藏";
+"serverLogs.clearImpactWarningsFormat" = "警告：%d";
+"serverLogs.clearImpactErrorsFormat" = "错误：%d";
+"serverLogs.clearImpactRawLinesFormat" = "原始行：%d";
+"serverLogs.clearImpactChannelsFormat" = "频道：%d";
+"serverLogs.clearImpactAllCached" = "会清除所有缓存结果";
+"serverLogs.copyClearImpact" = "复制清除影响";
 "serverLogs.refresh" = "刷新";
 "serverLogs.copyVisibleLogs" = "复制可见日志";
 "serverLogs.exportVisibleLogs" = "导出可见日志";

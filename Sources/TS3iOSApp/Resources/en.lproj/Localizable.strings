@@ -2282,6 +2282,14 @@
 "serverLogs.summaryDistinctChannelsFormat" = "Channels: %d";
 "serverLogs.summaryEntryRangeFormat" = "ID range: %@-%@";
 "serverLogs.copyVisibleSummary" = "Copy Visible Log Summary";
+"serverLogs.clearImpact" = "Clear Impact";
+"serverLogs.clearImpactFormat" = "%d visible, %d hidden";
+"serverLogs.clearImpactWarningsFormat" = "Warnings: %d";
+"serverLogs.clearImpactErrorsFormat" = "Errors: %d";
+"serverLogs.clearImpactRawLinesFormat" = "Raw lines: %d";
+"serverLogs.clearImpactChannelsFormat" = "Channels: %d";
+"serverLogs.clearImpactAllCached" = "Clears all cached results";
+"serverLogs.copyClearImpact" = "Copy Clear Impact";
 "serverLogs.refresh" = "Refresh";
 "serverLogs.copyVisibleLogs" = "Copy Visible Logs";
 "serverLogs.exportVisibleLogs" = "Export Visible Logs";
