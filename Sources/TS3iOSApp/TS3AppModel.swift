@@ -6255,6 +6255,128 @@ struct TS3KeyboardShortcutBinding: Identifiable, Codable {
     }
 }
 
+struct TS3KeyboardShortcutCapabilitySummary {
+    let shortcuts: [TS3KeyboardShortcutBinding]
+    let catalystMenuActionIds: Set<String>
+    let whisperActionIds: Set<String>
+
+    var totalCount: Int {
+        shortcuts.count
+    }
+
+    var enabledCount: Int {
+        shortcuts.filter(\.isEnabled).count
+    }
+
+    var validEnabledCount: Int {
+        shortcuts.filter { $0.isEnabled && isValidKeys($0.keys) }.count
+    }
+
+    var invalidEnabledCount: Int {
+        shortcuts.filter { $0.isEnabled && !isValidKeys($0.keys) }.count
+    }
+
+    var duplicateEnabledCount: Int {
+        enabledKeyCounts.values.filter { $0 > 1 }.reduce(0, +)
+    }
+
+    var catalystMenuCount: Int {
+        shortcuts.filter { $0.isEnabled && catalystMenuActionIds.contains($0.actionId) && isValidKeys($0.keys) }.count
+    }
+
+    var whisperShortcutCount: Int {
+        shortcuts.filter { $0.isEnabled && whisperActionIds.contains($0.actionId) && isValidKeys($0.keys) }.count
+    }
+
+    var needsAttention: Bool {
+        invalidEnabledCount > 0 || duplicateEnabledCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "shortcuts=\(totalCount)",
+            "enabled=\(enabledCount)",
+            "validEnabled=\(validEnabledCount)",
+            "invalidEnabled=\(invalidEnabledCount)",
+            "duplicateEnabled=\(duplicateEnabledCount)",
+            "catalystMenu=\(catalystMenuCount)",
+            "whisper=\(whisperShortcutCount)",
+            "iOSGlobalHotkeys=unavailable",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        shortcuts: [TS3KeyboardShortcutBinding],
+        catalystMenuActionIds: Set<String> = TS3KeyboardShortcutCapabilitySummary.defaultCatalystMenuActionIds,
+        whisperActionIds: Set<String> = TS3KeyboardShortcutCapabilitySummary.defaultWhisperActionIds
+    ) {
+        self.shortcuts = shortcuts
+        self.catalystMenuActionIds = catalystMenuActionIds
+        self.whisperActionIds = whisperActionIds
+    }
+
+    private var enabledKeyCounts: [String: Int] {
+        shortcuts.reduce(into: [:]) { counts, shortcut in
+            guard shortcut.isEnabled, isValidKeys(shortcut.keys) else { return }
+            counts[shortcut.keys.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), default: 0] += 1
+        }
+    }
+
+    private func isValidKeys(_ keys: String) -> Bool {
+        TS3AppModel.isValidKeyboardShortcutKeys(keys)
+    }
+
+    static let defaultWhisperActionIds: Set<String> = [
+        "open-whisper",
+        "toggle-whisper-activation",
+        "start-whisper-activation",
+        "stop-whisper-activation"
+    ]
+
+    static let defaultCatalystMenuActionIds: Set<String> = [
+        "show-shortcuts",
+        "show-debug-log",
+        "manage-identity",
+        "connection-manager",
+        "client-migration",
+        "notification-settings",
+        "toggle-talk",
+        "toggle-input-muted",
+        "toggle-output-muted",
+        "self-status",
+        "audio-settings",
+        "toggle-away",
+        "apply-nickname",
+        "open-chat",
+        "open-offline-messages",
+        "open-events",
+        "open-whisper",
+        "toggle-whisper-activation",
+        "start-whisper-activation",
+        "stop-whisper-activation",
+        "refresh-server",
+        "reconnect-server",
+        "disconnect-server",
+        "save-bookmark",
+        "copy-invite",
+        "copy-full-invite",
+        "view-server-logs",
+        "view-server-info",
+        "edit-server-settings",
+        "manage-contacts",
+        "browse-client-database",
+        "manage-bans",
+        "browse-files",
+        "manage-subscription-presets",
+        "manage-permissions",
+        "manage-permission-groups",
+        "manage-privilege-keys",
+        "manage-complaints",
+        "manage-temporary-passwords"
+    ]
+}
+
 struct TS3KeyboardShortcutImportPreview {
     let totalShortcutCount: Int
     let importedShortcutCount: Int
@@ -18056,7 +18178,7 @@ final class TS3AppModel: ObservableObject {
         }
     }
 
-    private static func isValidKeyboardShortcutKeys(_ keys: String) -> Bool {
+    nonisolated static func isValidKeyboardShortcutKeys(_ keys: String) -> Bool {
         let parts = keys
             .split(separator: "-")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

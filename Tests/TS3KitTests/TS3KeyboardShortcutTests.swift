@@ -24,6 +24,66 @@ final class TS3KeyboardShortcutTests: XCTestCase {
         )
     }
 
+    func testKeyboardShortcutCapabilitySummaryCountsPlatformCoverageAndIssues() {
+        let shortcuts = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W",
+                keys: "Command-Shift-W",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "start-whisper-activation",
+                group: "Voice",
+                action: "Start Temporary Whisper",
+                defaultKeys: "Command-Option-H",
+                keys: "Hyper-H",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "show-debug-log",
+                group: "Global",
+                action: "Show Debug Log",
+                defaultKeys: "Command-Shift-L",
+                keys: "Command-Shift-L",
+                isEnabled: false
+            )
+        ]
+
+        let summary = TS3KeyboardShortcutCapabilitySummary(shortcuts: shortcuts)
+
+        XCTAssertEqual(summary.totalCount, 5)
+        XCTAssertEqual(summary.enabledCount, 4)
+        XCTAssertEqual(summary.validEnabledCount, 3)
+        XCTAssertEqual(summary.invalidEnabledCount, 1)
+        XCTAssertEqual(summary.duplicateEnabledCount, 2)
+        XCTAssertEqual(summary.catalystMenuCount, 3)
+        XCTAssertEqual(summary.whisperShortcutCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "shortcuts=5 | enabled=4 | validEnabled=3 | invalidEnabled=1 | duplicateEnabled=2 | catalystMenu=3 | whisper=1 | iOSGlobalHotkeys=unavailable | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testDefaultKeyboardShortcutsAreUniqueAndParseable() {
         var seenActionIds: Set<String> = []

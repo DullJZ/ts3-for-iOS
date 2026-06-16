@@ -473,6 +473,24 @@ struct KeyboardShortcutsSheet: View {
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("shortcuts.capability")) {
+                    let summary = shortcutCapabilitySummary
+                    ServerInfoDetailRow(
+                        label: NSLocalizedString("shortcuts.capability.enabled", comment: ""),
+                        value: String(
+                            format: NSLocalizedString("shortcuts.capability.enabledFormat", comment: ""),
+                            summary.validEnabledCount,
+                            summary.totalCount
+                        )
+                    )
+                    Text(shortcutCapabilityText(summary))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("shortcuts.copyCapabilitySummary") {
+                        TS3PlatformSupport.copyToPasteboard(summary.clipboardSummary)
+                    }
+                }
+
                 Section(header: Text("shortcuts.actions")) {
                     ForEach(model.keyboardShortcuts) { shortcut in
                         VStack(alignment: .leading, spacing: 8) {
@@ -669,6 +687,19 @@ struct KeyboardShortcutsSheet: View {
         model.keyboardShortcuts.map { shortcut in
             shortcut.clipboardSummary
         }.joined(separator: "\n")
+    }
+
+    private var shortcutCapabilitySummary: TS3KeyboardShortcutCapabilitySummary {
+        TS3KeyboardShortcutCapabilitySummary(shortcuts: model.keyboardShortcuts)
+    }
+
+    private func shortcutCapabilityText(_ summary: TS3KeyboardShortcutCapabilitySummary) -> String {
+        [
+            String(format: NSLocalizedString("shortcuts.capability.catalystFormat", comment: ""), summary.catalystMenuCount),
+            String(format: NSLocalizedString("shortcuts.capability.whisperFormat", comment: ""), summary.whisperShortcutCount),
+            String(format: NSLocalizedString("shortcuts.capability.issueFormat", comment: ""), summary.invalidEnabledCount, summary.duplicateEnabledCount),
+            NSLocalizedString("shortcuts.capability.iosLimit", comment: "")
+        ].joined(separator: " · ")
     }
 
     private func shortcutKeysBinding(_ shortcut: TS3KeyboardShortcutBinding) -> Binding<String> {

@@ -213,6 +213,14 @@
 "common.unknown" = "Unknown";
 "common.none" = "None";
 "shortcuts.title" = "Keyboard Shortcuts";
+"shortcuts.capability" = "Platform Coverage";
+"shortcuts.capability.enabled" = "Enabled Shortcuts";
+"shortcuts.capability.enabledFormat" = "%d of %d valid";
+"shortcuts.capability.catalystFormat" = "Catalyst menu: %d";
+"shortcuts.capability.whisperFormat" = "Whisper: %d";
+"shortcuts.capability.issueFormat" = "Issues: %d invalid, %d duplicate";
+"shortcuts.capability.iosLimit" = "iOS uses on-screen controls; system-wide hotkeys are unavailable.";
+"shortcuts.copyCapabilitySummary" = "Copy Platform Coverage";
 "shortcuts.actions" = "Actions";
 "shortcuts.keys" = "Keys";
 "shortcuts.record" = "Record";

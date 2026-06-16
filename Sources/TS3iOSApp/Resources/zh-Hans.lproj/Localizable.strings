@@ -213,6 +213,14 @@
 "common.unknown" = "未知";
 "common.none" = "无";
 "shortcuts.title" = "快捷键";
+"shortcuts.capability" = "平台覆盖";
+"shortcuts.capability.enabled" = "已启用快捷键";
+"shortcuts.capability.enabledFormat" = "%d / %d 个有效";
+"shortcuts.capability.catalystFormat" = "Catalyst 菜单：%d";
+"shortcuts.capability.whisperFormat" = "密语：%d";
+"shortcuts.capability.issueFormat" = "问题：%d 个无效，%d 个重复";
+"shortcuts.capability.iosLimit" = "iOS 使用屏幕控件；系统级全局热键不可用。";
+"shortcuts.copyCapabilitySummary" = "复制平台覆盖";
 "shortcuts.actions" = "动作";
 "shortcuts.keys" = "按键";
 "shortcuts.record" = "录制";
