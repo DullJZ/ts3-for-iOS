@@ -484,6 +484,14 @@
 "privilegeKeys.backupPreview.hasKeys" = "导入会将首个密钥载入已生成密钥区域，以便复制或使用。";
 "privilegeKeys.backupPreview.noUsableKeys" = "此备份没有可用密钥。";
 "privilegeKeys.import.preview" = "预览";
+"privilegeKeys.import.impact" = "导入影响";
+"privilegeKeys.import.impactFormat" = "%@ 组 %d";
+"privilegeKeys.import.impactChannelScopedFormat" = "限定频道：%d";
+"privilegeKeys.import.impactDescriptionFormat" = "描述：%d";
+"privilegeKeys.import.impactCustomSetFormat" = "自定义权限集：%d";
+"privilegeKeys.import.impactAnyChannel" = "适用于任意频道";
+"privilegeKeys.import.impactUnknownType" = "未知密钥类型";
+"privilegeKeys.import.copyImpact" = "复制导入影响";
 "privilegeKeys.import.behavior" = "导入行为";
 "privilegeKeys.import.behaviorSummary" = "导入会将所选可用密钥载入已生成密钥区域，以便复制、使用、保存或导出。";
 "privilegeKeys.import.title" = "导入密钥备份";

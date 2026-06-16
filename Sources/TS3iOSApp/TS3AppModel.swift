@@ -5163,6 +5163,11 @@ private struct TS3PrivilegeKeyBackup: Codable {
 struct TS3PrivilegeKeyBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let key: String
+        let type: TS3PrivilegeKeyType?
+        let groupId: Int
+        let channelId: Int?
+        let description: String?
+        let customSet: String?
         let summary: String
 
         var id: String { key }
@@ -5193,6 +5198,59 @@ struct TS3PrivilegeKeyBackupPreview {
 
     var clipboardSummary: String {
         (typeSummaries + targetSummaries + keySummaries).joined(separator: "\n")
+    }
+}
+
+struct TS3PrivilegeKeyImportImpactSummary {
+    let key: String
+    let type: TS3PrivilegeKeyType?
+    let groupId: Int
+    let channelId: Int?
+    let hasDescription: Bool
+    let hasCustomSet: Bool
+
+    var isKnownType: Bool {
+        type != nil
+    }
+
+    var isChannelScoped: Bool {
+        (channelId ?? 0) > 0
+    }
+
+    var isAnyChannelGroupKey: Bool {
+        type == .channelGroup && !isChannelScoped
+    }
+
+    var needsAttention: Bool {
+        !isKnownType || hasCustomSet || isAnyChannelGroupKey
+    }
+
+    var clipboardSummary: String {
+        [
+            "key=\(key)",
+            "type=\(type?.title ?? "Unknown")",
+            "groupId=\(groupId)",
+            "channelId=\(channelId.map(String.init) ?? "none")",
+            "channelScoped=\(isChannelScoped ? "true" : "false")",
+            "anyChannelGroupKey=\(isAnyChannelGroupKey ? "true" : "false")",
+            "description=\(hasDescription ? "true" : "false")",
+            "customSet=\(hasCustomSet ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(candidate: TS3PrivilegeKeyBackupPreview.Candidate) {
+        key = candidate.key
+        type = candidate.type
+        groupId = candidate.groupId
+        channelId = candidate.channelId
+        hasDescription = Self.normalized(candidate.description) != nil
+        hasCustomSet = Self.normalized(candidate.customSet) != nil
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed?.isEmpty == false ? trimmed : nil
     }
 }
 
@@ -17752,6 +17810,11 @@ final class TS3AppModel: ObservableObject {
             candidates: entries.map {
                 TS3PrivilegeKeyBackupPreview.Candidate(
                     key: $0.key,
+                    type: $0.type.flatMap(TS3PrivilegeKeyType.init(rawValue:)),
+                    groupId: $0.groupId,
+                    channelId: $0.channelId,
+                    description: $0.description,
+                    customSet: $0.customSet,
                     summary: Self.privilegeKeyBackupSummary($0)
                 )
             },

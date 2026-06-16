@@ -219,6 +219,9 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
             ]
         )
         XCTAssertEqual(preview.candidates.map(\.key), ["first-key", "second-key"])
+        XCTAssertEqual(preview.candidates.first?.type, .serverGroup)
+        XCTAssertEqual(preview.candidates.first?.groupId, 6)
+        XCTAssertNil(preview.candidates.first?.channelId)
         XCTAssertTrue(preview.containsKey("second-key"))
         XCTAssertFalse(preview.containsKey("missing-key"))
         XCTAssertEqual(model.generatedPrivilegeKey, "first-key")
@@ -228,6 +231,43 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
 
         try model.importPrivilegeKeyBackup(from: data, selectedKey: "missing-key")
         XCTAssertEqual(model.generatedPrivilegeKey, "first-key")
+    }
+
+    @MainActor
+    func testPrivilegeKeyImportImpactSummaryCountsSelectedCandidateRisk() throws {
+        let model = TS3AppModel()
+        let backupJSON = """
+        {
+          "entries": [
+            {
+              "key": "channel-any-key",
+              "type": 1,
+              "groupId": 8,
+              "description": "Channel admin",
+              "customSet": "token_custom"
+            }
+          ]
+        }
+        """
+
+        let preview = try model.privilegeKeyBackupPreview(from: Data(backupJSON.utf8))
+        let candidate = try XCTUnwrap(preview.candidates.first)
+        let impact = TS3PrivilegeKeyImportImpactSummary(candidate: candidate)
+
+        XCTAssertEqual(impact.key, "channel-any-key")
+        XCTAssertEqual(impact.type, .channelGroup)
+        XCTAssertEqual(impact.groupId, 8)
+        XCTAssertNil(impact.channelId)
+        XCTAssertTrue(impact.isKnownType)
+        XCTAssertFalse(impact.isChannelScoped)
+        XCTAssertTrue(impact.isAnyChannelGroupKey)
+        XCTAssertTrue(impact.hasDescription)
+        XCTAssertTrue(impact.hasCustomSet)
+        XCTAssertTrue(impact.needsAttention)
+        XCTAssertEqual(
+            impact.clipboardSummary,
+            "key=channel-any-key | type=Channel Group | groupId=8 | channelId=none | channelScoped=false | anyChannelGroupKey=true | description=true | customSet=true | needsAttention=true"
+        )
     }
 
     @MainActor

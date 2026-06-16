@@ -484,6 +484,14 @@
 "privilegeKeys.backupPreview.hasKeys" = "Import loads the first key into the generated key area for copying or use.";
 "privilegeKeys.backupPreview.noUsableKeys" = "The backup has no usable keys.";
 "privilegeKeys.import.preview" = "Preview";
+"privilegeKeys.import.impact" = "Import Impact";
+"privilegeKeys.import.impactFormat" = "%@ group %d";
+"privilegeKeys.import.impactChannelScopedFormat" = "Channel-scoped: %d";
+"privilegeKeys.import.impactDescriptionFormat" = "Description: %d";
+"privilegeKeys.import.impactCustomSetFormat" = "Custom set: %d";
+"privilegeKeys.import.impactAnyChannel" = "Applies in any channel";
+"privilegeKeys.import.impactUnknownType" = "Unknown key type";
+"privilegeKeys.import.copyImpact" = "Copy Import Impact";
 "privilegeKeys.import.behavior" = "Import Behavior";
 "privilegeKeys.import.behaviorSummary" = "Import loads the selected usable key into the generated key area for copying, using, saving, or exporting.";
 "privilegeKeys.import.title" = "Import Key Backup";

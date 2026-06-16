@@ -24255,6 +24255,10 @@ private struct PrivilegeKeyBackupImportSheet: View {
         preview.candidates.first { $0.key == selectedKeyOrFirst }
     }
 
+    private var selectedImpact: TS3PrivilegeKeyImportImpactSummary? {
+        selectedCandidate.map(TS3PrivilegeKeyImportImpactSummary.init(candidate:))
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -24278,6 +24282,22 @@ private struct PrivilegeKeyBackupImportSheet: View {
                                 .foregroundColor(.secondary)
                                 .lineLimit(2)
                                 .truncationMode(.middle)
+                        }
+                        if let selectedImpact {
+                            ServerInfoDetailRow(
+                                label: localized("privilegeKeys.import.impact"),
+                                value: localized(
+                                    "privilegeKeys.import.impactFormat",
+                                    selectedImpact.type.map(typeTitle) ?? localized("privilegeKeys.filter.unknown"),
+                                    selectedImpact.groupId
+                                )
+                            )
+                            Text(privilegeKeyImportImpactText(selectedImpact))
+                                .font(.caption2)
+                                .foregroundColor(selectedImpact.needsAttention ? .orange : .secondary)
+                            Button(localized("privilegeKeys.import.copyImpact")) {
+                                TS3PlatformSupport.copyToPasteboard(selectedImpact.clipboardSummary)
+                            }
                         }
                         ForEach(preview.typeSummaries, id: \.self) { summary in
                             Text(summary)
@@ -24330,6 +24350,30 @@ private struct PrivilegeKeyBackupImportSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func privilegeKeyImportImpactText(_ impact: TS3PrivilegeKeyImportImpactSummary) -> String {
+        var parts = [
+            localized("privilegeKeys.import.impactChannelScopedFormat", impact.isChannelScoped ? 1 : 0),
+            localized("privilegeKeys.import.impactDescriptionFormat", impact.hasDescription ? 1 : 0),
+            localized("privilegeKeys.import.impactCustomSetFormat", impact.hasCustomSet ? 1 : 0)
+        ]
+        if impact.isAnyChannelGroupKey {
+            parts.append(localized("privilegeKeys.import.impactAnyChannel"))
+        }
+        if !impact.isKnownType {
+            parts.append(localized("privilegeKeys.import.impactUnknownType"))
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private func typeTitle(_ type: TS3PrivilegeKeyType) -> String {
+        switch type {
+        case .serverGroup:
+            return localized("privilegeKeys.serverGroup")
+        case .channelGroup:
+            return localized("privilegeKeys.channelGroup")
+        }
     }
 }
 
