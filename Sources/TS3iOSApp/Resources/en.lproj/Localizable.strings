@@ -2338,6 +2338,17 @@
 "groups.create" = "Create";
 "groups.groupName" = "Group Name";
 "groups.databaseType" = "Database Type";
+"groups.draftCoverage" = "Draft Coverage";
+"groups.draftCoverageFormat" = "%d of %d required fields, %d validation issues";
+"groups.draftCoverageOperationFormat" = "Operation: %@";
+"groups.draftCoverageTargetFormat" = "Target: %@";
+"groups.draftCoverageNameFormat" = "Name: %d";
+"groups.draftCoverageSourceFormat" = "Source group: %d";
+"groups.draftCoverageDatabaseTypeFormat" = "Database type: %d";
+"groups.copyDraftCoverage" = "Copy Group Draft Coverage";
+"groups.operation.create" = "Create";
+"groups.operation.copy" = "Copy";
+"groups.operation.rename" = "Rename";
 "groups.copyGroupSummary" = "Copy Group Summary";
 "groups.groupFallbackFormat" = "Group %d";
 "groups.createGroup" = "Create Group";

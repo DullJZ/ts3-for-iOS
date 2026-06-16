@@ -4093,6 +4093,73 @@ enum TS3GroupDraftValidator {
     }
 }
 
+struct TS3GroupDraftCoverageSummary {
+    let operation: TS3GroupDraftValidator.Operation
+    let target: TS3GroupManagementTarget
+    let hasName: Bool
+    let hasSourceGroup: Bool
+    let hasDatabaseType: Bool
+    let validationIssueCount: Int
+
+    var requiredFieldCount: Int {
+        if requiresSourceGroup {
+            return [hasName, hasSourceGroup].filter { $0 }.count
+        }
+        return hasName ? 1 : 0
+    }
+
+    var requiredFieldTotal: Int {
+        requiresSourceGroup ? 2 : 1
+    }
+
+    var optionalFieldCount: Int {
+        operation == .rename ? 0 : (hasDatabaseType ? 1 : 0)
+    }
+
+    var requiresSourceGroup: Bool {
+        operation != .create
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || requiredFieldCount < requiredFieldTotal
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=\(operation.rawValue)",
+            "target=\(target.title)",
+            "requiredFields=\(requiredFieldCount)/\(requiredFieldTotal)",
+            "name=\(hasName ? "true" : "false")",
+            "sourceRequired=\(requiresSourceGroup ? "true" : "false")",
+            "sourceGroup=\(hasSourceGroup ? "true" : "false")",
+            "databaseType=\(hasDatabaseType ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        operation: TS3GroupDraftValidator.Operation,
+        name: String,
+        target: TS3GroupManagementTarget,
+        type: TS3PermissionGroupDatabaseType,
+        sourceGroup: TS3GroupSummary?,
+        validationMessages: [String]
+    ) {
+        self.operation = operation
+        self.target = target
+        self.hasName = Self.normalized(name) != nil
+        self.hasSourceGroup = sourceGroup != nil
+        self.hasDatabaseType = operation != .rename
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 enum TS3GroupMemberDraftValidator {
     enum Operation: String {
         case addServerMember = "Add Member"

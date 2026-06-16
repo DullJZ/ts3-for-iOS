@@ -13600,6 +13600,17 @@ struct GroupManagementSheet: View {
         )
     }
 
+    private var newGroupDraftCoverageSummary: TS3GroupDraftCoverageSummary {
+        TS3GroupDraftCoverageSummary(
+            operation: .create,
+            name: newGroupName,
+            target: target,
+            type: newGroupType,
+            sourceGroup: nil,
+            validationMessages: newGroupDraftValidationMessages
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -13619,6 +13630,21 @@ struct GroupManagementSheet: View {
                         ForEach(TS3PermissionGroupDatabaseType.allCases) { type in
                             Text(databaseTypeTitle(type)).tag(type)
                         }
+                    }
+                    ServerInfoDetailRow(
+                        label: localized("groups.draftCoverage"),
+                        value: localized(
+                            "groups.draftCoverageFormat",
+                            newGroupDraftCoverageSummary.requiredFieldCount,
+                            newGroupDraftCoverageSummary.requiredFieldTotal,
+                            newGroupDraftCoverageSummary.validationIssueCount
+                        )
+                    )
+                    Text(groupDraftCoverageText(newGroupDraftCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(newGroupDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("groups.copyDraftCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(newGroupDraftCoverageSummary.clipboardSummary)
                     }
                     Text(newGroupDraftSummary)
                         .font(.caption)
@@ -13993,6 +14019,27 @@ struct GroupManagementSheet: View {
         case .query:
             return localized("groups.filter.query")
         }
+    }
+
+    private func operationTitle(_ operation: TS3GroupDraftValidator.Operation) -> String {
+        switch operation {
+        case .create:
+            return localized("groups.operation.create")
+        case .copy:
+            return localized("groups.operation.copy")
+        case .rename:
+            return localized("groups.operation.rename")
+        }
+    }
+
+    private func groupDraftCoverageText(_ summary: TS3GroupDraftCoverageSummary) -> String {
+        [
+            localized("groups.draftCoverageOperationFormat", operationTitle(summary.operation)),
+            localized("groups.draftCoverageTargetFormat", targetTitle(summary.target)),
+            localized("groups.draftCoverageNameFormat", summary.hasName ? 1 : 0),
+            localized("groups.draftCoverageSourceFormat", summary.hasSourceGroup ? 1 : 0),
+            localized("groups.draftCoverageDatabaseTypeFormat", summary.hasDatabaseType ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func exportGroupArchive() {
@@ -15488,6 +15535,21 @@ struct GroupNameSheet: View {
                             }
                         }
                     }
+                    ServerInfoDetailRow(
+                        label: localized("groups.draftCoverage"),
+                        value: localized(
+                            "groups.draftCoverageFormat",
+                            groupDraftCoverageSummary.requiredFieldCount,
+                            groupDraftCoverageSummary.requiredFieldTotal,
+                            groupDraftCoverageSummary.validationIssueCount
+                        )
+                    )
+                    Text(groupDraftCoverageText(groupDraftCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(groupDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("groups.copyDraftCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(groupDraftCoverageSummary.clipboardSummary)
+                    }
                     Text(groupDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -15541,6 +15603,17 @@ struct GroupNameSheet: View {
         )
     }
 
+    private var groupDraftCoverageSummary: TS3GroupDraftCoverageSummary {
+        TS3GroupDraftCoverageSummary(
+            operation: operation,
+            name: name,
+            target: target,
+            type: type,
+            sourceGroup: sourceGroup,
+            validationMessages: groupDraftValidationMessages
+        )
+    }
+
     private func databaseTypeTitle(_ type: TS3PermissionGroupDatabaseType) -> String {
         switch type {
         case .template:
@@ -15550,6 +15623,36 @@ struct GroupNameSheet: View {
         case .query:
             return localized("groups.filter.query")
         }
+    }
+
+    private func targetTitle(_ target: TS3GroupManagementTarget) -> String {
+        switch target {
+        case .server:
+            return localized("groups.target.server")
+        case .channel:
+            return localized("groups.target.channel")
+        }
+    }
+
+    private func operationTitle(_ operation: TS3GroupDraftValidator.Operation) -> String {
+        switch operation {
+        case .create:
+            return localized("groups.operation.create")
+        case .copy:
+            return localized("groups.operation.copy")
+        case .rename:
+            return localized("groups.operation.rename")
+        }
+    }
+
+    private func groupDraftCoverageText(_ summary: TS3GroupDraftCoverageSummary) -> String {
+        [
+            localized("groups.draftCoverageOperationFormat", operationTitle(summary.operation)),
+            localized("groups.draftCoverageTargetFormat", targetTitle(summary.target)),
+            localized("groups.draftCoverageNameFormat", summary.hasName ? 1 : 0),
+            localized("groups.draftCoverageSourceFormat", summary.hasSourceGroup ? 1 : 0),
+            localized("groups.draftCoverageDatabaseTypeFormat", summary.hasDatabaseType ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

@@ -2338,6 +2338,17 @@
 "groups.create" = "创建";
 "groups.groupName" = "组名称";
 "groups.databaseType" = "数据库类型";
+"groups.draftCoverage" = "草稿覆盖";
+"groups.draftCoverageFormat" = "%d / %d 个必填字段，%d 个校验问题";
+"groups.draftCoverageOperationFormat" = "操作：%@";
+"groups.draftCoverageTargetFormat" = "目标：%@";
+"groups.draftCoverageNameFormat" = "名称：%d";
+"groups.draftCoverageSourceFormat" = "源组：%d";
+"groups.draftCoverageDatabaseTypeFormat" = "数据库类型：%d";
+"groups.copyDraftCoverage" = "复制组草稿覆盖";
+"groups.operation.create" = "创建";
+"groups.operation.copy" = "复制";
+"groups.operation.rename" = "重命名";
 "groups.copyGroupSummary" = "复制组摘要";
 "groups.groupFallbackFormat" = "组 %d";
 "groups.createGroup" = "创建组";

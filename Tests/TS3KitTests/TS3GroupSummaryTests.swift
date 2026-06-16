@@ -74,6 +74,118 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupDraftCoverageSummaryTracksCreateDraftReadiness() {
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .create,
+            name: " Moderators ",
+            target: .server,
+            type: .regular,
+            sourceGroup: nil,
+            existingGroups: []
+        )
+        let summary = TS3GroupDraftCoverageSummary(
+            operation: .create,
+            name: " Moderators ",
+            target: .server,
+            type: .regular,
+            sourceGroup: nil,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 1)
+        XCTAssertEqual(summary.requiredFieldTotal, 1)
+        XCTAssertEqual(summary.optionalFieldCount, 1)
+        XCTAssertFalse(summary.requiresSourceGroup)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Create | target=Server Groups | requiredFields=1/1 | name=true | sourceRequired=false | sourceGroup=false | databaseType=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testGroupDraftCoverageSummaryTracksCopyDraftReadiness() {
+        let source = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let validationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .copy,
+            name: " Channel Admin Copy ",
+            target: .channel,
+            type: .query,
+            sourceGroup: source,
+            existingGroups: [source]
+        )
+        let summary = TS3GroupDraftCoverageSummary(
+            operation: .copy,
+            name: " Channel Admin Copy ",
+            target: .channel,
+            type: .query,
+            sourceGroup: source,
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.requiredFieldCount, 2)
+        XCTAssertEqual(summary.requiredFieldTotal, 2)
+        XCTAssertEqual(summary.optionalFieldCount, 1)
+        XCTAssertTrue(summary.requiresSourceGroup)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Copy | target=Channel Groups | requiredFields=2/2 | name=true | sourceRequired=true | sourceGroup=true | databaseType=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testGroupDraftCoverageSummaryFlagsIncompleteDrafts() {
+        let createValidationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .create,
+            name: " ",
+            target: .channel,
+            type: .regular,
+            sourceGroup: nil,
+            existingGroups: []
+        )
+        let createSummary = TS3GroupDraftCoverageSummary(
+            operation: .create,
+            name: " ",
+            target: .channel,
+            type: .regular,
+            sourceGroup: nil,
+            validationMessages: createValidationMessages
+        )
+        let renameValidationMessages = TS3GroupDraftValidator.validationMessages(
+            operation: .rename,
+            name: "Operators",
+            target: .server,
+            type: .regular,
+            sourceGroup: nil,
+            existingGroups: []
+        )
+        let renameSummary = TS3GroupDraftCoverageSummary(
+            operation: .rename,
+            name: "Operators",
+            target: .server,
+            type: .regular,
+            sourceGroup: nil,
+            validationMessages: renameValidationMessages
+        )
+
+        XCTAssertEqual(createSummary.requiredFieldCount, 0)
+        XCTAssertEqual(createSummary.requiredFieldTotal, 1)
+        XCTAssertEqual(createSummary.optionalFieldCount, 1)
+        XCTAssertTrue(createSummary.needsAttention)
+        XCTAssertEqual(
+            createSummary.clipboardSummary,
+            "operation=Create | target=Channel Groups | requiredFields=0/1 | name=false | sourceRequired=false | sourceGroup=false | databaseType=true | validationIssues=1 | needsAttention=true"
+        )
+        XCTAssertEqual(renameSummary.requiredFieldCount, 1)
+        XCTAssertEqual(renameSummary.requiredFieldTotal, 2)
+        XCTAssertEqual(renameSummary.optionalFieldCount, 0)
+        XCTAssertTrue(renameSummary.requiresSourceGroup)
+        XCTAssertTrue(renameSummary.needsAttention)
+        XCTAssertEqual(
+            renameSummary.clipboardSummary,
+            "operation=Rename | target=Server Groups | requiredFields=1/2 | name=true | sourceRequired=true | sourceGroup=false | databaseType=false | validationIssues=1 | needsAttention=true"
+        )
+    }
+
     func testGroupMemberDraftValidatorRejectsInvalidMemberChanges() {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
 
