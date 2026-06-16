@@ -64,6 +64,54 @@ final class TS3ServerLogPresetTests: XCTestCase {
         )
     }
 
+    func testServerLogQueryCoverageSummaryCountsRemoteLocalAndValidationState() {
+        let draft = TS3ServerLogQueryDraft(
+            limitText: "250",
+            beginPositionText: "42",
+            reverse: false,
+            instance: true,
+            levelFilter: "warning",
+            channelFilter: " Server ",
+            searchText: " auth failed "
+        )
+
+        let summary = TS3ServerLogQueryCoverageSummary(draft: draft)
+
+        XCTAssertEqual(summary.remoteQueryDimensionCount, 4)
+        XCTAssertEqual(summary.localFilterCount, 3)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertTrue(summary.hasPagination)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "remoteDimensions=4 | localFilters=3 | instance=true | reverse=false | pagination=true | levelFilter=warning | channelFilter=true | search=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testServerLogQueryCoverageSummaryFlagsInvalidDraft() {
+        let draft = TS3ServerLogQueryDraft(
+            limitText: "0",
+            beginPositionText: "nope",
+            reverse: true,
+            instance: false,
+            levelFilter: "unknown",
+            channelFilter: "",
+            searchText: ""
+        )
+
+        let summary = TS3ServerLogQueryCoverageSummary(draft: draft)
+
+        XCTAssertEqual(summary.remoteQueryDimensionCount, 2)
+        XCTAssertEqual(summary.localFilterCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertFalse(summary.hasPagination)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "remoteDimensions=2 | localFilters=0 | instance=false | reverse=true | pagination=false | levelFilter=all | channelFilter=false | search=false | validationIssues=2 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testServerLogQueryPresetsPersistChannelFilterAndImportLegacyDefaults() throws {
         let model = TS3AppModel()

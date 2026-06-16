@@ -12099,6 +12099,20 @@ struct ServerLogsSheet: View {
                         .foregroundColor(.secondary)
                         .accessibilityLabel(localized("serverLogs.currentLogQuery"))
                         .accessibilityValue(currentQueryDraft.accessibilityValue)
+                    ServerInfoDetailRow(
+                        label: localized("serverLogs.queryCoverage"),
+                        value: localized(
+                            "serverLogs.queryCoverageFormat",
+                            queryCoverageSummary.remoteQueryDimensionCount,
+                            queryCoverageSummary.localFilterCount
+                        )
+                    )
+                    Text(serverLogQueryCoverageText(queryCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(queryCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverLogs.copyQueryCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(queryCoverageSummary.clipboardSummary)
+                    }
                     ForEach(queryValidationMessages, id: \.self) { message in
                         Text(message)
                             .font(.caption)
@@ -12442,6 +12456,24 @@ struct ServerLogsSheet: View {
             channelFilter: channelFilter,
             searchText: searchText
         )
+    }
+
+    private var queryCoverageSummary: TS3ServerLogQueryCoverageSummary {
+        TS3ServerLogQueryCoverageSummary(draft: currentQueryDraft)
+    }
+
+    private func serverLogQueryCoverageText(_ summary: TS3ServerLogQueryCoverageSummary) -> String {
+        var parts = [
+            localized("serverLogs.queryCoverageRemoteFormat", summary.remoteQueryDimensionCount),
+            localized("serverLogs.queryCoverageLocalFormat", summary.localFilterCount)
+        ]
+        if summary.hasPagination {
+            parts.append(localized("serverLogs.queryCoveragePagination"))
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverLogs.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var queryValidationMessages: [String] {

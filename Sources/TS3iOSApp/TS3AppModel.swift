@@ -8431,6 +8431,60 @@ struct TS3ServerLogQueryDraft {
     }
 }
 
+struct TS3ServerLogQueryCoverageSummary {
+    let draft: TS3ServerLogQueryDraft
+
+    var remoteQueryDimensionCount: Int {
+        2 + (draft.beginPosition ?? 0 > 0 ? 1 : 0) + (draft.instance ? 1 : 0)
+    }
+
+    var localFilterCount: Int {
+        (normalizedLevelFilter == "all" ? 0 : 1)
+            + (hasChannelFilter ? 1 : 0)
+            + (hasSearchText ? 1 : 0)
+    }
+
+    var validationIssueCount: Int {
+        draft.validationMessages.count
+    }
+
+    var hasPagination: Bool {
+        (draft.beginPosition ?? 0) > 0
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "remoteDimensions=\(remoteQueryDimensionCount)",
+            "localFilters=\(localFilterCount)",
+            "instance=\(draft.instance ? "true" : "false")",
+            "reverse=\(draft.reverse ? "true" : "false")",
+            "pagination=\(hasPagination ? "true" : "false")",
+            "levelFilter=\(normalizedLevelFilter)",
+            "channelFilter=\(hasChannelFilter ? "true" : "false")",
+            "search=\(hasSearchText ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var normalizedLevelFilter: String {
+        let level = draft.levelFilter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["all", "info", "warning", "error", "debug"].contains(level) ? level : "all"
+    }
+
+    private var hasChannelFilter: Bool {
+        !draft.channelFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var hasSearchText: Bool {
+        !draft.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
 extension TS3ServerLogQueryPreset {
     var queryDraft: TS3ServerLogQueryDraft {
         TS3ServerLogQueryDraft(

@@ -2216,6 +2216,13 @@
 "serverLogs.logChannel" = "Log Channel";
 "serverLogs.searchLogs" = "Search logs";
 "serverLogs.currentLogQuery" = "Current log query";
+"serverLogs.queryCoverage" = "Query Coverage";
+"serverLogs.queryCoverageFormat" = "%d remote dimensions, %d local filters";
+"serverLogs.queryCoverageRemoteFormat" = "Remote: %d";
+"serverLogs.queryCoverageLocalFormat" = "Local filters: %d";
+"serverLogs.queryCoveragePagination" = "Paged";
+"serverLogs.validationIssueCountFormat" = "%d validation issues";
+"serverLogs.copyQueryCoverage" = "Copy Query Coverage";
 "serverLogs.clearFilters" = "Clear Filters";
 "serverLogs.copyQuerySummary" = "Copy Query Summary";
 "serverLogs.visibleSummary" = "Visible Log Summary";

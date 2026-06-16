@@ -2216,6 +2216,13 @@
 "serverLogs.logChannel" = "日志频道";
 "serverLogs.searchLogs" = "搜索日志";
 "serverLogs.currentLogQuery" = "当前日志查询";
+"serverLogs.queryCoverage" = "查询覆盖";
+"serverLogs.queryCoverageFormat" = "%d 个远端维度，%d 个本地筛选";
+"serverLogs.queryCoverageRemoteFormat" = "远端：%d";
+"serverLogs.queryCoverageLocalFormat" = "本地筛选：%d";
+"serverLogs.queryCoveragePagination" = "分页";
+"serverLogs.validationIssueCountFormat" = "%d 个校验问题";
+"serverLogs.copyQueryCoverage" = "复制查询覆盖";
 "serverLogs.clearFilters" = "清除筛选";
 "serverLogs.copyQuerySummary" = "复制查询摘要";
 "serverLogs.visibleSummary" = "可见日志摘要";
