@@ -63,6 +63,70 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyDraftCoverageSummaryCountsServerGroupOptionalFields() {
+        let validationMessages = TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: .serverGroup,
+            groupId: 6,
+            channelId: nil,
+            description: " One time admin ",
+            customSet: " ident=ios "
+        )
+        let summary = TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: .serverGroup,
+            groupId: 6,
+            channelId: nil,
+            description: " One time admin ",
+            customSet: " ident=ios ",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.coveredTargetFieldCount, 1)
+        XCTAssertEqual(summary.requiredTargetFieldCount, 1)
+        XCTAssertFalse(summary.requiresChannel)
+        XCTAssertTrue(summary.hasGroup)
+        XCTAssertFalse(summary.hasChannel)
+        XCTAssertTrue(summary.hasDescription)
+        XCTAssertTrue(summary.hasCustomSet)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "type=serverGroup | targetFields=1/1 | group=true | channelRequired=false | channel=false | description=true | customSet=true | validationIssues=0 | needsAttention=false"
+        )
+    }
+
+    func testPrivilegeKeyDraftCoverageSummaryFlagsMissingChannelGroupTarget() {
+        let validationMessages = TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: .channelGroup,
+            groupId: 0,
+            channelId: nil,
+            description: "Line one\nLine two",
+            customSet: ""
+        )
+        let summary = TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: .channelGroup,
+            groupId: 0,
+            channelId: nil,
+            description: "Line one\nLine two",
+            customSet: "",
+            validationMessages: validationMessages
+        )
+
+        XCTAssertEqual(summary.coveredTargetFieldCount, 0)
+        XCTAssertEqual(summary.requiredTargetFieldCount, 2)
+        XCTAssertTrue(summary.requiresChannel)
+        XCTAssertFalse(summary.hasGroup)
+        XCTAssertFalse(summary.hasChannel)
+        XCTAssertTrue(summary.hasDescription)
+        XCTAssertFalse(summary.hasCustomSet)
+        XCTAssertEqual(summary.validationIssueCount, 3)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "type=channelGroup | targetFields=0/2 | group=false | channelRequired=true | channel=false | description=true | customSet=false | validationIssues=3 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testPrivilegeKeyBackupPreviewCountsTypesAndFirstKeyDetails() throws {
         let model = TS3AppModel()

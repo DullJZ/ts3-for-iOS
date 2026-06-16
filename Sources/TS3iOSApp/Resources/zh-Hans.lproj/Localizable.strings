@@ -425,6 +425,14 @@
 "privilegeKeys.targetFormat" = "目标：%@（%d）";
 "privilegeKeys.channelTargetFormat" = "目标：%@（%d），位于 %@（%d）";
 "privilegeKeys.customSet" = "自定义权限集";
+"privilegeKeys.draftCoverage" = "草稿覆盖";
+"privilegeKeys.draftCoverageFormat" = "%d / %d 个目标字段，%d 个校验问题";
+"privilegeKeys.draftCoverageTypeFormat" = "类型：%@";
+"privilegeKeys.draftCoverageGroupFormat" = "组：%d";
+"privilegeKeys.draftCoverageChannelFormat" = "频道：%d";
+"privilegeKeys.draftCoverageDescriptionFormat" = "描述：%d";
+"privilegeKeys.draftCoverageCustomSetFormat" = "自定义权限集：%d";
+"privilegeKeys.copyDraftCoverage" = "复制密钥草稿覆盖";
 "privilegeKeys.createPrivilegeKey" = "创建权限密钥";
 "privilegeKeys.existingKeys" = "现有密钥";
 "privilegeKeys.searchKeys" = "搜索密钥";

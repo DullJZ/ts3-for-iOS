@@ -425,6 +425,14 @@
 "privilegeKeys.targetFormat" = "Target: %@ (%d)";
 "privilegeKeys.channelTargetFormat" = "Target: %@ (%d) in %@ (%d)";
 "privilegeKeys.customSet" = "Custom Set";
+"privilegeKeys.draftCoverage" = "Draft Coverage";
+"privilegeKeys.draftCoverageFormat" = "%d of %d target fields, %d validation issues";
+"privilegeKeys.draftCoverageTypeFormat" = "Type: %@";
+"privilegeKeys.draftCoverageGroupFormat" = "Group: %d";
+"privilegeKeys.draftCoverageChannelFormat" = "Channel: %d";
+"privilegeKeys.draftCoverageDescriptionFormat" = "Description: %d";
+"privilegeKeys.draftCoverageCustomSetFormat" = "Custom set: %d";
+"privilegeKeys.copyDraftCoverage" = "Copy Key Draft Coverage";
 "privilegeKeys.createPrivilegeKey" = "Create Privilege Key";
 "privilegeKeys.existingKeys" = "Existing Keys";
 "privilegeKeys.searchKeys" = "Search keys";

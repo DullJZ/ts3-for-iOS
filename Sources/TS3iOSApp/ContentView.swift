@@ -23039,6 +23039,21 @@ struct PrivilegeKeysSheet: View {
                         .ts3PlainTextField()
                     TextField(localized("privilegeKeys.customSet"), text: $customSet)
                         .ts3PlainTextField()
+                    ServerInfoDetailRow(
+                        label: localized("privilegeKeys.draftCoverage"),
+                        value: localized(
+                            "privilegeKeys.draftCoverageFormat",
+                            privilegeKeyDraftCoverageSummary.coveredTargetFieldCount,
+                            privilegeKeyDraftCoverageSummary.requiredTargetFieldCount,
+                            privilegeKeyDraftCoverageSummary.validationIssueCount
+                        )
+                    )
+                    Text(privilegeKeyDraftCoverageText(privilegeKeyDraftCoverageSummary))
+                        .font(.caption)
+                        .foregroundColor(privilegeKeyDraftCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("privilegeKeys.copyDraftCoverage")) {
+                        TS3PlatformSupport.copyToPasteboard(privilegeKeyDraftCoverageSummary.clipboardSummary)
+                    }
                     Text(privilegeKeyDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -23354,6 +23369,27 @@ struct PrivilegeKeysSheet: View {
             description: description,
             customSet: customSet
         )
+    }
+
+    private var privilegeKeyDraftCoverageSummary: TS3PrivilegeKeyDraftCoverageSummary {
+        TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: targetType,
+            groupId: selectedGroupId,
+            channelId: selectedChannelId == 0 ? nil : selectedChannelId,
+            description: description,
+            customSet: customSet,
+            validationMessages: privilegeKeyDraftValidationMessages
+        )
+    }
+
+    private func privilegeKeyDraftCoverageText(_ summary: TS3PrivilegeKeyDraftCoverageSummary) -> String {
+        [
+            localized("privilegeKeys.draftCoverageTypeFormat", targetTypeTitle(summary.targetType)),
+            localized("privilegeKeys.draftCoverageGroupFormat", summary.hasGroup ? 1 : 0),
+            localized("privilegeKeys.draftCoverageChannelFormat", summary.requiresChannel ? (summary.hasChannel ? 1 : 0) : 0),
+            localized("privilegeKeys.draftCoverageDescriptionFormat", summary.hasDescription ? 1 : 0),
+            localized("privilegeKeys.draftCoverageCustomSetFormat", summary.hasCustomSet ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private var normalizedSearchText: String {

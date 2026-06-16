@@ -4236,6 +4236,69 @@ enum TS3PrivilegeKeyDraftValidator {
     }
 }
 
+struct TS3PrivilegeKeyDraftCoverageSummary {
+    let targetType: TS3PrivilegeKeyTargetType
+    let hasGroup: Bool
+    let hasChannel: Bool
+    let hasDescription: Bool
+    let hasCustomSet: Bool
+    let validationIssueCount: Int
+
+    var coveredTargetFieldCount: Int {
+        if requiresChannel {
+            return [hasGroup, hasChannel].filter { $0 }.count
+        }
+        return hasGroup ? 1 : 0
+    }
+
+    var requiredTargetFieldCount: Int {
+        requiresChannel ? 2 : 1
+    }
+
+    var requiresChannel: Bool {
+        targetType == .channelGroup
+    }
+
+    var needsAttention: Bool {
+        validationIssueCount > 0 || coveredTargetFieldCount < requiredTargetFieldCount
+    }
+
+    var clipboardSummary: String {
+        [
+            "type=\(targetType.rawValue)",
+            "targetFields=\(coveredTargetFieldCount)/\(requiredTargetFieldCount)",
+            "group=\(hasGroup ? "true" : "false")",
+            "channelRequired=\(requiresChannel ? "true" : "false")",
+            "channel=\(hasChannel ? "true" : "false")",
+            "description=\(hasDescription ? "true" : "false")",
+            "customSet=\(hasCustomSet ? "true" : "false")",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        targetType: TS3PrivilegeKeyTargetType,
+        groupId: Int,
+        channelId: Int?,
+        description: String,
+        customSet: String,
+        validationMessages: [String]
+    ) {
+        self.targetType = targetType
+        self.hasGroup = groupId > 0
+        self.hasChannel = (channelId ?? 0) > 0
+        self.hasDescription = Self.normalized(description) != nil
+        self.hasCustomSet = Self.normalized(customSet) != nil
+        self.validationIssueCount = validationMessages.count
+    }
+
+    private static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 extension TS3PrivilegeKeyType {
     var title: String {
         switch self {
