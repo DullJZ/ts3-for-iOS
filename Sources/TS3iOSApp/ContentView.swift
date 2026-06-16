@@ -22092,6 +22092,7 @@ private struct PermissionBackupImportSheet: View {
                         TS3PlatformSupport.copyToPasteboard(confirmation.preview.clipboardSummary)
                     }
                     if let plan {
+                        let impact = TS3PermissionBackupRestoreImpactSummary(plan: plan)
                         Text(localized("permissions.restore.selectedEntriesFormat", plan.permissionCount))
                             .font(.caption.weight(.semibold))
                         Text(localized(
@@ -22101,6 +22102,22 @@ private struct PermissionBackupImportSheet: View {
                         ))
                         .font(.caption2)
                         .foregroundColor(.secondary)
+                        ServerInfoDetailRow(
+                            label: localized("permissions.restore.impact"),
+                            value: localized(
+                                "permissions.restore.impactFormat",
+                                impact.selectedEntryCount,
+                                impact.changedExistingSelectedCount,
+                                impact.newPermissionSelectedCount
+                            )
+                        )
+                        Text(permissionRestoreImpactText(impact))
+                            .font(.caption2)
+                            .foregroundColor(impact.needsAttention ? .orange : .secondary)
+                        Button(localized("permissions.restore.copyImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(impact.clipboardSummary)
+                        }
+                        .disabled(!impact.hasSelection)
                         if !plan.entries.isEmpty {
                             Button(localized("permissions.restore.copyPlan")) {
                                 TS3PlatformSupport.copyToPasteboard(plan.auditSummary)
@@ -22190,6 +22207,31 @@ private struct PermissionBackupImportSheet: View {
 
     private func boolText(_ value: Bool) -> String {
         localized(value ? "common.on" : "common.off")
+    }
+
+    private func permissionRestoreImpactText(_ impact: TS3PermissionBackupRestoreImpactSummary) -> String {
+        var parts = [
+            localized("permissions.restore.impactUncomparableFormat", impact.uncomparableSelectedCount),
+            localized("permissions.restore.impactNegatedFormat", impact.negatedEntryCount),
+            localized("permissions.restore.impactSkipFormat", impact.inheritanceStopEntryCount)
+        ]
+        if let changedExistingAvailableCount = impact.changedExistingAvailableCount,
+           let newPermissionAvailableCount = impact.newPermissionAvailableCount,
+           let unchangedSkippedCount = impact.unchangedSkippedCount {
+            parts.append(localized(
+                "permissions.restore.impactAvailableFormat",
+                changedExistingAvailableCount,
+                newPermissionAvailableCount,
+                unchangedSkippedCount
+            ))
+        }
+        if !impact.targetMatchesCurrentSelection {
+            parts.append(localized("permissions.restore.impactTargetUnmatched"))
+        }
+        if !impact.hasSelection {
+            parts.append(localized("permissions.restore.impactEmpty"))
+        }
+        return parts.joined(separator: " | ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

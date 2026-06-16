@@ -2810,6 +2810,15 @@
 "permissions.restore.copyBackupPreview" = "复制备份预览";
 "permissions.restore.selectedEntriesFormat" = "所选恢复条目：%d";
 "permissions.restore.inheritanceImpactFormat" = "%d 条取反，%d 条阻断继承";
+"permissions.restore.impact" = "恢复影响";
+"permissions.restore.impactFormat" = "%d 条已选，%d 条变更，%d 条新增";
+"permissions.restore.impactUncomparableFormat" = "不可比较：%d";
+"permissions.restore.impactNegatedFormat" = "取反：%d";
+"permissions.restore.impactSkipFormat" = "阻断继承：%d";
+"permissions.restore.impactAvailableFormat" = "可用变更/新增/未变更：%d/%d/%d";
+"permissions.restore.impactTargetUnmatched" = "目标不匹配";
+"permissions.restore.impactEmpty" = "没有选择条目";
+"permissions.restore.copyImpact" = "复制恢复影响";
 "permissions.restore.copyPlan" = "复制恢复计划";
 "permissions.restore.exportPlan" = "导出恢复计划";
 "permissions.restore.entryFlagsFormat" = "值 %d | 取反 %@ | 跳过 %@";

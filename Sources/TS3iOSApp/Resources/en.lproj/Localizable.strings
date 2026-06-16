@@ -2810,6 +2810,15 @@
 "permissions.restore.copyBackupPreview" = "Copy Backup Preview";
 "permissions.restore.selectedEntriesFormat" = "Selected restore entries: %d";
 "permissions.restore.inheritanceImpactFormat" = "%d negated entries, %d inheritance stops";
+"permissions.restore.impact" = "Restore Impact";
+"permissions.restore.impactFormat" = "%d selected, %d changed, %d new";
+"permissions.restore.impactUncomparableFormat" = "Not comparable: %d";
+"permissions.restore.impactNegatedFormat" = "Negated: %d";
+"permissions.restore.impactSkipFormat" = "Inheritance stops: %d";
+"permissions.restore.impactAvailableFormat" = "Available changed/new/unchanged: %d/%d/%d";
+"permissions.restore.impactTargetUnmatched" = "Target not matched";
+"permissions.restore.impactEmpty" = "No entries selected";
+"permissions.restore.copyImpact" = "Copy Restore Impact";
 "permissions.restore.copyPlan" = "Copy Restore Plan";
 "permissions.restore.exportPlan" = "Export Restore Plan";
 "permissions.restore.entryFlagsFormat" = "Value %d | Negated %@ | Skip %@";

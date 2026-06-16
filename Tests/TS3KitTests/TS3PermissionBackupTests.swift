@@ -385,6 +385,48 @@ final class TS3PermissionBackupTests: XCTestCase {
     }
 
     @MainActor
+    func testPermissionBackupRestoreImpactSummaryCountsSelectedRisk() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50, isNegated: true),
+            makePermission("i_client_kick_power", value: 75, isSkipped: true)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25),
+            makePermission("b_virtualserver_modify_name", value: 1)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(from: backup, options: .all)
+        let impact = TS3PermissionBackupRestoreImpactSummary(plan: plan)
+
+        XCTAssertEqual(impact.selectedEntryCount, 2)
+        XCTAssertEqual(impact.changedExistingSelectedCount, 1)
+        XCTAssertEqual(impact.newPermissionSelectedCount, 1)
+        XCTAssertEqual(impact.uncomparableSelectedCount, 0)
+        XCTAssertEqual(impact.negatedEntryCount, 1)
+        XCTAssertEqual(impact.inheritanceStopEntryCount, 1)
+        XCTAssertEqual(impact.changedExistingAvailableCount, 1)
+        XCTAssertEqual(impact.newPermissionAvailableCount, 1)
+        XCTAssertEqual(impact.unchangedSkippedCount, 0)
+        XCTAssertTrue(impact.targetMatchesCurrentSelection)
+        XCTAssertTrue(impact.hasSelection)
+        XCTAssertTrue(impact.hasInheritanceImpact)
+        XCTAssertTrue(impact.needsAttention)
+        XCTAssertEqual(
+            impact.clipboardSummary,
+            "selected=2 | changedExistingSelected=1 | newPermissionsSelected=1 | uncomparableSelected=0 | negated=1 | inheritanceStops=1 | changedExistingAvailable=1 | newPermissionsAvailable=1 | unchangedSkipped=0 | targetMatchesCurrentSelection=true | needsAttention=true"
+        )
+    }
+
+    @MainActor
     func testPermissionBackupExportSanitizesBlankAndDuplicatePermissionNames() throws {
         let source = TS3AppModel()
         source.permissionEditScope = .serverGroup

@@ -6740,6 +6740,60 @@ struct TS3PermissionBackupRestorePlan {
     }
 }
 
+struct TS3PermissionBackupRestoreImpactSummary {
+    let selectedEntryCount: Int
+    let changedExistingSelectedCount: Int
+    let newPermissionSelectedCount: Int
+    let uncomparableSelectedCount: Int
+    let negatedEntryCount: Int
+    let inheritanceStopEntryCount: Int
+    let changedExistingAvailableCount: Int?
+    let newPermissionAvailableCount: Int?
+    let unchangedSkippedCount: Int?
+    let targetMatchesCurrentSelection: Bool
+
+    var hasSelection: Bool {
+        selectedEntryCount > 0
+    }
+
+    var hasInheritanceImpact: Bool {
+        negatedEntryCount > 0 || inheritanceStopEntryCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || !targetMatchesCurrentSelection || hasInheritanceImpact
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedEntryCount)",
+            "changedExistingSelected=\(changedExistingSelectedCount)",
+            "newPermissionsSelected=\(newPermissionSelectedCount)",
+            "uncomparableSelected=\(uncomparableSelectedCount)",
+            "negated=\(negatedEntryCount)",
+            "inheritanceStops=\(inheritanceStopEntryCount)",
+            "changedExistingAvailable=\(changedExistingAvailableCount.map(String.init) ?? "unknown")",
+            "newPermissionsAvailable=\(newPermissionAvailableCount.map(String.init) ?? "unknown")",
+            "unchangedSkipped=\(unchangedSkippedCount.map(String.init) ?? "unknown")",
+            "targetMatchesCurrentSelection=\(targetMatchesCurrentSelection ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(plan: TS3PermissionBackupRestorePlan) {
+        selectedEntryCount = plan.permissionCount
+        changedExistingSelectedCount = plan.entries.filter { $0.restoreReason == "changed existing" }.count
+        newPermissionSelectedCount = plan.entries.filter { $0.restoreReason == "new permission" }.count
+        uncomparableSelectedCount = plan.entries.filter { $0.restoreReason == "not comparable" }.count
+        negatedEntryCount = plan.negatedEntryCount
+        inheritanceStopEntryCount = plan.inheritanceStopEntryCount
+        changedExistingAvailableCount = plan.changedCount
+        newPermissionAvailableCount = plan.newPermissionCount
+        unchangedSkippedCount = plan.unchangedCount
+        targetMatchesCurrentSelection = plan.targetMatchesCurrentSelection
+    }
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double
