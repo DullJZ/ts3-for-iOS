@@ -6980,6 +6980,37 @@ extension TS3BookmarkSummary {
     }
 }
 
+struct TS3ContactBookmarkDraftSummary {
+    let contact: TS3ContactEntry
+    let bookmark: TS3BookmarkSummary?
+
+    var canSave: Bool {
+        bookmark != nil
+    }
+
+    var hasContactNote: Bool {
+        !contact.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "contact=\(contact.nickname)",
+            "uid=\(contact.uniqueIdentifier)",
+            "status=\(contact.status.title)",
+            "canSave=\(canSave ? "true" : "false")"
+        ]
+        if hasContactNote {
+            parts.append("contactNote=true")
+        }
+        if let bookmark {
+            parts.append(contentsOf: bookmark.connectionSummaryParts(name: bookmark.name))
+        } else {
+            parts.append("server=missing")
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3ConnectionFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -10243,7 +10274,11 @@ final class TS3AppModel: ObservableObject {
     }
 
     func contactBookmarkSummary(for contact: TS3ContactEntry) -> String {
-        contactBookmark(for: contact)?.clipboardSummary ?? contact.clipboardSummary()
+        contactBookmarkDraftSummary(for: contact).clipboardSummary
+    }
+
+    func contactBookmarkDraftSummary(for contact: TS3ContactEntry) -> TS3ContactBookmarkDraftSummary {
+        TS3ContactBookmarkDraftSummary(contact: contact, bookmark: contactBookmark(for: contact))
     }
 
     func saveContactBookmark(for contact: TS3ContactEntry) {

@@ -74,8 +74,33 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         XCTAssertEqual(bookmark.nickname, "Avery")
         XCTAssertEqual(bookmark.defaultChannel, "Ops/Lobby")
         XCTAssertEqual(bookmark.note, "contactUid=uid-contact | contactStatus=Friend | contactNote=raid lead")
-        XCTAssertTrue(model.contactBookmarkSummary(for: contact).contains("folder=Contacts"))
+        XCTAssertEqual(
+            model.contactBookmarkSummary(for: contact),
+            "contact=Riley | uid=uid-contact | status=Friend | canSave=true | contactNote=true | name=Riley @ voice.example.test | folder=Contacts | server=voice.example.test:9987 | nickname=Avery | note=contactUid=uid-contact | contactStatus=Friend | contactNote=raid lead | defaultChannel=Ops/Lobby | serverPassword=No | channelPassword=No | privilegeKey=No"
+        )
         XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testContactBookmarkDraftSummaryReportsMissingServer() {
+        let model = TS3AppModel()
+        model.serverHost = " "
+        let contact = TS3ContactEntry(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Riley",
+            status: .blocked,
+            note: "",
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        let summary = model.contactBookmarkDraftSummary(for: contact)
+
+        XCTAssertFalse(summary.canSave)
+        XCTAssertFalse(summary.hasContactNote)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "contact=Riley | uid=uid-contact | status=Blocked | canSave=false | server=missing"
+        )
     }
 
     func testConnectionFilterPresetSummaryAndAccessibilityText() {
