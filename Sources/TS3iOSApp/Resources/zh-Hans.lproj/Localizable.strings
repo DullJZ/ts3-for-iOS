@@ -2381,6 +2381,14 @@
 "serverLogs.clearImpactChannelsFormat" = "频道：%d";
 "serverLogs.clearImpactAllCached" = "会清除所有缓存结果";
 "serverLogs.copyClearImpact" = "复制清除影响";
+"serverLogs.officialAudit" = "官方客户端审计";
+"serverLogs.officialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"serverLogs.officialAuditActionsFormat" = "%d 个官方动作";
+"serverLogs.officialAuditRemoteFormat" = "远端维度：%d";
+"serverLogs.officialAuditLocalFormat" = "本地筛选：%d";
+"serverLogs.officialAuditVisibleFormat" = "可见日志：%d";
+"serverLogs.officialAuditClearFormat" = "清除：%d 条可见，%d 条隐藏";
+"serverLogs.copyOfficialAudit" = "复制官方审计";
 "serverLogs.refresh" = "刷新";
 "serverLogs.copyVisibleLogs" = "复制可见日志";
 "serverLogs.exportVisibleLogs" = "导出可见日志";

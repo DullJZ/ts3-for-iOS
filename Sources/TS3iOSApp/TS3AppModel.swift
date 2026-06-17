@@ -10381,6 +10381,86 @@ struct TS3ServerLogQueryCoverageSummary {
     }
 }
 
+struct TS3ServerLogOfficialCoverageAuditSummary {
+    let queryCoverageSummary: TS3ServerLogQueryCoverageSummary
+    let visibleLogSummary: TS3ServerLogListSummary
+    let clearImpactSummary: TS3ServerLogClearImpactSummary
+    let hasQueryPresets: Bool
+    let hasArchiveCoverage: Bool
+    let canWriteLogEntry: Bool
+
+    var officialAreaTotal: Int {
+        7
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasRemoteQueryCoverage,
+            hasLocalFilterCoverage,
+            queryCoverageSummary.hasPagination,
+            hasVisibleLogReviewCoverage,
+            hasClearImpactCoverage,
+            hasPresetOrArchiveCoverage,
+            canWriteLogEntry
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        15
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || queryCoverageSummary.needsAttention
+            || visibleLogSummary.needsAttention
+            || clearImpactSummary.needsAttention
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "remoteDimensions=\(queryCoverageSummary.remoteQueryDimensionCount)",
+            "localFilters=\(queryCoverageSummary.localFilterCount)",
+            "pagination=\(queryCoverageSummary.hasPagination ? "true" : "false")",
+            "visibleLogs=\(visibleLogSummary.totalCount)",
+            "warnings=\(visibleLogSummary.warningCount)",
+            "errors=\(visibleLogSummary.errorCount)",
+            "clearVisible=\(clearImpactSummary.visibleCount)",
+            "clearHidden=\(clearImpactSummary.hiddenCount)",
+            "queryPresets=\(hasQueryPresets ? "true" : "false")",
+            "archiveCoverage=\(hasArchiveCoverage ? "true" : "false")",
+            "writeEntry=\(canWriteLogEntry ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasRemoteQueryCoverage: Bool {
+        queryCoverageSummary.remoteQueryDimensionCount > 0
+    }
+
+    private var hasLocalFilterCoverage: Bool {
+        queryCoverageSummary.localFilterCount > 0
+    }
+
+    private var hasVisibleLogReviewCoverage: Bool {
+        visibleLogSummary.totalCount > 0
+    }
+
+    private var hasClearImpactCoverage: Bool {
+        clearImpactSummary.visibleCount > 0
+    }
+
+    private var hasPresetOrArchiveCoverage: Bool {
+        hasQueryPresets || hasArchiveCoverage
+    }
+}
+
 extension TS3ServerLogQueryPreset {
     var queryDraft: TS3ServerLogQueryDraft {
         TS3ServerLogQueryDraft(

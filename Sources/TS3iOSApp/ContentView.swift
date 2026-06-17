@@ -12470,6 +12470,21 @@ struct ServerLogsSheet: View {
                         TS3PlatformSupport.copyToPasteboard(clearImpactSummary.clipboardSummary)
                     }
                     .disabled(filteredEntries.isEmpty)
+                    ServerInfoDetailRow(
+                        label: localized("serverLogs.officialAudit"),
+                        value: localized(
+                            "serverLogs.officialAuditFormat",
+                            serverLogOfficialAuditSummary.coveredOfficialAreaCount,
+                            serverLogOfficialAuditSummary.officialAreaTotal,
+                            serverLogOfficialAuditSummary.missingOfficialAreaCount
+                        )
+                    )
+                    Text(serverLogOfficialAuditText(serverLogOfficialAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(serverLogOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverLogs.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(serverLogOfficialAuditSummary.clipboardSummary)
+                    }
                     Button(localized("serverLogs.refresh")) {
                         model.refreshServerLogs(
                             limit: parsedLineLimit,
@@ -12857,6 +12872,17 @@ struct ServerLogsSheet: View {
         TS3ServerLogClearImpactSummary(allEntries: model.serverLogEntries, visibleEntries: filteredEntries)
     }
 
+    private var serverLogOfficialAuditSummary: TS3ServerLogOfficialCoverageAuditSummary {
+        TS3ServerLogOfficialCoverageAuditSummary(
+            queryCoverageSummary: queryCoverageSummary,
+            visibleLogSummary: visibleLogSummary,
+            clearImpactSummary: clearImpactSummary,
+            hasQueryPresets: !model.serverLogQueryPresets.isEmpty,
+            hasArchiveCoverage: !model.serverLogEntries.isEmpty,
+            canWriteLogEntry: true
+        )
+    }
+
     private var snapshot: String {
         var lines = currentQueryDraft.clipboardSummary.components(separatedBy: "\n")
         if !filteredEntries.isEmpty {
@@ -13042,6 +13068,16 @@ struct ServerLogsSheet: View {
             parts.append(localized("serverLogs.clearImpactAllCached"))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func serverLogOfficialAuditText(_ summary: TS3ServerLogOfficialCoverageAuditSummary) -> String {
+        [
+            localized("serverLogs.officialAuditActionsFormat", summary.officialActionCount),
+            localized("serverLogs.officialAuditRemoteFormat", summary.queryCoverageSummary.remoteQueryDimensionCount),
+            localized("serverLogs.officialAuditLocalFormat", summary.queryCoverageSummary.localFilterCount),
+            localized("serverLogs.officialAuditVisibleFormat", summary.visibleLogSummary.totalCount),
+            localized("serverLogs.officialAuditClearFormat", summary.clearImpactSummary.visibleCount, summary.clearImpactSummary.hiddenCount)
+        ].joined(separator: " · ")
     }
 
     private static let logLevels: [TS3LogLevel] = [.info, .warning, .error, .debug]

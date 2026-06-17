@@ -112,6 +112,86 @@ final class TS3ServerLogPresetTests: XCTestCase {
         )
     }
 
+    func testServerLogOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let draft = TS3ServerLogQueryDraft(
+            limitText: "250",
+            beginPositionText: "42",
+            reverse: false,
+            instance: true,
+            levelFilter: "warning",
+            channelFilter: "Server",
+            searchText: "auth"
+        )
+        let entries = [
+            TS3ServerLogSummary(
+                id: 17,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                level: "warning",
+                channel: "Server",
+                message: "Auth failed",
+                rawLine: "2023 warning Server Auth failed"
+            ),
+            TS3ServerLogSummary(
+                id: 18,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                level: "info",
+                channel: "Query",
+                message: "Connected",
+                rawLine: "Connected"
+            )
+        ]
+
+        let summary = TS3ServerLogOfficialCoverageAuditSummary(
+            queryCoverageSummary: TS3ServerLogQueryCoverageSummary(draft: draft),
+            visibleLogSummary: TS3ServerLogListSummary(entries: entries),
+            clearImpactSummary: TS3ServerLogClearImpactSummary(allEntries: entries, visibleEntries: [entries[0]]),
+            hasQueryPresets: true,
+            hasArchiveCoverage: true,
+            canWriteLogEntry: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 7)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 7)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 15)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=7/7 | missingOfficialAreas=0 | officialActions=15 | remoteDimensions=4 | localFilters=3 | pagination=true | visibleLogs=2 | warnings=1 | errors=0 | clearVisible=1 | clearHidden=1 | queryPresets=true | archiveCoverage=true | writeEntry=true | needsAttention=true"
+        )
+    }
+
+    func testServerLogOfficialCoverageAuditSummaryFlagsMissingWorkflowAreas() {
+        let draft = TS3ServerLogQueryDraft(
+            limitText: "100",
+            beginPositionText: "0",
+            reverse: true,
+            instance: false,
+            levelFilter: "all",
+            channelFilter: "",
+            searchText: ""
+        )
+        let emptyListSummary = TS3ServerLogListSummary(entries: [])
+        let clearImpact = TS3ServerLogClearImpactSummary(allEntries: [], visibleEntries: [])
+
+        let summary = TS3ServerLogOfficialCoverageAuditSummary(
+            queryCoverageSummary: TS3ServerLogQueryCoverageSummary(draft: draft),
+            visibleLogSummary: emptyListSummary,
+            clearImpactSummary: clearImpact,
+            hasQueryPresets: false,
+            hasArchiveCoverage: false,
+            canWriteLogEntry: true
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 2)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=2/7 | missingOfficialAreas=5 | officialActions=15 | remoteDimensions=2 | localFilters=0 | pagination=false | visibleLogs=0 | warnings=0 | errors=0 | clearVisible=0 | clearHidden=0 | queryPresets=false | archiveCoverage=false | writeEntry=true | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testServerLogQueryPresetsPersistChannelFilterAndImportLegacyDefaults() throws {
         let model = TS3AppModel()

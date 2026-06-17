@@ -2381,6 +2381,14 @@
 "serverLogs.clearImpactChannelsFormat" = "Channels: %d";
 "serverLogs.clearImpactAllCached" = "Clears all cached results";
 "serverLogs.copyClearImpact" = "Copy Clear Impact";
+"serverLogs.officialAudit" = "Official Client Audit";
+"serverLogs.officialAuditFormat" = "%d/%d areas covered, %d missing";
+"serverLogs.officialAuditActionsFormat" = "%d official actions";
+"serverLogs.officialAuditRemoteFormat" = "Remote dimensions: %d";
+"serverLogs.officialAuditLocalFormat" = "Local filters: %d";
+"serverLogs.officialAuditVisibleFormat" = "Visible logs: %d";
+"serverLogs.officialAuditClearFormat" = "Clear: %d visible, %d hidden";
+"serverLogs.copyOfficialAudit" = "Copy Official Audit";
 "serverLogs.refresh" = "Refresh";
 "serverLogs.copyVisibleLogs" = "Copy Visible Logs";
 "serverLogs.exportVisibleLogs" = "Export Visible Logs";
