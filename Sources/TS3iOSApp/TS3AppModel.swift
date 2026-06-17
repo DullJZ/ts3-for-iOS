@@ -4938,6 +4938,106 @@ struct TS3GroupMemberDraftCoverageSummary {
     }
 }
 
+struct TS3GroupOfficialManagementAuditSummary {
+    let target: TS3GroupManagementTarget
+    let visibleGroupSummary: TS3GroupListSummary?
+    let visibleMemberSummary: TS3GroupClientListSummary?
+    let groupDraftCoverageSummary: TS3GroupDraftCoverageSummary?
+    let memberDraftCoverageSummary: TS3GroupMemberDraftCoverageSummary?
+
+    var officialAreaTotal: Int {
+        6
+    }
+
+    var availableOfficialAreaCount: Int {
+        [
+            hasVisibleGroups,
+            hasGroupDraftCoverage,
+            hasRowGroupActions,
+            hasMemberMaintenance,
+            hasLocalArchiveCoverage,
+            hasFilterPresetCoverage
+        ].filter { $0 }.count
+    }
+
+    var blockedOfficialAreaCount: Int {
+        officialAreaTotal - availableOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        switch target {
+        case .server:
+            return 14
+        case .channel:
+            return 13
+        }
+    }
+
+    var needsAttention: Bool {
+        blockedOfficialAreaCount > 0
+            || visibleGroupSummary?.needsAttention == true
+            || visibleMemberSummary?.needsAttention == true
+            || groupDraftCoverageSummary?.needsAttention == true
+            || memberDraftCoverageSummary?.needsAttention == true
+    }
+
+    var clipboardSummary: String {
+        let isGroupDraftReady = groupDraftCoverageSummary.map { !$0.needsAttention } ?? false
+        let isMemberDraftReady = memberDraftCoverageSummary.map { !$0.needsAttention } ?? false
+        return [
+            "target=\(target.title)",
+            "officialAreas=\(availableOfficialAreaCount)/\(officialAreaTotal)",
+            "blockedOfficialAreas=\(blockedOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "visibleGroups=\(visibleGroupSummary?.totalCount ?? 0)",
+            "visibleMembers=\(visibleMemberSummary?.totalCount ?? 0)",
+            "groupDraftReady=\(isGroupDraftReady ? "true" : "false")",
+            "memberDraftReady=\(isMemberDraftReady ? "true" : "false")",
+            "localArchive=true",
+            "filterPresets=true",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        target: TS3GroupManagementTarget,
+        visibleGroupSummary: TS3GroupListSummary? = nil,
+        visibleMemberSummary: TS3GroupClientListSummary? = nil,
+        groupDraftCoverageSummary: TS3GroupDraftCoverageSummary? = nil,
+        memberDraftCoverageSummary: TS3GroupMemberDraftCoverageSummary? = nil
+    ) {
+        self.target = target
+        self.visibleGroupSummary = visibleGroupSummary
+        self.visibleMemberSummary = visibleMemberSummary
+        self.groupDraftCoverageSummary = groupDraftCoverageSummary
+        self.memberDraftCoverageSummary = memberDraftCoverageSummary
+    }
+
+    private var hasVisibleGroups: Bool {
+        visibleGroupSummary.map { $0.totalCount > 0 } ?? false
+    }
+
+    private var hasGroupDraftCoverage: Bool {
+        groupDraftCoverageSummary != nil
+    }
+
+    private var hasRowGroupActions: Bool {
+        visibleGroupSummary.map { $0.totalCount > 0 } ?? false
+    }
+
+    private var hasMemberMaintenance: Bool {
+        visibleMemberSummary != nil || memberDraftCoverageSummary != nil || hasVisibleGroups
+    }
+
+    private var hasLocalArchiveCoverage: Bool {
+        true
+    }
+
+    private var hasFilterPresetCoverage: Bool {
+        true
+    }
+}
+
 extension TS3GroupClientSummary {
     func clipboardSummary(group: TS3GroupSummary, target: TS3GroupManagementTarget, channelName: String?) -> String {
         var parts = [

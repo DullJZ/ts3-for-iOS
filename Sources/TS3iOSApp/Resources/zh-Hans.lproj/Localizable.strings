@@ -2452,6 +2452,14 @@
 "groups.draftCoverageSourceFormat" = "源组：%d";
 "groups.draftCoverageDatabaseTypeFormat" = "数据库类型：%d";
 "groups.copyDraftCoverage" = "复制组草稿覆盖";
+"groups.officialAudit" = "官方客户端审计";
+"groups.officialAuditFormat" = "%d / %d 个官方区域，%d 个受阻";
+"groups.officialAuditTargetFormat" = "目标：%@";
+"groups.officialAuditActionsFormat" = "动作：%d";
+"groups.officialAuditVisibleGroupsFormat" = "可见组：%d";
+"groups.officialAuditVisibleMembersFormat" = "可见成员：%d";
+"groups.officialAuditAttentionFormat" = "需要注意：%d";
+"groups.copyOfficialAudit" = "复制官方审计";
 "groups.operation.create" = "创建";
 "groups.operation.copy" = "复制";
 "groups.operation.rename" = "重命名";

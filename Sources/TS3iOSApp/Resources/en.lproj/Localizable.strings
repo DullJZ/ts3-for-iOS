@@ -2452,6 +2452,14 @@
 "groups.draftCoverageSourceFormat" = "Source group: %d";
 "groups.draftCoverageDatabaseTypeFormat" = "Database type: %d";
 "groups.copyDraftCoverage" = "Copy Group Draft Coverage";
+"groups.officialAudit" = "Official Client Audit";
+"groups.officialAuditFormat" = "%d of %d official areas, %d blocked";
+"groups.officialAuditTargetFormat" = "Target: %@";
+"groups.officialAuditActionsFormat" = "Actions: %d";
+"groups.officialAuditVisibleGroupsFormat" = "Visible groups: %d";
+"groups.officialAuditVisibleMembersFormat" = "Visible members: %d";
+"groups.officialAuditAttentionFormat" = "Needs attention: %d";
+"groups.copyOfficialAudit" = "Copy Official Audit";
 "groups.operation.create" = "Create";
 "groups.operation.copy" = "Copy";
 "groups.operation.rename" = "Rename";

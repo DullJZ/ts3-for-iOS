@@ -13857,6 +13857,14 @@ struct GroupManagementSheet: View {
         )
     }
 
+    private var officialManagementAuditSummary: TS3GroupOfficialManagementAuditSummary {
+        TS3GroupOfficialManagementAuditSummary(
+            target: target,
+            visibleGroupSummary: visibleGroupSummary,
+            groupDraftCoverageSummary: newGroupDraftCoverageSummary
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -14006,6 +14014,21 @@ struct GroupManagementSheet: View {
                         TS3PlatformSupport.copyToPasteboard(visibleGroupSummary.clipboardSummary)
                     }
                     .disabled(filteredGroups.isEmpty)
+                    ServerInfoDetailRow(
+                        label: localized("groups.officialAudit"),
+                        value: localized(
+                            "groups.officialAuditFormat",
+                            officialManagementAuditSummary.availableOfficialAreaCount,
+                            officialManagementAuditSummary.officialAreaTotal,
+                            officialManagementAuditSummary.blockedOfficialAreaCount
+                        )
+                    )
+                    Text(officialManagementAuditText(officialManagementAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(officialManagementAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("groups.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(officialManagementAuditSummary.clipboardSummary)
+                    }
                     Button(localized("groups.copyVisibleGroups")) {
                         TS3PlatformSupport.copyToPasteboard(visibleGroupsSnapshot)
                     }
@@ -14285,6 +14308,15 @@ struct GroupManagementSheet: View {
             localized("groups.draftCoverageNameFormat", summary.hasName ? 1 : 0),
             localized("groups.draftCoverageSourceFormat", summary.hasSourceGroup ? 1 : 0),
             localized("groups.draftCoverageDatabaseTypeFormat", summary.hasDatabaseType ? 1 : 0)
+        ].joined(separator: " | ")
+    }
+
+    private func officialManagementAuditText(_ summary: TS3GroupOfficialManagementAuditSummary) -> String {
+        [
+            localized("groups.officialAuditTargetFormat", targetTitle(summary.target)),
+            localized("groups.officialAuditActionsFormat", summary.officialActionCount),
+            localized("groups.officialAuditVisibleGroupsFormat", summary.visibleGroupSummary?.totalCount ?? 0),
+            localized("groups.officialAuditAttentionFormat", summary.needsAttention ? 1 : 0)
         ].joined(separator: " | ")
     }
 
@@ -14941,6 +14973,14 @@ struct GroupClientListSheet: View {
         )
     }
 
+    private var officialManagementAuditSummary: TS3GroupOfficialManagementAuditSummary {
+        TS3GroupOfficialManagementAuditSummary(
+            target: target,
+            visibleMemberSummary: visibleMemberSummary,
+            memberDraftCoverageSummary: memberDraftCoverageSummary
+        )
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -15057,6 +15097,21 @@ struct GroupClientListSheet: View {
                         TS3PlatformSupport.copyToPasteboard(visibleMemberSummary.clipboardSummary)
                     }
                     .disabled(filteredClients.isEmpty)
+                    ServerInfoDetailRow(
+                        label: localized("groups.officialAudit"),
+                        value: localized(
+                            "groups.officialAuditFormat",
+                            officialManagementAuditSummary.availableOfficialAreaCount,
+                            officialManagementAuditSummary.officialAreaTotal,
+                            officialManagementAuditSummary.blockedOfficialAreaCount
+                        )
+                    )
+                    Text(officialManagementAuditText(officialManagementAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(officialManagementAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("groups.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(officialManagementAuditSummary.clipboardSummary)
+                    }
                     Button(localized("groups.members.copyVisibleMembers")) {
                         TS3PlatformSupport.copyToPasteboard(visibleMembersSnapshot)
                     }
@@ -15457,6 +15512,15 @@ struct GroupClientListSheet: View {
             localized("groups.members.draftCoverageGroupFormat", summary.hasGroup ? 1 : 0),
             localized("groups.members.draftCoverageClientDatabaseIdFormat", summary.hasClientDatabaseId ? 1 : 0),
             localized("groups.members.draftCoverageChannelFormat", summary.hasChannel ? 1 : 0)
+        ].joined(separator: " | ")
+    }
+
+    private func officialManagementAuditText(_ summary: TS3GroupOfficialManagementAuditSummary) -> String {
+        [
+            localized("groups.officialAuditTargetFormat", targetTitle(summary.target)),
+            localized("groups.officialAuditActionsFormat", summary.officialActionCount),
+            localized("groups.officialAuditVisibleMembersFormat", summary.visibleMemberSummary?.totalCount ?? 0),
+            localized("groups.officialAuditAttentionFormat", summary.needsAttention ? 1 : 0)
         ].joined(separator: " | ")
     }
 

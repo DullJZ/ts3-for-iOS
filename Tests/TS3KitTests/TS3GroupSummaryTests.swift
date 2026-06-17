@@ -466,6 +466,79 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupOfficialManagementAuditSummaryTracksVisibleGroupCoverage() {
+        let groupSummary = TS3GroupListSummary(
+            groups: [
+                TS3GroupSummary(id: 6, name: "Admins", type: .regular),
+                TS3GroupSummary(id: 7, name: "Unknown", type: nil)
+            ],
+            target: .server
+        )
+        let draftSummary = TS3GroupDraftCoverageSummary(
+            operation: .create,
+            name: " Operators ",
+            target: .server,
+            type: .regular,
+            sourceGroup: nil,
+            validationMessages: []
+        )
+
+        let summary = TS3GroupOfficialManagementAuditSummary(
+            target: .server,
+            visibleGroupSummary: groupSummary,
+            groupDraftCoverageSummary: draftSummary
+        )
+
+        XCTAssertEqual(summary.availableOfficialAreaCount, 6)
+        XCTAssertEqual(summary.officialAreaTotal, 6)
+        XCTAssertEqual(summary.blockedOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 14)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "target=Server Groups | officialAreas=6/6 | blockedOfficialAreas=0 | officialActions=14 | visibleGroups=2 | visibleMembers=0 | groupDraftReady=true | memberDraftReady=false | localArchive=true | filterPresets=true | needsAttention=true"
+        )
+    }
+
+    func testGroupOfficialManagementAuditSummaryTracksMemberDraftCoverage() {
+        let group = TS3GroupSummary(id: 7, name: "Channel Admin", type: .regular)
+        let memberSummary = TS3GroupClientListSummary(
+            clients: [
+                TS3GroupClientSummary(client: TS3GroupClient(
+                    clientDatabaseId: 43,
+                    uniqueIdentifier: "uid-43",
+                    nickname: "Morgan",
+                    channelId: 9
+                ))
+            ],
+            target: .channel
+        )
+        let draftSummary = TS3GroupMemberDraftCoverageSummary(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: group,
+            clientDatabaseId: "43",
+            channelId: 9,
+            validationMessages: []
+        )
+
+        let summary = TS3GroupOfficialManagementAuditSummary(
+            target: .channel,
+            visibleMemberSummary: memberSummary,
+            memberDraftCoverageSummary: draftSummary
+        )
+
+        XCTAssertEqual(summary.availableOfficialAreaCount, 3)
+        XCTAssertEqual(summary.officialAreaTotal, 6)
+        XCTAssertEqual(summary.blockedOfficialAreaCount, 3)
+        XCTAssertEqual(summary.officialActionCount, 13)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "target=Channel Groups | officialAreas=3/6 | blockedOfficialAreas=3 | officialActions=13 | visibleGroups=0 | visibleMembers=1 | groupDraftReady=false | memberDraftReady=true | localArchive=true | filterPresets=true | needsAttention=true"
+        )
+    }
+
     func testGroupFilterPresetSummariesAreCopyableAndAccessible() {
         let preset = TS3GroupFilterPreset(
             name: "Server operators",
