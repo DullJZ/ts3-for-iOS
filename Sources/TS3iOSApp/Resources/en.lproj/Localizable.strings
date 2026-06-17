@@ -208,6 +208,7 @@
 "common.copySummary" = "Copy Summary";
 "common.yes" = "Yes";
 "common.no" = "No";
+"common.notAvailable" = "N/A";
 "common.on" = "on";
 "common.off" = "off";
 "common.unknown" = "Unknown";
@@ -1952,6 +1953,12 @@
 "notifications.import.restore" = "Restore";
 "notifications.import.selectAll" = "Select All";
 "notifications.import.clear" = "Clear";
+"notifications.import.impact" = "Restore Impact";
+"notifications.import.impactFormat" = "%d groups selected, %d event types";
+"notifications.import.impactBaseFormat" = "Enabled/sound: %@/%@";
+"notifications.import.impactMutedFormat" = "Muted servers/contacts: %d/%d";
+"notifications.import.impactQuietHoursFormat" = "Quiet hours: %@";
+"notifications.import.copyImpact" = "Copy Restore Impact";
 "notifications.import.behavior" = "Importing replaces only the selected notification preference groups with values from the settings file.";
 "notifications.import.title" = "Import Notification Settings";
 "notifications.import.action" = "Import";

@@ -36,8 +36,75 @@ final class TS3NotificationSettingsTests: XCTestCase {
             "Muted Servers and Contacts",
             "Quiet Hours"
         ])
+        XCTAssertEqual(preview.candidates.first?.notificationsEnabled, true)
+        XCTAssertEqual(preview.candidates.first?.soundEnabled, false)
+        XCTAssertEqual(preview.candidates.first?.eventTypeCount, 2)
+        XCTAssertEqual(preview.candidates[1].mutedServerCount, 2)
+        XCTAssertEqual(preview.candidates[1].mutedContactCount, 1)
+        XCTAssertEqual(preview.candidates[2].quietHoursEnabled, true)
         XCTAssertTrue(preview.containsSetting(id: "muted-rules"))
         XCTAssertFalse(preview.containsSetting(id: "missing"))
+    }
+
+    @MainActor
+    func testNotificationSettingsRestoreImpactSummaryCountsSelectedGroups() throws {
+        let model = TS3AppModel()
+        let data = Data("""
+        {
+          "isEnabled": false,
+          "soundEnabled": false,
+          "privateMessagesEnabled": false,
+          "pokesEnabled": true,
+          "activityEnabled": true,
+          "mutedServerKeys": [" alpha ", "", "alpha", "beta"],
+          "mutedContactUniqueIdentifiers": ["", " user-1 ", "user-1"],
+          "quietHoursEnabled": true,
+          "quietHoursStartMinute": 1320,
+          "quietHoursEndMinute": 420
+        }
+        """.utf8)
+
+        let preview = try model.notificationSettingsPreview(from: data)
+        let summary = TS3NotificationSettingsRestoreImpactSummary(
+            preview: preview,
+            selectedSettingIds: ["base", "muted-rules", "quiet-hours"]
+        )
+
+        XCTAssertEqual(summary.selectedSettingCount, 3)
+        XCTAssertTrue(summary.baseSettingsSelected)
+        XCTAssertTrue(summary.mutedRulesSelected)
+        XCTAssertTrue(summary.quietHoursSelected)
+        XCTAssertEqual(summary.notificationsEnabled, false)
+        XCTAssertEqual(summary.soundEnabled, false)
+        XCTAssertEqual(summary.eventTypeCount, 2)
+        XCTAssertEqual(summary.mutedServerCount, 2)
+        XCTAssertEqual(summary.mutedContactCount, 1)
+        XCTAssertEqual(summary.quietHoursEnabled, true)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=3 | base=true | mutedRules=true | quietHours=true | notificationsEnabled=false | soundEnabled=false | eventTypes=2 | mutedServers=2 | mutedContacts=1 | quietHoursEnabled=true | needsAttention=true"
+        )
+
+        let quietOnly = TS3NotificationSettingsRestoreImpactSummary(
+            preview: preview,
+            selectedSettingIds: ["quiet-hours"]
+        )
+        XCTAssertEqual(quietOnly.selectedSettingCount, 1)
+        XCTAssertFalse(quietOnly.baseSettingsSelected)
+        XCTAssertFalse(quietOnly.mutedRulesSelected)
+        XCTAssertTrue(quietOnly.quietHoursSelected)
+        XCTAssertNil(quietOnly.notificationsEnabled)
+        XCTAssertEqual(quietOnly.eventTypeCount, 0)
+        XCTAssertEqual(quietOnly.mutedServerCount, 0)
+        XCTAssertEqual(quietOnly.mutedContactCount, 0)
+        XCTAssertEqual(quietOnly.quietHoursEnabled, true)
+        XCTAssertTrue(quietOnly.needsAttention)
+        XCTAssertEqual(
+            quietOnly.clipboardSummary,
+            "selected=1 | base=false | mutedRules=false | quietHours=true | notificationsEnabled=notSelected | soundEnabled=notSelected | eventTypes=0 | mutedServers=0 | mutedContacts=0 | quietHoursEnabled=true | needsAttention=true"
+        )
     }
 
     @MainActor

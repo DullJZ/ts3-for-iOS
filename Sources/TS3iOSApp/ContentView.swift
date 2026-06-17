@@ -12103,6 +12103,10 @@ private struct NotificationSettingsImportSheet: View {
         preview.candidates.contains { selectedSettingIds.contains($0.id) }
     }
 
+    private var restoreImpactSummary: TS3NotificationSettingsRestoreImpactSummary {
+        TS3NotificationSettingsRestoreImpactSummary(preview: preview, selectedSettingIds: selectedSettingIds)
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -12130,6 +12134,21 @@ private struct NotificationSettingsImportSheet: View {
                             selectedSettingIds.removeAll()
                         }
                     }
+                    ServerInfoDetailRow(
+                        label: localized("notifications.import.impact"),
+                        value: localized(
+                            "notifications.import.impactFormat",
+                            restoreImpactSummary.selectedSettingCount,
+                            restoreImpactSummary.eventTypeCount
+                        )
+                    )
+                    Text(notificationImportImpactText(restoreImpactSummary))
+                        .font(.caption2)
+                        .foregroundColor(restoreImpactSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("notifications.import.copyImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(restoreImpactSummary.clipboardSummary)
+                    }
+                    .disabled(!restoreImpactSummary.hasSelection)
                     ForEach(preview.candidates) { candidate in
                         Toggle(
                             isOn: Binding(
@@ -12177,6 +12196,19 @@ private struct NotificationSettingsImportSheet: View {
                 }
             }
         }
+    }
+
+    private func notificationImportImpactText(_ summary: TS3NotificationSettingsRestoreImpactSummary) -> String {
+        [
+            localized("notifications.import.impactBaseFormat", optionalBoolText(summary.notificationsEnabled), optionalBoolText(summary.soundEnabled)),
+            localized("notifications.import.impactMutedFormat", summary.mutedServerCount, summary.mutedContactCount),
+            localized("notifications.import.impactQuietHoursFormat", optionalBoolText(summary.quietHoursEnabled))
+        ].joined(separator: " | ")
+    }
+
+    private func optionalBoolText(_ value: Bool?) -> String {
+        guard let value else { return localized("common.notAvailable") }
+        return value ? localized("common.yes") : localized("common.no")
     }
 }
 

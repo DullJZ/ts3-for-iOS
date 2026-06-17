@@ -208,6 +208,7 @@
 "common.copySummary" = "复制摘要";
 "common.yes" = "是";
 "common.no" = "否";
+"common.notAvailable" = "无";
 "common.on" = "开";
 "common.off" = "关";
 "common.unknown" = "未知";
@@ -1952,6 +1953,12 @@
 "notifications.import.restore" = "恢复";
 "notifications.import.selectAll" = "全选";
 "notifications.import.clear" = "清除";
+"notifications.import.impact" = "恢复影响";
+"notifications.import.impactFormat" = "%d 个分组已选，%d 个事件类型";
+"notifications.import.impactBaseFormat" = "启用/声音：%@/%@";
+"notifications.import.impactMutedFormat" = "静音服务器/联系人：%d/%d";
+"notifications.import.impactQuietHoursFormat" = "勿扰时段：%@";
+"notifications.import.copyImpact" = "复制恢复影响";
 "notifications.import.behavior" = "导入只会用设置文件中的值替换所选通知偏好分组。";
 "notifications.import.title" = "导入通知设置";
 "notifications.import.action" = "导入";

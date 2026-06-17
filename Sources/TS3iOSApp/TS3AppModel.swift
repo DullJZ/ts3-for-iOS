@@ -8170,6 +8170,12 @@ struct TS3NotificationSettingsPreview {
         let id: String
         let title: String
         let summary: String
+        let notificationsEnabled: Bool?
+        let soundEnabled: Bool?
+        let eventTypeCount: Int?
+        let mutedServerCount: Int
+        let mutedContactCount: Int
+        let quietHoursEnabled: Bool?
     }
 
     let lines: [String]
@@ -8177,6 +8183,67 @@ struct TS3NotificationSettingsPreview {
 
     func containsSetting(id: String) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3NotificationSettingsRestoreImpactSummary {
+    let selectedSettingCount: Int
+    let baseSettingsSelected: Bool
+    let mutedRulesSelected: Bool
+    let quietHoursSelected: Bool
+    let notificationsEnabled: Bool?
+    let soundEnabled: Bool?
+    let eventTypeCount: Int
+    let mutedServerCount: Int
+    let mutedContactCount: Int
+    let quietHoursEnabled: Bool?
+
+    var hasSelection: Bool {
+        selectedSettingCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection ||
+        notificationsEnabled == false ||
+        (baseSettingsSelected && eventTypeCount == 0) ||
+        mutedServerCount > 0 ||
+        mutedContactCount > 0 ||
+        quietHoursEnabled == true
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedSettingCount)",
+            "base=\(baseSettingsSelected ? "true" : "false")",
+            "mutedRules=\(mutedRulesSelected ? "true" : "false")",
+            "quietHours=\(quietHoursSelected ? "true" : "false")",
+            "notificationsEnabled=\(optionalBoolText(notificationsEnabled))",
+            "soundEnabled=\(optionalBoolText(soundEnabled))",
+            "eventTypes=\(eventTypeCount)",
+            "mutedServers=\(mutedServerCount)",
+            "mutedContacts=\(mutedContactCount)",
+            "quietHoursEnabled=\(optionalBoolText(quietHoursEnabled))",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3NotificationSettingsPreview, selectedSettingIds: Set<String>) {
+        let selected = preview.candidates.filter { selectedSettingIds.contains($0.id) }
+        selectedSettingCount = selected.count
+        baseSettingsSelected = selected.contains { $0.id == "base" }
+        mutedRulesSelected = selected.contains { $0.id == "muted-rules" }
+        quietHoursSelected = selected.contains { $0.id == "quiet-hours" }
+        notificationsEnabled = selected.first(where: { $0.id == "base" })?.notificationsEnabled
+        soundEnabled = selected.first(where: { $0.id == "base" })?.soundEnabled
+        eventTypeCount = selected.first(where: { $0.id == "base" })?.eventTypeCount ?? 0
+        mutedServerCount = selected.first(where: { $0.id == "muted-rules" })?.mutedServerCount ?? 0
+        mutedContactCount = selected.first(where: { $0.id == "muted-rules" })?.mutedContactCount ?? 0
+        quietHoursEnabled = selected.first(where: { $0.id == "quiet-hours" })?.quietHoursEnabled
+    }
+
+    private func optionalBoolText(_ value: Bool?) -> String {
+        guard let value else { return "notSelected" }
+        return value ? "true" : "false"
     }
 }
 
@@ -19803,17 +19870,35 @@ final class TS3AppModel: ObservableObject {
             TS3NotificationSettingsPreview.Candidate(
                 id: "base",
                 title: "Notification Preferences",
-                summary: "\(sanitized.isEnabled ? "Enabled" : "Disabled"), sounds \(sanitized.soundEnabled ? "on" : "off"), \(notificationEventTypesText(sanitized))"
+                summary: "\(sanitized.isEnabled ? "Enabled" : "Disabled"), sounds \(sanitized.soundEnabled ? "on" : "off"), \(notificationEventTypesText(sanitized))",
+                notificationsEnabled: sanitized.isEnabled,
+                soundEnabled: sanitized.soundEnabled,
+                eventTypeCount: notificationEventTypeCount(sanitized),
+                mutedServerCount: 0,
+                mutedContactCount: 0,
+                quietHoursEnabled: nil
             ),
             TS3NotificationSettingsPreview.Candidate(
                 id: "muted-rules",
                 title: "Muted Servers and Contacts",
-                summary: "\(sanitized.mutedServerKeys.count) servers, \(sanitized.mutedContactUniqueIdentifiers.count) contacts"
+                summary: "\(sanitized.mutedServerKeys.count) servers, \(sanitized.mutedContactUniqueIdentifiers.count) contacts",
+                notificationsEnabled: nil,
+                soundEnabled: nil,
+                eventTypeCount: nil,
+                mutedServerCount: sanitized.mutedServerKeys.count,
+                mutedContactCount: sanitized.mutedContactUniqueIdentifiers.count,
+                quietHoursEnabled: nil
             ),
             TS3NotificationSettingsPreview.Candidate(
                 id: "quiet-hours",
                 title: "Quiet Hours",
-                summary: quietHoursPreviewText(sanitized)
+                summary: quietHoursPreviewText(sanitized),
+                notificationsEnabled: nil,
+                soundEnabled: nil,
+                eventTypeCount: nil,
+                mutedServerCount: 0,
+                mutedContactCount: 0,
+                quietHoursEnabled: sanitized.quietHoursEnabled
             )
         ])
     }
@@ -21435,6 +21520,14 @@ final class TS3AppModel: ObservableObject {
             eventTypes.append("activity")
         }
         return eventTypes.isEmpty ? "none" : eventTypes.joined(separator: ", ")
+    }
+
+    private func notificationEventTypeCount(_ settings: TS3NotificationSettings) -> Int {
+        [
+            settings.privateMessagesEnabled,
+            settings.pokesEnabled,
+            settings.activityEnabled
+        ].filter { $0 }.count
     }
 
     private func quietHoursPreviewText(_ settings: TS3NotificationSettings) -> String {
