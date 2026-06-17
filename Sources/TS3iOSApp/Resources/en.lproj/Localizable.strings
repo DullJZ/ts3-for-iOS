@@ -2259,6 +2259,9 @@
 "files.deselectVisibleEntries" = "Deselect Visible Entries";
 "files.visibleSelection" = "Visible Selection";
 "files.selectedFormat" = "%d selected";
+"files.selection.transferSummaryFormat" = "%d files, %d directories, %@ downloadable";
+"files.selection.directoryDownloadLimit" = "Selected directories are listed for review; enter a directory to download its files until recursive folder transfer is implemented.";
+"files.copySelectionTransferSummary" = "Copy Selection Transfer Summary";
 "files.clear" = "Clear";
 "files.downloadSelected" = "Download Selected";
 "files.moveSelected" = "Move Selected";

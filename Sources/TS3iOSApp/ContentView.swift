@@ -19989,6 +19989,7 @@ struct FileBrowserSheet: View {
                     }
 
                     if hasSelection {
+                        let transferSummary = TS3FileSelectionTransferSummary(entries: selectedEntries)
                         HStack {
                             Text(localized("files.selectedFormat", selectedEntries.count))
                                 .font(.caption)
@@ -20000,12 +20001,28 @@ struct FileBrowserSheet: View {
                             .buttonStyle(.borderless)
                         }
 
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(selectionTransferText(transferSummary))
+                                .font(.caption)
+                                .foregroundColor(transferSummary.needsAttention ? .orange : .secondary)
+                            if transferSummary.hasUnsupportedDirectories {
+                                Text(localized("files.selection.directoryDownloadLimit"))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            Button(localized("files.copySelectionTransferSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(transferSummary.clipboardSummary)
+                            }
+                            .buttonStyle(.borderless)
+                            .font(.caption)
+                        }
+
                         HStack(spacing: 12) {
                             Button(localized("files.downloadSelected")) {
                                 model.downloadFileEntries(selectedEntries)
                             }
                             .buttonStyle(.borderless)
-                            .disabled(selectedEntries.allSatisfy(\.isDirectory))
+                            .disabled(!transferSummary.canDownloadFiles)
                             Button(localized("files.moveSelected")) {
                                 selectedMoveDestinationDirectory = model.fileBrowserPath
                                 isMovingSelectedEntries = true
@@ -20618,6 +20635,15 @@ struct FileBrowserSheet: View {
 
     private var hasSelection: Bool {
         !selectedEntries.isEmpty
+    }
+
+    private func selectionTransferText(_ summary: TS3FileSelectionTransferSummary) -> String {
+        localized(
+            "files.selection.transferSummaryFormat",
+            summary.fileCount,
+            summary.directoryCount,
+            summary.downloadableSizeText
+        )
     }
 
     private func exportDownloadedFile(_ file: TS3DownloadedFileSummary) {

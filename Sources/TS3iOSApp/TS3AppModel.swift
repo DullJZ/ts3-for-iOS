@@ -6622,6 +6622,30 @@ struct TS3FileEntrySummary: Identifiable {
     let isStillUploading: Bool
     let incompleteSize: Int64?
 
+    init(
+        id: String,
+        channelId: Int,
+        path: String,
+        parentPath: String,
+        name: String,
+        size: Int64,
+        modifiedAt: Date? = nil,
+        isDirectory: Bool,
+        isStillUploading: Bool = false,
+        incompleteSize: Int64? = nil
+    ) {
+        self.id = id
+        self.channelId = channelId
+        self.path = path
+        self.parentPath = parentPath
+        self.name = name
+        self.size = size
+        self.modifiedAt = modifiedAt
+        self.isDirectory = isDirectory
+        self.isStillUploading = isStillUploading
+        self.incompleteSize = incompleteSize
+    }
+
     init(entry: TS3FileEntry) {
         self.id = entry.id
         self.channelId = entry.channelId
@@ -6692,6 +6716,57 @@ struct TS3FileEntrySummary: Identifiable {
             return String(format: "%.1f MB", mb)
         }
         return String(format: "%.1f GB", mb / 1_024)
+    }
+}
+
+struct TS3FileSelectionTransferSummary {
+    let selectedEntryCount: Int
+    let fileCount: Int
+    let directoryCount: Int
+    let downloadableByteCount: Int64
+    let directoryPaths: [String]
+
+    init(entries: [TS3FileEntrySummary]) {
+        selectedEntryCount = entries.count
+        let files = entries.filter { !$0.isDirectory }
+        let directories = entries.filter(\.isDirectory)
+        fileCount = files.count
+        directoryCount = directories.count
+        downloadableByteCount = files.reduce(Int64(0)) { $0 + $1.size }
+        directoryPaths = directories.map(\.path).sorted { lhs, rhs in
+            lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+        }
+    }
+
+    var canDownloadFiles: Bool {
+        fileCount > 0
+    }
+
+    var hasUnsupportedDirectories: Bool {
+        directoryCount > 0
+    }
+
+    var needsAttention: Bool {
+        hasUnsupportedDirectories
+    }
+
+    var downloadableSizeText: String {
+        TS3FileEntrySummary.sizeText(downloadableByteCount)
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "selected=\(selectedEntryCount)",
+            "files=\(fileCount)",
+            "directories=\(directoryCount)",
+            "downloadableSize=\(downloadableSizeText)",
+            "recursiveDirectoryDownload=false",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ]
+        if !directoryPaths.isEmpty {
+            parts.append("directoryPaths=\(directoryPaths.joined(separator: ","))")
+        }
+        return parts.joined(separator: " | ")
     }
 }
 

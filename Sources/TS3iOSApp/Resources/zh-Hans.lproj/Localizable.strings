@@ -2259,6 +2259,9 @@
 "files.deselectVisibleEntries" = "取消选择可见条目";
 "files.visibleSelection" = "可见选择";
 "files.selectedFormat" = "已选择 %d 项";
+"files.selection.transferSummaryFormat" = "%d 个文件，%d 个目录，可下载 %@";
+"files.selection.directoryDownloadLimit" = "已选择的目录会用于检查；在递归文件夹传输完成前，请进入目录后下载其中的文件。";
+"files.copySelectionTransferSummary" = "复制选择传输摘要";
 "files.clear" = "清除";
 "files.downloadSelected" = "下载所选";
 "files.moveSelected" = "移动所选";

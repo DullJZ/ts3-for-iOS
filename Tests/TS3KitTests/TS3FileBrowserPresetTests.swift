@@ -2,6 +2,73 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3FileBrowserPresetTests: XCTestCase {
+    func testFileSelectionTransferSummarySeparatesFilesAndDirectories() {
+        let summary = TS3FileSelectionTransferSummary(entries: [
+            makeFileEntry(
+                id: "file-1",
+                path: "/maps/de_dust2.bsp",
+                parentPath: "/maps/",
+                name: "de_dust2.bsp",
+                size: 2_048,
+                isDirectory: false
+            ),
+            makeFileEntry(
+                id: "file-2",
+                path: "/maps/de_inferno.bsp",
+                parentPath: "/maps/",
+                name: "de_inferno.bsp",
+                size: 1_024,
+                isDirectory: false
+            ),
+            makeFileEntry(
+                id: "dir-1",
+                path: "/maps/archive/",
+                parentPath: "/maps/",
+                name: "archive",
+                size: 0,
+                isDirectory: true
+            )
+        ])
+
+        XCTAssertEqual(summary.selectedEntryCount, 3)
+        XCTAssertEqual(summary.fileCount, 2)
+        XCTAssertEqual(summary.directoryCount, 1)
+        XCTAssertEqual(summary.downloadableByteCount, 3_072)
+        XCTAssertEqual(summary.downloadableSizeText, "3.0 KB")
+        XCTAssertTrue(summary.canDownloadFiles)
+        XCTAssertTrue(summary.hasUnsupportedDirectories)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(summary.directoryPaths, ["/maps/archive/"])
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=3 | files=2 | directories=1 | downloadableSize=3.0 KB | recursiveDirectoryDownload=false | needsAttention=true | directoryPaths=/maps/archive/"
+        )
+    }
+
+    func testFileSelectionTransferSummaryFlagsDirectoryOnlySelection() {
+        let summary = TS3FileSelectionTransferSummary(entries: [
+            makeFileEntry(
+                id: "dir-1",
+                path: "/recordings/",
+                parentPath: "/",
+                name: "recordings",
+                size: 0,
+                isDirectory: true
+            )
+        ])
+
+        XCTAssertEqual(summary.selectedEntryCount, 1)
+        XCTAssertEqual(summary.fileCount, 0)
+        XCTAssertEqual(summary.directoryCount, 1)
+        XCTAssertEqual(summary.downloadableByteCount, 0)
+        XCTAssertFalse(summary.canDownloadFiles)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=1 | files=0 | directories=1 | downloadableSize=0 B | recursiveDirectoryDownload=false | needsAttention=true | directoryPaths=/recordings/"
+        )
+    }
+
     func testFileBrowserFilterPresetSummaryAndAccessibilityText() {
         let preset = makeFileBrowserFilterPreset(
             id: UUID(),
@@ -159,6 +226,25 @@ final class TS3FileBrowserPresetTests: XCTestCase {
             sortAscending: sortAscending,
             searchText: searchText,
             updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    private func makeFileEntry(
+        id: String,
+        path: String,
+        parentPath: String,
+        name: String,
+        size: Int64,
+        isDirectory: Bool
+    ) -> TS3FileEntrySummary {
+        TS3FileEntrySummary(
+            id: id,
+            channelId: 12,
+            path: path,
+            parentPath: parentPath,
+            name: name,
+            size: size,
+            isDirectory: isDirectory
         )
     }
 }
