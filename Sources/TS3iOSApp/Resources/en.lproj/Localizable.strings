@@ -464,6 +464,14 @@
 "privilegeKeys.summary.customSetFormat" = "%d with custom set";
 "privilegeKeys.summary.createdFormat" = "Created %@";
 "privilegeKeys.copyVisibleSummary" = "Copy Visible Key Summary";
+"privilegeKeys.officialAudit" = "Official Client Audit";
+"privilegeKeys.officialAuditFormat" = "%d/%d areas covered, %d missing";
+"privilegeKeys.officialAuditActionsFormat" = "%d official actions";
+"privilegeKeys.officialAuditDraftFormat" = "Draft targets: %d/%d";
+"privilegeKeys.officialAuditVisibleFormat" = "Visible keys: %d";
+"privilegeKeys.officialAuditTypesFormat" = "Server group: %d, channel group: %d";
+"privilegeKeys.officialAuditMutationFormat" = "Server mutation: %@";
+"privilegeKeys.copyOfficialAudit" = "Copy Official Audit";
 "privilegeKeys.copyVisibleKeys" = "Copy Visible Keys";
 "privilegeKeys.exportVisibleKeys" = "Export Visible Keys";
 "privilegeKeys.exportBackup" = "Export Privilege Key Backup";

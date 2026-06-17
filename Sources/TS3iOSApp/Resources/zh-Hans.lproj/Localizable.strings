@@ -464,6 +464,14 @@
 "privilegeKeys.summary.customSetFormat" = "%d 个有自定义权限集";
 "privilegeKeys.summary.createdFormat" = "创建于 %@";
 "privilegeKeys.copyVisibleSummary" = "复制可见密钥摘要";
+"privilegeKeys.officialAudit" = "官方客户端审计";
+"privilegeKeys.officialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"privilegeKeys.officialAuditActionsFormat" = "%d 个官方动作";
+"privilegeKeys.officialAuditDraftFormat" = "草稿目标：%d/%d";
+"privilegeKeys.officialAuditVisibleFormat" = "可见密钥：%d";
+"privilegeKeys.officialAuditTypesFormat" = "服务器组：%d，频道组：%d";
+"privilegeKeys.officialAuditMutationFormat" = "服务器变更：%@";
+"privilegeKeys.copyOfficialAudit" = "复制官方审计";
 "privilegeKeys.copyVisibleKeys" = "复制可见密钥";
 "privilegeKeys.exportVisibleKeys" = "导出可见密钥";
 "privilegeKeys.exportBackup" = "导出权限密钥备份";

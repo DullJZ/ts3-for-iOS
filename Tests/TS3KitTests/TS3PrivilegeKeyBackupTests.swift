@@ -410,6 +410,80 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let draftSummary = TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: .channelGroup,
+            groupId: 9,
+            channelId: 12,
+            description: "Channel admin",
+            customSet: "token_custom",
+            validationMessages: []
+        )
+        let listSummary = TS3PrivilegeKeyListSummary(keys: [
+            makeKey(key: "server-key", type: .serverGroup, groupId: 6, channelId: nil, description: "admins"),
+            makeKey(key: "channel-key", type: .channelGroup, groupId: 9, channelId: 12, customSet: "token_custom")
+        ])
+
+        let summary = TS3PrivilegeKeyOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visibleKeySummary: listSummary,
+            hasGeneratedKey: true,
+            hasLocalFilters: true,
+            hasFilterPresets: true,
+            hasBackupCoverage: true,
+            canMutateServer: true,
+            canDeleteVisible: true,
+            hasInviteLinkActions: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 8)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 8)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 19)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=8/8 | missingOfficialAreas=0 | officialActions=19 | draftTargets=2/2 | draftType=channelGroup | generatedKey=true | visibleKeys=2 | serverGroup=1 | channelGroup=1 | unknown=0 | channelScoped=1 | localFilters=true | filterPresets=true | backupCoverage=true | serverMutation=true | deleteVisible=true | inviteLinkActions=true | needsAttention=true"
+        )
+    }
+
+    func testPrivilegeKeyOfficialCoverageAuditSummaryFlagsMissingWorkflowAreas() {
+        let draftSummary = TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: .channelGroup,
+            groupId: 0,
+            channelId: nil,
+            description: "",
+            customSet: "",
+            validationMessages: TS3PrivilegeKeyDraftValidator.validationMessages(
+                targetType: .channelGroup,
+                groupId: 0,
+                channelId: nil,
+                description: "",
+                customSet: ""
+            )
+        )
+
+        let summary = TS3PrivilegeKeyOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visibleKeySummary: TS3PrivilegeKeyListSummary(keys: []),
+            hasGeneratedKey: false,
+            hasLocalFilters: false,
+            hasFilterPresets: false,
+            hasBackupCoverage: false,
+            canMutateServer: false,
+            canDeleteVisible: false,
+            hasInviteLinkActions: false
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 8)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=0/8 | missingOfficialAreas=8 | officialActions=19 | draftTargets=0/2 | draftType=channelGroup | generatedKey=false | visibleKeys=0 | serverGroup=0 | channelGroup=0 | unknown=0 | channelScoped=0 | localFilters=false | filterPresets=false | backupCoverage=false | serverMutation=false | deleteVisible=false | inviteLinkActions=false | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testSaveCurrentConnectionPrivilegeKeyTrimsAndIgnoresEmptyValues() {
         let model = TS3AppModel()

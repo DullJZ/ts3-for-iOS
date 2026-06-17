@@ -5818,6 +5818,85 @@ struct TS3PrivilegeKeyListSummary {
     }
 }
 
+struct TS3PrivilegeKeyOfficialCoverageAuditSummary {
+    let draftCoverageSummary: TS3PrivilegeKeyDraftCoverageSummary
+    let visibleKeySummary: TS3PrivilegeKeyListSummary
+    let hasGeneratedKey: Bool
+    let hasLocalFilters: Bool
+    let hasFilterPresets: Bool
+    let hasBackupCoverage: Bool
+    let canMutateServer: Bool
+    let canDeleteVisible: Bool
+    let hasInviteLinkActions: Bool
+
+    var officialAreaTotal: Int {
+        8
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasDraftTargetCoverage,
+            hasGeneratedKey,
+            hasVisibleReviewCoverage,
+            hasLocalFilterCoverage,
+            hasFilterPresets,
+            hasBackupCoverage,
+            canMutateServer,
+            hasInviteLinkActions
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        19
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || draftCoverageSummary.needsAttention
+            || visibleKeySummary.needsAttention
+            || !canDeleteVisible
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "draftTargets=\(draftCoverageSummary.coveredTargetFieldCount)/\(draftCoverageSummary.requiredTargetFieldCount)",
+            "draftType=\(draftCoverageSummary.targetType.rawValue)",
+            "generatedKey=\(hasGeneratedKey ? "true" : "false")",
+            "visibleKeys=\(visibleKeySummary.totalCount)",
+            "serverGroup=\(visibleKeySummary.serverGroupCount)",
+            "channelGroup=\(visibleKeySummary.channelGroupCount)",
+            "unknown=\(visibleKeySummary.unknownTypeCount)",
+            "channelScoped=\(visibleKeySummary.channelScopedCount)",
+            "localFilters=\(hasLocalFilters ? "true" : "false")",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "backupCoverage=\(hasBackupCoverage ? "true" : "false")",
+            "serverMutation=\(canMutateServer ? "true" : "false")",
+            "deleteVisible=\(canDeleteVisible ? "true" : "false")",
+            "inviteLinkActions=\(hasInviteLinkActions ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasDraftTargetCoverage: Bool {
+        draftCoverageSummary.coveredTargetFieldCount == draftCoverageSummary.requiredTargetFieldCount
+    }
+
+    private var hasVisibleReviewCoverage: Bool {
+        visibleKeySummary.totalCount > 0
+    }
+
+    private var hasLocalFilterCoverage: Bool {
+        hasLocalFilters
+    }
+}
+
 struct TS3TemporaryServerPasswordSummary: Identifiable, Codable {
     let id: String
     let password: String

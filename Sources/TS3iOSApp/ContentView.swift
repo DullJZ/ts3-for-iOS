@@ -24213,6 +24213,22 @@ struct PrivilegeKeysSheet: View {
                     }
                     .disabled(filteredPrivilegeKeys.isEmpty)
 
+                    ServerInfoDetailRow(
+                        label: localized("privilegeKeys.officialAudit"),
+                        value: localized(
+                            "privilegeKeys.officialAuditFormat",
+                            privilegeKeyOfficialAuditSummary.coveredOfficialAreaCount,
+                            privilegeKeyOfficialAuditSummary.officialAreaTotal,
+                            privilegeKeyOfficialAuditSummary.missingOfficialAreaCount
+                        )
+                    )
+                    Text(privilegeKeyOfficialAuditText(privilegeKeyOfficialAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(privilegeKeyOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("privilegeKeys.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(privilegeKeyOfficialAuditSummary.clipboardSummary)
+                    }
+
                     Button(localized("privilegeKeys.copyVisibleKeys")) {
                         TS3PlatformSupport.copyToPasteboard(privilegeKeysSnapshot)
                     }
@@ -24462,6 +24478,20 @@ struct PrivilegeKeysSheet: View {
         return sortedPrivilegeKeys(keys)
     }
 
+    private var privilegeKeyOfficialAuditSummary: TS3PrivilegeKeyOfficialCoverageAuditSummary {
+        TS3PrivilegeKeyOfficialCoverageAuditSummary(
+            draftCoverageSummary: privilegeKeyDraftCoverageSummary,
+            visibleKeySummary: visiblePrivilegeKeySummary,
+            hasGeneratedKey: model.generatedPrivilegeKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
+            hasLocalFilters: hasLocalFilters,
+            hasFilterPresets: !model.privilegeKeyFilterPresets.isEmpty,
+            hasBackupCoverage: !model.privilegeKeys.isEmpty,
+            canMutateServer: model.state == .connected,
+            canDeleteVisible: model.state == .connected && !filteredPrivilegeKeys.isEmpty,
+            hasInviteLinkActions: model.generatedPrivilegeKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false || !filteredPrivilegeKeys.isEmpty
+        )
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
@@ -24606,6 +24636,16 @@ struct PrivilegeKeysSheet: View {
             parts.append(localized("privilegeKeys.summary.createdFormat", formatter.string(from: latestCreatedAt)))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func privilegeKeyOfficialAuditText(_ summary: TS3PrivilegeKeyOfficialCoverageAuditSummary) -> String {
+        [
+            localized("privilegeKeys.officialAuditActionsFormat", summary.officialActionCount),
+            localized("privilegeKeys.officialAuditDraftFormat", summary.draftCoverageSummary.coveredTargetFieldCount, summary.draftCoverageSummary.requiredTargetFieldCount),
+            localized("privilegeKeys.officialAuditVisibleFormat", summary.visibleKeySummary.totalCount),
+            localized("privilegeKeys.officialAuditTypesFormat", summary.visibleKeySummary.serverGroupCount, summary.visibleKeySummary.channelGroupCount),
+            localized("privilegeKeys.officialAuditMutationFormat", summary.canMutateServer ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: " · ")
     }
 
     private func privilegeKeyBackupPreviewMessage(_ preview: TS3PrivilegeKeyBackupPreview) -> String {
