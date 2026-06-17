@@ -10777,6 +10777,21 @@ struct OfflineMessagesSheet: View {
                         TS3PlatformSupport.copyToPasteboard(bulkActionSummary.clipboardSummary)
                     }
                     .disabled(filteredMessages.isEmpty && model.offlineMessages.isEmpty)
+                    ServerInfoDetailRow(
+                        label: localized("offline.officialAudit"),
+                        value: localized(
+                            "offline.officialAuditFormat",
+                            offlineOfficialAuditSummary.coveredOfficialAreaCount,
+                            offlineOfficialAuditSummary.officialAreaTotal,
+                            offlineOfficialAuditSummary.missingOfficialAreaCount
+                        )
+                    )
+                    Text(offlineOfficialAuditText(offlineOfficialAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(offlineOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("offline.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(offlineOfficialAuditSummary.clipboardSummary)
+                    }
                 }
 
                 if !canUseServerInboxActions {
@@ -11019,6 +11034,19 @@ struct OfflineMessagesSheet: View {
         model.offlineMessages.filter(\.isRead)
     }
 
+    private var offlineOfficialAuditSummary: TS3OfflineMessageOfficialCoverageAuditSummary {
+        TS3OfflineMessageOfficialCoverageAuditSummary(
+            draftCoverageSummary: nil,
+            visibleInboxSummary: visibleInboxSummary,
+            bulkActionSummary: bulkActionSummary,
+            hasLocalFilters: hasLocalFilters,
+            hasFilterPresets: !model.offlineMessageFilterPresets.isEmpty,
+            hasArchiveCoverage: !model.offlineMessages.isEmpty,
+            canUseServerActions: canUseServerInboxActions,
+            hasReplyActions: visibleInboxSummary.replyableCount > 0
+        )
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
@@ -11119,6 +11147,16 @@ struct OfflineMessagesSheet: View {
             localized("offline.bulkMarkUnreadFormat", summary.markUnreadCount),
             localized("offline.bulkDeleteVisibleFormat", summary.deleteVisibleCount),
             localized("offline.bulkDeleteReadFormat", summary.deleteReadCount)
+        ].joined(separator: " · ")
+    }
+
+    private func offlineOfficialAuditText(_ summary: TS3OfflineMessageOfficialCoverageAuditSummary) -> String {
+        [
+            localized("offline.officialAuditActionsFormat", summary.officialActionCount),
+            localized("offline.officialAuditVisibleFormat", summary.visibleInboxSummary.totalCount),
+            localized("offline.officialAuditUnreadFormat", summary.visibleInboxSummary.unreadCount),
+            localized("offline.officialAuditBulkFormat", summary.bulkActionSummary.requiresServerCount),
+            localized("offline.officialAuditServerFormat", summary.canUseServerActions ? localized("common.yes") : localized("common.no"))
         ].joined(separator: " · ")
     }
 

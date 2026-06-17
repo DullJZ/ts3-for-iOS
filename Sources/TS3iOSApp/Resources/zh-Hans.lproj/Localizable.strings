@@ -1604,6 +1604,14 @@
 "offline.bulkDeleteVisibleFormat" = "删除可见：%d";
 "offline.bulkDeleteReadFormat" = "删除已读：%d";
 "offline.copyBulkSummary" = "复制批量操作影响";
+"offline.officialAudit" = "官方客户端审计";
+"offline.officialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"offline.officialAuditActionsFormat" = "%d 个官方动作";
+"offline.officialAuditVisibleFormat" = "可见消息：%d";
+"offline.officialAuditUnreadFormat" = "未读：%d";
+"offline.officialAuditBulkFormat" = "服务器动作：%d";
+"offline.officialAuditServerFormat" = "连接后动作：%@";
+"offline.copyOfficialAudit" = "复制官方审计";
 "offline.cachedOnlyNotice" = "正在显示本地缓存的离线消息。连接服务器后可刷新、加载消息正文、回复、标记已读或从服务器删除。";
 "offline.noMessages" = "没有离线消息";
 "offline.noMatchingMessages" = "没有匹配的消息";

@@ -1604,6 +1604,14 @@
 "offline.bulkDeleteVisibleFormat" = "Delete visible: %d";
 "offline.bulkDeleteReadFormat" = "Delete read: %d";
 "offline.copyBulkSummary" = "Copy Bulk Action Impact";
+"offline.officialAudit" = "Official Client Audit";
+"offline.officialAuditFormat" = "%d/%d areas covered, %d missing";
+"offline.officialAuditActionsFormat" = "%d official actions";
+"offline.officialAuditVisibleFormat" = "Visible messages: %d";
+"offline.officialAuditUnreadFormat" = "Unread: %d";
+"offline.officialAuditBulkFormat" = "Server actions: %d";
+"offline.officialAuditServerFormat" = "Connected actions: %@";
+"offline.copyOfficialAudit" = "Copy Official Audit";
 "offline.cachedOnlyNotice" = "Showing locally cached offline messages. Connect to refresh, load message bodies, reply, mark read, or delete from the server.";
 "offline.noMessages" = "No offline messages";
 "offline.noMatchingMessages" = "No matching messages";

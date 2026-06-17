@@ -3025,6 +3025,91 @@ struct TS3OfflineMessageDraftCoverageSummary {
     }
 }
 
+struct TS3OfflineMessageOfficialCoverageAuditSummary {
+    let draftCoverageSummary: TS3OfflineMessageDraftCoverageSummary?
+    let visibleInboxSummary: TS3OfflineMessageListSummary
+    let bulkActionSummary: TS3OfflineMessageBulkActionSummary
+    let hasLocalFilters: Bool
+    let hasFilterPresets: Bool
+    let hasArchiveCoverage: Bool
+    let canUseServerActions: Bool
+    let hasReplyActions: Bool
+
+    var officialAreaTotal: Int {
+        8
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasDraftSendCoverage,
+            hasVisibleReviewCoverage,
+            hasBulkActionCoverage,
+            hasLocalFilterCoverage,
+            hasFilterPresets,
+            hasArchiveCoverage,
+            canUseServerActions,
+            hasReplyActions
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        18
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || draftCoverageSummary?.needsAttention == true
+            || visibleInboxSummary.needsAttention
+            || bulkActionSummary.needsAttention
+            || !canUseServerActions
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "draftRecipients=\(draftCoverageSummary?.recipientFieldCount ?? 0)",
+            "draftContent=\(draftCoverageSummary?.requiredContentFieldCount ?? 0)/2",
+            "visibleMessages=\(visibleInboxSummary.totalCount)",
+            "unread=\(visibleInboxSummary.unreadCount)",
+            "withBody=\(visibleInboxSummary.withBodyCount)",
+            "replyable=\(visibleInboxSummary.replyableCount)",
+            "bulkServerActions=\(bulkActionSummary.requiresServerCount)",
+            "loadBodies=\(bulkActionSummary.loadBodyCount)",
+            "deleteVisible=\(bulkActionSummary.deleteVisibleCount)",
+            "localFilters=\(hasLocalFilters ? "true" : "false")",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "archiveCoverage=\(hasArchiveCoverage ? "true" : "false")",
+            "serverActions=\(canUseServerActions ? "true" : "false")",
+            "replyActions=\(hasReplyActions ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasDraftSendCoverage: Bool {
+        guard let draftCoverageSummary else { return false }
+        return draftCoverageSummary.recipientFieldCount > 0
+            && draftCoverageSummary.requiredContentFieldCount == 2
+    }
+
+    private var hasVisibleReviewCoverage: Bool {
+        visibleInboxSummary.totalCount > 0
+    }
+
+    private var hasBulkActionCoverage: Bool {
+        bulkActionSummary.requiresServerCount > 0
+    }
+
+    private var hasLocalFilterCoverage: Bool {
+        hasLocalFilters
+    }
+}
+
 struct TS3BanEntrySummary: Identifiable, Codable {
     let id: Int
     let ip: String?

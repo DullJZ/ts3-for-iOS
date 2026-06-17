@@ -422,6 +422,85 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         )
     }
 
+    func testOfflineMessageOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let draftSummary = TS3OfflineMessageDraftCoverageSummary(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true,
+            validationMessages: []
+        )
+        let unreadWithoutBody = TS3OfflineMessageSummary(
+            id: 9,
+            senderUniqueIdentifier: "uid-a",
+            senderName: "Sender A",
+            subject: "Unread",
+            message: nil,
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            isRead: false
+        )
+        let readWithBody = TS3OfflineMessageSummary(
+            id: 10,
+            senderUniqueIdentifier: "uid-b",
+            senderName: "Sender B",
+            subject: "Read",
+            message: "Body",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+            isRead: true
+        )
+        let listSummary = TS3OfflineMessageListSummary(messages: [unreadWithoutBody, readWithBody])
+        let bulkSummary = TS3OfflineMessageBulkActionSummary(
+            visibleMessages: [unreadWithoutBody, readWithBody],
+            allMessages: [unreadWithoutBody, readWithBody]
+        )
+
+        let summary = TS3OfflineMessageOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visibleInboxSummary: listSummary,
+            bulkActionSummary: bulkSummary,
+            hasLocalFilters: true,
+            hasFilterPresets: true,
+            hasArchiveCoverage: true,
+            canUseServerActions: true,
+            hasReplyActions: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 8)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 8)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 18)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=8/8 | missingOfficialAreas=0 | officialActions=18 | draftRecipients=2 | draftContent=2/2 | visibleMessages=2 | unread=1 | withBody=1 | replyable=2 | bulkServerActions=5 | loadBodies=1 | deleteVisible=2 | localFilters=true | filterPresets=true | archiveCoverage=true | serverActions=true | replyActions=true | needsAttention=true"
+        )
+    }
+
+    func testOfflineMessageOfficialCoverageAuditSummaryFlagsMissingWorkflowAreas() {
+        let emptyListSummary = TS3OfflineMessageListSummary(messages: [])
+        let emptyBulkSummary = TS3OfflineMessageBulkActionSummary(visibleMessages: [], allMessages: [])
+
+        let summary = TS3OfflineMessageOfficialCoverageAuditSummary(
+            draftCoverageSummary: nil,
+            visibleInboxSummary: emptyListSummary,
+            bulkActionSummary: emptyBulkSummary,
+            hasLocalFilters: false,
+            hasFilterPresets: false,
+            hasArchiveCoverage: false,
+            canUseServerActions: false,
+            hasReplyActions: false
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 8)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=0/8 | missingOfficialAreas=8 | officialActions=18 | draftRecipients=0 | draftContent=0/2 | visibleMessages=0 | unread=0 | withBody=0 | replyable=0 | bulkServerActions=0 | loadBodies=0 | deleteVisible=0 | localFilters=false | filterPresets=false | archiveCoverage=false | serverActions=false | replyActions=false | needsAttention=true"
+        )
+    }
+
     func testOfflineMessageFilterPresetSummaryAndAccessibilityText() {
         let preset = makeOfflineMessageFilterPreset(
             id: UUID(),
