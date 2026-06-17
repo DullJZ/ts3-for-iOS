@@ -2449,6 +2449,11 @@
 "groups.import.copyGroupSummary" = "复制组摘要";
 "groups.import.selectAll" = "全选";
 "groups.import.clear" = "清除";
+"groups.import.impact" = "导入影响";
+"groups.import.impactFormat" = "%d 个已选，%d 个服务器组，%d 个频道组";
+"groups.import.impactTypesFormat" = "模板/普通/Query/未知：%d/%d/%d/%d";
+"groups.import.impactSkippedFormat" = "跳过服务器/频道组：%d/%d";
+"groups.import.copyImpact" = "复制导入影响";
 "groups.import.serverGroups" = "服务器组";
 "groups.import.channelGroups" = "频道组";
 "groups.import.behaviorTitle" = "导入行为";

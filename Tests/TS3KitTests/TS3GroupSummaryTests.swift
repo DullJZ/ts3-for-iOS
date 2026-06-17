@@ -613,6 +613,9 @@ final class TS3GroupSummaryTests: XCTestCase {
             ]
         )
         XCTAssertEqual(preview.candidates.map(\.id), ["server:6", "server:7", "channel:9", "channel:10", "channel:11"])
+        XCTAssertEqual(preview.candidates.first?.groupId, 6)
+        XCTAssertEqual(preview.candidates.first?.name, "Admins")
+        XCTAssertEqual(preview.candidates.first?.type, .regular)
         XCTAssertEqual(preview.candidates.filter { $0.target == .server }.count, 2)
         XCTAssertEqual(preview.candidates.filter { $0.target == .channel }.count, 3)
         XCTAssertTrue(preview.containsGroup(id: "channel:9"))
@@ -627,6 +630,49 @@ final class TS3GroupSummaryTests: XCTestCase {
             ).joined(separator: "\n")
         )
         XCTAssertTrue(preview.hasGroups)
+    }
+
+    @MainActor
+    func testGroupImportImpactSummaryCountsSelectedGroups() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "serverGroups": [
+            { "id": 6, "name": " Admins ", "type": 1 },
+            { "id": 7, "name": " Query ", "type": 2 },
+            { "id": 0, "name": "Invalid", "type": 1 }
+          ],
+          "channelGroups": [
+            { "id": 9, "name": " Channel Admin ", "type": 1 },
+            { "id": 10, "name": "Template", "type": 0 },
+            { "id": 11, "name": "Unknown" },
+            { "id": 11, "name": "Duplicate" }
+          ]
+        }
+        """
+
+        let preview = try model.groupArchivePreview(from: Data(archiveJSON.utf8))
+        let summary = TS3GroupImportImpactSummary(
+            preview: preview,
+            selectedGroupIds: ["server:7", "channel:10", "channel:11"]
+        )
+
+        XCTAssertEqual(summary.selectedGroupCount, 3)
+        XCTAssertEqual(summary.selectedServerGroupCount, 1)
+        XCTAssertEqual(summary.selectedChannelGroupCount, 2)
+        XCTAssertEqual(summary.templateCount, 1)
+        XCTAssertEqual(summary.regularCount, 0)
+        XCTAssertEqual(summary.queryCount, 1)
+        XCTAssertEqual(summary.unknownTypeCount, 1)
+        XCTAssertEqual(summary.skippedServerGroupCount, 1)
+        XCTAssertEqual(summary.skippedChannelGroupCount, 1)
+        XCTAssertEqual(summary.skippedGroupCount, 2)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=3 | serverGroups=1 | channelGroups=2 | template=1 | regular=0 | query=1 | unknownType=1 | skippedServerGroups=1 | skippedChannelGroups=1 | needsAttention=true"
+        )
     }
 
     @MainActor

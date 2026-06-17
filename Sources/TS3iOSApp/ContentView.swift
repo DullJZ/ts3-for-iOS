@@ -14289,6 +14289,10 @@ private struct GroupArchiveImportSheet: View {
         Set(selectedGroupIds.filter(preview.containsGroup))
     }
 
+    private var importImpactSummary: TS3GroupImportImpactSummary {
+        TS3GroupImportImpactSummary(preview: preview, selectedGroupIds: validSelectedGroupIds)
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -14309,6 +14313,22 @@ private struct GroupArchiveImportSheet: View {
                             }
                             .disabled(selectedGroupIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("groups.import.impact"),
+                            value: localized(
+                                "groups.import.impactFormat",
+                                importImpactSummary.selectedGroupCount,
+                                importImpactSummary.selectedServerGroupCount,
+                                importImpactSummary.selectedChannelGroupCount
+                            )
+                        )
+                        Text(groupImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("groups.import.copyImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                     }
                 }
 
@@ -14414,6 +14434,13 @@ private struct GroupArchiveImportSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func groupImportImpactText(_ summary: TS3GroupImportImpactSummary) -> String {
+        [
+            localized("groups.import.impactTypesFormat", summary.templateCount, summary.regularCount, summary.queryCount, summary.unknownTypeCount),
+            localized("groups.import.impactSkippedFormat", summary.skippedServerGroupCount, summary.skippedChannelGroupCount)
+        ].joined(separator: " | ")
     }
 }
 

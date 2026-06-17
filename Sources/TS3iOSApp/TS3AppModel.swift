@@ -4046,6 +4046,9 @@ private struct TS3GroupArchive: Codable {
 struct TS3GroupArchivePreview {
     struct Candidate: Identifiable, Equatable {
         let id: String
+        let groupId: Int
+        let name: String
+        let type: TS3PermissionGroupDatabaseType?
         let summary: String
         let target: TS3GroupManagementTarget
     }
@@ -4089,6 +4092,58 @@ struct TS3GroupArchivePreview {
 
     func containsGroup(id: String) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3GroupImportImpactSummary {
+    let selectedGroupCount: Int
+    let selectedServerGroupCount: Int
+    let selectedChannelGroupCount: Int
+    let templateCount: Int
+    let regularCount: Int
+    let queryCount: Int
+    let unknownTypeCount: Int
+    let skippedServerGroupCount: Int
+    let skippedChannelGroupCount: Int
+
+    var skippedGroupCount: Int {
+        skippedServerGroupCount + skippedChannelGroupCount
+    }
+
+    var hasSelection: Bool {
+        selectedGroupCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || queryCount > 0 || unknownTypeCount > 0 || skippedGroupCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedGroupCount)",
+            "serverGroups=\(selectedServerGroupCount)",
+            "channelGroups=\(selectedChannelGroupCount)",
+            "template=\(templateCount)",
+            "regular=\(regularCount)",
+            "query=\(queryCount)",
+            "unknownType=\(unknownTypeCount)",
+            "skippedServerGroups=\(skippedServerGroupCount)",
+            "skippedChannelGroups=\(skippedChannelGroupCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3GroupArchivePreview, selectedGroupIds: Set<String>) {
+        let selected = preview.candidates.filter { selectedGroupIds.contains($0.id) }
+        selectedGroupCount = selected.count
+        selectedServerGroupCount = selected.filter { $0.target == .server }.count
+        selectedChannelGroupCount = selected.filter { $0.target == .channel }.count
+        templateCount = selected.filter { $0.type == .template }.count
+        regularCount = selected.filter { $0.type == .regular }.count
+        queryCount = selected.filter { $0.type == .query }.count
+        unknownTypeCount = selected.filter { $0.type == nil }.count
+        skippedServerGroupCount = preview.skippedServerGroupCount
+        skippedChannelGroupCount = preview.skippedChannelGroupCount
     }
 }
 
@@ -17214,12 +17269,18 @@ final class TS3AppModel: ObservableObject {
             candidates: sanitized.serverGroups.map {
                 TS3GroupArchivePreview.Candidate(
                     id: Self.groupArchiveSelectionID($0, target: .server),
+                    groupId: $0.id,
+                    name: $0.name,
+                    type: $0.type,
                     summary: $0.clipboardSummary(target: .server),
                     target: .server
                 )
             } + sanitized.channelGroups.map {
                 TS3GroupArchivePreview.Candidate(
                     id: Self.groupArchiveSelectionID($0, target: .channel),
+                    groupId: $0.id,
+                    name: $0.name,
+                    type: $0.type,
                     summary: $0.clipboardSummary(target: .channel),
                     target: .channel
                 )

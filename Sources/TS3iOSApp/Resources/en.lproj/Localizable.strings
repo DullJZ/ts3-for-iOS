@@ -2449,6 +2449,11 @@
 "groups.import.copyGroupSummary" = "Copy Group Summary";
 "groups.import.selectAll" = "Select All";
 "groups.import.clear" = "Clear";
+"groups.import.impact" = "Import Impact";
+"groups.import.impactFormat" = "%d selected, %d server, %d channel";
+"groups.import.impactTypesFormat" = "Template/regular/query/unknown: %d/%d/%d/%d";
+"groups.import.impactSkippedFormat" = "Skipped server/channel groups: %d/%d";
+"groups.import.copyImpact" = "Copy Import Impact";
 "groups.import.serverGroups" = "Server Groups";
 "groups.import.channelGroups" = "Channel Groups";
 "groups.import.behaviorTitle" = "Import Behavior";
