@@ -27256,6 +27256,23 @@ struct WhisperSheet: View {
         TS3WhisperPresetListSummary(presets: filteredWhisperPresets)
     }
 
+    private var whisperOfficialAuditSummary: TS3WhisperOfficialCoverageAuditSummary {
+        TS3WhisperOfficialCoverageAuditSummary(
+            presetSummary: visibleWhisperPresetSummary,
+            routeDescription: model.whisperRouteDescription,
+            hasActiveRoute: model.whisperRoute != .none,
+            activationMode: model.whisperActivationMode,
+            activationLogCount: model.whisperActivationLog.count,
+            hasFilterPresets: !model.whisperFilterPresets.isEmpty,
+            selectedChannelCount: selectedWhisperChannelIds.count,
+            selectedClientCount: selectedWhisperClientIds.count,
+            availableChannelCount: filteredChannels.count,
+            availableClientCount: filteredUsers.count,
+            availableServerGroupCount: filteredServerGroups.count,
+            availableChannelGroupCount: filteredChannelGroups.count
+        )
+    }
+
     private var whisperRouteSnapshot: String {
         var rows = [
             localized("whisper.snapshot.routeFormat", model.whisperRouteDescription),
@@ -27418,6 +27435,21 @@ struct WhisperSheet: View {
                         .disabled(!model.isWhisperActivationActive)
                     }
                     .font(.caption)
+                    ServerInfoDetailRow(
+                        label: localized("whisper.officialAudit"),
+                        value: localized(
+                            "whisper.officialAuditFormat",
+                            whisperOfficialAuditSummary.coveredOfficialAreaCount,
+                            whisperOfficialAuditSummary.officialAreaTotal,
+                            whisperOfficialAuditSummary.missingOfficialAreaCount
+                        )
+                    )
+                    Text(whisperOfficialAuditText(whisperOfficialAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(whisperOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("whisper.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(whisperOfficialAuditSummary.clipboardSummary)
+                    }
                 }
 
                 Section(header: Text(localized("whisper.activationLog"))) {
@@ -28012,6 +28044,17 @@ struct WhisperSheet: View {
                 "whisper.summaryLatestUpdateFormat",
                 summary.latestUpdatedAt.map(Self.dateText) ?? localized("common.none")
             )
+        ].joined(separator: " · ")
+    }
+
+    private func whisperOfficialAuditText(_ summary: TS3WhisperOfficialCoverageAuditSummary) -> String {
+        [
+            localized("whisper.officialAuditActionsFormat", summary.officialActionCount),
+            localized("whisper.officialAuditRouteFormat", summary.hasActiveRoute ? 1 : 0),
+            localized("whisper.officialAuditPresetsFormat", summary.presetSummary.totalCount),
+            localized("whisper.officialAuditSelectedTargetsFormat", summary.selectedChannelCount, summary.selectedClientCount),
+            localized("whisper.officialAuditActivationEventsFormat", summary.activationLogCount),
+            localized("whisper.officialAuditAttentionFormat", summary.needsAttention ? 1 : 0)
         ].joined(separator: " · ")
     }
 

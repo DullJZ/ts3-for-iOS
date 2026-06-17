@@ -1741,6 +1741,15 @@
 "whisper.copyActivationLog" = "复制激活日志";
 "whisper.exportActivationLog" = "导出激活日志";
 "whisper.clearActivationLog" = "清除激活日志";
+"whisper.officialAudit" = "官方客户端审计";
+"whisper.officialAuditFormat" = "%d / %d 个官方区域，%d 个缺失";
+"whisper.officialAuditActionsFormat" = "动作：%d";
+"whisper.officialAuditRouteFormat" = "路由激活：%d";
+"whisper.officialAuditPresetsFormat" = "可见预设：%d";
+"whisper.officialAuditSelectedTargetsFormat" = "所选目标：%d 个频道 / %d 个用户";
+"whisper.officialAuditActivationEventsFormat" = "激活事件：%d";
+"whisper.officialAuditAttentionFormat" = "需要注意：%d";
+"whisper.copyOfficialAudit" = "复制官方审计";
 "whisper.quickActions" = "快捷操作";
 "whisper.toCurrentChannel" = "密语到当前频道";
 "whisper.toServer" = "密语到服务器";

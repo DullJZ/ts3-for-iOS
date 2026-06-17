@@ -1741,6 +1741,15 @@
 "whisper.copyActivationLog" = "Copy Activation Log";
 "whisper.exportActivationLog" = "Export Activation Log";
 "whisper.clearActivationLog" = "Clear Activation Log";
+"whisper.officialAudit" = "Official Client Audit";
+"whisper.officialAuditFormat" = "%d of %d official areas, %d missing";
+"whisper.officialAuditActionsFormat" = "Actions: %d";
+"whisper.officialAuditRouteFormat" = "Route active: %d";
+"whisper.officialAuditPresetsFormat" = "Visible presets: %d";
+"whisper.officialAuditSelectedTargetsFormat" = "Selected targets: %d channels / %d users";
+"whisper.officialAuditActivationEventsFormat" = "Activation events: %d";
+"whisper.officialAuditAttentionFormat" = "Needs attention: %d";
+"whisper.copyOfficialAudit" = "Copy Official Audit";
 "whisper.quickActions" = "Quick Actions";
 "whisper.toCurrentChannel" = "Whisper to Current Channel";
 "whisper.toServer" = "Whisper to Server";

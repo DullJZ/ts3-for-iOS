@@ -10954,6 +10954,126 @@ struct TS3WhisperPresetListSummary {
     }
 }
 
+struct TS3WhisperOfficialCoverageAuditSummary {
+    let presetSummary: TS3WhisperPresetListSummary
+    let routeDescription: String
+    let hasActiveRoute: Bool
+    let activationMode: TS3WhisperActivationMode
+    let activationLogCount: Int
+    let hasFilterPresets: Bool
+    let selectedChannelCount: Int
+    let selectedClientCount: Int
+    let availableChannelCount: Int
+    let availableClientCount: Int
+    let availableServerGroupCount: Int
+    let availableChannelGroupCount: Int
+
+    var officialAreaTotal: Int {
+        7
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasRouteControl,
+            hasPresetCoverage,
+            hasTargetSelection,
+            hasGroupWhisperCoverage,
+            hasActivationModeCoverage,
+            hasActivationLogCoverage,
+            hasBackupFilterCoverage
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        16
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0 || presetSummary.needsAttention || !hasActiveRoute
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "routeActive=\(hasActiveRoute ? "true" : "false")",
+            "route=\(routeDescription)",
+            "activationMode=\(activationMode.title)",
+            "activationEvents=\(activationLogCount)",
+            "visiblePresets=\(presetSummary.totalCount)",
+            "selectedChannels=\(selectedChannelCount)",
+            "selectedClients=\(selectedClientCount)",
+            "availableChannels=\(availableChannelCount)",
+            "availableClients=\(availableClientCount)",
+            "serverGroups=\(availableServerGroupCount)",
+            "channelGroups=\(availableChannelGroupCount)",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        presetSummary: TS3WhisperPresetListSummary,
+        routeDescription: String,
+        hasActiveRoute: Bool,
+        activationMode: TS3WhisperActivationMode,
+        activationLogCount: Int,
+        hasFilterPresets: Bool,
+        selectedChannelCount: Int,
+        selectedClientCount: Int,
+        availableChannelCount: Int,
+        availableClientCount: Int,
+        availableServerGroupCount: Int,
+        availableChannelGroupCount: Int
+    ) {
+        self.presetSummary = presetSummary
+        self.routeDescription = routeDescription
+        self.hasActiveRoute = hasActiveRoute
+        self.activationMode = activationMode
+        self.activationLogCount = activationLogCount
+        self.hasFilterPresets = hasFilterPresets
+        self.selectedChannelCount = selectedChannelCount
+        self.selectedClientCount = selectedClientCount
+        self.availableChannelCount = availableChannelCount
+        self.availableClientCount = availableClientCount
+        self.availableServerGroupCount = availableServerGroupCount
+        self.availableChannelGroupCount = availableChannelGroupCount
+    }
+
+    private var hasRouteControl: Bool {
+        hasActiveRoute
+    }
+
+    private var hasPresetCoverage: Bool {
+        presetSummary.totalCount > 0
+    }
+
+    private var hasTargetSelection: Bool {
+        selectedChannelCount > 0 || selectedClientCount > 0 || availableChannelCount > 0 || availableClientCount > 0
+    }
+
+    private var hasGroupWhisperCoverage: Bool {
+        availableServerGroupCount > 0 || availableChannelGroupCount > 0
+    }
+
+    private var hasActivationModeCoverage: Bool {
+        true
+    }
+
+    private var hasActivationLogCoverage: Bool {
+        activationLogCount > 0
+    }
+
+    private var hasBackupFilterCoverage: Bool {
+        hasFilterPresets || presetSummary.totalCount > 0
+    }
+}
+
 struct TS3WhisperFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String

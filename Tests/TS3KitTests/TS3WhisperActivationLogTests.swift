@@ -59,6 +59,78 @@ final class TS3WhisperActivationLogTests: XCTestCase {
         )
     }
 
+    func testWhisperOfficialCoverageAuditSummaryCountsCoveredAreas() throws {
+        let channelPreset = TS3WhisperPreset(
+            id: try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000031")),
+            name: "Channels",
+            channelIds: [1, 2],
+            clientIds: [],
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+        let userPreset = TS3WhisperPreset(
+            id: try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000032")),
+            name: "Users",
+            channelIds: [],
+            clientIds: [7, 8],
+            updatedAt: Date(timeIntervalSince1970: 20)
+        )
+        let presetSummary = TS3WhisperPresetListSummary(presets: [channelPreset, userPreset])
+
+        let summary = TS3WhisperOfficialCoverageAuditSummary(
+            presetSummary: presetSummary,
+            routeDescription: "Whisper list: 2 channels, 2 users",
+            hasActiveRoute: true,
+            activationMode: .holdToWhisper,
+            activationLogCount: 3,
+            hasFilterPresets: true,
+            selectedChannelCount: 2,
+            selectedClientCount: 2,
+            availableChannelCount: 5,
+            availableClientCount: 4,
+            availableServerGroupCount: 2,
+            availableChannelGroupCount: 1
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 7)
+        XCTAssertEqual(summary.officialAreaTotal, 7)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 16)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=7/7 | missingOfficialAreas=0 | officialActions=16 | routeActive=true | route=Whisper list: 2 channels, 2 users | activationMode=Hold to Whisper | activationEvents=3 | visiblePresets=2 | selectedChannels=2 | selectedClients=2 | availableChannels=5 | availableClients=4 | serverGroups=2 | channelGroups=1 | filterPresets=true | needsAttention=false"
+        )
+    }
+
+    func testWhisperOfficialCoverageAuditSummaryFlagsMissingAreas() {
+        let presetSummary = TS3WhisperPresetListSummary(presets: [])
+
+        let summary = TS3WhisperOfficialCoverageAuditSummary(
+            presetSummary: presetSummary,
+            routeDescription: "Voice to current channel",
+            hasActiveRoute: false,
+            activationMode: .tapToToggle,
+            activationLogCount: 0,
+            hasFilterPresets: false,
+            selectedChannelCount: 0,
+            selectedClientCount: 0,
+            availableChannelCount: 0,
+            availableClientCount: 0,
+            availableServerGroupCount: 0,
+            availableChannelGroupCount: 0
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 1)
+        XCTAssertEqual(summary.officialAreaTotal, 7)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 6)
+        XCTAssertEqual(summary.officialActionCount, 16)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=1/7 | missingOfficialAreas=6 | officialActions=16 | routeActive=false | route=Voice to current channel | activationMode=Tap to Toggle | activationEvents=0 | visiblePresets=0 | selectedChannels=0 | selectedClients=0 | availableChannels=0 | availableClients=0 | serverGroups=0 | channelGroups=0 | filterPresets=false | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testWhisperPresetBackupPreviewSanitizesCandidates() throws {
         let existingId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))
