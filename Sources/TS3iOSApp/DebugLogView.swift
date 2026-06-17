@@ -72,6 +72,22 @@ struct DebugLogView: View {
                             model.logs.count
                         )
                     )
+                    let accessibilityAudit = model.platformAccessibilityCoverageAuditSummary
+                    ServerInfoDetailRow(
+                        label: NSLocalizedString("debug.accessibilityAudit", comment: ""),
+                        value: String(
+                            format: NSLocalizedString("debug.accessibilityAuditFormat", comment: ""),
+                            accessibilityAudit.coveredOfficialAreaCount,
+                            accessibilityAudit.officialAreaTotal,
+                            accessibilityAudit.missingOfficialAreaCount
+                        )
+                    )
+                    Text(accessibilityAuditText(accessibilityAudit))
+                        .font(.caption)
+                        .foregroundColor(accessibilityAudit.needsAttention ? .orange : .secondary)
+                    Button("debug.copyAccessibilityAudit") {
+                        TS3PlatformSupport.copyToPasteboard(accessibilityAudit.clipboardSummary)
+                    }
                 }
 
                 Section(header: Text("debug.logs")) {
@@ -183,6 +199,16 @@ struct DebugLogView: View {
 
     private func copyVisibleLogs() {
         TS3PlatformSupport.copyToPasteboard(logTranscript(from: filteredLogs))
+    }
+
+    private func accessibilityAuditText(_ summary: TS3PlatformAccessibilityCoverageAuditSummary) -> String {
+        [
+            String(format: NSLocalizedString("debug.accessibilityAuditActionsFormat", comment: ""), summary.officialActionCount),
+            String(format: NSLocalizedString("debug.accessibilityAuditLocalizedFormat", comment: ""), summary.localizedSurfaceCount),
+            String(format: NSLocalizedString("debug.accessibilityAuditVoiceOverFormat", comment: ""), summary.voiceOverRowActionSurfaceCount),
+            String(format: NSLocalizedString("debug.accessibilityAuditCatalystFormat", comment: ""), summary.catalystMenuGroupCount),
+            String(format: NSLocalizedString("debug.accessibilityAuditDynamicTypeFormat", comment: ""), summary.hasDynamicTypeAuditPending ? NSLocalizedString("common.yes", comment: "") : NSLocalizedString("common.no", comment: ""))
+        ].joined(separator: " · ")
     }
 
     private func logTranscript(from entries: [TS3LogEntry]) -> String {

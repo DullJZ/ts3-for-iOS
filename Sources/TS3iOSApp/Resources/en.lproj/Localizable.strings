@@ -878,6 +878,14 @@
 "debug.searchLogs" = "Search logs";
 "debug.visible" = "Visible";
 "debug.visibleCountFormat" = "%d of %d";
+"debug.accessibilityAudit" = "Platform Accessibility Audit";
+"debug.accessibilityAuditFormat" = "%d/%d areas covered, %d missing";
+"debug.accessibilityAuditActionsFormat" = "%d official actions";
+"debug.accessibilityAuditLocalizedFormat" = "Localized surfaces: %d";
+"debug.accessibilityAuditVoiceOverFormat" = "VoiceOver rows: %d";
+"debug.accessibilityAuditCatalystFormat" = "Catalyst menu groups: %d";
+"debug.accessibilityAuditDynamicTypeFormat" = "Dynamic Type audit pending: %@";
+"debug.copyAccessibilityAudit" = "Copy Platform Accessibility Audit";
 "debug.logs" = "Logs";
 "debug.noMatchingLogs" = "No matching log entries";
 "debug.close" = "Close";

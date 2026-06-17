@@ -878,6 +878,14 @@
 "debug.searchLogs" = "搜索日志";
 "debug.visible" = "可见";
 "debug.visibleCountFormat" = "%d / %d";
+"debug.accessibilityAudit" = "平台无障碍审计";
+"debug.accessibilityAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"debug.accessibilityAuditActionsFormat" = "%d 个官方动作";
+"debug.accessibilityAuditLocalizedFormat" = "本地化界面：%d";
+"debug.accessibilityAuditVoiceOverFormat" = "VoiceOver 行：%d";
+"debug.accessibilityAuditCatalystFormat" = "Catalyst 菜单组：%d";
+"debug.accessibilityAuditDynamicTypeFormat" = "动态字体审计待完成：%@";
+"debug.copyAccessibilityAudit" = "复制平台无障碍审计";
 "debug.logs" = "日志";
 "debug.noMatchingLogs" = "没有匹配的日志条目";
 "debug.close" = "关闭";
