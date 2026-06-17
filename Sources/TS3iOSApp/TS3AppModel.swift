@@ -8275,6 +8275,74 @@ struct TS3VoiceActivationCalibrationSummary: Equatable {
     }
 }
 
+struct TS3VoiceActivationOfficialCoverageAuditSummary {
+    let transmitMode: TS3AudioTransmitMode
+    let calibrationSummary: TS3VoiceActivationCalibrationSummary
+    let savedProfileCount: Int
+    let hasModeSelection: Bool
+    let hasThresholdControl: Bool
+    let hasLiveInputMeter: Bool
+    let hasCalibrationAction: Bool
+    let hasPresetCoverage: Bool
+    let hasProfilePersistence: Bool
+    let hasDiagnosticsSnapshot: Bool
+    let hasSharedIOSCatalystSurface: Bool
+
+    var officialAreaTotal: Int {
+        8
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasModeSelection,
+            hasThresholdControl,
+            hasLiveInputMeter,
+            hasCalibrationAction,
+            hasPresetCoverage,
+            hasProfilePersistence,
+            hasDiagnosticsSnapshot,
+            hasSharedIOSCatalystSurface
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        12
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || calibrationSummary.inputLevel <= 0.0005
+            || calibrationSummary.isNearThreshold
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "mode=\(transmitMode.title)",
+            "threshold=\(TS3VoiceActivationCalibrationSummary.levelText(calibrationSummary.threshold))",
+            "input=\(TS3VoiceActivationCalibrationSummary.levelText(calibrationSummary.inputLevel))",
+            "gate=\(calibrationSummary.state)",
+            "suggestedThreshold=\(TS3VoiceActivationCalibrationSummary.levelText(calibrationSummary.suggestedThreshold))",
+            "savedProfiles=\(savedProfileCount)",
+            "modeSelection=\(hasModeSelection ? "true" : "false")",
+            "thresholdControl=\(hasThresholdControl ? "true" : "false")",
+            "liveMeter=\(hasLiveInputMeter ? "true" : "false")",
+            "calibrationAction=\(hasCalibrationAction ? "true" : "false")",
+            "presets=\(hasPresetCoverage ? "true" : "false")",
+            "profilePersistence=\(hasProfilePersistence ? "true" : "false")",
+            "diagnostics=\(hasDiagnosticsSnapshot ? "true" : "false")",
+            "iosCatalystSurface=\(hasSharedIOSCatalystSurface ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3AudioRouteDeviceSummary: Identifiable, Equatable {
     let id: String
     let name: String

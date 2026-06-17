@@ -32444,6 +32444,22 @@ struct AudioSettingsSheet: View {
         )
     }
 
+    private var voiceActivationOfficialAuditSummary: TS3VoiceActivationOfficialCoverageAuditSummary {
+        TS3VoiceActivationOfficialCoverageAuditSummary(
+            transmitMode: model.audioTransmitMode,
+            calibrationSummary: model.voiceActivationCalibrationSummary,
+            savedProfileCount: model.audioProfiles.count,
+            hasModeSelection: true,
+            hasThresholdControl: true,
+            hasLiveInputMeter: true,
+            hasCalibrationAction: true,
+            hasPresetCoverage: true,
+            hasProfilePersistence: !model.audioProfiles.isEmpty,
+            hasDiagnosticsSnapshot: true,
+            hasSharedIOSCatalystSurface: true
+        )
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -32584,6 +32600,21 @@ struct AudioSettingsSheet: View {
                     ServerInfoDetailRow(label: localized("audio.inputDevices"), value: String(model.audioInputDevices.count))
                     ServerInfoDetailRow(label: localized("audio.selectedInput"), value: selectedInputDeviceName)
                     ServerInfoDetailRow(label: localized("audio.routeAvailability"), value: audioRouteAvailabilityText)
+                    ServerInfoDetailRow(
+                        label: localized("audio.voiceActivationOfficialAudit"),
+                        value: localized(
+                            "audio.voiceActivationOfficialAuditFormat",
+                            voiceActivationOfficialAuditSummary.coveredOfficialAreaCount,
+                            voiceActivationOfficialAuditSummary.officialAreaTotal,
+                            voiceActivationOfficialAuditSummary.missingOfficialAreaCount
+                        )
+                    )
+                    Text(voiceActivationOfficialAuditText)
+                        .font(.caption)
+                        .foregroundColor(voiceActivationOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("audio.copyVoiceActivationOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(voiceActivationOfficialAuditSummary.clipboardSummary)
+                    }
                     ServerInfoDetailRow(label: localized("audio.ping"), value: model.connectionInfo.ping.map { localized("audio.millisecondsFormat", Self.decimalText($0)) })
                     ServerInfoDetailRow(label: localized("audio.packetLoss"), value: model.connectionInfo.packetLossTotal.map(Self.lossText))
                     ServerInfoDetailRow(label: localized("audio.speechLoss"), value: model.connectionInfo.packetLossSpeech.map(Self.lossText))
@@ -33080,6 +33111,16 @@ struct AudioSettingsSheet: View {
             summary.marginText,
             localizedVoiceActivationRecommendation(summary.recommendation)
         )
+    }
+
+    private var voiceActivationOfficialAuditText: String {
+        [
+            localized("audio.voiceActivationOfficialAuditActionsFormat", voiceActivationOfficialAuditSummary.officialActionCount),
+            localized("audio.voiceActivationOfficialAuditModeFormat", transmitModeTitle(voiceActivationOfficialAuditSummary.transmitMode)),
+            localized("audio.voiceActivationOfficialAuditProfilesFormat", voiceActivationOfficialAuditSummary.savedProfileCount),
+            localized("audio.voiceActivationOfficialAuditGateFormat", model.isVoiceActivationTriggered ? localized("audio.open") : localized("audio.closed")),
+            localized("audio.voiceActivationOfficialAuditAttentionFormat", voiceActivationOfficialAuditSummary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: " · ")
     }
 
     private func localizedVoiceActivationRecommendation(_ recommendation: String) -> String {

@@ -1951,6 +1951,14 @@
 "audio.voiceActivation.recommendation.nearThreshold" = "near threshold";
 "audio.voiceActivation.recommendation.raiseThreshold" = "raise threshold if background noise opens the gate";
 "audio.voiceActivation.recommendation.lowerThreshold" = "lower threshold or increase input gain if speech does not open the gate";
+"audio.voiceActivationOfficialAudit" = "Official Voice Activation Audit";
+"audio.voiceActivationOfficialAuditFormat" = "%d/%d areas covered, %d missing";
+"audio.voiceActivationOfficialAuditActionsFormat" = "%d official actions";
+"audio.voiceActivationOfficialAuditModeFormat" = "Mode: %@";
+"audio.voiceActivationOfficialAuditProfilesFormat" = "Saved profiles: %d";
+"audio.voiceActivationOfficialAuditGateFormat" = "Gate: %@";
+"audio.voiceActivationOfficialAuditAttentionFormat" = "Needs review: %@";
+"audio.copyVoiceActivationOfficialAudit" = "Copy Official Voice Activation Audit";
 "audio.millisecondsFormat" = "%@ ms";
 "audio.snapshot.transmitModeFormat" = "Transmit Mode: %@";
 "audio.snapshot.voiceActivationFormat" = "Voice Activation: %@";

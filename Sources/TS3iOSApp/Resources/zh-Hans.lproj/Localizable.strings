@@ -1951,6 +1951,14 @@
 "audio.voiceActivation.recommendation.nearThreshold" = "接近阈值";
 "audio.voiceActivation.recommendation.raiseThreshold" = "如果背景噪声打开门限，请提高阈值";
 "audio.voiceActivation.recommendation.lowerThreshold" = "如果说话无法打开门限，请降低阈值或提高输入增益";
+"audio.voiceActivationOfficialAudit" = "官方语音激活审计";
+"audio.voiceActivationOfficialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"audio.voiceActivationOfficialAuditActionsFormat" = "%d 个官方动作";
+"audio.voiceActivationOfficialAuditModeFormat" = "模式：%@";
+"audio.voiceActivationOfficialAuditProfilesFormat" = "已保存配置：%d";
+"audio.voiceActivationOfficialAuditGateFormat" = "门限：%@";
+"audio.voiceActivationOfficialAuditAttentionFormat" = "需要复核：%@";
+"audio.copyVoiceActivationOfficialAudit" = "复制官方语音激活审计";
 "audio.millisecondsFormat" = "%@ ms";
 "audio.snapshot.transmitModeFormat" = "发言模式：%@";
 "audio.snapshot.voiceActivationFormat" = "语音激活：%@";
