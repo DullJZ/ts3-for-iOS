@@ -1345,6 +1345,48 @@ struct TS3UserSummary: Identifiable {
     let connectedSeconds: Int?
 }
 
+struct TS3TalkRequestQueueSummary {
+    let requestCount: Int
+    let channelCount: Int
+    let messageCount: Int
+    let requesters: [String]
+    let channelIds: [Int]
+
+    init(users: [TS3UserSummary]) {
+        let requestingUsers = users.filter(\.isRequestingTalkPower)
+        requestCount = requestingUsers.count
+        messageCount = requestingUsers.filter { ($0.talkRequestMessage ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }.count
+        requesters = requestingUsers.map(\.nickname).sorted { lhs, rhs in
+            lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+        }
+        channelIds = Array(Set(requestingUsers.map(\.channelId))).sorted()
+        channelCount = channelIds.count
+    }
+
+    var hasRequests: Bool {
+        requestCount > 0
+    }
+
+    var hasMessages: Bool {
+        messageCount > 0
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "requests=\(requestCount)",
+            "channels=\(channelCount)",
+            "messages=\(messageCount)"
+        ]
+        if !channelIds.isEmpty {
+            parts.append("channelIds=\(channelIds.map(String.init).joined(separator: ","))")
+        }
+        if !requesters.isEmpty {
+            parts.append("requesters=\(requesters.joined(separator: ","))")
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3ChatMessageSummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date

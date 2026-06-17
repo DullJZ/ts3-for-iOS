@@ -3924,6 +3924,29 @@ struct TalkRequestsSheet: View {
                     }
                 }
 
+                if queueSummary.hasRequests {
+                    Section(header: Text("channels.talkRequests.batchReview")) {
+                        ServerInfoDetailRow(
+                            label: localized("channels.talkRequests.requestCount"),
+                            value: localized("channels.talkRequests.requestCountFormat", queueSummary.requestCount)
+                        )
+                        ServerInfoDetailRow(
+                            label: localized("channels.talkRequests.channelCount"),
+                            value: localized("channels.talkRequests.channelCountFormat", queueSummary.channelCount)
+                        )
+                        ServerInfoDetailRow(
+                            label: localized("channels.talkRequests.messageCount"),
+                            value: localized("channels.talkRequests.messageCountFormat", queueSummary.messageCount)
+                        )
+                        Text(queueSummary.hasMessages ? localized("channels.talkRequests.hasMessages") : localized("channels.talkRequests.noMessages"))
+                            .font(.caption)
+                            .foregroundColor(queueSummary.hasMessages ? .orange : .secondary)
+                        Button("channels.talkRequests.copyBatchReview") {
+                            TS3PlatformSupport.copyToPasteboard(queueSummary.clipboardSummary)
+                        }
+                    }
+                }
+
                 Section(header: Text("channels.talkRequests.batchActions")) {
                     Button("channels.talkRequests.grantAll") {
                         requestUsers.forEach { model.setTalker(true, for: $0) }
@@ -3960,6 +3983,10 @@ struct TalkRequestsSheet: View {
                 }
                 return lhs.nickname.localizedCaseInsensitiveCompare(rhs.nickname) == .orderedAscending
             }
+    }
+
+    private var queueSummary: TS3TalkRequestQueueSummary {
+        TS3TalkRequestQueueSummary(users: requestUsers)
     }
 
     private var queueSnapshot: String {

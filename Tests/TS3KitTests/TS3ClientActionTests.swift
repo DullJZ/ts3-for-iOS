@@ -3,6 +3,66 @@ import XCTest
 import TS3Kit
 
 final class TS3ClientActionTests: XCTestCase {
+    func testTalkRequestQueueSummaryCountsRequestScope() {
+        let summary = TS3TalkRequestQueueSummary(users: [
+            makeUser(
+                id: 1,
+                uniqueIdentifier: "alpha",
+                nickname: "Alpha",
+                channelId: 10,
+                isRequestingTalkPower: true,
+                talkRequestMessage: "Need to brief"
+            ),
+            makeUser(
+                id: 2,
+                uniqueIdentifier: "beta",
+                nickname: "Beta",
+                channelId: 10,
+                isRequestingTalkPower: true,
+                talkRequestMessage: "   "
+            ),
+            makeUser(
+                id: 3,
+                uniqueIdentifier: "gamma",
+                nickname: "Gamma",
+                channelId: 12,
+                isRequestingTalkPower: false,
+                talkRequestMessage: "ignored"
+            )
+        ])
+
+        XCTAssertEqual(summary.requestCount, 2)
+        XCTAssertEqual(summary.channelCount, 1)
+        XCTAssertEqual(summary.messageCount, 1)
+        XCTAssertEqual(summary.requesters, ["Alpha", "Beta"])
+        XCTAssertEqual(summary.channelIds, [10])
+        XCTAssertTrue(summary.hasRequests)
+        XCTAssertTrue(summary.hasMessages)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "requests=2 | channels=1 | messages=1 | channelIds=10 | requesters=Alpha,Beta"
+        )
+    }
+
+    func testTalkRequestQueueSummaryHandlesEmptyQueue() {
+        let summary = TS3TalkRequestQueueSummary(users: [
+            makeUser(
+                id: 1,
+                uniqueIdentifier: "alpha",
+                nickname: "Alpha",
+                channelId: 10,
+                isRequestingTalkPower: false
+            )
+        ])
+
+        XCTAssertEqual(summary.requestCount, 0)
+        XCTAssertEqual(summary.channelCount, 0)
+        XCTAssertEqual(summary.messageCount, 0)
+        XCTAssertFalse(summary.hasRequests)
+        XCTAssertFalse(summary.hasMessages)
+        XCTAssertEqual(summary.clipboardSummary, "requests=0 | channels=0 | messages=0")
+    }
+
     @MainActor
     func testOnlineUserComplaintAndContactEntryPointsOpenTargetedSheets() {
         let model = TS3AppModel()
@@ -360,11 +420,14 @@ final class TS3ClientActionTests: XCTestCase {
         databaseId: Int? = 44,
         uniqueIdentifier: String?,
         nickname: String = "Tester",
-        isCurrentUser: Bool = false
+        isCurrentUser: Bool = false,
+        channelId: Int = 5,
+        isRequestingTalkPower: Bool = false,
+        talkRequestMessage: String? = nil
     ) -> TS3UserSummary {
         TS3UserSummary(
             id: id,
-            channelId: 5,
+            channelId: channelId,
             databaseId: databaseId,
             uniqueIdentifier: uniqueIdentifier,
             nickname: nickname,
@@ -376,8 +439,8 @@ final class TS3ClientActionTests: XCTestCase {
             isChannelCommander: false,
             isPrioritySpeaker: false,
             isTalker: false,
-            isRequestingTalkPower: false,
-            talkRequestMessage: nil,
+            isRequestingTalkPower: isRequestingTalkPower,
+            talkRequestMessage: talkRequestMessage,
             talkPower: nil,
             channelGroupId: nil,
             serverGroups: [],

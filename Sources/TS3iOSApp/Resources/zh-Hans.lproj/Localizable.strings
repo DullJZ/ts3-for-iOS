@@ -335,6 +335,16 @@
 "channels.talkRequests.empty" = "没有活跃的发言权限请求";
 "channels.talkRequests.grant" = "允许";
 "channels.talkRequests.deny" = "拒绝";
+"channels.talkRequests.batchReview" = "批量审查";
+"channels.talkRequests.requestCount" = "请求";
+"channels.talkRequests.requestCountFormat" = "%d 个请求";
+"channels.talkRequests.channelCount" = "频道";
+"channels.talkRequests.channelCountFormat" = "%d 个频道";
+"channels.talkRequests.messageCount" = "消息";
+"channels.talkRequests.messageCountFormat" = "%d 个带消息";
+"channels.talkRequests.hasMessages" = "批量允许或拒绝前请先检查请求消息。";
+"channels.talkRequests.noMessages" = "没有附带请求消息。";
+"channels.talkRequests.copyBatchReview" = "复制批量审查";
 "channels.talkRequests.batchActions" = "批量操作";
 "channels.talkRequests.grantAll" = "允许所有请求";
 "channels.talkRequests.denyAll" = "拒绝所有请求";

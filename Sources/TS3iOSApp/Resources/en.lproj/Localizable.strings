@@ -335,6 +335,16 @@
 "channels.talkRequests.empty" = "No active talk power requests";
 "channels.talkRequests.grant" = "Grant";
 "channels.talkRequests.deny" = "Deny";
+"channels.talkRequests.batchReview" = "Batch Review";
+"channels.talkRequests.requestCount" = "Requests";
+"channels.talkRequests.requestCountFormat" = "%d requests";
+"channels.talkRequests.channelCount" = "Channels";
+"channels.talkRequests.channelCountFormat" = "%d channels";
+"channels.talkRequests.messageCount" = "Messages";
+"channels.talkRequests.messageCountFormat" = "%d with messages";
+"channels.talkRequests.hasMessages" = "Review request messages before granting or denying all.";
+"channels.talkRequests.noMessages" = "No request messages are attached.";
+"channels.talkRequests.copyBatchReview" = "Copy Batch Review";
 "channels.talkRequests.batchActions" = "Batch Actions";
 "channels.talkRequests.grantAll" = "Grant All Requests";
 "channels.talkRequests.denyAll" = "Deny All Requests";
