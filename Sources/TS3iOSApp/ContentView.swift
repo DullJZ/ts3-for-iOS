@@ -22585,6 +22585,7 @@ private struct PermissionBackupImportSheet: View {
                     }
                     if let plan {
                         let impact = TS3PermissionBackupRestoreImpactSummary(plan: plan)
+                        let officialAudit = TS3PermissionBackupOfficialRestoreAuditSummary(plan: plan)
                         Text(localized("permissions.restore.selectedEntriesFormat", plan.permissionCount))
                             .font(.caption.weight(.semibold))
                         Text(localized(
@@ -22608,6 +22609,22 @@ private struct PermissionBackupImportSheet: View {
                             .foregroundColor(impact.needsAttention ? .orange : .secondary)
                         Button(localized("permissions.restore.copyImpact")) {
                             TS3PlatformSupport.copyToPasteboard(impact.clipboardSummary)
+                        }
+                        .disabled(!impact.hasSelection)
+                        ServerInfoDetailRow(
+                            label: localized("permissions.restore.officialAudit"),
+                            value: localized(
+                                "permissions.restore.officialAuditFormat",
+                                officialAudit.coveredOfficialAreaCount,
+                                officialAudit.officialAreaTotal,
+                                officialAudit.missingOfficialAreaCount
+                            )
+                        )
+                        Text(permissionOfficialRestoreAuditText(officialAudit))
+                            .font(.caption2)
+                            .foregroundColor(officialAudit.needsAttention ? .orange : .secondary)
+                        Button(localized("permissions.restore.copyOfficialAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(officialAudit.clipboardSummary)
                         }
                         .disabled(!impact.hasSelection)
                         if !plan.entries.isEmpty {
@@ -22724,6 +22741,19 @@ private struct PermissionBackupImportSheet: View {
             parts.append(localized("permissions.restore.impactEmpty"))
         }
         return parts.joined(separator: " | ")
+    }
+
+    private func permissionOfficialRestoreAuditText(_ audit: TS3PermissionBackupOfficialRestoreAuditSummary) -> String {
+        [
+            localized("permissions.restore.officialAuditActionsFormat", audit.officialActionCount),
+            localized("permissions.restore.officialAuditSelectedFormat", audit.impact.selectedEntryCount),
+            localized("permissions.restore.officialAuditUncomparableFormat", audit.impact.uncomparableSelectedCount),
+            localized(
+                "permissions.restore.officialAuditInheritanceRiskFormat",
+                audit.impact.negatedEntryCount + audit.impact.inheritanceStopEntryCount
+            ),
+            localized("permissions.restore.officialAuditAttentionFormat", audit.needsAttention ? 1 : 0)
+        ].joined(separator: " | ")
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

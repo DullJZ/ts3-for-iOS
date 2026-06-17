@@ -2939,6 +2939,14 @@
 "permissions.restore.impactTargetUnmatched" = "Target not matched";
 "permissions.restore.impactEmpty" = "No entries selected";
 "permissions.restore.copyImpact" = "Copy Restore Impact";
+"permissions.restore.officialAudit" = "Official Client Audit";
+"permissions.restore.officialAuditFormat" = "%d of %d official areas, %d missing";
+"permissions.restore.officialAuditActionsFormat" = "Actions: %d";
+"permissions.restore.officialAuditSelectedFormat" = "Selected: %d";
+"permissions.restore.officialAuditUncomparableFormat" = "Not comparable: %d";
+"permissions.restore.officialAuditInheritanceRiskFormat" = "Inheritance risks: %d";
+"permissions.restore.officialAuditAttentionFormat" = "Needs attention: %d";
+"permissions.restore.copyOfficialAudit" = "Copy Official Audit";
 "permissions.restore.copyPlan" = "Copy Restore Plan";
 "permissions.restore.exportPlan" = "Export Restore Plan";
 "permissions.restore.entryFlagsFormat" = "Value %d | Negated %@ | Skip %@";

@@ -427,6 +427,78 @@ final class TS3PermissionBackupTests: XCTestCase {
     }
 
     @MainActor
+    func testPermissionBackupOfficialRestoreAuditSummaryCountsOfficialAreas() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50, isNegated: true),
+            makePermission("i_client_kick_power", value: 75, isSkipped: true)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(from: backup, options: .all)
+        let audit = TS3PermissionBackupOfficialRestoreAuditSummary(plan: plan)
+
+        XCTAssertEqual(audit.coveredOfficialAreaCount, 6)
+        XCTAssertEqual(audit.officialAreaTotal, 6)
+        XCTAssertEqual(audit.missingOfficialAreaCount, 0)
+        XCTAssertEqual(audit.officialActionCount, 9)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "scope=Server Group | officialAreas=6/6 | missingOfficialAreas=0 | officialActions=9 | targetMatches=true | selected=2 | changedSelected=1 | newSelected=1 | uncomparableSelected=0 | inheritanceRisks=2 | planCopyExport=true | needsAttention=true"
+        )
+    }
+
+    @MainActor
+    func testPermissionBackupOfficialRestoreAuditSummaryFlagsEmptySelection() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: TS3PermissionBackupRestoreOptions(
+                changedExisting: false,
+                newPermissions: false,
+                restoreWhenTargetCannotBeCompared: false
+            )
+        )
+        let audit = TS3PermissionBackupOfficialRestoreAuditSummary(plan: plan)
+
+        XCTAssertEqual(audit.coveredOfficialAreaCount, 4)
+        XCTAssertEqual(audit.officialAreaTotal, 6)
+        XCTAssertEqual(audit.missingOfficialAreaCount, 2)
+        XCTAssertEqual(audit.officialActionCount, 9)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "scope=Server Group | officialAreas=4/6 | missingOfficialAreas=2 | officialActions=9 | targetMatches=true | selected=0 | changedSelected=0 | newSelected=0 | uncomparableSelected=0 | inheritanceRisks=0 | planCopyExport=true | needsAttention=true"
+        )
+    }
+
+    @MainActor
     func testPermissionBackupExportSanitizesBlankAndDuplicatePermissionNames() throws {
         let source = TS3AppModel()
         source.permissionEditScope = .serverGroup

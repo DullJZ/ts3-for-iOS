@@ -7637,6 +7637,86 @@ struct TS3PermissionBackupRestoreImpactSummary {
     }
 }
 
+struct TS3PermissionBackupOfficialRestoreAuditSummary {
+    let plan: TS3PermissionBackupRestorePlan
+    let impact: TS3PermissionBackupRestoreImpactSummary
+
+    var officialAreaTotal: Int {
+        6
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasTargetScope,
+            hasRestoreSelection,
+            hasConflictComparison,
+            hasInheritanceRiskAudit,
+            hasPlanCopyExport,
+            hasOptionsReview
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        9
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0 || impact.needsAttention
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(plan.scope.title)",
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "targetMatches=\(plan.targetMatchesCurrentSelection ? "true" : "false")",
+            "selected=\(impact.selectedEntryCount)",
+            "changedSelected=\(impact.changedExistingSelectedCount)",
+            "newSelected=\(impact.newPermissionSelectedCount)",
+            "uncomparableSelected=\(impact.uncomparableSelectedCount)",
+            "inheritanceRisks=\(impact.negatedEntryCount + impact.inheritanceStopEntryCount)",
+            "planCopyExport=true",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(plan: TS3PermissionBackupRestorePlan) {
+        self.plan = plan
+        self.impact = TS3PermissionBackupRestoreImpactSummary(plan: plan)
+    }
+
+    private var hasTargetScope: Bool {
+        !plan.targetDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var hasRestoreSelection: Bool {
+        impact.hasSelection
+    }
+
+    private var hasConflictComparison: Bool {
+        plan.targetMatchesCurrentSelection
+            || plan.options.restoreWhenTargetCannotBeCompared
+            || impact.uncomparableSelectedCount > 0
+    }
+
+    private var hasInheritanceRiskAudit: Bool {
+        true
+    }
+
+    private var hasPlanCopyExport: Bool {
+        true
+    }
+
+    private var hasOptionsReview: Bool {
+        plan.options.hasSelectedComparableEntries || plan.options.restoreWhenTargetCannotBeCompared
+    }
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double

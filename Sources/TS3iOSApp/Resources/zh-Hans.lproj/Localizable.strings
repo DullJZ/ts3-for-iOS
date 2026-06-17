@@ -2939,6 +2939,14 @@
 "permissions.restore.impactTargetUnmatched" = "目标不匹配";
 "permissions.restore.impactEmpty" = "没有选择条目";
 "permissions.restore.copyImpact" = "复制恢复影响";
+"permissions.restore.officialAudit" = "官方客户端审计";
+"permissions.restore.officialAuditFormat" = "%d / %d 个官方区域，%d 个缺失";
+"permissions.restore.officialAuditActionsFormat" = "动作：%d";
+"permissions.restore.officialAuditSelectedFormat" = "已选：%d";
+"permissions.restore.officialAuditUncomparableFormat" = "不可比较：%d";
+"permissions.restore.officialAuditInheritanceRiskFormat" = "继承风险：%d";
+"permissions.restore.officialAuditAttentionFormat" = "需要注意：%d";
+"permissions.restore.copyOfficialAudit" = "复制官方审计";
 "permissions.restore.copyPlan" = "复制恢复计划";
 "permissions.restore.exportPlan" = "导出恢复计划";
 "permissions.restore.entryFlagsFormat" = "值 %d | 取反 %@ | 跳过 %@";
