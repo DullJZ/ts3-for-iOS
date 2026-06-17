@@ -25316,6 +25316,21 @@ struct BanListSheet: View {
                             TS3PlatformSupport.copyToPasteboard(visibleBanSummary.clipboardSummary)
                         }
                         .disabled(filteredBanEntries.isEmpty)
+                        ServerInfoDetailRow(
+                            label: localized("ban.officialAudit"),
+                            value: localized(
+                                "ban.officialAuditFormat",
+                                banOfficialAuditSummary.coveredOfficialAreaCount,
+                                banOfficialAuditSummary.officialAreaTotal,
+                                banOfficialAuditSummary.missingOfficialAreaCount
+                            )
+                        )
+                        Text(banOfficialAuditText(banOfficialAuditSummary))
+                            .font(.caption)
+                            .foregroundColor(banOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("ban.copyOfficialAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(banOfficialAuditSummary.clipboardSummary)
+                        }
                         Button(localized("ban.copyVisibleBans")) {
                             TS3PlatformSupport.copyToPasteboard(visibleBanSnapshot)
                         }
@@ -25534,6 +25549,19 @@ struct BanListSheet: View {
         )
     }
 
+    private var banOfficialAuditSummary: TS3BanOfficialCoverageAuditSummary {
+        TS3BanOfficialCoverageAuditSummary(
+            draftCoverageSummary: banDraftCoverageSummary,
+            visibleBanSummary: visibleBanSummary,
+            hasLocalFilters: hasLocalFilters,
+            hasFilterPresets: !model.banFilterPresets.isEmpty,
+            hasBackupCoverage: !model.banEntries.isEmpty,
+            canMutateServer: model.state == .connected,
+            canDeleteVisible: model.state == .connected && !filteredBanEntries.isEmpty,
+            canUseExistingAsDraft: !filteredBanEntries.isEmpty
+        )
+    }
+
     private func banDraftCoverageText(_ summary: TS3BanDraftCoverageSummary) -> String {
         [
             localized("ban.draftCoverageIPFormat", summary.hasIP ? 1 : 0),
@@ -25544,6 +25572,16 @@ struct BanListSheet: View {
             localized("ban.draftCoverageDurationFormat", summary.isPermanent ? localized("ban.draftCoveragePermanent") : localized("ban.draftCoverageTemporary")),
             localized("ban.draftCoverageReasonFormat", summary.hasReason ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func banOfficialAuditText(_ summary: TS3BanOfficialCoverageAuditSummary) -> String {
+        [
+            localized("ban.officialAuditActionsFormat", summary.officialActionCount),
+            localized("ban.officialAuditTargetsFormat", summary.draftCoverageSummary.targetFieldCount),
+            localized("ban.officialAuditVisibleFormat", summary.visibleBanSummary.totalCount),
+            localized("ban.officialAuditTypesFormat", summary.visibleBanSummary.ipRuleCount, summary.visibleBanSummary.uniqueIdentifierRuleCount),
+            localized("ban.officialAuditMutationFormat", summary.canMutateServer ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: " · ")
     }
 
     private func clearForm() {

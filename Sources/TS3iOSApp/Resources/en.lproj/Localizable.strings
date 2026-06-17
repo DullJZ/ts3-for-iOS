@@ -2694,6 +2694,14 @@
 "ban.summaryEnforcementsFormat" = "Enforcements: %d";
 "ban.summaryIdRangeFormat" = "ID range: %@-%@";
 "ban.copyVisibleSummary" = "Copy Visible Ban Summary";
+"ban.officialAudit" = "Official Client Audit";
+"ban.officialAuditFormat" = "%d/%d areas covered, %d missing";
+"ban.officialAuditActionsFormat" = "%d official actions";
+"ban.officialAuditTargetsFormat" = "Draft targets: %d";
+"ban.officialAuditVisibleFormat" = "Visible bans: %d";
+"ban.officialAuditTypesFormat" = "IP rules: %d, UID rules: %d";
+"ban.officialAuditMutationFormat" = "Server mutation: %@";
+"ban.copyOfficialAudit" = "Copy Official Audit";
 "ban.copyVisibleBans" = "Copy Visible Bans";
 "ban.exportVisibleBans" = "Export Visible Bans";
 "ban.exportBackup" = "Export Ban Backup";

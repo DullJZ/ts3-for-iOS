@@ -250,6 +250,97 @@ final class TS3BanBackupTests: XCTestCase {
         )
     }
 
+    func testBanOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let validationMessages = TS3BanDraftValidator.validationMessages(
+            ip: "192.0.2.10",
+            name: "Bad Guest",
+            uniqueIdentifier: "uid-bad",
+            myTeamSpeakId: "myts-id",
+            lastNickname: "Recent Guest",
+            durationSeconds: 600,
+            isCustomDuration: true,
+            reason: "spam"
+        )
+        let draftSummary = TS3BanDraftCoverageSummary(
+            ip: "192.0.2.10",
+            name: "Bad Guest",
+            uniqueIdentifier: "uid-bad",
+            myTeamSpeakId: "myts-id",
+            lastNickname: "Recent Guest",
+            reason: "spam",
+            isPermanent: false,
+            isCustomDuration: true,
+            validationMessages: validationMessages
+        )
+        let visibleSummary = TS3BanListSummary(entries: [
+            makeBan(id: 17, ip: "192.0.2.10", uniqueIdentifier: "uid-bad", durationSeconds: 600, reason: "spam"),
+            makeBan(id: 18, name: "Bad Guest", durationSeconds: 0, reason: "abuse")
+        ])
+
+        let summary = TS3BanOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visibleBanSummary: visibleSummary,
+            hasLocalFilters: true,
+            hasFilterPresets: true,
+            hasBackupCoverage: true,
+            canMutateServer: true,
+            canDeleteVisible: true,
+            canUseExistingAsDraft: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 8)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 8)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 18)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=8/8 | missingOfficialAreas=0 | officialActions=18 | draftTargets=5 | reason=true | duration=temporary | customDuration=true | visibleBans=2 | ipRules=1 | nameRules=1 | uidRules=1 | permanent=1 | temporary=1 | localFilters=true | filterPresets=true | backupCoverage=true | serverMutation=true | deleteVisible=true | existingAsDraft=true | needsAttention=true"
+        )
+    }
+
+    func testBanOfficialCoverageAuditSummaryFlagsMissingWorkflowAreas() {
+        let draftSummary = TS3BanDraftCoverageSummary(
+            ip: "",
+            name: "",
+            uniqueIdentifier: "",
+            myTeamSpeakId: "",
+            lastNickname: "",
+            reason: "",
+            isPermanent: true,
+            isCustomDuration: false,
+            validationMessages: TS3BanDraftValidator.validationMessages(
+                ip: "",
+                name: "",
+                uniqueIdentifier: "",
+                myTeamSpeakId: "",
+                lastNickname: "",
+                durationSeconds: nil,
+                isCustomDuration: false,
+                reason: ""
+            )
+        )
+
+        let summary = TS3BanOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visibleBanSummary: TS3BanListSummary(entries: []),
+            hasLocalFilters: false,
+            hasFilterPresets: false,
+            hasBackupCoverage: false,
+            canMutateServer: false,
+            canDeleteVisible: false,
+            canUseExistingAsDraft: false
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 8)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=0/8 | missingOfficialAreas=8 | officialActions=18 | draftTargets=0 | reason=false | duration=permanent | customDuration=false | visibleBans=0 | ipRules=0 | nameRules=0 | uidRules=0 | permanent=0 | temporary=0 | localFilters=false | filterPresets=false | backupCoverage=false | serverMutation=false | deleteVisible=false | existingAsDraft=false | needsAttention=true"
+        )
+    }
+
     func testBanFilterPresetSummaryAndAccessibilityText() {
         let preset = makeBanFilterPreset(
             id: UUID(),

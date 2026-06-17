@@ -3210,6 +3210,90 @@ struct TS3BanDraftCoverageSummary {
     }
 }
 
+struct TS3BanOfficialCoverageAuditSummary {
+    let draftCoverageSummary: TS3BanDraftCoverageSummary
+    let visibleBanSummary: TS3BanListSummary
+    let hasLocalFilters: Bool
+    let hasFilterPresets: Bool
+    let hasBackupCoverage: Bool
+    let canMutateServer: Bool
+    let canDeleteVisible: Bool
+    let canUseExistingAsDraft: Bool
+
+    var officialAreaTotal: Int {
+        8
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasDraftTargetCoverage,
+            hasDurationAndReasonCoverage,
+            hasVisibleReviewCoverage,
+            hasLocalFilterCoverage,
+            hasFilterPresets,
+            hasBackupCoverage,
+            canMutateServer,
+            canUseExistingAsDraft
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        18
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || draftCoverageSummary.needsAttention
+            || visibleBanSummary.needsAttention
+            || !canDeleteVisible
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "draftTargets=\(draftCoverageSummary.targetFieldCount)",
+            "reason=\(draftCoverageSummary.hasReason ? "true" : "false")",
+            "duration=\(draftCoverageSummary.isPermanent ? "permanent" : "temporary")",
+            "customDuration=\(draftCoverageSummary.hasCustomDuration ? "true" : "false")",
+            "visibleBans=\(visibleBanSummary.totalCount)",
+            "ipRules=\(visibleBanSummary.ipRuleCount)",
+            "nameRules=\(visibleBanSummary.nameRuleCount)",
+            "uidRules=\(visibleBanSummary.uniqueIdentifierRuleCount)",
+            "permanent=\(visibleBanSummary.permanentCount)",
+            "temporary=\(visibleBanSummary.temporaryCount)",
+            "localFilters=\(hasLocalFilters ? "true" : "false")",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "backupCoverage=\(hasBackupCoverage ? "true" : "false")",
+            "serverMutation=\(canMutateServer ? "true" : "false")",
+            "deleteVisible=\(canDeleteVisible ? "true" : "false")",
+            "existingAsDraft=\(canUseExistingAsDraft ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasDraftTargetCoverage: Bool {
+        draftCoverageSummary.targetFieldCount > 0
+    }
+
+    private var hasDurationAndReasonCoverage: Bool {
+        !draftCoverageSummary.isPermanent || draftCoverageSummary.hasCustomDuration || draftCoverageSummary.hasReason
+    }
+
+    private var hasVisibleReviewCoverage: Bool {
+        visibleBanSummary.totalCount > 0
+    }
+
+    private var hasLocalFilterCoverage: Bool {
+        hasLocalFilters
+    }
+}
+
 private struct TS3BanBackupEntry: Codable {
     var ip: String?
     var name: String?
