@@ -7592,6 +7592,60 @@ struct TS3KeyboardShortcutImportPreview {
     }
 }
 
+struct TS3KeyboardShortcutRestoreImpactSummary {
+    let selectedShortcutCount: Int
+    let changedShortcutCount: Int
+    let enabledShortcutCount: Int
+    let disabledShortcutCount: Int
+    let invalidShortcutCount: Int
+    let duplicateShortcutCount: Int
+    let catalystMenuShortcutCount: Int
+    let whisperShortcutCount: Int
+    let unknownShortcutCount: Int
+
+    var hasSelection: Bool {
+        selectedShortcutCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || invalidShortcutCount > 0 || duplicateShortcutCount > 0 || unknownShortcutCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedShortcutCount)",
+            "changed=\(changedShortcutCount)",
+            "enabled=\(enabledShortcutCount)",
+            "disabled=\(disabledShortcutCount)",
+            "invalid=\(invalidShortcutCount)",
+            "duplicate=\(duplicateShortcutCount)",
+            "catalystMenu=\(catalystMenuShortcutCount)",
+            "whisper=\(whisperShortcutCount)",
+            "unknownImported=\(unknownShortcutCount)",
+            "iOSGlobalHotkeys=unavailable",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        preview: TS3KeyboardShortcutImportPreview,
+        selectedActionIds: Set<String>,
+        catalystMenuActionIds: Set<String> = TS3KeyboardShortcutCapabilitySummary.defaultCatalystMenuActionIds,
+        whisperActionIds: Set<String> = TS3KeyboardShortcutCapabilitySummary.defaultWhisperActionIds
+    ) {
+        let selected = preview.candidates.filter { selectedActionIds.contains($0.id) }
+        selectedShortcutCount = selected.count
+        changedShortcutCount = selected.filter(\.isChanged).count
+        enabledShortcutCount = selected.filter(\.isEnabled).count
+        disabledShortcutCount = selected.filter { !$0.isEnabled }.count
+        invalidShortcutCount = selected.filter(\.isInvalid).count
+        duplicateShortcutCount = selected.filter(\.isDuplicate).count
+        catalystMenuShortcutCount = selected.filter { catalystMenuActionIds.contains($0.id) && $0.isEnabled && !$0.isInvalid }.count
+        whisperShortcutCount = selected.filter { whisperActionIds.contains($0.id) && $0.isEnabled && !$0.isInvalid }.count
+        unknownShortcutCount = preview.unknownShortcutCount
+    }
+}
+
 struct TS3WhisperPresetBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: UUID

@@ -268,6 +268,86 @@ final class TS3KeyboardShortcutTests: XCTestCase {
     }
 
     @MainActor
+    func testKeyboardShortcutRestoreImpactSummaryCountsSelectedRisks() throws {
+        let model = TS3AppModel()
+        model.resetKeyboardShortcuts()
+        let backupJSON = """
+        [
+          {
+            "actionId": "open-chat",
+            "group": "Messaging",
+            "action": "Open Chat",
+            "defaultKeys": "Command-Shift-T",
+            "keys": "Command-Option-T",
+            "isEnabled": true
+          },
+          {
+            "actionId": "open-events",
+            "group": "Messaging",
+            "action": "Open Events",
+            "defaultKeys": "Command-Shift-E",
+            "keys": "Command-Option-T",
+            "isEnabled": true
+          },
+          {
+            "actionId": "toggle-talk",
+            "group": "Voice",
+            "action": "Talk / Stop Talking",
+            "defaultKeys": "Command-T",
+            "keys": "Hyper-T",
+            "isEnabled": true
+          },
+          {
+            "actionId": "toggle-output-muted",
+            "group": "Voice",
+            "action": "Mute / Unmute Sound",
+            "defaultKeys": "Command-Shift-S",
+            "keys": "Command-Shift-S",
+            "isEnabled": false
+          },
+          {
+            "actionId": "start-whisper-activation",
+            "group": "Voice",
+            "action": "Start Temporary Whisper",
+            "defaultKeys": "Command-Option-H",
+            "keys": "Command-Option-H",
+            "isEnabled": true
+          },
+          {
+            "actionId": "legacy-action",
+            "group": "Legacy",
+            "action": "Legacy Action",
+            "defaultKeys": "Command-L",
+            "keys": "Command-L",
+            "isEnabled": true
+          }
+        ]
+        """
+
+        let preview = try model.keyboardShortcutsImportPreview(from: Data(backupJSON.utf8))
+        let summary = TS3KeyboardShortcutRestoreImpactSummary(
+            preview: preview,
+            selectedActionIds: ["open-chat", "open-events", "toggle-talk", "toggle-output-muted", "start-whisper-activation"]
+        )
+
+        XCTAssertEqual(summary.selectedShortcutCount, 5)
+        XCTAssertEqual(summary.changedShortcutCount, 4)
+        XCTAssertEqual(summary.enabledShortcutCount, 4)
+        XCTAssertEqual(summary.disabledShortcutCount, 1)
+        XCTAssertEqual(summary.invalidShortcutCount, 1)
+        XCTAssertEqual(summary.duplicateShortcutCount, 2)
+        XCTAssertEqual(summary.catalystMenuShortcutCount, 3)
+        XCTAssertEqual(summary.whisperShortcutCount, 1)
+        XCTAssertEqual(summary.unknownShortcutCount, 1)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=5 | changed=4 | enabled=4 | disabled=1 | invalid=1 | duplicate=2 | catalystMenu=3 | whisper=1 | unknownImported=1 | iOSGlobalHotkeys=unavailable | needsAttention=true"
+        )
+    }
+
+    @MainActor
     func testKeyboardShortcutImportCanRestoreSelectedActionsOnly() throws {
         let model = TS3AppModel()
         model.resetKeyboardShortcuts()

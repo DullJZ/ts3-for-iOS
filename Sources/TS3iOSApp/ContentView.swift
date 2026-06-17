@@ -784,6 +784,10 @@ private struct ShortcutImportPreviewSheet: View {
         _selectedActionIds = State(initialValue: Set(preview.candidates.map(\.id)))
     }
 
+    private var restoreImpactSummary: TS3KeyboardShortcutRestoreImpactSummary {
+        TS3KeyboardShortcutRestoreImpactSummary(preview: preview, selectedActionIds: selectedActionIds)
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -804,6 +808,22 @@ private struct ShortcutImportPreviewSheet: View {
                                 selectedActionIds = isSelected ? Set(preview.candidates.map(\.id)) : []
                             }
                         ))
+                        ServerInfoDetailRow(
+                            label: NSLocalizedString("shortcuts.restoreImpact", comment: ""),
+                            value: String(
+                                format: NSLocalizedString("shortcuts.restoreImpactFormat", comment: ""),
+                                restoreImpactSummary.selectedShortcutCount,
+                                restoreImpactSummary.changedShortcutCount,
+                                restoreImpactSummary.disabledShortcutCount
+                            )
+                        )
+                        Text(shortcutRestoreImpactText(restoreImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(restoreImpactSummary.needsAttention ? .orange : .secondary)
+                        Button("shortcuts.copyRestoreImpact") {
+                            TS3PlatformSupport.copyToPasteboard(restoreImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!restoreImpactSummary.hasSelection)
                         ForEach(preview.candidates) { candidate in
                             Toggle(isOn: Binding(
                                 get: { selectedActionIds.contains(candidate.id) },
@@ -899,6 +919,23 @@ private struct ShortcutImportPreviewSheet: View {
         ]
         .compactMap { $0 }
         .joined(separator: " · ")
+    }
+
+    private func shortcutRestoreImpactText(_ summary: TS3KeyboardShortcutRestoreImpactSummary) -> String {
+        [
+            String(
+                format: NSLocalizedString("shortcuts.restoreImpactIssuesFormat", comment: ""),
+                summary.invalidShortcutCount,
+                summary.duplicateShortcutCount,
+                summary.unknownShortcutCount
+            ),
+            String(
+                format: NSLocalizedString("shortcuts.restoreImpactPlatformFormat", comment: ""),
+                summary.catalystMenuShortcutCount,
+                summary.whisperShortcutCount
+            ),
+            NSLocalizedString("shortcuts.restoreImpactIOSGlobalHotkeys", comment: "")
+        ].joined(separator: " | ")
     }
 }
 

@@ -253,6 +253,12 @@
 "shortcuts.copyImportSummary" = "复制快捷键导入摘要";
 "shortcuts.restoreEntries" = "恢复条目";
 "shortcuts.selectAll" = "全选";
+"shortcuts.restoreImpact" = "恢复影响";
+"shortcuts.restoreImpactFormat" = "%d 个已选，%d 个变更，%d 个禁用";
+"shortcuts.restoreImpactIssuesFormat" = "无效/重复/未知：%d/%d/%d";
+"shortcuts.restoreImpactPlatformFormat" = "Catalyst 菜单/Whisper：%d/%d";
+"shortcuts.restoreImpactIOSGlobalHotkeys" = "iOS 不支持全局热键";
+"shortcuts.copyRestoreImpact" = "复制恢复影响";
 "shortcuts.changedShortcuts" = "变更的快捷键";
 "shortcuts.warnings" = "警告";
 "shortcuts.ignoredEntries" = "忽略的条目";

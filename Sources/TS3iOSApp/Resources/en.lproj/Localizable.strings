@@ -253,6 +253,12 @@
 "shortcuts.copyImportSummary" = "Copy Shortcut Import Summary";
 "shortcuts.restoreEntries" = "Restore Entries";
 "shortcuts.selectAll" = "Select All";
+"shortcuts.restoreImpact" = "Restore Impact";
+"shortcuts.restoreImpactFormat" = "%d selected, %d changed, %d disabled";
+"shortcuts.restoreImpactIssuesFormat" = "Invalid/duplicate/unknown: %d/%d/%d";
+"shortcuts.restoreImpactPlatformFormat" = "Catalyst menu/whisper: %d/%d";
+"shortcuts.restoreImpactIOSGlobalHotkeys" = "iOS global hotkeys unavailable";
+"shortcuts.copyRestoreImpact" = "Copy Restore Impact";
 "shortcuts.changedShortcuts" = "Changed Shortcuts";
 "shortcuts.warnings" = "Warnings";
 "shortcuts.ignoredEntries" = "Ignored Entries";
