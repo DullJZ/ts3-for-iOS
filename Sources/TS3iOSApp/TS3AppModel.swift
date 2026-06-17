@@ -1015,6 +1015,62 @@ struct TS3ChannelEditorReviewSummary {
     }
 }
 
+enum TS3ChannelEditorOfficialImpactArea: String, CaseIterable, Codable {
+    case structureVisibility
+    case accessPermissions
+    case voiceCodec
+    case capacityLimits
+}
+
+struct TS3ChannelEditorOfficialImpactSummary {
+    let areaChangeCounts: [TS3ChannelEditorOfficialImpactArea: Int]
+    let validationIssueCount: Int
+    let codecWarningCount: Int
+    let sensitiveChangeCount: Int
+
+    var totalChangeCount: Int {
+        areaChangeCounts.values.reduce(0, +)
+    }
+
+    var affectedAreaCount: Int {
+        areaChangeCounts.values.filter { $0 > 0 }.count
+    }
+
+    var needsAttention: Bool {
+        totalChangeCount > 0 || validationIssueCount > 0 || codecWarningCount > 0 || sensitiveChangeCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3ChannelEditorOfficialImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaChangeCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "officialChanges=\(totalChangeCount)",
+            "affectedOfficialAreas=\(affectedAreaCount)",
+            "sensitiveChanges=\(sensitiveChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "codecWarnings=\(codecWarningCount)",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        areaChangeCounts: [TS3ChannelEditorOfficialImpactArea: Int],
+        validationIssueCount: Int,
+        codecWarningCount: Int,
+        sensitiveChangeCount: Int
+    ) {
+        self.areaChangeCounts = areaChangeCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.codecWarningCount = max(0, codecWarningCount)
+        self.sensitiveChangeCount = max(0, sensitiveChangeCount)
+    }
+}
+
 enum TS3ServerSettingsImpactArea: String, CaseIterable, Codable {
     case general
     case hostBranding

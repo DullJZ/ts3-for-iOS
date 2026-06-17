@@ -635,6 +635,16 @@
 "channelEditor.validationIssueCountFormat" = "%d 个校验问题";
 "channelEditor.codecWarningCountFormat" = "%d 个编解码警告";
 "channelEditor.copyImpactSummary" = "复制影响摘要";
+"channelEditor.officialImpactSummary" = "官方影响审计";
+"channelEditor.officialImpactSummaryFormat" = "%d 项变化，%d 个官方区域，%d 项敏感，%d 个编解码警告";
+"channelEditor.officialImpactNoChanges" = "没有官方客户端频道影响";
+"channelEditor.officialImpactAreaFormat" = "%@: %d 项变化";
+"channelEditor.officialImpactAreaClipboardFormat" = "%@: %d 项变化";
+"channelEditor.copyOfficialImpactSummary" = "复制官方影响审计";
+"channelEditor.officialImpact.structureVisibility" = "结构与可见性";
+"channelEditor.officialImpact.accessPermissions" = "访问与权限";
+"channelEditor.officialImpact.voiceCodec" = "语音与编解码";
+"channelEditor.officialImpact.capacityLimits" = "容量限制";
 "channelEditor.reviewSummary" = "保存复核";
 "channelEditor.reviewSummaryFormat" = "%d 项敏感变更，%d 个校验问题，%d 个编解码警告";
 "channelEditor.reviewNoAttention" = "没有敏感频道设置变更";

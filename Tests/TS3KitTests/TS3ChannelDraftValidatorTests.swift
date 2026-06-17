@@ -343,6 +343,54 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorOfficialImpactSummaryCountsAreasAndWarnings() {
+        let summary = TS3ChannelEditorOfficialImpactSummary(
+            areaChangeCounts: [
+                .structureVisibility: 3,
+                .accessPermissions: 2,
+                .voiceCodec: 1,
+                .capacityLimits: 0
+            ],
+            validationIssueCount: 1,
+            codecWarningCount: 2,
+            sensitiveChangeCount: 4
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 6)
+        XCTAssertEqual(summary.affectedAreaCount, 3)
+        XCTAssertEqual(summary.validationIssueCount, 1)
+        XCTAssertEqual(summary.codecWarningCount, 2)
+        XCTAssertEqual(summary.sensitiveChangeCount, 4)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialChanges=6 | affectedOfficialAreas=3 | sensitiveChanges=4 | validationIssues=1 | codecWarnings=2 | areas=structureVisibility:3,accessPermissions:2,voiceCodec:1 | needsAttention=true"
+        )
+    }
+
+    func testChannelEditorOfficialImpactSummaryOmitsEmptyAreasAndClampsCounts() {
+        let summary = TS3ChannelEditorOfficialImpactSummary(
+            areaChangeCounts: [
+                .structureVisibility: 0,
+                .accessPermissions: -1
+            ],
+            validationIssueCount: -2,
+            codecWarningCount: -3,
+            sensitiveChangeCount: -4
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.affectedAreaCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.codecWarningCount, 0)
+        XCTAssertEqual(summary.sensitiveChangeCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialChanges=0 | affectedOfficialAreas=0 | sensitiveChanges=0 | validationIssues=0 | codecWarnings=0 | areas=none | needsAttention=false"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",

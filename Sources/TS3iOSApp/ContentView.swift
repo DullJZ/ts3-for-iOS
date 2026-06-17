@@ -29338,6 +29338,23 @@ struct ChannelEditorSheet: View {
                             }
                             .disabled(!channelImpactSummary.needsReview)
                             ServerInfoDetailRow(
+                                label: localized("channelEditor.officialImpactSummary"),
+                                value: localized(
+                                    "channelEditor.officialImpactSummaryFormat",
+                                    channelOfficialImpactSummary.totalChangeCount,
+                                    channelOfficialImpactSummary.affectedAreaCount,
+                                    channelOfficialImpactSummary.sensitiveChangeCount,
+                                    channelOfficialImpactSummary.codecWarningCount
+                                )
+                            )
+                            Text(channelOfficialImpactSummaryText)
+                                .font(.caption)
+                                .foregroundColor(channelOfficialImpactSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("channelEditor.copyOfficialImpactSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(channelOfficialImpactSummaryClipboard)
+                            }
+                            .disabled(!channelOfficialImpactSummary.needsAttention)
+                            ServerInfoDetailRow(
                                 label: localized("channelEditor.reviewSummary"),
                                 value: localized(
                                     "channelEditor.reviewSummaryFormat",
@@ -29902,6 +29919,32 @@ struct ChannelEditorSheet: View {
         channelReviewSummary(for: currentDraft)
     }
 
+    private var channelOfficialImpactSummary: TS3ChannelEditorOfficialImpactSummary {
+        channelOfficialImpactSummary(for: currentDraft)
+    }
+
+    private var channelOfficialImpactSummaryText: String {
+        channelOfficialImpactSummaryText(for: channelOfficialImpactSummary)
+    }
+
+    private var channelOfficialImpactSummaryClipboard: String {
+        let summary = channelOfficialImpactSummary
+        let affectedAreas = TS3ChannelEditorOfficialImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
+                return localized("channelEditor.officialImpactAreaClipboardFormat", title(for: area), count)
+            }
+            .joined(separator: "\n")
+        return [
+            localized("channelEditor.officialImpactSummary"),
+            summary.clipboardSummary,
+            affectedAreas
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
+    }
+
     private var channelReviewSummaryText: String {
         channelReviewSummaryText(for: channelReviewSummary)
     }
@@ -30012,6 +30055,62 @@ struct ChannelEditorSheet: View {
         )
     }
 
+    private func channelOfficialImpactSummary(for draft: ChannelDraft) -> TS3ChannelEditorOfficialImpactSummary {
+        let reviewSummary = channelReviewSummary(for: draft)
+        return TS3ChannelEditorOfficialImpactSummary(
+            areaChangeCounts: channelOfficialImpactAreaChangeCounts(for: draft),
+            validationIssueCount: reviewSummary.validationIssueCount,
+            codecWarningCount: reviewSummary.codecWarningCount,
+            sensitiveChangeCount: reviewSummary.sensitiveChangeCount
+        )
+    }
+
+    private func channelOfficialImpactAreaChangeCounts(for draft: ChannelDraft) -> [TS3ChannelEditorOfficialImpactArea: Int] {
+        guard case let .edit(channel) = mode else { return [:] }
+        return [
+            .structureVisibility: structureVisibilityImpactRows(for: channel, draft: draft).count,
+            .accessPermissions: accessPermissionImpactRows(for: channel, draft: draft).count,
+            .voiceCodec: voiceCodecImpactRows(for: channel, draft: draft).count,
+            .capacityLimits: capacityLimitImpactRows(for: channel, draft: draft).count
+        ]
+    }
+
+    private func structureVisibilityImpactRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        [
+            changeRow(label: localized("channelEditor.name"), current: channel.name, draft: draft.name),
+            changeRow(label: localized("channelEditor.phoneticName"), current: channel.phoneticName, draft: draft.phoneticName),
+            changeRow(label: localized("channelEditor.topic"), current: channel.topic, draft: draft.topic),
+            changeRow(label: localized("channelEditor.description"), current: channel.description, draft: draft.description),
+            changeRow(label: localized("channelEditor.filePath"), current: channel.filePath, draft: draft.filePath),
+            changeRow(label: localized("channelEditor.type"), current: channelTypeTitle(channelType(for: channel)), draft: channelTypeTitle(draft.channelType)),
+            changeRow(label: localized("channelEditor.defaultChannel"), current: boolTitle(channel.isDefault), draft: boolTitle(draft.isDefault)),
+            changeRow(label: localized("channelEditor.position"), current: positionTitle(for: normalizedOrderId(channel.order).map(String.init) ?? ""), draft: positionTitle(for: draft.order ?? "")),
+            changeRow(label: localized("channelEditor.iconId"), current: channel.iconId, draft: draft.iconId),
+            changeRow(label: localized("channelEditor.bannerGraphicURL"), current: channel.bannerGraphicsURL, draft: draft.bannerGraphicsURL),
+            changeRow(label: localized("channelEditor.bannerMode"), current: channel.bannerMode.map(bannerModeTitle), draft: bannerModeTitle(draft.bannerMode ?? ""))
+        ].compactMap { $0 }
+    }
+
+    private func accessPermissionImpactRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        [
+            passwordChangeRow(for: channel, draft: draft),
+            changeRow(label: localized("channelEditor.neededTalkPower"), current: channel.neededTalkPower, draft: draft.neededTalkPower),
+            changeRow(label: localized("channelEditor.neededJoinPower"), current: channel.neededJoinPower, draft: draft.neededJoinPower),
+            changeRow(label: localized("channelEditor.neededSubscribePower"), current: channel.neededSubscribePower, draft: draft.neededSubscribePower),
+            changeRow(label: localized("channelEditor.neededModifyPower"), current: channel.neededModifyPower, draft: draft.neededModifyPower),
+            changeRow(label: localized("channelEditor.neededDeletePower"), current: channel.neededDeletePower, draft: draft.neededDeletePower),
+            changeRow(label: localized("channelEditor.neededDescriptionViewPower"), current: channel.neededDescriptionViewPower, draft: draft.neededDescriptionViewPower)
+        ].compactMap { $0 }
+    }
+
+    private func voiceCodecImpactRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        voiceChangeRows(for: channel, draft: draft)
+    }
+
+    private func capacityLimitImpactRows(for channel: TS3ChannelSummary, draft: ChannelDraft) -> [String] {
+        limitChangeRows(for: channel, draft: draft)
+    }
+
     private func channelReviewItems(for draft: ChannelDraft) -> [String] {
         guard case let .edit(channel) = mode else { return [] }
         return [
@@ -30085,6 +30184,24 @@ struct ChannelEditorSheet: View {
         return parts.joined(separator: " · ")
     }
 
+    private func channelOfficialImpactSummaryText(for summary: TS3ChannelEditorOfficialImpactSummary) -> String {
+        guard summary.needsAttention else { return localized("channelEditor.officialImpactNoChanges") }
+        var parts = TS3ChannelEditorOfficialImpactArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
+            return localized("channelEditor.officialImpactAreaFormat", title(for: area), count)
+        }
+        if summary.sensitiveChangeCount > 0 {
+            parts.append(localized("channelEditor.sensitiveChangeCountFormat", summary.sensitiveChangeCount))
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("channelEditor.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.codecWarningCount > 0 {
+            parts.append(localized("channelEditor.codecWarningCountFormat", summary.codecWarningCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
     private func title(for area: TS3ChannelEditorImpactArea) -> String {
         switch area {
         case .channel:
@@ -30095,6 +30212,19 @@ struct ChannelEditorSheet: View {
             return localized("channelEditor.permissionGates")
         case .limits:
             return localized("channelEditor.limits")
+        }
+    }
+
+    private func title(for area: TS3ChannelEditorOfficialImpactArea) -> String {
+        switch area {
+        case .structureVisibility:
+            return localized("channelEditor.officialImpact.structureVisibility")
+        case .accessPermissions:
+            return localized("channelEditor.officialImpact.accessPermissions")
+        case .voiceCodec:
+            return localized("channelEditor.officialImpact.voiceCodec")
+        case .capacityLimits:
+            return localized("channelEditor.officialImpact.capacityLimits")
         }
     }
 

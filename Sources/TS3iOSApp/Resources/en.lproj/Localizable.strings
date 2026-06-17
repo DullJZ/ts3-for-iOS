@@ -635,6 +635,16 @@
 "channelEditor.validationIssueCountFormat" = "%d validation issues";
 "channelEditor.codecWarningCountFormat" = "%d codec warnings";
 "channelEditor.copyImpactSummary" = "Copy Impact Summary";
+"channelEditor.officialImpactSummary" = "Official Impact Audit";
+"channelEditor.officialImpactSummaryFormat" = "%d changes, %d official areas, %d sensitive, %d codec warnings";
+"channelEditor.officialImpactNoChanges" = "No official-client channel impacts";
+"channelEditor.officialImpactAreaFormat" = "%@: %d changes";
+"channelEditor.officialImpactAreaClipboardFormat" = "%@: %d changes";
+"channelEditor.copyOfficialImpactSummary" = "Copy Official Impact Audit";
+"channelEditor.officialImpact.structureVisibility" = "Structure and Visibility";
+"channelEditor.officialImpact.accessPermissions" = "Access and Permissions";
+"channelEditor.officialImpact.voiceCodec" = "Voice and Codec";
+"channelEditor.officialImpact.capacityLimits" = "Capacity Limits";
 "channelEditor.reviewSummary" = "Save Review";
 "channelEditor.reviewSummaryFormat" = "%d sensitive changes, %d validation issues, %d codec warnings";
 "channelEditor.reviewNoAttention" = "No sensitive channel setting changes";
