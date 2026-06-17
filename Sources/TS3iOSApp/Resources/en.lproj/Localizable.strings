@@ -1959,6 +1959,14 @@
 "audio.voiceActivationOfficialAuditGateFormat" = "Gate: %@";
 "audio.voiceActivationOfficialAuditAttentionFormat" = "Needs review: %@";
 "audio.copyVoiceActivationOfficialAudit" = "Copy Official Voice Activation Audit";
+"audio.deviceProfileOfficialAudit" = "Official Audio Device Audit";
+"audio.deviceProfileOfficialAuditFormat" = "%d/%d areas covered, %d missing";
+"audio.deviceProfileOfficialAuditActionsFormat" = "%d official actions";
+"audio.deviceProfileOfficialAuditInputsFormat" = "Input devices: %d";
+"audio.deviceProfileOfficialAuditProfilesFormat" = "Saved profiles: %d";
+"audio.deviceProfileOfficialAuditPlaybackFormat" = "Playback overrides: %d";
+"audio.deviceProfileOfficialAuditRouteNotesFormat" = "Route notes: %d";
+"audio.copyDeviceProfileOfficialAudit" = "Copy Official Audio Device Audit";
 "audio.millisecondsFormat" = "%@ ms";
 "audio.snapshot.transmitModeFormat" = "Transmit Mode: %@";
 "audio.snapshot.voiceActivationFormat" = "Voice Activation: %@";

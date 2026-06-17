@@ -32460,6 +32460,24 @@ struct AudioSettingsSheet: View {
         )
     }
 
+    private var audioDeviceProfileOfficialAuditSummary: TS3AudioDeviceProfileOfficialCoverageAuditSummary {
+        TS3AudioDeviceProfileOfficialCoverageAuditSummary(
+            inputDeviceCount: model.audioInputDevices.count,
+            savedProfileCount: model.audioProfiles.count,
+            userPlaybackOverrideCount: model.userPlaybackPreferenceSummaries.count,
+            routeAvailabilityNoteCount: model.audioRouteAvailabilityNotes.count,
+            hasRouteVisibility: true,
+            hasInputDeviceSelection: true,
+            hasRouteRefresh: true,
+            hasSpeakerPreference: true,
+            hasProfileSaveApply: true,
+            hasProfileImportExport: true,
+            hasUserPlaybackOverrides: true,
+            hasUserPlaybackImportExport: true,
+            hasDiagnosticsSnapshot: true
+        )
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -32614,6 +32632,21 @@ struct AudioSettingsSheet: View {
                         .foregroundColor(voiceActivationOfficialAuditSummary.needsAttention ? .orange : .secondary)
                     Button(localized("audio.copyVoiceActivationOfficialAudit")) {
                         TS3PlatformSupport.copyToPasteboard(voiceActivationOfficialAuditSummary.clipboardSummary)
+                    }
+                    ServerInfoDetailRow(
+                        label: localized("audio.deviceProfileOfficialAudit"),
+                        value: localized(
+                            "audio.deviceProfileOfficialAuditFormat",
+                            audioDeviceProfileOfficialAuditSummary.coveredOfficialAreaCount,
+                            audioDeviceProfileOfficialAuditSummary.officialAreaTotal,
+                            audioDeviceProfileOfficialAuditSummary.missingOfficialAreaCount
+                        )
+                    )
+                    Text(audioDeviceProfileOfficialAuditText)
+                        .font(.caption)
+                        .foregroundColor(audioDeviceProfileOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("audio.copyDeviceProfileOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(audioDeviceProfileOfficialAuditSummary.clipboardSummary)
                     }
                     ServerInfoDetailRow(label: localized("audio.ping"), value: model.connectionInfo.ping.map { localized("audio.millisecondsFormat", Self.decimalText($0)) })
                     ServerInfoDetailRow(label: localized("audio.packetLoss"), value: model.connectionInfo.packetLossTotal.map(Self.lossText))
@@ -33120,6 +33153,16 @@ struct AudioSettingsSheet: View {
             localized("audio.voiceActivationOfficialAuditProfilesFormat", voiceActivationOfficialAuditSummary.savedProfileCount),
             localized("audio.voiceActivationOfficialAuditGateFormat", model.isVoiceActivationTriggered ? localized("audio.open") : localized("audio.closed")),
             localized("audio.voiceActivationOfficialAuditAttentionFormat", voiceActivationOfficialAuditSummary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: " · ")
+    }
+
+    private var audioDeviceProfileOfficialAuditText: String {
+        [
+            localized("audio.deviceProfileOfficialAuditActionsFormat", audioDeviceProfileOfficialAuditSummary.officialActionCount),
+            localized("audio.deviceProfileOfficialAuditInputsFormat", audioDeviceProfileOfficialAuditSummary.inputDeviceCount),
+            localized("audio.deviceProfileOfficialAuditProfilesFormat", audioDeviceProfileOfficialAuditSummary.savedProfileCount),
+            localized("audio.deviceProfileOfficialAuditPlaybackFormat", audioDeviceProfileOfficialAuditSummary.userPlaybackOverrideCount),
+            localized("audio.deviceProfileOfficialAuditRouteNotesFormat", audioDeviceProfileOfficialAuditSummary.routeAvailabilityNoteCount)
         ].joined(separator: " · ")
     }
 

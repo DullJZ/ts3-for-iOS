@@ -8526,6 +8526,74 @@ struct TS3AudioProfileImportImpactSummary {
     }
 }
 
+struct TS3AudioDeviceProfileOfficialCoverageAuditSummary {
+    let inputDeviceCount: Int
+    let savedProfileCount: Int
+    let userPlaybackOverrideCount: Int
+    let routeAvailabilityNoteCount: Int
+    let hasRouteVisibility: Bool
+    let hasInputDeviceSelection: Bool
+    let hasRouteRefresh: Bool
+    let hasSpeakerPreference: Bool
+    let hasProfileSaveApply: Bool
+    let hasProfileImportExport: Bool
+    let hasUserPlaybackOverrides: Bool
+    let hasUserPlaybackImportExport: Bool
+    let hasDiagnosticsSnapshot: Bool
+
+    var officialAreaTotal: Int {
+        9
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasRouteVisibility,
+            hasInputDeviceSelection,
+            hasRouteRefresh,
+            hasSpeakerPreference,
+            hasProfileSaveApply,
+            hasProfileImportExport,
+            hasUserPlaybackOverrides,
+            hasUserPlaybackImportExport,
+            hasDiagnosticsSnapshot
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        21
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0 || routeAvailabilityNoteCount > 0 || inputDeviceCount == 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "inputDevices=\(inputDeviceCount)",
+            "savedProfiles=\(savedProfileCount)",
+            "userPlaybackOverrideCount=\(userPlaybackOverrideCount)",
+            "routeNotes=\(routeAvailabilityNoteCount)",
+            "routeVisibility=\(hasRouteVisibility ? "true" : "false")",
+            "inputSelection=\(hasInputDeviceSelection ? "true" : "false")",
+            "routeRefresh=\(hasRouteRefresh ? "true" : "false")",
+            "speakerPreference=\(hasSpeakerPreference ? "true" : "false")",
+            "profileSaveApply=\(hasProfileSaveApply ? "true" : "false")",
+            "profileImportExport=\(hasProfileImportExport ? "true" : "false")",
+            "userPlaybackOverrides=\(hasUserPlaybackOverrides ? "true" : "false")",
+            "userPlaybackImportExport=\(hasUserPlaybackImportExport ? "true" : "false")",
+            "diagnostics=\(hasDiagnosticsSnapshot ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3KeyboardShortcutBinding: Identifiable, Codable {
     var actionId: String
     var group: String

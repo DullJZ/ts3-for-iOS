@@ -176,6 +176,60 @@ final class TS3AudioProfileTests: XCTestCase {
         )
     }
 
+    func testAudioDeviceProfileOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let summary = TS3AudioDeviceProfileOfficialCoverageAuditSummary(
+            inputDeviceCount: 2,
+            savedProfileCount: 3,
+            userPlaybackOverrideCount: 4,
+            routeAvailabilityNoteCount: 0,
+            hasRouteVisibility: true,
+            hasInputDeviceSelection: true,
+            hasRouteRefresh: true,
+            hasSpeakerPreference: true,
+            hasProfileSaveApply: true,
+            hasProfileImportExport: true,
+            hasUserPlaybackOverrides: true,
+            hasUserPlaybackImportExport: true,
+            hasDiagnosticsSnapshot: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 9)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 9)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 21)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=21 | inputDevices=2 | savedProfiles=3 | userPlaybackOverrideCount=4 | routeNotes=0 | routeVisibility=true | inputSelection=true | routeRefresh=true | speakerPreference=true | profileSaveApply=true | profileImportExport=true | userPlaybackOverrides=true | userPlaybackImportExport=true | diagnostics=true | needsAttention=false"
+        )
+    }
+
+    func testAudioDeviceProfileOfficialCoverageAuditSummaryFlagsRouteLimitationsAndMissingAreas() {
+        let summary = TS3AudioDeviceProfileOfficialCoverageAuditSummary(
+            inputDeviceCount: 0,
+            savedProfileCount: 0,
+            userPlaybackOverrideCount: 0,
+            routeAvailabilityNoteCount: 2,
+            hasRouteVisibility: true,
+            hasInputDeviceSelection: false,
+            hasRouteRefresh: true,
+            hasSpeakerPreference: false,
+            hasProfileSaveApply: false,
+            hasProfileImportExport: false,
+            hasUserPlaybackOverrides: true,
+            hasUserPlaybackImportExport: false,
+            hasDiagnosticsSnapshot: true
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 4)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=4/9 | missingOfficialAreas=5 | officialActions=21 | inputDevices=0 | savedProfiles=0 | userPlaybackOverrideCount=0 | routeNotes=2 | routeVisibility=true | inputSelection=false | routeRefresh=true | speakerPreference=false | profileSaveApply=false | profileImportExport=false | userPlaybackOverrides=true | userPlaybackImportExport=false | diagnostics=true | needsAttention=true"
+        )
+    }
+
     func testAudioProfileSummariesUseAuditableValues() {
         let profile = TS3AudioProfile(
             id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,

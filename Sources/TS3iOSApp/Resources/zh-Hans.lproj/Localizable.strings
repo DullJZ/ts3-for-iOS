@@ -1959,6 +1959,14 @@
 "audio.voiceActivationOfficialAuditGateFormat" = "门限：%@";
 "audio.voiceActivationOfficialAuditAttentionFormat" = "需要复核：%@";
 "audio.copyVoiceActivationOfficialAudit" = "复制官方语音激活审计";
+"audio.deviceProfileOfficialAudit" = "官方音频设备审计";
+"audio.deviceProfileOfficialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"audio.deviceProfileOfficialAuditActionsFormat" = "%d 个官方动作";
+"audio.deviceProfileOfficialAuditInputsFormat" = "输入设备：%d";
+"audio.deviceProfileOfficialAuditProfilesFormat" = "已保存配置：%d";
+"audio.deviceProfileOfficialAuditPlaybackFormat" = "播放覆盖：%d";
+"audio.deviceProfileOfficialAuditRouteNotesFormat" = "路由备注：%d";
+"audio.copyDeviceProfileOfficialAudit" = "复制官方音频设备审计";
 "audio.millisecondsFormat" = "%@ ms";
 "audio.snapshot.transmitModeFormat" = "发言模式：%@";
 "audio.snapshot.voiceActivationFormat" = "语音激活：%@";
