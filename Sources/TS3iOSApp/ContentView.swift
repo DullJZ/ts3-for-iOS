@@ -17870,6 +17870,22 @@ struct ServerSettingsEditorSheet: View {
                     }
                     .disabled(!settingsImpactSummary.needsReview)
                     ServerInfoDetailRow(
+                        label: localized("serverSettings.officialImpactSummary"),
+                        value: localized(
+                            "serverSettings.officialImpactSummaryFormat",
+                            settingsOfficialImpactSummary.totalChangeCount,
+                            settingsOfficialImpactSummary.affectedAreaCount,
+                            settingsOfficialImpactSummary.sensitiveChangeCount
+                        )
+                    )
+                    Text(settingsOfficialImpactSummaryText)
+                        .font(.caption)
+                        .foregroundColor(settingsOfficialImpactSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverSettings.copyOfficialImpactSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsOfficialImpactSummaryClipboard)
+                    }
+                    .disabled(!settingsOfficialImpactSummary.needsAttention)
+                    ServerInfoDetailRow(
                         label: localized("serverSettings.reviewSummary"),
                         value: localized(
                             "serverSettings.reviewSummaryFormat",
@@ -18394,6 +18410,33 @@ struct ServerSettingsEditorSheet: View {
         settingsReviewSummary(for: currentDraft)
     }
 
+    private var settingsOfficialImpactSummary: TS3ServerSettingsOfficialImpactSummary {
+        settingsOfficialImpactSummary(for: currentDraft)
+    }
+
+    private var settingsOfficialImpactSummaryText: String {
+        settingsOfficialImpactSummaryText(for: settingsOfficialImpactSummary)
+    }
+
+    private var settingsOfficialImpactSummaryClipboard: String {
+        let summary = settingsOfficialImpactSummary
+        let affectedAreas = TS3ServerSettingsOfficialImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
+                return localized("serverSettings.officialImpactAreaClipboardFormat", title(for: area), count)
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.officialImpactSummary"),
+            summary.clipboardSummary,
+            affectedAreas
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private var settingsReviewSummaryText: String {
         settingsReviewSummaryText(for: settingsReviewSummary)
     }
@@ -18450,6 +18493,76 @@ struct ServerSettingsEditorSheet: View {
             reviewItems: settingsReviewItems(for: draft),
             validationIssueCount: serverDraftValidationMessages(for: draft).count
         )
+    }
+
+    private func settingsOfficialImpactSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsOfficialImpactSummary {
+        let reviewSummary = settingsReviewSummary(for: draft)
+        return TS3ServerSettingsOfficialImpactSummary(
+            areaChangeCounts: settingsOfficialImpactAreaChangeCounts(for: draft),
+            validationIssueCount: reviewSummary.validationIssueCount,
+            sensitiveChangeCount: reviewSummary.sensitiveChangeCount
+        )
+    }
+
+    private func settingsOfficialImpactAreaChangeCounts(for draft: ServerSettingsDraft) -> [TS3ServerSettingsOfficialImpactArea: Int] {
+        [
+            .availability: availabilityImpactRows(for: draft).count,
+            .accessControl: accessControlImpactRows(for: draft).count,
+            .brandingVisibility: brandingVisibilityImpactRows(for: draft).count,
+            .moderationSafety: moderationSafetyImpactRows(for: draft).count,
+            .loggingAudit: loggingAuditImpactRows(for: draft).count
+        ]
+    }
+
+    private func availabilityImpactRows(for draft: ServerSettingsDraft) -> [String] {
+        [
+            optionalChangeRow(label: localized("serverSettings.serverPort"), current: model.serverInfo.port, draft: draft.port ?? ""),
+            changeRow(label: localized("serverSettings.autostart"), current: model.serverInfo.isAutoStartEnabled, draft: Self.boolDraftValue(draft.autostart)),
+            optionalChangeRow(label: localized("serverSettings.maxClients"), current: model.serverInfo.maxClients, draft: draft.maxClients),
+            optionalChangeRow(label: localized("serverSettings.reservedSlots"), current: model.serverInfo.reservedSlots, draft: draft.reservedSlots),
+            optionalChangeRow(label: localized("serverSettings.downloadQuotaBytes"), current: model.serverInfo.downloadQuota, draft: draft.downloadQuota),
+            optionalChangeRow(label: localized("serverSettings.uploadQuotaBytes"), current: model.serverInfo.uploadQuota, draft: draft.uploadQuota),
+            optionalChangeRow(label: localized("serverSettings.maxDownloadBandwidthBytes"), current: model.serverInfo.maxDownloadTotalBandwidth, draft: draft.maxDownloadTotalBandwidth ?? ""),
+            optionalChangeRow(label: localized("serverSettings.maxUploadBandwidthBytes"), current: model.serverInfo.maxUploadTotalBandwidth, draft: draft.maxUploadTotalBandwidth ?? "")
+        ].compactMap { $0 }
+    }
+
+    private func accessControlImpactRows(for draft: ServerSettingsDraft) -> [String] {
+        [
+            passwordChangeRow(for: draft),
+            optionalChangeRow(label: localized("serverSettings.neededIdentitySecurityLevel"), current: model.serverInfo.neededIdentitySecurityLevel, draft: draft.neededIdentitySecurityLevel ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumClientVersion"), current: model.serverInfo.minClientVersion, draft: draft.minClientVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumAndroidVersion"), current: model.serverInfo.minAndroidVersion, draft: draft.minAndroidVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.minimumIOSVersion"), current: model.serverInfo.minIOSVersion, draft: draft.minIOSVersion ?? ""),
+            changeRow(label: localized("serverSettings.codecEncryptionMode"), current: model.serverInfo.codecEncryptionMode, draft: TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode)),
+            optionalChangeRow(label: localized("serverSettings.defaultServerGroup"), current: model.serverInfo.defaultServerGroupId, draft: draft.defaultServerGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelGroup"), current: model.serverInfo.defaultChannelGroupId, draft: draft.defaultChannelGroupId ?? ""),
+            optionalChangeRow(label: localized("serverSettings.defaultChannelAdmin"), current: model.serverInfo.defaultChannelAdminGroupId, draft: draft.defaultChannelAdminGroupId ?? "")
+        ].compactMap { $0 }
+    }
+
+    private func brandingVisibilityImpactRows(for draft: ServerSettingsDraft) -> [String] {
+        [
+            changeRow(label: localized("serverSettings.serverList"), current: model.serverInfo.isWeblistEnabled, draft: Self.boolDraftValue(draft.weblistEnabled)),
+            changeRow(label: localized("serverSettings.hostMessageMode"), current: model.serverInfo.hostMessageMode, draft: TS3HostMessageMode.value(forDraft: draft.hostMessageMode)),
+            changeRow(label: localized("serverSettings.hostMessage"), current: model.serverInfo.hostMessage, draft: draft.hostMessage),
+            changeRow(label: localized("serverSettings.bannerLinkURL"), current: model.serverInfo.hostBannerURL, draft: draft.hostBannerURL),
+            changeRow(label: localized("serverSettings.bannerImageURL"), current: model.serverInfo.hostBannerGraphicsURL, draft: draft.hostBannerGraphicsURL),
+            changeRow(label: localized("serverSettings.bannerMode"), current: model.serverInfo.hostBannerMode, draft: TS3HostBannerMode.value(forDraft: draft.hostBannerMode ?? "")),
+            optionalChangeRow(label: localized("serverSettings.bannerRefreshSeconds"), current: model.serverInfo.hostBannerGraphicsInterval, draft: draft.hostBannerGraphicsInterval ?? ""),
+            changeRow(label: localized("serverSettings.hostButtonTooltip"), current: model.serverInfo.hostButtonTooltip, draft: draft.hostButtonTooltip),
+            changeRow(label: localized("serverSettings.hostButtonURL"), current: model.serverInfo.hostButtonURL, draft: draft.hostButtonURL),
+            changeRow(label: localized("serverSettings.hostButtonImageURL"), current: model.serverInfo.hostButtonGraphicsURL, draft: draft.hostButtonGraphicsURL),
+            optionalChangeRow(label: localized("serverSettings.iconId"), current: model.serverInfo.iconId, draft: draft.iconId)
+        ].compactMap { $0 }
+    }
+
+    private func moderationSafetyImpactRows(for draft: ServerSettingsDraft) -> [String] {
+        antiFloodAndComplaintChangeRows(for: draft)
+    }
+
+    private func loggingAuditImpactRows(for draft: ServerSettingsDraft) -> [String] {
+        serverLogOptionChangeRows(for: draft)
     }
 
     private func settingsReviewItems(for draft: ServerSettingsDraft) -> [String] {
@@ -18515,6 +18628,21 @@ struct ServerSettingsEditorSheet: View {
         return parts.joined(separator: " · ")
     }
 
+    private func settingsOfficialImpactSummaryText(for summary: TS3ServerSettingsOfficialImpactSummary) -> String {
+        guard summary.needsAttention else { return localized("serverSettings.officialImpactNoChanges") }
+        var parts = TS3ServerSettingsOfficialImpactArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
+            return localized("serverSettings.officialImpactAreaFormat", title(for: area), count)
+        }
+        if summary.sensitiveChangeCount > 0 {
+            parts.append(localized("serverSettings.sensitiveChangeCountFormat", summary.sensitiveChangeCount))
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
     private func title(for area: TS3ServerSettingsImpactArea) -> String {
         switch area {
         case .general:
@@ -18529,6 +18657,21 @@ struct ServerSettingsEditorSheet: View {
             return localized("serverSettings.antiFloodAndComplaints")
         case .serverLogOptions:
             return localized("serverSettings.serverLogOptions")
+        }
+    }
+
+    private func title(for area: TS3ServerSettingsOfficialImpactArea) -> String {
+        switch area {
+        case .availability:
+            return localized("serverSettings.officialImpact.availability")
+        case .accessControl:
+            return localized("serverSettings.officialImpact.accessControl")
+        case .brandingVisibility:
+            return localized("serverSettings.officialImpact.brandingVisibility")
+        case .moderationSafety:
+            return localized("serverSettings.officialImpact.moderationSafety")
+        case .loggingAudit:
+            return localized("serverSettings.officialImpact.loggingAudit")
         }
     }
 

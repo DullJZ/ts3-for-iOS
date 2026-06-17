@@ -1175,6 +1175,17 @@
 "serverSettings.impactAreaClipboardFormat" = "%@: %d 项变化";
 "serverSettings.validationIssueCountFormat" = "%d 个校验问题";
 "serverSettings.copyImpactSummary" = "复制影响摘要";
+"serverSettings.officialImpactSummary" = "官方影响审计";
+"serverSettings.officialImpactSummaryFormat" = "%d 项变化，%d 个官方区域，%d 项敏感";
+"serverSettings.officialImpactNoChanges" = "没有官方客户端设置影响";
+"serverSettings.officialImpactAreaFormat" = "%@: %d 项变化";
+"serverSettings.officialImpactAreaClipboardFormat" = "%@: %d 项变化";
+"serverSettings.copyOfficialImpactSummary" = "复制官方影响审计";
+"serverSettings.officialImpact.availability" = "可用性";
+"serverSettings.officialImpact.accessControl" = "访问控制";
+"serverSettings.officialImpact.brandingVisibility" = "品牌与可见性";
+"serverSettings.officialImpact.moderationSafety" = "管理与安全";
+"serverSettings.officialImpact.loggingAudit" = "日志与审计";
 "serverSettings.reviewSummary" = "保存复核";
 "serverSettings.reviewSummaryFormat" = "%d 项敏感变更，%d 个校验问题";
 "serverSettings.reviewNoAttention" = "没有敏感服务器设置变更";

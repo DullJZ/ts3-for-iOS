@@ -1162,6 +1162,59 @@ struct TS3ServerSettingsReviewSummary {
     }
 }
 
+enum TS3ServerSettingsOfficialImpactArea: String, CaseIterable, Codable {
+    case availability
+    case accessControl
+    case brandingVisibility
+    case moderationSafety
+    case loggingAudit
+}
+
+struct TS3ServerSettingsOfficialImpactSummary {
+    let areaChangeCounts: [TS3ServerSettingsOfficialImpactArea: Int]
+    let validationIssueCount: Int
+    let sensitiveChangeCount: Int
+
+    var totalChangeCount: Int {
+        areaChangeCounts.values.reduce(0, +)
+    }
+
+    var affectedAreaCount: Int {
+        areaChangeCounts.values.filter { $0 > 0 }.count
+    }
+
+    var needsAttention: Bool {
+        totalChangeCount > 0 || validationIssueCount > 0 || sensitiveChangeCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3ServerSettingsOfficialImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaChangeCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "officialChanges=\(totalChangeCount)",
+            "affectedOfficialAreas=\(affectedAreaCount)",
+            "sensitiveChanges=\(sensitiveChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        areaChangeCounts: [TS3ServerSettingsOfficialImpactArea: Int],
+        validationIssueCount: Int,
+        sensitiveChangeCount: Int
+    ) {
+        self.areaChangeCounts = areaChangeCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.sensitiveChangeCount = max(0, sensitiveChangeCount)
+    }
+}
+
 enum TS3PermissionDraftValidator {
     static func validationMessages(
         scope: TS3PermissionEditScope,

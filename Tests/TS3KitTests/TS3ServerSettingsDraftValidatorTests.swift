@@ -227,6 +227,51 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsOfficialImpactSummaryCountsAreasAndSensitiveChanges() {
+        let summary = TS3ServerSettingsOfficialImpactSummary(
+            areaChangeCounts: [
+                .availability: 3,
+                .accessControl: 2,
+                .brandingVisibility: 1,
+                .moderationSafety: 0,
+                .loggingAudit: 4
+            ],
+            validationIssueCount: 2,
+            sensitiveChangeCount: 5
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 10)
+        XCTAssertEqual(summary.affectedAreaCount, 4)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertEqual(summary.sensitiveChangeCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialChanges=10 | affectedOfficialAreas=4 | sensitiveChanges=5 | validationIssues=2 | areas=availability:3,accessControl:2,brandingVisibility:1,loggingAudit:4 | needsAttention=true"
+        )
+    }
+
+    func testServerSettingsOfficialImpactSummaryOmitsEmptyAreasAndClampsCounts() {
+        let summary = TS3ServerSettingsOfficialImpactSummary(
+            areaChangeCounts: [
+                .availability: 0,
+                .accessControl: -1
+            ],
+            validationIssueCount: -2,
+            sensitiveChangeCount: -3
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.affectedAreaCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.sensitiveChangeCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialChanges=0 | affectedOfficialAreas=0 | sensitiveChanges=0 | validationIssues=0 | areas=none | needsAttention=false"
+        )
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",

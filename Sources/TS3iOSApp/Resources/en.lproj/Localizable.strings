@@ -1175,6 +1175,17 @@
 "serverSettings.impactAreaClipboardFormat" = "%@: %d changes";
 "serverSettings.validationIssueCountFormat" = "%d validation issues";
 "serverSettings.copyImpactSummary" = "Copy Impact Summary";
+"serverSettings.officialImpactSummary" = "Official Impact Audit";
+"serverSettings.officialImpactSummaryFormat" = "%d changes, %d official areas, %d sensitive";
+"serverSettings.officialImpactNoChanges" = "No official-client setting impacts";
+"serverSettings.officialImpactAreaFormat" = "%@: %d changes";
+"serverSettings.officialImpactAreaClipboardFormat" = "%@: %d changes";
+"serverSettings.copyOfficialImpactSummary" = "Copy Official Impact Audit";
+"serverSettings.officialImpact.availability" = "Availability";
+"serverSettings.officialImpact.accessControl" = "Access Control";
+"serverSettings.officialImpact.brandingVisibility" = "Branding and Visibility";
+"serverSettings.officialImpact.moderationSafety" = "Moderation and Safety";
+"serverSettings.officialImpact.loggingAudit" = "Logging and Audit";
 "serverSettings.reviewSummary" = "Save Review";
 "serverSettings.reviewSummaryFormat" = "%d sensitive changes, %d validation issues";
 "serverSettings.reviewNoAttention" = "No sensitive server setting changes";
