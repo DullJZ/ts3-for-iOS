@@ -2798,6 +2798,14 @@
 "complaints.summary.withDatesFormat" = "%d 个有日期";
 "complaints.summary.latestFormat" = "最新 %@";
 "complaints.copyVisibleSummary" = "复制可见投诉摘要";
+"complaints.officialAudit" = "官方客户端审计";
+"complaints.officialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"complaints.officialAuditActionsFormat" = "%d 个官方动作";
+"complaints.officialAuditTargetsFormat" = "草稿目标：%d";
+"complaints.officialAuditVisibleFormat" = "可见投诉：%d";
+"complaints.officialAuditSourcesFormat" = "有名来源：%d，匿名：%d";
+"complaints.officialAuditMutationFormat" = "服务器变更：%@";
+"complaints.copyOfficialAudit" = "复制官方审计";
 "complaints.copyVisible" = "复制可见投诉";
 "complaints.exportVisible" = "导出可见投诉";
 "complaints.exportArchive" = "导出投诉归档";

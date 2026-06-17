@@ -185,6 +185,78 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         )
     }
 
+    func testComplaintOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let draftSummary = TS3ComplaintDraftCoverageSummary(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse ",
+            validationMessages: []
+        )
+        let visibleSummary = TS3ComplaintListSummary(complaints: [
+            TS3ComplaintSummary(
+                id: "target-22-source-44",
+                targetClientDatabaseId: 22,
+                targetName: "Target",
+                sourceClientDatabaseId: 44,
+                sourceName: "Reporter",
+                message: "Abuse",
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000)
+            ),
+            TS3ComplaintSummary(
+                id: "target-23-source-45",
+                targetClientDatabaseId: 23,
+                targetName: nil,
+                sourceClientDatabaseId: 45,
+                sourceName: nil,
+                message: "Spam",
+                timestamp: nil
+            )
+        ])
+
+        let summary = TS3ComplaintOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visibleComplaintSummary: visibleSummary,
+            hasLocalFilters: true,
+            hasFilterPresets: true,
+            hasArchiveCoverage: true,
+            canMutateServer: true,
+            canDeleteVisible: true,
+            hasSourceContactActions: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 8)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 8)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 17)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=8/8 | missingOfficialAreas=0 | officialActions=17 | draftTargets=3 | draftMessage=true | visibleComplaints=2 | targets=2 | namedSources=1 | anonymousSources=1 | withMessages=2 | withDates=1 | localFilters=true | filterPresets=true | archiveCoverage=true | serverMutation=true | deleteVisible=true | sourceContactActions=true | needsAttention=true"
+        )
+    }
+
+    func testComplaintOfficialCoverageAuditSummaryFlagsMissingWorkflowAreas() {
+        let summary = TS3ComplaintOfficialCoverageAuditSummary(
+            draftCoverageSummary: nil,
+            visibleComplaintSummary: TS3ComplaintListSummary(complaints: []),
+            hasLocalFilters: false,
+            hasFilterPresets: false,
+            hasArchiveCoverage: false,
+            canMutateServer: false,
+            canDeleteVisible: false,
+            hasSourceContactActions: false
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 8)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=0/8 | missingOfficialAreas=8 | officialActions=17 | draftTargets=0 | draftMessage=false | visibleComplaints=0 | targets=0 | namedSources=0 | anonymousSources=0 | withMessages=0 | withDates=0 | localFilters=false | filterPresets=false | archiveCoverage=false | serverMutation=false | deleteVisible=false | sourceContactActions=false | needsAttention=true"
+        )
+    }
+
     func testComplaintFilterPresetSummaryAndAccessibilityText() {
         let preset = makeComplaintFilterPreset(
             id: UUID(),

@@ -26273,6 +26273,22 @@ struct ComplaintListSheet: View {
                         }
                         .disabled(filteredComplaintEntries.isEmpty)
 
+                        ServerInfoDetailRow(
+                            label: localized("complaints.officialAudit"),
+                            value: localized(
+                                "complaints.officialAuditFormat",
+                                complaintOfficialAuditSummary.coveredOfficialAreaCount,
+                                complaintOfficialAuditSummary.officialAreaTotal,
+                                complaintOfficialAuditSummary.missingOfficialAreaCount
+                            )
+                        )
+                        Text(complaintOfficialAuditText(complaintOfficialAuditSummary))
+                            .font(.caption)
+                            .foregroundColor(complaintOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("complaints.copyOfficialAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(complaintOfficialAuditSummary.clipboardSummary)
+                        }
+
                         Button(localized("complaints.copyVisible")) {
                             TS3PlatformSupport.copyToPasteboard(complaintSnapshot)
                         }
@@ -26481,6 +26497,19 @@ struct ComplaintListSheet: View {
         return sortedComplaintEntries(entries)
     }
 
+    private var complaintOfficialAuditSummary: TS3ComplaintOfficialCoverageAuditSummary {
+        TS3ComplaintOfficialCoverageAuditSummary(
+            draftCoverageSummary: model.complaintTarget.map { complaintDraftCoverageSummary(for: $0) },
+            visibleComplaintSummary: visibleComplaintSummary,
+            hasLocalFilters: hasLocalFilters,
+            hasFilterPresets: !model.complaintFilterPresets.isEmpty,
+            hasArchiveCoverage: !model.complaintEntries.isEmpty,
+            canMutateServer: model.state == .connected && model.complaintTarget != nil,
+            canDeleteVisible: model.state == .connected && !filteredComplaintEntries.isEmpty,
+            hasSourceContactActions: !filteredComplaintEntries.isEmpty
+        )
+    }
+
     private func containsSearch(_ value: String?) -> Bool {
         guard let value, !normalizedSearchText.isEmpty else { return false }
         return value.lowercased().contains(normalizedSearchText)
@@ -26589,6 +26618,16 @@ struct ComplaintListSheet: View {
             parts.append(localized("complaints.summary.latestFormat", formatter.string(from: latestTimestamp)))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func complaintOfficialAuditText(_ summary: TS3ComplaintOfficialCoverageAuditSummary) -> String {
+        [
+            localized("complaints.officialAuditActionsFormat", summary.officialActionCount),
+            localized("complaints.officialAuditTargetsFormat", summary.draftCoverageSummary?.targetFieldCount ?? 0),
+            localized("complaints.officialAuditVisibleFormat", summary.visibleComplaintSummary.totalCount),
+            localized("complaints.officialAuditSourcesFormat", summary.visibleComplaintSummary.namedSourceCount, summary.visibleComplaintSummary.anonymousSourceCount),
+            localized("complaints.officialAuditMutationFormat", summary.canMutateServer ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: " · ")
     }
 
     private func applyPreset(_ preset: TS3ComplaintFilterPreset) {

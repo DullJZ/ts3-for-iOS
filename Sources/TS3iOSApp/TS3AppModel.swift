@@ -3839,6 +3839,88 @@ struct TS3ComplaintDraftCoverageSummary {
     }
 }
 
+struct TS3ComplaintOfficialCoverageAuditSummary {
+    let draftCoverageSummary: TS3ComplaintDraftCoverageSummary?
+    let visibleComplaintSummary: TS3ComplaintListSummary
+    let hasLocalFilters: Bool
+    let hasFilterPresets: Bool
+    let hasArchiveCoverage: Bool
+    let canMutateServer: Bool
+    let canDeleteVisible: Bool
+    let hasSourceContactActions: Bool
+
+    var officialAreaTotal: Int {
+        8
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasDraftTargetCoverage,
+            hasDraftMessageCoverage,
+            hasVisibleReviewCoverage,
+            hasLocalFilterCoverage,
+            hasFilterPresets,
+            hasArchiveCoverage,
+            canMutateServer,
+            hasSourceContactActions
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        17
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || draftCoverageSummary?.needsAttention == true
+            || visibleComplaintSummary.needsAttention
+            || !canDeleteVisible
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "draftTargets=\(draftCoverageSummary?.targetFieldCount ?? 0)",
+            "draftMessage=\(draftCoverageSummary?.hasMessage == true ? "true" : "false")",
+            "visibleComplaints=\(visibleComplaintSummary.totalCount)",
+            "targets=\(visibleComplaintSummary.targetCount)",
+            "namedSources=\(visibleComplaintSummary.namedSourceCount)",
+            "anonymousSources=\(visibleComplaintSummary.anonymousSourceCount)",
+            "withMessages=\(visibleComplaintSummary.messageCount)",
+            "withDates=\(visibleComplaintSummary.datedCount)",
+            "localFilters=\(hasLocalFilters ? "true" : "false")",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "archiveCoverage=\(hasArchiveCoverage ? "true" : "false")",
+            "serverMutation=\(canMutateServer ? "true" : "false")",
+            "deleteVisible=\(canDeleteVisible ? "true" : "false")",
+            "sourceContactActions=\(hasSourceContactActions ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasDraftTargetCoverage: Bool {
+        (draftCoverageSummary?.targetFieldCount ?? 0) > 0
+    }
+
+    private var hasDraftMessageCoverage: Bool {
+        draftCoverageSummary?.hasMessage == true
+    }
+
+    private var hasVisibleReviewCoverage: Bool {
+        visibleComplaintSummary.totalCount > 0
+    }
+
+    private var hasLocalFilterCoverage: Bool {
+        hasLocalFilters
+    }
+}
+
 private struct TS3ComplaintArchive: Codable {
     var entries: [TS3ComplaintSummary]
 }

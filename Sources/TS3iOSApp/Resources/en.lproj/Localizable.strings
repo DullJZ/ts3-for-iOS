@@ -2798,6 +2798,14 @@
 "complaints.summary.withDatesFormat" = "%d with dates";
 "complaints.summary.latestFormat" = "Latest %@";
 "complaints.copyVisibleSummary" = "Copy Visible Complaint Summary";
+"complaints.officialAudit" = "Official Client Audit";
+"complaints.officialAuditFormat" = "%d/%d areas covered, %d missing";
+"complaints.officialAuditActionsFormat" = "%d official actions";
+"complaints.officialAuditTargetsFormat" = "Draft targets: %d";
+"complaints.officialAuditVisibleFormat" = "Visible complaints: %d";
+"complaints.officialAuditSourcesFormat" = "Named sources: %d, anonymous: %d";
+"complaints.officialAuditMutationFormat" = "Server mutation: %@";
+"complaints.copyOfficialAudit" = "Copy Official Audit";
 "complaints.copyVisible" = "Copy Visible Complaints";
 "complaints.exportVisible" = "Export Visible Complaints";
 "complaints.exportArchive" = "Export Complaint Archive";
