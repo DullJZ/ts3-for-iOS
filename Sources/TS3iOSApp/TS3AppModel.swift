@@ -1723,6 +1723,93 @@ struct TS3PokeDraftCoverageSummary {
     }
 }
 
+struct TS3PokeOfficialCoverageAuditSummary {
+    let draftCoverageSummary: TS3PokeDraftCoverageSummary?
+    let visiblePokeSummary: TS3PokeListSummary
+    let clearImpactSummary: TS3PokeClearImpactSummary
+    let hasLocalFilters: Bool
+    let hasFilterPresets: Bool
+    let hasArchiveCoverage: Bool
+    let canSendPoke: Bool
+    let hasPokeBackActions: Bool
+    let hasOfflineReplyActions: Bool
+    let hasContactActions: Bool
+
+    var officialAreaTotal: Int {
+        9
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasDraftSendCoverage,
+            hasVisibleReviewCoverage,
+            hasClearImpactCoverage,
+            hasLocalFilterCoverage,
+            hasFilterPresets,
+            hasArchiveCoverage,
+            canSendPoke,
+            hasPokeBackActions,
+            hasOfflineReplyActions || hasContactActions
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        18
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || draftCoverageSummary?.needsAttention == true
+            || visiblePokeSummary.needsAttention
+            || clearImpactSummary.needsAttention
+            || !canSendPoke
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "draftTargets=\(draftCoverageSummary?.targetFieldCount ?? 0)",
+            "customDraftMessage=\(draftCoverageSummary?.hasCustomMessage == true ? "true" : "false")",
+            "visiblePokes=\(visiblePokeSummary.totalCount)",
+            "incoming=\(visiblePokeSummary.incomingCount)",
+            "outgoing=\(visiblePokeSummary.outgoingCount)",
+            "withUid=\(visiblePokeSummary.withUniqueIdCount)",
+            "customMessages=\(visiblePokeSummary.customMessageCount)",
+            "clearVisible=\(clearImpactSummary.clearingCount)",
+            "localFilters=\(hasLocalFilters ? "true" : "false")",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "archiveCoverage=\(hasArchiveCoverage ? "true" : "false")",
+            "sendPoke=\(canSendPoke ? "true" : "false")",
+            "pokeBack=\(hasPokeBackActions ? "true" : "false")",
+            "offlineReply=\(hasOfflineReplyActions ? "true" : "false")",
+            "contactActions=\(hasContactActions ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasDraftSendCoverage: Bool {
+        (draftCoverageSummary?.targetFieldCount ?? 0) > 0
+    }
+
+    private var hasVisibleReviewCoverage: Bool {
+        visiblePokeSummary.totalCount > 0
+    }
+
+    private var hasClearImpactCoverage: Bool {
+        clearImpactSummary.clearingCount > 0
+    }
+
+    private var hasLocalFilterCoverage: Bool {
+        hasLocalFilters || visiblePokeSummary.totalCount > 0
+    }
+}
+
 struct TS3ActivitySummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date

@@ -380,6 +380,14 @@
 "events.pokeClearImpactFormat" = "将清理 %d 条可见戳一戳";
 "events.pokeClearImpactAttentionFormat" = "需要复核：%@";
 "events.copyPokeClearImpact" = "复制戳一戳清理影响";
+"events.pokeOfficialAudit" = "官方戳一戳审计";
+"events.pokeOfficialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"events.pokeOfficialAuditActionsFormat" = "%d 个官方动作";
+"events.pokeOfficialAuditVisibleFormat" = "可见戳一戳：%d";
+"events.pokeOfficialAuditIncomingFormat" = "收到：%d";
+"events.pokeOfficialAuditReplyFormat" = "回复动作：%@";
+"events.pokeOfficialAuditSendFormat" = "发送戳一戳：%@";
+"events.copyPokeOfficialAudit" = "复制官方戳一戳审计";
 "events.noSavedFilterPresets" = "没有已保存的事件筛选预设";
 "events.noActivity" = "没有活动";
 "events.noMatchingActivity" = "没有匹配的活动";

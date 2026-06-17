@@ -380,6 +380,14 @@
 "events.pokeClearImpactFormat" = "%d visible pokes would be cleared";
 "events.pokeClearImpactAttentionFormat" = "Needs review: %@";
 "events.copyPokeClearImpact" = "Copy Poke Clear Impact";
+"events.pokeOfficialAudit" = "Official Poke Audit";
+"events.pokeOfficialAuditFormat" = "%d/%d areas covered, %d missing";
+"events.pokeOfficialAuditActionsFormat" = "%d official actions";
+"events.pokeOfficialAuditVisibleFormat" = "Visible pokes: %d";
+"events.pokeOfficialAuditIncomingFormat" = "Incoming: %d";
+"events.pokeOfficialAuditReplyFormat" = "Reply actions: %@";
+"events.pokeOfficialAuditSendFormat" = "Send poke: %@";
+"events.copyPokeOfficialAudit" = "Copy Official Poke Audit";
 "events.noSavedFilterPresets" = "No saved event filter presets";
 "events.noActivity" = "No activity";
 "events.noMatchingActivity" = "No matching activity";

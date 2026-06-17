@@ -9396,6 +9396,21 @@ struct EventsSheet: View {
         TS3PokeClearImpactSummary(pokes: visiblePokeEvents)
     }
 
+    private var visiblePokeOfficialAuditSummary: TS3PokeOfficialCoverageAuditSummary {
+        TS3PokeOfficialCoverageAuditSummary(
+            draftCoverageSummary: nil,
+            visiblePokeSummary: visiblePokeSummary,
+            clearImpactSummary: visiblePokeClearImpact,
+            hasLocalFilters: hasLocalFilters,
+            hasFilterPresets: !model.eventFilterPresets.isEmpty,
+            hasArchiveCoverage: !model.pokeEvents.isEmpty,
+            canSendPoke: model.state == .connected,
+            hasPokeBackActions: visiblePokeEvents.contains { !$0.isOwnPoke && model.onlineUser(for: $0) != nil },
+            hasOfflineReplyActions: visiblePokeSummary.withUniqueIdCount > 0,
+            hasContactActions: visiblePokeSummary.withUniqueIdCount > 0
+        )
+    }
+
     private var visibleEventsSnapshot: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -9564,6 +9579,22 @@ struct EventsSheet: View {
                             .foregroundColor(.secondary)
                         Button(localized("events.copyPokeClearImpact")) {
                             TS3PlatformSupport.copyToPasteboard(visiblePokeClearImpact.clipboardSummary)
+                        }
+                        .disabled(visiblePokeEvents.isEmpty)
+                        ServerInfoDetailRow(
+                            label: localized("events.pokeOfficialAudit"),
+                            value: localized(
+                                "events.pokeOfficialAuditFormat",
+                                visiblePokeOfficialAuditSummary.coveredOfficialAreaCount,
+                                visiblePokeOfficialAuditSummary.officialAreaTotal,
+                                visiblePokeOfficialAuditSummary.missingOfficialAreaCount
+                            )
+                        )
+                        Text(pokeOfficialAuditText(visiblePokeOfficialAuditSummary))
+                            .font(.caption)
+                            .foregroundColor(visiblePokeOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("events.copyPokeOfficialAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(visiblePokeOfficialAuditSummary.clipboardSummary)
                         }
                         .disabled(visiblePokeEvents.isEmpty)
                         ForEach(visiblePokeEvents) { poke in
@@ -9815,6 +9846,16 @@ struct EventsSheet: View {
             localized("events.pokeSummaryWithoutUidFormat", impact.withoutUniqueIdCount),
             localized("events.pokeSummaryCustomMessageFormat", impact.customMessageCount),
             localized("events.pokeClearImpactAttentionFormat", impact.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: " · ")
+    }
+
+    private func pokeOfficialAuditText(_ summary: TS3PokeOfficialCoverageAuditSummary) -> String {
+        [
+            localized("events.pokeOfficialAuditActionsFormat", summary.officialActionCount),
+            localized("events.pokeOfficialAuditVisibleFormat", summary.visiblePokeSummary.totalCount),
+            localized("events.pokeOfficialAuditIncomingFormat", summary.visiblePokeSummary.incomingCount),
+            localized("events.pokeOfficialAuditReplyFormat", summary.hasOfflineReplyActions ? localized("common.yes") : localized("common.no")),
+            localized("events.pokeOfficialAuditSendFormat", summary.canSendPoke ? localized("common.yes") : localized("common.no"))
         ].joined(separator: " · ")
     }
 

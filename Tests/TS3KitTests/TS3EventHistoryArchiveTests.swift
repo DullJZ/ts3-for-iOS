@@ -392,6 +392,84 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         )
     }
 
+    func testPokeOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let draftSummary = TS3PokeDraftCoverageSummary(
+            targetName: "Taylor",
+            targetClientId: 12,
+            message: "Wake up",
+            validationMessages: []
+        )
+        let pokes = [
+            TS3PokeSummary(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                senderId: 12,
+                senderName: "Taylor",
+                senderUniqueIdentifier: "uid-taylor",
+                message: "Wake up",
+                isOwnPoke: false
+            ),
+            TS3PokeSummary(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                senderId: 13,
+                senderName: "Avery",
+                senderUniqueIdentifier: "uid-avery",
+                message: " ",
+                isOwnPoke: true
+            )
+        ]
+        let listSummary = TS3PokeListSummary(pokes: pokes)
+        let clearImpact = TS3PokeClearImpactSummary(pokes: pokes)
+
+        let summary = TS3PokeOfficialCoverageAuditSummary(
+            draftCoverageSummary: draftSummary,
+            visiblePokeSummary: listSummary,
+            clearImpactSummary: clearImpact,
+            hasLocalFilters: true,
+            hasFilterPresets: true,
+            hasArchiveCoverage: true,
+            canSendPoke: true,
+            hasPokeBackActions: true,
+            hasOfflineReplyActions: true,
+            hasContactActions: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 9)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 9)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 18)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=18 | draftTargets=2 | customDraftMessage=true | visiblePokes=2 | incoming=1 | outgoing=1 | withUid=2 | customMessages=1 | clearVisible=2 | localFilters=true | filterPresets=true | archiveCoverage=true | sendPoke=true | pokeBack=true | offlineReply=true | contactActions=true | needsAttention=true"
+        )
+    }
+
+    func testPokeOfficialCoverageAuditSummaryFlagsMissingWorkflowAreas() {
+        let emptyList = TS3PokeListSummary(pokes: [])
+        let emptyClearImpact = TS3PokeClearImpactSummary(pokes: [])
+
+        let summary = TS3PokeOfficialCoverageAuditSummary(
+            draftCoverageSummary: nil,
+            visiblePokeSummary: emptyList,
+            clearImpactSummary: emptyClearImpact,
+            hasLocalFilters: false,
+            hasFilterPresets: false,
+            hasArchiveCoverage: false,
+            canSendPoke: false,
+            hasPokeBackActions: false,
+            hasOfflineReplyActions: false,
+            hasContactActions: false
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 9)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=0/9 | missingOfficialAreas=9 | officialActions=18 | draftTargets=0 | customDraftMessage=false | visiblePokes=0 | incoming=0 | outgoing=0 | withUid=0 | customMessages=0 | clearVisible=0 | localFilters=false | filterPresets=false | archiveCoverage=false | sendPoke=false | pokeBack=false | offlineReply=false | contactActions=false | needsAttention=true"
+        )
+    }
+
     func testPokeDraftValidatorRejectsMissingTargetAndMultilineMessage() {
         XCTAssertEqual(
             TS3PokeDraftValidator.validationMessages(
