@@ -25198,6 +25198,14 @@ private struct BanBackupImportSheet: View {
         Set(selectedRuleIds.filter(preview.containsRule))
     }
 
+    private var importImpactSummary: TS3BanImportImpactSummary {
+        TS3BanImportImpactSummary(
+            candidates: preview.candidates,
+            selectedRuleIds: validSelectedRuleIds,
+            skippedRuleCount: preview.skippedRuleCount
+        )
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -25218,6 +25226,22 @@ private struct BanBackupImportSheet: View {
                             }
                             .disabled(selectedRuleIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("ban.import.impact"),
+                            value: localized(
+                                "ban.import.impactFormat",
+                                importImpactSummary.selectedRuleCount,
+                                importImpactSummary.permanentRuleCount,
+                                importImpactSummary.temporaryRuleCount
+                            )
+                        )
+                        Text(banImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("ban.import.copyImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                         ForEach(preview.targetTypeSummaries, id: \.self) { summary in
                             Text(summary)
                                 .font(.caption2)
@@ -25286,6 +25310,15 @@ private struct BanBackupImportSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func banImportImpactText(_ summary: TS3BanImportImpactSummary) -> String {
+        [
+            localized("ban.import.impactTargetsFormat", summary.ipRuleCount, summary.nameRuleCount, summary.uniqueIdentifierRuleCount, summary.lastNicknameRuleCount),
+            localized("ban.import.impactUnspecifiedDurationFormat", summary.unspecifiedDurationCount),
+            localized("ban.import.impactReasonFormat", summary.withReasonCount),
+            localized("ban.import.impactSkippedFormat", summary.skippedRuleCount)
+        ].joined(separator: " | ")
     }
 }
 

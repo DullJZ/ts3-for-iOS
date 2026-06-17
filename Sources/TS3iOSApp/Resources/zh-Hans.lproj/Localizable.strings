@@ -2641,6 +2641,13 @@
 "ban.import.copyRuleSummary" = "复制规则摘要";
 "ban.import.selectAll" = "全选";
 "ban.import.clear" = "清除";
+"ban.import.impact" = "导入影响";
+"ban.import.impactFormat" = "%d 条已选，%d 条永久，%d 条临时";
+"ban.import.impactTargetsFormat" = "IP/名称/唯一 ID/昵称：%d/%d/%d/%d";
+"ban.import.impactUnspecifiedDurationFormat" = "未指定时长：%d";
+"ban.import.impactReasonFormat" = "有原因：%d";
+"ban.import.impactSkippedFormat" = "跳过备份规则：%d";
+"ban.import.copyImpact" = "复制导入影响";
 "ban.import.behavior" = "导入行为";
 "ban.import.behaviorSummary" = "导入会把所选可用封禁规则添加到已连接服务器。空白和重复的备份规则会被跳过。";
 "ban.import.title" = "导入封禁备份";

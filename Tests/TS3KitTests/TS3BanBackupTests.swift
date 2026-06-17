@@ -407,6 +407,9 @@ final class TS3BanBackupTests: XCTestCase {
                 "uid=abc/def"
             ]
         )
+        XCTAssertEqual(preview.candidates.first?.ip, "192.0.2.10")
+        XCTAssertEqual(preview.candidates.first?.durationSeconds, 0)
+        XCTAssertEqual(preview.candidates.first?.reason, "spam")
         XCTAssertEqual(Set(preview.candidates.map(\.id)).count, 3)
         XCTAssertTrue(preview.containsRule(id: preview.candidates[1].id))
         XCTAssertFalse(preview.containsRule(id: "missing-rule"))
@@ -415,6 +418,46 @@ final class TS3BanBackupTests: XCTestCase {
             (preview.targetTypeSummaries + preview.durationSummaries + preview.ruleSummaries).joined(separator: "\n")
         )
         XCTAssertTrue(preview.hasRules)
+    }
+
+    @MainActor
+    func testBanImportImpactSummaryCountsSelectedRules() throws {
+        let model = TS3AppModel()
+        let backupJSON = """
+        {
+          "entries": [
+            { "ip": "192.0.2.10", "durationSeconds": 0, "reason": "spam" },
+            { "name": "Bad Guest", "lastNickname": "Recent Guest", "durationSeconds": 600 },
+            { "uniqueIdentifier": "abc/def" },
+            { "reason": "missing target" }
+          ]
+        }
+        """
+
+        let preview = try model.banBackupPreview(from: Data(backupJSON.utf8))
+        let selectedRuleIds = Set(preview.candidates.map(\.id))
+        let summary = TS3BanImportImpactSummary(
+            candidates: preview.candidates,
+            selectedRuleIds: selectedRuleIds,
+            skippedRuleCount: preview.skippedRuleCount
+        )
+
+        XCTAssertEqual(summary.selectedRuleCount, 3)
+        XCTAssertEqual(summary.ipRuleCount, 1)
+        XCTAssertEqual(summary.nameRuleCount, 1)
+        XCTAssertEqual(summary.uniqueIdentifierRuleCount, 1)
+        XCTAssertEqual(summary.lastNicknameRuleCount, 1)
+        XCTAssertEqual(summary.permanentRuleCount, 1)
+        XCTAssertEqual(summary.temporaryRuleCount, 1)
+        XCTAssertEqual(summary.unspecifiedDurationCount, 1)
+        XCTAssertEqual(summary.withReasonCount, 1)
+        XCTAssertEqual(summary.skippedRuleCount, 1)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=3 | ip=1 | name=1 | uid=1 | lastNickname=1 | permanent=1 | temporary=1 | unspecifiedDuration=1 | withReason=1 | skippedBackupRules=1 | needsAttention=true"
+        )
     }
 
     @MainActor

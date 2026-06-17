@@ -2899,6 +2899,12 @@ private struct TS3BanBackup: Codable {
 struct TS3BanBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: String
+        let ip: String?
+        let name: String?
+        let uniqueIdentifier: String?
+        let lastNickname: String?
+        let durationSeconds: Int?
+        let reason: String?
         let summary: String
     }
 
@@ -2929,6 +2935,64 @@ struct TS3BanBackupPreview {
 
     func containsRule(id: String) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3BanImportImpactSummary {
+    let selectedRuleCount: Int
+    let ipRuleCount: Int
+    let nameRuleCount: Int
+    let uniqueIdentifierRuleCount: Int
+    let lastNicknameRuleCount: Int
+    let permanentRuleCount: Int
+    let temporaryRuleCount: Int
+    let unspecifiedDurationCount: Int
+    let withReasonCount: Int
+    let skippedRuleCount: Int
+
+    var hasSelection: Bool {
+        selectedRuleCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || permanentRuleCount > 0 || unspecifiedDurationCount > 0 || withReasonCount < selectedRuleCount
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedRuleCount)",
+            "ip=\(ipRuleCount)",
+            "name=\(nameRuleCount)",
+            "uid=\(uniqueIdentifierRuleCount)",
+            "lastNickname=\(lastNicknameRuleCount)",
+            "permanent=\(permanentRuleCount)",
+            "temporary=\(temporaryRuleCount)",
+            "unspecifiedDuration=\(unspecifiedDurationCount)",
+            "withReason=\(withReasonCount)",
+            "skippedBackupRules=\(skippedRuleCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(candidates: [TS3BanBackupPreview.Candidate], selectedRuleIds: Set<String>, skippedRuleCount: Int) {
+        let selected = candidates.filter { selectedRuleIds.contains($0.id) }
+        selectedRuleCount = selected.count
+        ipRuleCount = selected.filter { Self.normalized($0.ip) != nil }.count
+        nameRuleCount = selected.filter { Self.normalized($0.name) != nil }.count
+        uniqueIdentifierRuleCount = selected.filter { Self.normalized($0.uniqueIdentifier) != nil }.count
+        lastNicknameRuleCount = selected.filter { Self.normalized($0.lastNickname) != nil }.count
+        permanentRuleCount = selected.filter { $0.durationSeconds == 0 }.count
+        temporaryRuleCount = selected.filter { ($0.durationSeconds ?? 0) > 0 }.count
+        unspecifiedDurationCount = selected.filter { $0.durationSeconds == nil }.count
+        withReasonCount = selected.filter { Self.normalized($0.reason) != nil }.count
+        self.skippedRuleCount = skippedRuleCount
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
     }
 }
 
@@ -17363,6 +17427,12 @@ final class TS3AppModel: ObservableObject {
             candidates: entries.map {
                 TS3BanBackupPreview.Candidate(
                     id: Self.banBackupSelectionID($0),
+                    ip: $0.ip,
+                    name: $0.name,
+                    uniqueIdentifier: $0.uniqueIdentifier,
+                    lastNickname: $0.lastNickname,
+                    durationSeconds: $0.durationSeconds,
+                    reason: $0.reason,
                     summary: Self.banBackupRuleSummary($0)
                 )
             },

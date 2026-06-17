@@ -2641,6 +2641,13 @@
 "ban.import.copyRuleSummary" = "Copy Rule Summary";
 "ban.import.selectAll" = "Select All";
 "ban.import.clear" = "Clear";
+"ban.import.impact" = "Import Impact";
+"ban.import.impactFormat" = "%d selected, %d permanent, %d temporary";
+"ban.import.impactTargetsFormat" = "IP/name/UID/nickname: %d/%d/%d/%d";
+"ban.import.impactUnspecifiedDurationFormat" = "Unspecified duration: %d";
+"ban.import.impactReasonFormat" = "With reason: %d";
+"ban.import.impactSkippedFormat" = "Skipped backup rules: %d";
+"ban.import.copyImpact" = "Copy Import Impact";
 "ban.import.behavior" = "Import Behavior";
 "ban.import.behaviorSummary" = "Import adds the selected usable ban rules to the connected server. Empty and duplicate backup rules are skipped.";
 "ban.import.title" = "Import Ban Backup";
