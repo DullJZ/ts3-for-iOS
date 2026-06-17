@@ -1489,6 +1489,12 @@
 "database.import.selectAll" = "全选";
 "database.import.clear" = "清除";
 "database.import.copyClientSummary" = "复制客户端摘要";
+"database.import.impact" = "导入影响";
+"database.import.impactFormat" = "%d 个已选，%d 个有 UID，%d 个缺少 UID";
+"database.import.impactFieldsFormat" = "描述/最后 IP/连接次数：%d/%d/%d";
+"database.import.impactDatesFormat" = "创建/最后连接日期：%d/%d";
+"database.import.impactSkippedFormat" = "跳过备份客户端：%d";
+"database.import.copyImpact" = "复制导入影响";
 "database.import.behavior" = "导入行为";
 "database.import.behaviorSummary" = "导入会用所选记录替换本地缓存的客户端数据库列表，供离线查看；不会创建、编辑或删除服务器数据库记录。";
 "database.import.title" = "导入数据库";

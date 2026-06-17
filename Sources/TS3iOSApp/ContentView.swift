@@ -16971,6 +16971,10 @@ private struct DatabaseBackupImportSheet: View {
         Set(selectedClientIds.filter(preview.containsClient))
     }
 
+    private var importImpactSummary: TS3DatabaseClientImportImpactSummary {
+        TS3DatabaseClientImportImpactSummary(preview: preview, selectedClientIds: validSelectedClientIds)
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -16991,6 +16995,22 @@ private struct DatabaseBackupImportSheet: View {
                             }
                             .disabled(selectedClientIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("database.import.impact"),
+                            value: localized(
+                                "database.import.impactFormat",
+                                importImpactSummary.selectedClientCount,
+                                importImpactSummary.uniqueIdentifierCount,
+                                importImpactSummary.missingUniqueIdentifierCount
+                            )
+                        )
+                        Text(databaseImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("database.import.copyImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                         ForEach(preview.fieldSummaries, id: \.self) { summary in
                             Text(summary)
                                 .font(.caption2)
@@ -17048,6 +17068,14 @@ private struct DatabaseBackupImportSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func databaseImportImpactText(_ summary: TS3DatabaseClientImportImpactSummary) -> String {
+        [
+            localized("database.import.impactFieldsFormat", summary.descriptionCount, summary.lastIPCount, summary.connectionCount),
+            localized("database.import.impactDatesFormat", summary.createdDateCount, summary.lastConnectedDateCount),
+            localized("database.import.impactSkippedFormat", summary.skippedClientCount)
+        ].joined(separator: " | ")
     }
 }
 

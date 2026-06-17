@@ -1489,6 +1489,12 @@
 "database.import.selectAll" = "Select All";
 "database.import.clear" = "Clear";
 "database.import.copyClientSummary" = "Copy Client Summary";
+"database.import.impact" = "Import Impact";
+"database.import.impactFormat" = "%d selected, %d with UID, %d missing UID";
+"database.import.impactFieldsFormat" = "Descriptions/last IPs/connections: %d/%d/%d";
+"database.import.impactDatesFormat" = "Created/last connected dates: %d/%d";
+"database.import.impactSkippedFormat" = "Skipped backup clients: %d";
+"database.import.copyImpact" = "Copy Import Impact";
 "database.import.behavior" = "Import Behavior";
 "database.import.behaviorSummary" = "Import replaces the local cached client database list with the selected records for offline review and does not create, edit, or delete server database records.";
 "database.import.title" = "Import Database";

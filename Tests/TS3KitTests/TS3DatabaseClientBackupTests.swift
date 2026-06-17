@@ -232,6 +232,13 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
             ]
         )
         XCTAssertEqual(preview.candidates.map(\.id), [6, 7])
+        XCTAssertEqual(preview.candidates.last?.nickname, "Beta")
+        XCTAssertEqual(preview.candidates.last?.uniqueIdentifier, "uid-b")
+        XCTAssertEqual(preview.candidates.last?.description, "Has note")
+        XCTAssertEqual(preview.candidates.last?.lastIP, "203.0.113.7")
+        XCTAssertEqual(preview.candidates.last?.totalConnections, 5)
+        XCTAssertNotNil(preview.candidates.last?.createdAt)
+        XCTAssertNotNil(preview.candidates.last?.lastConnectedAt)
         XCTAssertEqual(
             preview.candidates.map(\.summary),
             [
@@ -246,6 +253,63 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
             (preview.fieldSummaries + preview.clientSummaries).joined(separator: "\n")
         )
         XCTAssertTrue(preview.hasClients)
+    }
+
+    @MainActor
+    func testDatabaseClientImportImpactSummaryCountsSelectedClients() throws {
+        let model = TS3AppModel()
+        let backupJSON = """
+        {
+          "entries": [
+            {
+              "id": 7,
+              "uniqueIdentifier": " uid-b ",
+              "nickname": " Beta ",
+              "createdAt": 1700000000,
+              "lastConnectedAt": 1700000100,
+              "totalConnections": 5,
+              "description": " Has note ",
+              "lastIP": " 203.0.113.7 "
+            },
+            {
+              "id": 6,
+              "uniqueIdentifier": "",
+              "nickname": " Alpha ",
+              "description": "   "
+            },
+            {
+              "id": 7,
+              "nickname": "Duplicate"
+            },
+            {
+              "id": 0,
+              "nickname": "Invalid"
+            }
+          ]
+        }
+        """
+
+        let preview = try model.databaseClientBackupPreview(from: Data(backupJSON.utf8))
+        let summary = TS3DatabaseClientImportImpactSummary(
+            preview: preview,
+            selectedClientIds: Set(preview.candidates.map(\.id))
+        )
+
+        XCTAssertEqual(summary.selectedClientCount, 2)
+        XCTAssertEqual(summary.uniqueIdentifierCount, 1)
+        XCTAssertEqual(summary.missingUniqueIdentifierCount, 1)
+        XCTAssertEqual(summary.descriptionCount, 1)
+        XCTAssertEqual(summary.lastIPCount, 1)
+        XCTAssertEqual(summary.connectionCount, 1)
+        XCTAssertEqual(summary.createdDateCount, 1)
+        XCTAssertEqual(summary.lastConnectedDateCount, 1)
+        XCTAssertEqual(summary.skippedClientCount, 2)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=2 | uid=1 | missingUid=1 | descriptions=1 | lastIP=1 | connections=1 | createdDates=1 | lastConnectedDates=1 | skippedBackupClients=2 | needsAttention=true"
+        )
     }
 
     @MainActor

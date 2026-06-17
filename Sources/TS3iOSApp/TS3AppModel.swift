@@ -3950,6 +3950,13 @@ struct TS3DatabaseClientActionSummary {
 struct TS3DatabaseClientBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: Int
+        let nickname: String
+        let uniqueIdentifier: String?
+        let description: String?
+        let lastIP: String?
+        let totalConnections: Int?
+        let createdAt: Date?
+        let lastConnectedAt: Date?
         let summary: String
     }
 
@@ -3976,6 +3983,61 @@ struct TS3DatabaseClientBackupPreview {
 
     func containsClient(id: Int) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3DatabaseClientImportImpactSummary {
+    let selectedClientCount: Int
+    let uniqueIdentifierCount: Int
+    let missingUniqueIdentifierCount: Int
+    let descriptionCount: Int
+    let lastIPCount: Int
+    let connectionCount: Int
+    let createdDateCount: Int
+    let lastConnectedDateCount: Int
+    let skippedClientCount: Int
+
+    var hasSelection: Bool {
+        selectedClientCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || missingUniqueIdentifierCount > 0 || skippedClientCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedClientCount)",
+            "uid=\(uniqueIdentifierCount)",
+            "missingUid=\(missingUniqueIdentifierCount)",
+            "descriptions=\(descriptionCount)",
+            "lastIP=\(lastIPCount)",
+            "connections=\(connectionCount)",
+            "createdDates=\(createdDateCount)",
+            "lastConnectedDates=\(lastConnectedDateCount)",
+            "skippedBackupClients=\(skippedClientCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3DatabaseClientBackupPreview, selectedClientIds: Set<Int>) {
+        let selected = preview.candidates.filter { selectedClientIds.contains($0.id) }
+        selectedClientCount = selected.count
+        uniqueIdentifierCount = selected.filter { Self.normalized($0.uniqueIdentifier) != nil }.count
+        missingUniqueIdentifierCount = selectedClientCount - uniqueIdentifierCount
+        descriptionCount = selected.filter { Self.normalized($0.description) != nil }.count
+        lastIPCount = selected.filter { Self.normalized($0.lastIP) != nil }.count
+        connectionCount = selected.filter { $0.totalConnections != nil }.count
+        createdDateCount = selected.filter { $0.createdAt != nil }.count
+        lastConnectedDateCount = selected.filter { $0.lastConnectedAt != nil }.count
+        skippedClientCount = preview.skippedClientCount
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
     }
 }
 
@@ -14033,7 +14095,17 @@ final class TS3AppModel: ObservableObject {
             fieldSummaries: Self.databaseClientBackupFieldSummaries(clients),
             clientSummaries: clients.prefix(10).map(\.backupSummary),
             candidates: clients.map {
-                TS3DatabaseClientBackupPreview.Candidate(id: $0.id, summary: $0.backupSummary)
+                TS3DatabaseClientBackupPreview.Candidate(
+                    id: $0.id,
+                    nickname: $0.nickname,
+                    uniqueIdentifier: $0.uniqueIdentifier,
+                    description: $0.description,
+                    lastIP: $0.lastIP,
+                    totalConnections: $0.totalConnections,
+                    createdAt: $0.createdAt,
+                    lastConnectedAt: $0.lastConnectedAt,
+                    summary: $0.backupSummary
+                )
             },
             firstNickname: first?.nickname,
             firstUniqueIdentifier: first?.uniqueIdentifier,
