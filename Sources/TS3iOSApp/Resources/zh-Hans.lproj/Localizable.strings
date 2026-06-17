@@ -1907,6 +1907,17 @@
 "audio.import.copySettingsSummary" = "复制设置导入摘要";
 "audio.import.copyProfileSummary" = "复制配置导入摘要";
 "audio.import.copyPlaybackSummary" = "复制播放导入摘要";
+"audio.import.impact" = "导入影响";
+"audio.import.profileImpactFormat" = "%d 个已选，%d 个新增，%d 个替换";
+"audio.import.profileImpactModesFormat" = "PTT/语音激活/连续：%d/%d/%d";
+"audio.import.profileImpactBoostsFormat" = "提高播放/输入：%d/%d";
+"audio.import.profileImpactAdjustedFormat" = "已调整/跳过：%d/%d";
+"audio.import.copyProfileImpact" = "复制配置导入影响";
+"audio.import.playbackImpactFormat" = "%d 个已选，%d 个新增，%d 个替换";
+"audio.import.playbackImpactMutedFormat" = "静音：%d";
+"audio.import.playbackImpactVolumeFormat" = "提高/降低音量：%d/%d";
+"audio.import.playbackImpactAdjustedFormat" = "已调整/跳过：%d/%d";
+"audio.import.copyPlaybackImpact" = "复制播放导入影响";
 "audio.import.adjustedSettings" = "已调整设置";
 "audio.import.adjustedProfiles" = "已调整配置";
 "audio.import.adjustedPreferences" = "已调整偏好";

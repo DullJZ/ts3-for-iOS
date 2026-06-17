@@ -2276,6 +2276,10 @@ struct TS3UserPlaybackPreferenceSummary: Identifiable {
 struct TS3UserPlaybackImportPreview {
     struct Candidate: Identifiable, Equatable {
         let id: String
+        let volume: Double
+        let isMuted: Bool
+        let isReplacing: Bool
+        let isAdjusted: Bool
         let summary: String
     }
 
@@ -2311,6 +2315,51 @@ struct TS3UserPlaybackImportPreview {
 
     func containsPreference(id: String) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3UserPlaybackImportImpactSummary {
+    let selectedPreferenceCount: Int
+    let newPreferenceCount: Int
+    let replacedPreferenceCount: Int
+    let mutedPreferenceCount: Int
+    let boostedPreferenceCount: Int
+    let loweredPreferenceCount: Int
+    let adjustedPreferenceCount: Int
+    let skippedPreferenceCount: Int
+
+    var hasSelection: Bool {
+        selectedPreferenceCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || replacedPreferenceCount > 0 || mutedPreferenceCount > 0 || boostedPreferenceCount > 0 || adjustedPreferenceCount > 0 || skippedPreferenceCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedPreferenceCount)",
+            "new=\(newPreferenceCount)",
+            "replacing=\(replacedPreferenceCount)",
+            "muted=\(mutedPreferenceCount)",
+            "boosted=\(boostedPreferenceCount)",
+            "lowered=\(loweredPreferenceCount)",
+            "adjusted=\(adjustedPreferenceCount)",
+            "skipped=\(skippedPreferenceCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3UserPlaybackImportPreview, selectedPreferenceIds: Set<String>) {
+        let selected = preview.candidates.filter { selectedPreferenceIds.contains($0.id) }
+        selectedPreferenceCount = selected.count
+        replacedPreferenceCount = selected.filter(\.isReplacing).count
+        newPreferenceCount = selectedPreferenceCount - replacedPreferenceCount
+        mutedPreferenceCount = selected.filter(\.isMuted).count
+        boostedPreferenceCount = selected.filter { $0.volume > 1 }.count
+        loweredPreferenceCount = selected.filter { $0.volume < 1 }.count
+        adjustedPreferenceCount = selected.filter(\.isAdjusted).count
+        skippedPreferenceCount = preview.skippedPreferenceCount
     }
 }
 
@@ -7324,6 +7373,13 @@ struct TS3AudioProfile: Identifiable, Codable {
 struct TS3AudioProfileImportPreview {
     struct Candidate: Identifiable, Equatable {
         let id: String
+        let name: String
+        let transmitMode: String
+        let playbackVolume: Double
+        let inputGain: Double
+        let voiceActivationThreshold: Double
+        let isReplacing: Bool
+        let isAdjusted: Bool
         let summary: String
     }
 
@@ -7357,6 +7413,57 @@ struct TS3AudioProfileImportPreview {
 
     func containsProfile(id: String) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3AudioProfileImportImpactSummary {
+    let selectedProfileCount: Int
+    let newProfileCount: Int
+    let replacedProfileCount: Int
+    let adjustedProfileCount: Int
+    let pushToTalkCount: Int
+    let voiceActivationCount: Int
+    let continuousCount: Int
+    let boostedPlaybackCount: Int
+    let boostedInputCount: Int
+    let skippedProfileCount: Int
+
+    var hasSelection: Bool {
+        selectedProfileCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || replacedProfileCount > 0 || adjustedProfileCount > 0 || continuousCount > 0 || boostedPlaybackCount > 0 || boostedInputCount > 0 || skippedProfileCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedProfileCount)",
+            "new=\(newProfileCount)",
+            "replacing=\(replacedProfileCount)",
+            "adjusted=\(adjustedProfileCount)",
+            "pushToTalk=\(pushToTalkCount)",
+            "voiceActivation=\(voiceActivationCount)",
+            "continuous=\(continuousCount)",
+            "boostedPlayback=\(boostedPlaybackCount)",
+            "boostedInput=\(boostedInputCount)",
+            "skipped=\(skippedProfileCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3AudioProfileImportPreview, selectedProfileIds: Set<String>) {
+        let selected = preview.candidates.filter { selectedProfileIds.contains($0.id) }
+        selectedProfileCount = selected.count
+        replacedProfileCount = selected.filter(\.isReplacing).count
+        newProfileCount = selectedProfileCount - replacedProfileCount
+        adjustedProfileCount = selected.filter(\.isAdjusted).count
+        pushToTalkCount = selected.filter { $0.transmitMode == TS3AudioTransmitMode.pushToTalk.rawValue }.count
+        voiceActivationCount = selected.filter { $0.transmitMode == TS3AudioTransmitMode.voiceActivation.rawValue }.count
+        continuousCount = selected.filter { $0.transmitMode == TS3AudioTransmitMode.continuous.rawValue }.count
+        boostedPlaybackCount = selected.filter { $0.playbackVolume > 1 }.count
+        boostedInputCount = selected.filter { $0.inputGain > 1 }.count
+        skippedProfileCount = preview.skippedProfileCount
     }
 }
 
@@ -10687,6 +10794,7 @@ final class TS3AppModel: ObservableObject {
         let decoded = try JSONDecoder().decode([String: TS3UserPlaybackPreference].self, from: data)
         let sanitized = sanitizedUserPlaybackPreferences(decoded)
         let replacedCount = sanitized.keys.filter { userPlaybackPreferences.keys.contains($0) }.count
+        var adjustedPreferenceKeys = Set<String>()
         let adjustmentSummaries = decoded.sorted {
             $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending
         }.compactMap { key, preference -> String? in
@@ -10699,17 +10807,22 @@ final class TS3AppModel: ObservableObject {
                 changes.append("volume")
             }
             guard !changes.isEmpty else { return nil }
+            adjustedPreferenceKeys.insert(sanitizedItem.key)
             return "adjusted key=\(sanitizedItem.key) fields=\(changes.joined(separator: ","))"
         }
-        let preferenceSummaries = sanitized
+        let sortedPreferences = sanitized
             .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+        let preferenceSummaries = sortedPreferences
             .prefix(10)
             .map { Self.userPlaybackPreferenceSummary(key: $0.key, preference: $0.value) }
-        let candidates = sanitized
-            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+        let candidates = sortedPreferences
             .map { key, preference in
                 TS3UserPlaybackImportPreview.Candidate(
                     id: key,
+                    volume: preference.volume,
+                    isMuted: preference.isMuted,
+                    isReplacing: userPlaybackPreferences.keys.contains(key),
+                    isAdjusted: adjustedPreferenceKeys.contains(key),
                     summary: Self.userPlaybackPreferenceSummary(key: key, preference: preference)
                 )
             }
@@ -19417,6 +19530,7 @@ final class TS3AppModel: ObservableObject {
         let sanitized = sanitizedAudioProfiles(imported)
         let currentNames = Set(audioProfiles.map { $0.name.lowercased() })
         let replacedCount = sanitized.filter { currentNames.contains($0.name.lowercased()) }.count
+        var adjustedProfileNames = Set<String>()
         let adjustmentSummaries = imported.compactMap { profile -> String? in
             guard let sanitized = Self.sanitizedAudioProfile(profile) else { return nil }
             var changes: [String] = []
@@ -19436,6 +19550,7 @@ final class TS3AppModel: ObservableObject {
                 changes.append("threshold")
             }
             guard !changes.isEmpty else { return nil }
+            adjustedProfileNames.insert(sanitized.name)
             return "adjusted name=\(sanitized.name) fields=\(changes.joined(separator: ","))"
         }
         return TS3AudioProfileImportPreview(
@@ -19450,6 +19565,13 @@ final class TS3AppModel: ObservableObject {
             candidates: sanitized.map {
                 TS3AudioProfileImportPreview.Candidate(
                     id: Self.audioProfileImportSelectionID($0),
+                    name: $0.name,
+                    transmitMode: $0.transmitMode,
+                    playbackVolume: $0.playbackVolume,
+                    inputGain: $0.inputGain,
+                    voiceActivationThreshold: $0.voiceActivationThreshold,
+                    isReplacing: currentNames.contains($0.name.lowercased()),
+                    isAdjusted: adjustedProfileNames.contains($0.name),
                     summary: $0.clipboardSummary
                 )
             }

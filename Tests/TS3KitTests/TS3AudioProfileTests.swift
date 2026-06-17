@@ -261,6 +261,17 @@ final class TS3AudioProfileTests: XCTestCase {
             ]
         )
         XCTAssertEqual(preview.candidates.map(\.id), ["voice activation", "raid"])
+        XCTAssertEqual(preview.candidates.first?.name, "Voice Activation")
+        XCTAssertEqual(preview.candidates.first?.transmitMode, TS3AudioTransmitMode.voiceActivation.rawValue)
+        XCTAssertEqual(preview.candidates.first?.playbackVolume, 2.5)
+        XCTAssertEqual(preview.candidates.first?.inputGain, 1.7)
+        XCTAssertEqual(preview.candidates.first?.voiceActivationThreshold, 0.12)
+        XCTAssertFalse(preview.candidates.first?.isReplacing ?? true)
+        XCTAssertFalse(preview.candidates.first?.isAdjusted ?? true)
+        XCTAssertEqual(preview.candidates.last?.name, "raid")
+        XCTAssertEqual(preview.candidates.last?.transmitMode, TS3AudioTransmitMode.pushToTalk.rawValue)
+        XCTAssertTrue(preview.candidates.last?.isReplacing ?? false)
+        XCTAssertTrue(preview.candidates.last?.isAdjusted ?? false)
         XCTAssertEqual(
             preview.candidates.map(\.summary),
             [
@@ -304,6 +315,82 @@ final class TS3AudioProfileTests: XCTestCase {
         XCTAssertEqual(voiceActivation.inputGain, 1.7)
         XCTAssertEqual(voiceActivation.transmitMode, TS3AudioTransmitMode.voiceActivation.rawValue)
         XCTAssertEqual(voiceActivation.voiceActivationThreshold, 0.12)
+    }
+
+    @MainActor
+    func testAudioProfileImportImpactSummaryCountsSelectedProfiles() throws {
+        let model = TS3AppModel()
+        model.deleteAudioProfiles(model.audioProfiles)
+        model.updatePlaybackVolume(1.2)
+        model.updateInputGain(1.1)
+        model.updateAudioTransmitMode(.pushToTalk)
+        model.updateVoiceActivationThreshold(0.04)
+        model.saveCurrentAudioProfile(name: "Raid")
+
+        let importedProfiles = [
+            TS3AudioProfile(
+                id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+                name: " raid ",
+                playbackVolume: 6,
+                inputGain: -1,
+                transmitMode: "invalid-mode",
+                voiceActivationThreshold: 0,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_010)
+            ),
+            TS3AudioProfile(
+                id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+                name: "Voice Activation",
+                playbackVolume: 2.5,
+                inputGain: 1.7,
+                transmitMode: TS3AudioTransmitMode.voiceActivation.rawValue,
+                voiceActivationThreshold: 0.12,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_020)
+            ),
+            TS3AudioProfile(
+                id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
+                name: "Always On",
+                playbackVolume: 0.8,
+                inputGain: 0.9,
+                transmitMode: TS3AudioTransmitMode.continuous.rawValue,
+                voiceActivationThreshold: 0.03,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_030)
+            ),
+            TS3AudioProfile(
+                id: UUID(uuidString: "44444444-4444-4444-4444-444444444444")!,
+                name: "   ",
+                playbackVolume: 1,
+                inputGain: 1,
+                transmitMode: TS3AudioTransmitMode.pushToTalk.rawValue,
+                voiceActivationThreshold: 0.03,
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_040)
+            )
+        ]
+        let data = try JSONEncoder().encode(importedProfiles)
+
+        let preview = try model.audioProfilesImportPreview(from: data)
+        let summary = TS3AudioProfileImportImpactSummary(
+            preview: preview,
+            selectedProfileIds: Set(preview.candidates.map(\.id))
+        )
+
+        XCTAssertEqual(summary.selectedProfileCount, 3)
+        XCTAssertEqual(summary.newProfileCount, 2)
+        XCTAssertEqual(summary.replacedProfileCount, 1)
+        XCTAssertEqual(summary.adjustedProfileCount, 1)
+        XCTAssertEqual(summary.pushToTalkCount, 1)
+        XCTAssertEqual(summary.voiceActivationCount, 1)
+        XCTAssertEqual(summary.continuousCount, 1)
+        XCTAssertEqual(summary.boostedPlaybackCount, 2)
+        XCTAssertEqual(summary.boostedInputCount, 1)
+        XCTAssertEqual(summary.skippedProfileCount, 1)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=3 | new=2 | replacing=1 | adjusted=1 | pushToTalk=1 | voiceActivation=1 | continuous=1 | boostedPlayback=2 | boostedInput=1 | skipped=1 | needsAttention=true"
+        )
+
+        model.deleteAudioProfiles(model.audioProfiles)
     }
 
     @MainActor
@@ -398,6 +485,14 @@ final class TS3AudioProfileTests: XCTestCase {
             ]
         )
         XCTAssertEqual(preview.candidates.map(\.id), ["client:muted", "uid:existing", "uid:new"])
+        XCTAssertEqual(preview.candidates.first?.volume, 1)
+        XCTAssertTrue(preview.candidates.first?.isMuted ?? false)
+        XCTAssertFalse(preview.candidates.first?.isReplacing ?? true)
+        XCTAssertFalse(preview.candidates.first?.isAdjusted ?? true)
+        XCTAssertEqual(preview.candidates[1].volume, 4)
+        XCTAssertTrue(preview.candidates[1].isMuted)
+        XCTAssertTrue(preview.candidates[1].isReplacing)
+        XCTAssertTrue(preview.candidates[1].isAdjusted)
         XCTAssertEqual(
             preview.candidates.map(\.summary),
             [
@@ -436,6 +531,47 @@ final class TS3AudioProfileTests: XCTestCase {
         XCTAssertEqual(model.userPlaybackPreferences["uid:new"]?.volume, 0.25)
         XCTAssertEqual(model.userPlaybackPreferences["uid:new"]?.isMuted, false)
         XCTAssertNil(model.userPlaybackPreferences["uid:default"])
+    }
+
+    @MainActor
+    func testUserPlaybackImportImpactSummaryCountsSelectedPreferences() throws {
+        let model = TS3AppModel()
+        model.resetUserPlaybackPreferences()
+        model.userPlaybackPreferences = [
+            "uid:existing": TS3UserPlaybackPreference(volume: 0.5, isMuted: false)
+        ]
+
+        let importedPreferences = [
+            " uid:existing ": TS3UserPlaybackPreference(volume: 6, isMuted: true),
+            "client:muted": TS3UserPlaybackPreference(volume: 1, isMuted: true),
+            "uid:new": TS3UserPlaybackPreference(volume: 0.25, isMuted: false),
+            "uid:default": TS3UserPlaybackPreference(volume: 1, isMuted: false),
+            "   ": TS3UserPlaybackPreference(volume: 0.5, isMuted: false)
+        ]
+        let data = try JSONEncoder().encode(importedPreferences)
+
+        let preview = try model.userPlaybackPreferencesImportPreview(from: data)
+        let summary = TS3UserPlaybackImportImpactSummary(
+            preview: preview,
+            selectedPreferenceIds: Set(preview.candidates.map(\.id))
+        )
+
+        XCTAssertEqual(summary.selectedPreferenceCount, 3)
+        XCTAssertEqual(summary.newPreferenceCount, 2)
+        XCTAssertEqual(summary.replacedPreferenceCount, 1)
+        XCTAssertEqual(summary.mutedPreferenceCount, 2)
+        XCTAssertEqual(summary.boostedPreferenceCount, 1)
+        XCTAssertEqual(summary.loweredPreferenceCount, 1)
+        XCTAssertEqual(summary.adjustedPreferenceCount, 1)
+        XCTAssertEqual(summary.skippedPreferenceCount, 2)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=3 | new=2 | replacing=1 | muted=2 | boosted=1 | lowered=1 | adjusted=1 | skipped=2 | needsAttention=true"
+        )
+
+        model.resetUserPlaybackPreferences()
     }
 
     @MainActor

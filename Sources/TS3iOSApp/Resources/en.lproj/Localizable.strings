@@ -1907,6 +1907,17 @@
 "audio.import.copySettingsSummary" = "Copy Settings Import Summary";
 "audio.import.copyProfileSummary" = "Copy Profile Import Summary";
 "audio.import.copyPlaybackSummary" = "Copy Playback Import Summary";
+"audio.import.impact" = "Import Impact";
+"audio.import.profileImpactFormat" = "%d selected, %d new, %d replacing";
+"audio.import.profileImpactModesFormat" = "PTT/voice/continuous: %d/%d/%d";
+"audio.import.profileImpactBoostsFormat" = "Boosted playback/input: %d/%d";
+"audio.import.profileImpactAdjustedFormat" = "Adjusted/skipped: %d/%d";
+"audio.import.copyProfileImpact" = "Copy Profile Import Impact";
+"audio.import.playbackImpactFormat" = "%d selected, %d new, %d replacing";
+"audio.import.playbackImpactMutedFormat" = "Muted: %d";
+"audio.import.playbackImpactVolumeFormat" = "Boosted/lowered volume: %d/%d";
+"audio.import.playbackImpactAdjustedFormat" = "Adjusted/skipped: %d/%d";
+"audio.import.copyPlaybackImpact" = "Copy Playback Import Impact";
 "audio.import.adjustedSettings" = "Adjusted Settings";
 "audio.import.adjustedProfiles" = "Adjusted Profiles";
 "audio.import.adjustedPreferences" = "Adjusted Preferences";

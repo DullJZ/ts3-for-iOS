@@ -32459,6 +32459,10 @@ private struct AudioProfileImportPreviewSheet: View {
         Set(selectedProfileIds.filter(preview.containsProfile))
     }
 
+    private var importImpactSummary: TS3AudioProfileImportImpactSummary {
+        TS3AudioProfileImportImpactSummary(preview: preview, selectedProfileIds: validSelectedProfileIds)
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -32484,6 +32488,22 @@ private struct AudioProfileImportPreviewSheet: View {
                             }
                             .disabled(selectedProfileIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("audio.import.impact"),
+                            value: localized(
+                                "audio.import.profileImpactFormat",
+                                importImpactSummary.selectedProfileCount,
+                                importImpactSummary.newProfileCount,
+                                importImpactSummary.replacedProfileCount
+                            )
+                        )
+                        Text(audioProfileImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("audio.import.copyProfileImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                     }
                 }
 
@@ -32549,6 +32569,14 @@ private struct AudioProfileImportPreviewSheet: View {
             }
         }
     }
+
+    private func audioProfileImportImpactText(_ summary: TS3AudioProfileImportImpactSummary) -> String {
+        [
+            localized("audio.import.profileImpactModesFormat", summary.pushToTalkCount, summary.voiceActivationCount, summary.continuousCount),
+            localized("audio.import.profileImpactBoostsFormat", summary.boostedPlaybackCount, summary.boostedInputCount),
+            localized("audio.import.profileImpactAdjustedFormat", summary.adjustedProfileCount, summary.skippedProfileCount)
+        ].joined(separator: " | ")
+    }
 }
 
 private struct UserPlaybackImportPreviewSheet: View {
@@ -32559,6 +32587,10 @@ private struct UserPlaybackImportPreviewSheet: View {
 
     private var validSelectedPreferenceIds: Set<String> {
         Set(selectedPreferenceIds.filter(preview.containsPreference))
+    }
+
+    private var importImpactSummary: TS3UserPlaybackImportImpactSummary {
+        TS3UserPlaybackImportImpactSummary(preview: preview, selectedPreferenceIds: validSelectedPreferenceIds)
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
@@ -32586,6 +32618,22 @@ private struct UserPlaybackImportPreviewSheet: View {
                             }
                             .disabled(selectedPreferenceIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("audio.import.impact"),
+                            value: localized(
+                                "audio.import.playbackImpactFormat",
+                                importImpactSummary.selectedPreferenceCount,
+                                importImpactSummary.newPreferenceCount,
+                                importImpactSummary.replacedPreferenceCount
+                            )
+                        )
+                        Text(userPlaybackImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("audio.import.copyPlaybackImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                     }
                 }
 
@@ -32650,6 +32698,14 @@ private struct UserPlaybackImportPreviewSheet: View {
                 }
             }
         }
+    }
+
+    private func userPlaybackImportImpactText(_ summary: TS3UserPlaybackImportImpactSummary) -> String {
+        [
+            localized("audio.import.playbackImpactMutedFormat", summary.mutedPreferenceCount),
+            localized("audio.import.playbackImpactVolumeFormat", summary.boostedPreferenceCount, summary.loweredPreferenceCount),
+            localized("audio.import.playbackImpactAdjustedFormat", summary.adjustedPreferenceCount, summary.skippedPreferenceCount)
+        ].joined(separator: " | ")
     }
 }
 
