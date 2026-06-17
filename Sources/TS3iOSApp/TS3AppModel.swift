@@ -13910,7 +13910,7 @@ final class TS3AppModel: ObservableObject {
             localizedSurfaceCount: 18,
             voiceOverRowActionSurfaceCount: 24,
             catalystMenuGroupCount: 5,
-            dynamicTypeResponsiveSurfaceCount: 6,
+            dynamicTypeResponsiveSurfaceCount: 9,
             hasSharedSwiftUISheets: true,
             hasCompactVoiceStatus: true,
             hasVoiceOverGlobalVoiceState: true,

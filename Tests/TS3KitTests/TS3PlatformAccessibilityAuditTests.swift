@@ -7,7 +7,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
             localizedSurfaceCount: 18,
             voiceOverRowActionSurfaceCount: 24,
             catalystMenuGroupCount: 5,
-            dynamicTypeResponsiveSurfaceCount: 6,
+            dynamicTypeResponsiveSurfaceCount: 9,
             hasSharedSwiftUISheets: true,
             hasCompactVoiceStatus: true,
             hasVoiceOverGlobalVoiceState: true,
@@ -27,7 +27,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=5 | dynamicTypeResponsiveSurfaces=6 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
+            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=5 | dynamicTypeResponsiveSurfaces=9 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
         )
     }
 
@@ -65,7 +65,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
 
         XCTAssertTrue(report.contains("Platform Accessibility Coverage"))
         XCTAssertTrue(report.contains("Official Areas: 9/9"))
-        XCTAssertTrue(report.contains("Dynamic Type Responsive Surfaces: 6"))
+        XCTAssertTrue(report.contains("Dynamic Type Responsive Surfaces: 9"))
         XCTAssertTrue(report.contains("Dynamic Type Coverage: Yes"))
         XCTAssertTrue(report.contains("Dense Administration Dynamic Type Audit Pending: Yes"))
         XCTAssertTrue(report.contains(model.platformAccessibilityCoverageAuditSummary.clipboardSummary))

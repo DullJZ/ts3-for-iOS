@@ -206,6 +206,9 @@
 "common.connect" = "Connect";
 "common.save" = "Save";
 "common.copySummary" = "Copy Summary";
+"common.copyValue" = "Copy Value";
+"common.copyRow" = "Copy Row";
+"common.openURL" = "Open URL";
 "common.yes" = "Yes";
 "common.no" = "No";
 "common.notAvailable" = "N/A";
@@ -1557,7 +1560,14 @@
 "database.importBackup" = "Import Database Backup";
 "database.deleteRecordAlert.title" = "Delete Database Record?";
 "database.deleteAllPresetsAlert.title" = "Delete All Database Filter Presets?";
+"database.nickname" = "Nickname";
 "database.databaseId" = "Database ID";
+"database.uniqueId" = "Unique ID";
+"database.created" = "Created";
+"database.lastConnected" = "Last Connected";
+"database.connections" = "Connections";
+"database.lastIP" = "Last IP";
+"database.description" = "Description";
 "database.filter.allRecords" = "All Records";
 "database.filter.withUniqueId" = "With Unique ID";
 "database.filter.withoutUniqueId" = "Without Unique ID";

@@ -13903,35 +13903,62 @@ struct ServerInformationSheet: View {
 }
 
 struct ServerInfoDetailRow: View {
+    @Environment(\.sizeCategory) private var sizeCategory
     let label: String
     let value: String?
     var monospaced = false
 
     var body: some View {
         if let value, !value.isEmpty {
-            HStack(alignment: .top) {
-                Text(label)
-                Spacer(minLength: 12)
-                Text(value)
-                    .font(monospaced ? .system(.footnote, design: .monospaced) : .body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .lineLimit(3)
+            Group {
+                if usesAccessibilityLayout {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(label)
+                            .font(.body.weight(.semibold))
+                        valueText(value, alignment: .leading)
+                    }
+                } else {
+                    HStack(alignment: .top) {
+                        Text(label)
+                        Spacer(minLength: 12)
+                        valueText(value, alignment: .trailing)
+                    }
+                }
             }
             .contextMenu {
-                Button("Copy Value") {
+                Button(NSLocalizedString("common.copyValue", comment: "")) {
                     TS3PlatformSupport.copyToPasteboard(value)
                 }
-                Button("Copy Row") {
+                Button(NSLocalizedString("common.copyRow", comment: "")) {
                     TS3PlatformSupport.copyToPasteboard("\(label): \(value)")
                 }
                 if let url = parsedURL {
-                    Button("Open URL") {
+                    Button(NSLocalizedString("common.openURL", comment: "")) {
                         TS3PlatformSupport.openURL(url)
                     }
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+            .accessibilityValue(value)
         }
+    }
+
+    private var usesAccessibilityLayout: Bool {
+        switch sizeCategory {
+        case .accessibilityMedium, .accessibilityLarge, .accessibilityExtraLarge, .accessibilityExtraExtraLarge, .accessibilityExtraExtraExtraLarge:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func valueText(_ value: String, alignment: TextAlignment) -> some View {
+        Text(value)
+            .font(monospaced ? .system(.footnote, design: .monospaced) : .body)
+            .foregroundColor(.secondary)
+            .multilineTextAlignment(alignment)
+            .lineLimit(usesAccessibilityLayout ? 6 : 3)
     }
 
     private var parsedURL: URL? {
@@ -18007,60 +18034,20 @@ struct DatabaseClientDetailRows: View {
     let record: TS3DatabaseClientSummary
 
     var body: some View {
-        HStack {
-            Text("Nickname")
-            Spacer()
-            Text(record.nickname)
-                .foregroundColor(.secondary)
-        }
-        HStack {
-            Text("Database ID")
-            Spacer()
-            Text("\(record.id)")
-                .foregroundColor(.secondary)
-        }
-        if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-            Text(uniqueIdentifier)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
+        ServerInfoDetailRow(label: localized("database.nickname"), value: record.nickname)
+        ServerInfoDetailRow(label: localized("database.databaseId"), value: "\(record.id)")
+        ServerInfoDetailRow(label: localized("database.uniqueId"), value: record.uniqueIdentifier, monospaced: true)
         if let createdAt = record.createdAt {
-            HStack {
-                Text("Created")
-                Spacer()
-                Text(Self.dateText(createdAt))
-                    .foregroundColor(.secondary)
-            }
+            ServerInfoDetailRow(label: localized("database.created"), value: Self.dateText(createdAt))
         }
         if let lastConnectedAt = record.lastConnectedAt {
-            HStack {
-                Text("Last Connected")
-                Spacer()
-                Text(Self.dateText(lastConnectedAt))
-                    .foregroundColor(.secondary)
-            }
+            ServerInfoDetailRow(label: localized("database.lastConnected"), value: Self.dateText(lastConnectedAt))
         }
         if let totalConnections = record.totalConnections {
-            HStack {
-                Text("Connections")
-                Spacer()
-                Text("\(totalConnections)")
-                    .foregroundColor(.secondary)
-            }
+            ServerInfoDetailRow(label: localized("database.connections"), value: "\(totalConnections)")
         }
-        if let lastIP = record.lastIP, !lastIP.isEmpty {
-            HStack {
-                Text("Last IP")
-                Spacer()
-                Text(lastIP)
-                    .foregroundColor(.secondary)
-            }
-        }
-        if let description = record.description, !description.isEmpty {
-            Text(description)
-        }
+        ServerInfoDetailRow(label: localized("database.lastIP"), value: record.lastIP)
+        ServerInfoDetailRow(label: localized("database.description"), value: record.description)
     }
 
     private static func dateText(_ date: Date) -> String {
@@ -18068,6 +18055,11 @@ struct DatabaseClientDetailRows: View {
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -28729,20 +28721,15 @@ struct IdentitySummaryRows: View {
     @State private var targetSecurityLevel = "8"
 
     var body: some View {
-        HStack {
-            Text(NSLocalizedString("identity.uid", comment: ""))
-            Spacer()
-            Text(model.identitySummary.uid.isEmpty ? NSLocalizedString("identity.unavailable", comment: "") : model.identitySummary.uid)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        HStack {
-            Text(NSLocalizedString("identity.security", comment: ""))
-            Spacer()
-            Text("\(model.identitySummary.securityLevel)")
-                .foregroundColor(.secondary)
-        }
+        ServerInfoDetailRow(
+            label: NSLocalizedString("identity.uid", comment: ""),
+            value: model.identitySummary.uid.isEmpty ? NSLocalizedString("identity.unavailable", comment: "") : model.identitySummary.uid,
+            monospaced: true
+        )
+        ServerInfoDetailRow(
+            label: NSLocalizedString("identity.security", comment: ""),
+            value: "\(model.identitySummary.securityLevel)"
+        )
         Button(NSLocalizedString("identity.refresh", comment: "")) {
             Task { @MainActor in
                 await model.refreshIdentitySummary()

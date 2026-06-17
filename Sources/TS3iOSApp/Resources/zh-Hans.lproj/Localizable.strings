@@ -206,6 +206,9 @@
 "common.connect" = "连接";
 "common.save" = "保存";
 "common.copySummary" = "复制摘要";
+"common.copyValue" = "复制值";
+"common.copyRow" = "复制行";
+"common.openURL" = "打开 URL";
 "common.yes" = "是";
 "common.no" = "否";
 "common.notAvailable" = "无";
@@ -1557,7 +1560,14 @@
 "database.importBackup" = "导入数据库备份";
 "database.deleteRecordAlert.title" = "删除数据库记录？";
 "database.deleteAllPresetsAlert.title" = "删除所有数据库筛选预设？";
+"database.nickname" = "昵称";
 "database.databaseId" = "数据库 ID";
+"database.uniqueId" = "唯一 ID";
+"database.created" = "创建时间";
+"database.lastConnected" = "最后连接";
+"database.connections" = "连接次数";
+"database.lastIP" = "最后 IP";
+"database.description" = "描述";
 "database.filter.allRecords" = "所有记录";
 "database.filter.withUniqueId" = "有唯一 ID";
 "database.filter.withoutUniqueId" = "无唯一 ID";
