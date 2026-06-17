@@ -2724,6 +2724,13 @@
 "complaints.import.preview" = "Preview";
 "complaints.import.selectAll" = "Select All";
 "complaints.import.clear" = "Clear";
+"complaints.import.impact" = "Import Impact";
+"complaints.import.impactFormat" = "%d selected, %d targets";
+"complaints.import.impactSourcesFormat" = "Named/anonymous sources: %d/%d";
+"complaints.import.impactMessagesFormat" = "Messages/missing: %d/%d";
+"complaints.import.impactDatesFormat" = "Dates/missing: %d/%d";
+"complaints.import.impactSkippedFormat" = "Skipped archive complaints: %d";
+"complaints.import.copyImpact" = "Copy Import Impact";
 "complaints.import.behavior" = "Import Behavior";
 "complaints.import.behaviorSummary" = "Import replaces the local cached complaint list with the selected complaints for offline review and does not submit complaints to the server.";
 "complaints.import.title" = "Import Complaints";

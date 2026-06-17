@@ -2724,6 +2724,13 @@
 "complaints.import.preview" = "预览";
 "complaints.import.selectAll" = "全选";
 "complaints.import.clear" = "清除";
+"complaints.import.impact" = "导入影响";
+"complaints.import.impactFormat" = "%d 个已选，%d 个目标";
+"complaints.import.impactSourcesFormat" = "有名/匿名来源：%d/%d";
+"complaints.import.impactMessagesFormat" = "消息/缺失：%d/%d";
+"complaints.import.impactDatesFormat" = "日期/缺失：%d/%d";
+"complaints.import.impactSkippedFormat" = "跳过归档投诉：%d";
+"complaints.import.copyImpact" = "复制导入影响";
 "complaints.import.behavior" = "导入行为";
 "complaints.import.behaviorSummary" = "导入会用所选投诉替换本地缓存的投诉列表，供离线查看；不会向服务器提交投诉。";
 "complaints.import.title" = "导入投诉";

@@ -408,6 +408,12 @@ final class TS3ComplaintArchiveTests: XCTestCase {
                 "sourceDb=45 | targetDb=23"
             ]
         )
+        XCTAssertEqual(preview.candidates.first?.targetClientDatabaseId, 22)
+        XCTAssertEqual(preview.candidates.first?.targetName, "Target")
+        XCTAssertEqual(preview.candidates.first?.sourceClientDatabaseId, 44)
+        XCTAssertEqual(preview.candidates.first?.sourceName, "Reporter")
+        XCTAssertEqual(preview.candidates.first?.message, "Abuse")
+        XCTAssertNotNil(preview.candidates.first?.timestamp)
         XCTAssertEqual(Set(preview.candidates.map(\.id)).count, 2)
         XCTAssertTrue(preview.containsComplaint(id: preview.candidates[1].id))
         XCTAssertFalse(preview.containsComplaint(id: "missing-complaint"))
@@ -416,6 +422,61 @@ final class TS3ComplaintArchiveTests: XCTestCase {
             (preview.targetSummaries + preview.sourceSummaries + preview.complaintSummaries).joined(separator: "\n")
         )
         XCTAssertTrue(preview.hasComplaints)
+    }
+
+    @MainActor
+    func testComplaintImportImpactSummaryCountsSelectedComplaints() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "entries": [
+            {
+              "id": "first",
+              "targetClientDatabaseId": 22,
+              "targetName": " Target ",
+              "sourceClientDatabaseId": 44,
+              "sourceName": " Reporter ",
+              "message": " Abuse ",
+              "timestamp": 1700000000
+            },
+            {
+              "id": "second",
+              "targetClientDatabaseId": 23,
+              "sourceClientDatabaseId": 45,
+              "message": " "
+            },
+            {
+              "id": "invalid",
+              "targetClientDatabaseId": 0,
+              "sourceClientDatabaseId": 45,
+              "message": "missing target"
+            }
+          ]
+        }
+        """
+
+        let preview = try model.complaintArchivePreview(from: Data(archiveJSON.utf8))
+        let summary = TS3ComplaintImportImpactSummary(
+            candidates: preview.candidates,
+            selectedComplaintIds: Set(preview.candidates.map(\.id)),
+            skippedComplaintCount: preview.skippedComplaintCount
+        )
+
+        XCTAssertEqual(summary.selectedComplaintCount, 2)
+        XCTAssertEqual(summary.targetCount, 2)
+        XCTAssertEqual(summary.namedSourceCount, 1)
+        XCTAssertEqual(summary.anonymousSourceCount, 1)
+        XCTAssertEqual(summary.messageCount, 1)
+        XCTAssertEqual(summary.missingMessageCount, 1)
+        XCTAssertEqual(summary.datedCount, 1)
+        XCTAssertEqual(summary.missingDateCount, 1)
+        XCTAssertEqual(summary.skippedComplaintCount, 1)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=2 | targets=2 | namedSources=1 | anonymousSources=1 | withMessages=1 | missingMessages=1 | withDates=1 | missingDates=1 | skippedArchiveComplaints=1 | needsAttention=true"
+        )
     }
 
     @MainActor

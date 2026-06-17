@@ -26137,6 +26137,14 @@ private struct ComplaintArchiveImportSheet: View {
         Set(selectedComplaintIds.filter(preview.containsComplaint))
     }
 
+    private var importImpactSummary: TS3ComplaintImportImpactSummary {
+        TS3ComplaintImportImpactSummary(
+            candidates: preview.candidates,
+            selectedComplaintIds: validSelectedComplaintIds,
+            skippedComplaintCount: preview.skippedComplaintCount
+        )
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -26157,6 +26165,21 @@ private struct ComplaintArchiveImportSheet: View {
                             }
                             .disabled(selectedComplaintIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("complaints.import.impact"),
+                            value: localized(
+                                "complaints.import.impactFormat",
+                                importImpactSummary.selectedComplaintCount,
+                                importImpactSummary.targetCount
+                            )
+                        )
+                        Text(complaintImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("complaints.import.copyImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                         ForEach(preview.targetSummaries, id: \.self) { summary in
                             Text(summary)
                                 .font(.caption2)
@@ -26225,6 +26248,15 @@ private struct ComplaintArchiveImportSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func complaintImportImpactText(_ summary: TS3ComplaintImportImpactSummary) -> String {
+        [
+            localized("complaints.import.impactSourcesFormat", summary.namedSourceCount, summary.anonymousSourceCount),
+            localized("complaints.import.impactMessagesFormat", summary.messageCount, summary.missingMessageCount),
+            localized("complaints.import.impactDatesFormat", summary.datedCount, summary.missingDateCount),
+            localized("complaints.import.impactSkippedFormat", summary.skippedComplaintCount)
+        ].joined(separator: " | ")
     }
 }
 

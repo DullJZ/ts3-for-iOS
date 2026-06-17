@@ -3435,6 +3435,12 @@ private struct TS3ComplaintArchive: Codable {
 struct TS3ComplaintArchivePreview {
     struct Candidate: Identifiable, Equatable {
         let id: String
+        let targetClientDatabaseId: Int
+        let targetName: String?
+        let sourceClientDatabaseId: Int
+        let sourceName: String?
+        let message: String?
+        let timestamp: Date?
         let summary: String
     }
 
@@ -3465,6 +3471,61 @@ struct TS3ComplaintArchivePreview {
 
     func containsComplaint(id: String) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3ComplaintImportImpactSummary {
+    let selectedComplaintCount: Int
+    let targetCount: Int
+    let namedSourceCount: Int
+    let anonymousSourceCount: Int
+    let messageCount: Int
+    let missingMessageCount: Int
+    let datedCount: Int
+    let missingDateCount: Int
+    let skippedComplaintCount: Int
+
+    var hasSelection: Bool {
+        selectedComplaintCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || anonymousSourceCount > 0 || missingMessageCount > 0 || missingDateCount > 0 || skippedComplaintCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedComplaintCount)",
+            "targets=\(targetCount)",
+            "namedSources=\(namedSourceCount)",
+            "anonymousSources=\(anonymousSourceCount)",
+            "withMessages=\(messageCount)",
+            "missingMessages=\(missingMessageCount)",
+            "withDates=\(datedCount)",
+            "missingDates=\(missingDateCount)",
+            "skippedArchiveComplaints=\(skippedComplaintCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(candidates: [TS3ComplaintArchivePreview.Candidate], selectedComplaintIds: Set<String>, skippedComplaintCount: Int) {
+        let selected = candidates.filter { selectedComplaintIds.contains($0.id) }
+        selectedComplaintCount = selected.count
+        targetCount = Set(selected.map(\.targetClientDatabaseId)).count
+        namedSourceCount = selected.filter { Self.normalized($0.sourceName) != nil }.count
+        anonymousSourceCount = selectedComplaintCount - namedSourceCount
+        messageCount = selected.filter { Self.normalized($0.message) != nil }.count
+        missingMessageCount = selectedComplaintCount - messageCount
+        datedCount = selected.filter { $0.timestamp != nil }.count
+        missingDateCount = selectedComplaintCount - datedCount
+        self.skippedComplaintCount = skippedComplaintCount
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+        return value
     }
 }
 
@@ -16686,6 +16747,12 @@ final class TS3AppModel: ObservableObject {
             candidates: entries.map {
                 TS3ComplaintArchivePreview.Candidate(
                     id: Self.complaintArchiveSelectionID($0),
+                    targetClientDatabaseId: $0.targetClientDatabaseId,
+                    targetName: $0.targetName,
+                    sourceClientDatabaseId: $0.sourceClientDatabaseId,
+                    sourceName: $0.sourceName,
+                    message: $0.message,
+                    timestamp: $0.timestamp,
                     summary: $0.clipboardSummary
                 )
             },
