@@ -8841,6 +8841,7 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
     let localizedSurfaceCount: Int
     let voiceOverRowActionSurfaceCount: Int
     let catalystMenuGroupCount: Int
+    let dynamicTypeResponsiveSurfaceCount: Int
     let hasSharedSwiftUISheets: Bool
     let hasCompactVoiceStatus: Bool
     let hasVoiceOverGlobalVoiceState: Bool
@@ -8849,10 +8850,11 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
     let hasCatalystMenuCoverage: Bool
     let hasCopyableAuditSummaries: Bool
     let hasDiagnosticExport: Bool
-    let hasDynamicTypeAuditPending: Bool
+    let hasDynamicTypeCoverage: Bool
+    let hasDenseAdministrationDynamicTypeAuditPending: Bool
 
     var officialAreaTotal: Int {
-        8
+        9
     }
 
     var coveredOfficialAreaCount: Int {
@@ -8864,7 +8866,8 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
             hasLocalizedAdminSurfaces,
             hasCatalystMenuCoverage,
             hasCopyableAuditSummaries,
-            hasDiagnosticExport
+            hasDiagnosticExport,
+            hasDynamicTypeCoverage
         ].filter { $0 }.count
     }
 
@@ -8877,7 +8880,7 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
     }
 
     var needsAttention: Bool {
-        missingOfficialAreaCount > 0 || hasDynamicTypeAuditPending
+        missingOfficialAreaCount > 0 || hasDenseAdministrationDynamicTypeAuditPending
     }
 
     var clipboardSummary: String {
@@ -8888,6 +8891,7 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
             "localizedSurfaces=\(localizedSurfaceCount)",
             "voiceOverRowActionSurfaces=\(voiceOverRowActionSurfaceCount)",
             "catalystMenuGroups=\(catalystMenuGroupCount)",
+            "dynamicTypeResponsiveSurfaces=\(dynamicTypeResponsiveSurfaceCount)",
             "sharedSwiftUISheets=\(hasSharedSwiftUISheets ? "true" : "false")",
             "compactVoiceStatus=\(hasCompactVoiceStatus ? "true" : "false")",
             "voiceOverGlobalVoiceState=\(hasVoiceOverGlobalVoiceState ? "true" : "false")",
@@ -8896,7 +8900,8 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
             "catalystMenuCoverage=\(hasCatalystMenuCoverage ? "true" : "false")",
             "copyableAuditSummaries=\(hasCopyableAuditSummaries ? "true" : "false")",
             "diagnosticExport=\(hasDiagnosticExport ? "true" : "false")",
-            "dynamicTypeAuditPending=\(hasDynamicTypeAuditPending ? "true" : "false")",
+            "dynamicTypeCoverage=\(hasDynamicTypeCoverage ? "true" : "false")",
+            "denseAdministrationDynamicTypeAuditPending=\(hasDenseAdministrationDynamicTypeAuditPending ? "true" : "false")",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")
     }
@@ -13905,6 +13910,7 @@ final class TS3AppModel: ObservableObject {
             localizedSurfaceCount: 18,
             voiceOverRowActionSurfaceCount: 24,
             catalystMenuGroupCount: 5,
+            dynamicTypeResponsiveSurfaceCount: 6,
             hasSharedSwiftUISheets: true,
             hasCompactVoiceStatus: true,
             hasVoiceOverGlobalVoiceState: true,
@@ -13913,7 +13919,8 @@ final class TS3AppModel: ObservableObject {
             hasCatalystMenuCoverage: true,
             hasCopyableAuditSummaries: true,
             hasDiagnosticExport: true,
-            hasDynamicTypeAuditPending: true
+            hasDynamicTypeCoverage: true,
+            hasDenseAdministrationDynamicTypeAuditPending: true
         )
     }
 
@@ -24957,7 +24964,9 @@ final class TS3AppModel: ObservableObject {
             "Localized Surfaces: \(accessibilityAudit.localizedSurfaceCount)",
             "VoiceOver Row Action Surfaces: \(accessibilityAudit.voiceOverRowActionSurfaceCount)",
             "Catalyst Menu Groups: \(accessibilityAudit.catalystMenuGroupCount)",
-            "Dynamic Type Audit Pending: \(accessibilityAudit.hasDynamicTypeAuditPending ? "Yes" : "No")",
+            "Dynamic Type Responsive Surfaces: \(accessibilityAudit.dynamicTypeResponsiveSurfaceCount)",
+            "Dynamic Type Coverage: \(accessibilityAudit.hasDynamicTypeCoverage ? "Yes" : "No")",
+            "Dense Administration Dynamic Type Audit Pending: \(accessibilityAudit.hasDenseAdministrationDynamicTypeAuditPending ? "Yes" : "No")",
             accessibilityAudit.clipboardSummary
         ].joined(separator: "\n"))
 

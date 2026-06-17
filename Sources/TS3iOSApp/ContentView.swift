@@ -4545,6 +4545,7 @@ struct CurrentChannelCard: View {
 
 struct CompactVoiceStatusStrip: View {
     @EnvironmentObject private var model: TS3AppModel
+    @Environment(\.sizeCategory) private var sizeCategory
 
     private var items: [CompactVoiceStatusItem] {
         [
@@ -4555,14 +4556,14 @@ struct CompactVoiceStatusStrip: View {
                 isActive: model.state == .connected
             ),
             CompactVoiceStatusItem(
-                title: model.isInputMuted ? "Mic Muted" : "Mic Ready",
+                title: model.isInputMuted ? localized("voiceStatus.micMuted") : localized("voiceStatus.micReady"),
                 detail: model.talkStatus,
                 systemImage: model.isInputMuted ? "mic.slash.fill" : (model.isTalking ? "waveform" : "mic.fill"),
                 isActive: model.isTalking && !model.isInputMuted
             ),
             CompactVoiceStatusItem(
-                title: model.isOutputMuted ? "Sound Muted" : "Sound On",
-                detail: model.isOutputMuted ? "Playback muted" : "Playback enabled",
+                title: model.isOutputMuted ? localized("voiceStatus.soundMuted") : localized("voiceStatus.soundOn"),
+                detail: model.isOutputMuted ? localized("voiceStatus.playbackMuted") : localized("voiceStatus.playbackEnabled"),
                 systemImage: model.isOutputMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
                 isActive: !model.isOutputMuted
             ),
@@ -4573,7 +4574,7 @@ struct CompactVoiceStatusStrip: View {
                 isActive: model.isTalking
             ),
             CompactVoiceStatusItem(
-                title: model.whisperRoute == .none ? "Whisper Off" : "Whisper Ready",
+                title: model.whisperRoute == .none ? localized("voiceStatus.whisperOff") : localized("voiceStatus.whisperReady"),
                 detail: model.whisperActivationStatus,
                 systemImage: model.whisperRoute == .none ? "scope" : "scope.fill",
                 isActive: model.whisperRoute != .none || model.isWhisperActivationActive
@@ -4581,16 +4582,108 @@ struct CompactVoiceStatusStrip: View {
         ]
     }
 
+    private var usesAccessibilityLayout: Bool {
+        switch sizeCategory {
+        case .accessibilityMedium, .accessibilityLarge, .accessibilityExtraLarge, .accessibilityExtraExtraLarge, .accessibilityExtraExtraExtraLarge:
+            return true
+        default:
+            return false
+        }
+    }
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(items) { item in
-                    CompactVoiceStatusPill(item: item)
+        Group {
+            if usesAccessibilityLayout {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(items) { item in
+                        CompactVoiceStatusPill(item: item, allowsMultiline: true)
+                    }
+                }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(items) { item in
+                            CompactVoiceStatusPill(item: item, allowsMultiline: false)
+                        }
+                    }
+                    .padding(.vertical, 1)
                 }
             }
-            .padding(.vertical, 1)
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        String(format: NSLocalizedString(key, comment: ""), arguments: arguments)
+    }
+}
+
+struct PlatformAccessibilityDynamicTypeProbe: View {
+    let isAccessibilityCategory: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: isAccessibilityCategory ? 8 : 4) {
+            Text("voiceStatus.dynamicTypeProbe.title")
+                .font(.caption.weight(.semibold))
+                .lineLimit(isAccessibilityCategory ? 2 : 1)
+            Text("voiceStatus.dynamicTypeProbe.detail")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .lineLimit(isAccessibilityCategory ? 3 : 1)
+        }
+        .frame(maxWidth: isAccessibilityCategory ? .infinity : 190, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct PlatformAccessibilityAuditProbe: View {
+    @Environment(\.sizeCategory) private var sizeCategory
+
+    var body: some View {
+        PlatformAccessibilityDynamicTypeProbe(isAccessibilityCategory: usesAccessibilityLayout)
+    }
+
+    private var usesAccessibilityLayout: Bool {
+        switch sizeCategory {
+        case .accessibilityMedium, .accessibilityLarge, .accessibilityExtraLarge, .accessibilityExtraExtraLarge, .accessibilityExtraExtraExtraLarge:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+private struct CompactVoiceStatusPill: View {
+    let item: CompactVoiceStatusItem
+    let allowsMultiline: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: item.systemImage)
+                .frame(width: 18, height: 18)
+                .padding(.top, allowsMultiline ? 2 : 0)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(allowsMultiline ? 2 : 1)
+                Text(item.detail)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(allowsMultiline ? 3 : 1)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(minWidth: allowsMultiline ? 0 : 128, maxWidth: allowsMultiline ? .infinity : 190, alignment: .leading)
+        .background(item.isActive ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: allowsMultiline ? 8 : 18)
+                .stroke(item.isActive ? Color.accentColor.opacity(0.35) : Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: allowsMultiline ? 8 : 18))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.title)
+        .accessibilityValue(item.detail)
     }
 }
 
@@ -4602,38 +4695,6 @@ private struct CompactVoiceStatusItem: Identifiable {
 
     var id: String {
         "\(title)-\(systemImage)"
-    }
-}
-
-private struct CompactVoiceStatusPill: View {
-    let item: CompactVoiceStatusItem
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: item.systemImage)
-                .frame(width: 18, height: 18)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.title)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                Text(item.detail)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(minWidth: 128, maxWidth: 190, alignment: .leading)
-        .background(item.isActive ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
-        .overlay(
-            Capsule()
-                .stroke(item.isActive ? Color.accentColor.opacity(0.35) : Color.secondary.opacity(0.18), lineWidth: 1)
-        )
-        .clipShape(Capsule())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.title)
-        .accessibilityValue(item.detail)
     }
 }
 

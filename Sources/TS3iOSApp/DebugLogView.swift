@@ -207,7 +207,8 @@ struct DebugLogView: View {
             String(format: NSLocalizedString("debug.accessibilityAuditLocalizedFormat", comment: ""), summary.localizedSurfaceCount),
             String(format: NSLocalizedString("debug.accessibilityAuditVoiceOverFormat", comment: ""), summary.voiceOverRowActionSurfaceCount),
             String(format: NSLocalizedString("debug.accessibilityAuditCatalystFormat", comment: ""), summary.catalystMenuGroupCount),
-            String(format: NSLocalizedString("debug.accessibilityAuditDynamicTypeFormat", comment: ""), summary.hasDynamicTypeAuditPending ? NSLocalizedString("common.yes", comment: "") : NSLocalizedString("common.no", comment: ""))
+            String(format: NSLocalizedString("debug.accessibilityAuditDynamicTypeSurfaceFormat", comment: ""), summary.dynamicTypeResponsiveSurfaceCount),
+            String(format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeFormat", comment: ""), summary.hasDenseAdministrationDynamicTypeAuditPending ? NSLocalizedString("common.yes", comment: "") : NSLocalizedString("common.no", comment: ""))
         ].joined(separator: " · ")
     }
 
