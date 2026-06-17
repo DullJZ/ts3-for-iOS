@@ -1462,6 +1462,17 @@
 "database.actionSummaryHasNote" = "已保存联系人备注";
 "database.actionSummaryNeedsUid" = "需要唯一 ID 才能使用更多操作";
 "database.copyActionSummary" = "复制操作摘要";
+"database.officialActionAudit" = "官方操作审计";
+"database.officialActionAuditFormat" = "%d 个操作，%d 个区域，%d 个受限";
+"database.officialActionAuditAreaFormat" = "%@: %d";
+"database.officialActionAuditBlockedFormat" = "%d 个不可用区域";
+"database.officialActionAuditOffline" = "当前服务器离线";
+"database.copyOfficialActionAudit" = "复制官方操作审计";
+"database.officialAction.identityLookup" = "身份查找";
+"database.officialAction.contactManagement" = "联系人管理";
+"database.officialAction.messaging" = "消息";
+"database.officialAction.administration" = "管理";
+"database.officialAction.onlineContext" = "在线上下文";
 "database.summary.descriptionsFormat" = "%d 个有描述";
 "database.summary.lastIPsFormat" = "%d 个有最后 IP";
 "database.summary.connectionsFormat" = "%d 个有连接次数";

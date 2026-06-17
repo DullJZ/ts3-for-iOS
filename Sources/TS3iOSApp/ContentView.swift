@@ -16311,6 +16311,22 @@ struct ClientDatabaseSheet: View {
                         Button(localized("database.copyActionSummary")) {
                             TS3PlatformSupport.copyToPasteboard(actionSummary.clipboardSummary)
                         }
+                        let officialActionAudit = databaseClientOfficialActionAuditSummary(for: selected)
+                        ServerInfoDetailRow(
+                            label: localized("database.officialActionAudit"),
+                            value: localized(
+                                "database.officialActionAuditFormat",
+                                officialActionAudit.totalActionCount,
+                                officialActionAudit.availableAreaCount,
+                                officialActionAudit.blockedAreaCount
+                            )
+                        )
+                        Text(databaseClientOfficialActionAuditText(officialActionAudit))
+                            .font(.caption)
+                            .foregroundColor(officialActionAudit.needsAttention ? .orange : .secondary)
+                        Button(localized("database.copyOfficialActionAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+                        }
                         Button(localized("database.copySelectedSnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(databaseClientSnapshot(for: selected))
                         }
@@ -16770,6 +16786,10 @@ struct ClientDatabaseSheet: View {
         )
     }
 
+    private func databaseClientOfficialActionAuditSummary(for record: TS3DatabaseClientSummary) -> TS3DatabaseClientOfficialActionAuditSummary {
+        TS3DatabaseClientOfficialActionAuditSummary(actionSummary: databaseClientActionSummary(for: record))
+    }
+
     private func databaseClientActionSummaryText(_ summary: TS3DatabaseClientActionSummary) -> String {
         var parts = [
             localized("database.actionSummaryIdentityFormat", summary.identityActionCount),
@@ -16784,6 +16804,38 @@ struct ClientDatabaseSheet: View {
             parts.append(localized("database.actionSummaryNeedsUid"))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func databaseClientOfficialActionAuditText(_ summary: TS3DatabaseClientOfficialActionAuditSummary) -> String {
+        var parts = TS3DatabaseClientOfficialActionArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaActionCounts[area], count > 0 else { return nil }
+            return localized("database.officialActionAuditAreaFormat", title(for: area), count)
+        }
+        if summary.blockedAreaCount > 0 {
+            parts.append(localized("database.officialActionAuditBlockedFormat", summary.blockedAreaCount))
+        }
+        if !summary.actionSummary.hasUniqueIdentifier {
+            parts.append(localized("database.actionSummaryNeedsUid"))
+        }
+        if !summary.actionSummary.isOnline {
+            parts.append(localized("database.officialActionAuditOffline"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func title(for area: TS3DatabaseClientOfficialActionArea) -> String {
+        switch area {
+        case .identityLookup:
+            return localized("database.officialAction.identityLookup")
+        case .contactManagement:
+            return localized("database.officialAction.contactManagement")
+        case .messaging:
+            return localized("database.officialAction.messaging")
+        case .administration:
+            return localized("database.officialAction.administration")
+        case .onlineContext:
+            return localized("database.officialAction.onlineContext")
+        }
     }
 
     private func localizedContactStatusTitle(_ status: TS3ContactStatus) -> String {

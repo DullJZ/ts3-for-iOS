@@ -4173,6 +4173,66 @@ struct TS3DatabaseClientActionSummary {
     }
 }
 
+enum TS3DatabaseClientOfficialActionArea: String, CaseIterable, Codable {
+    case identityLookup
+    case contactManagement
+    case messaging
+    case administration
+    case onlineContext
+}
+
+struct TS3DatabaseClientOfficialActionAuditSummary {
+    let actionSummary: TS3DatabaseClientActionSummary
+
+    var areaActionCounts: [TS3DatabaseClientOfficialActionArea: Int] {
+        [
+            .identityLookup: actionSummary.identityActionCount,
+            .contactManagement: actionSummary.contactActionCount,
+            .messaging: actionSummary.messagingActionCount,
+            .administration: actionSummary.adminActionCount,
+            .onlineContext: actionSummary.onlineActionCount
+        ]
+    }
+
+    var totalActionCount: Int {
+        areaActionCounts.values.reduce(0, +)
+    }
+
+    var availableAreaCount: Int {
+        areaActionCounts.values.filter { $0 > 0 }.count
+    }
+
+    var blockedAreaCount: Int {
+        TS3DatabaseClientOfficialActionArea.allCases.count - availableAreaCount
+    }
+
+    var needsAttention: Bool {
+        actionSummary.needsAttention || blockedAreaCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3DatabaseClientOfficialActionArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaActionCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "db=\(actionSummary.record.id)",
+            "nickname=\(actionSummary.record.nickname)",
+            "officialActions=\(totalActionCount)",
+            "availableOfficialAreas=\(availableAreaCount)",
+            "blockedOfficialAreas=\(blockedAreaCount)",
+            "uid=\(actionSummary.hasUniqueIdentifier ? "true" : "false")",
+            "online=\(actionSummary.isOnline ? "true" : "false")",
+            "offlineMessage=\(actionSummary.canSendOfflineMessage ? "true" : "false")",
+            "canBan=\(actionSummary.canBan ? "true" : "false")",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3DatabaseClientBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: Int

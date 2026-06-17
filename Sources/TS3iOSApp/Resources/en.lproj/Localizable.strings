@@ -1462,6 +1462,17 @@
 "database.actionSummaryHasNote" = "Contact note saved";
 "database.actionSummaryNeedsUid" = "Unique ID required for more actions";
 "database.copyActionSummary" = "Copy Action Summary";
+"database.officialActionAudit" = "Official Action Audit";
+"database.officialActionAuditFormat" = "%d actions, %d areas, %d blocked";
+"database.officialActionAuditAreaFormat" = "%@: %d";
+"database.officialActionAuditBlockedFormat" = "%d unavailable areas";
+"database.officialActionAuditOffline" = "Offline on current server";
+"database.copyOfficialActionAudit" = "Copy Official Action Audit";
+"database.officialAction.identityLookup" = "Identity Lookup";
+"database.officialAction.contactManagement" = "Contact Management";
+"database.officialAction.messaging" = "Messaging";
+"database.officialAction.administration" = "Administration";
+"database.officialAction.onlineContext" = "Online Context";
 "database.summary.descriptionsFormat" = "%d with descriptions";
 "database.summary.lastIPsFormat" = "%d with last IPs";
 "database.summary.connectionsFormat" = "%d with connection counts";

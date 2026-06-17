@@ -168,6 +168,70 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         )
     }
 
+    func testDatabaseClientOfficialActionAuditSummaryCountsOfficialAreas() {
+        let client = TS3DatabaseClientSummary(
+            id: 7,
+            uniqueIdentifier: "uid-b",
+            nickname: "Beta",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        let actionSummary = TS3DatabaseClientActionSummary(
+            record: client,
+            isOnline: true,
+            canSendOfflineMessage: true,
+            canBan: true,
+            contactStatus: .friend,
+            hasContactNote: true,
+            serverGroupCount: 3
+        )
+        let audit = TS3DatabaseClientOfficialActionAuditSummary(actionSummary: actionSummary)
+
+        XCTAssertEqual(audit.totalActionCount, 24)
+        XCTAssertEqual(audit.availableAreaCount, 5)
+        XCTAssertEqual(audit.blockedAreaCount, 0)
+        XCTAssertFalse(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "db=7 | nickname=Beta | officialActions=24 | availableOfficialAreas=5 | blockedOfficialAreas=0 | uid=true | online=true | offlineMessage=true | canBan=true | areas=identityLookup:5,contactManagement:5,messaging:3,administration:8,onlineContext:3 | needsAttention=false"
+        )
+    }
+
+    func testDatabaseClientOfficialActionAuditSummaryFlagsBlockedAreas() {
+        let client = TS3DatabaseClientSummary(
+            id: 6,
+            uniqueIdentifier: " ",
+            nickname: "Alpha",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        let actionSummary = TS3DatabaseClientActionSummary(
+            record: client,
+            isOnline: false,
+            canSendOfflineMessage: false,
+            canBan: false,
+            contactStatus: .neutral,
+            hasContactNote: false,
+            serverGroupCount: 3
+        )
+        let audit = TS3DatabaseClientOfficialActionAuditSummary(actionSummary: actionSummary)
+
+        XCTAssertEqual(audit.totalActionCount, 8)
+        XCTAssertEqual(audit.availableAreaCount, 3)
+        XCTAssertEqual(audit.blockedAreaCount, 2)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "db=6 | nickname=Alpha | officialActions=8 | availableOfficialAreas=3 | blockedOfficialAreas=2 | uid=false | online=false | offlineMessage=false | canBan=false | areas=identityLookup:3,administration:4,onlineContext:1 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testDatabaseClientBackupPreviewSanitizesCountsAndSummaries() throws {
         let model = TS3AppModel()
