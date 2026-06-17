@@ -1287,6 +1287,14 @@
 "contacts.bulkNoteFormat" = "Append note: %d";
 "contacts.bulkDeleteFormat" = "Delete visible: %d";
 "contacts.copyBulkSummary" = "Copy Bulk Action Impact";
+"contacts.officialAudit" = "Official Client Audit";
+"contacts.officialAuditFormat" = "%d of %d official areas, %d missing";
+"contacts.officialAuditActionsFormat" = "Actions: %d";
+"contacts.officialAuditVisibleFormat" = "Visible: %d";
+"contacts.officialAuditOnlineFormat" = "Online: %d";
+"contacts.officialAuditBulkFormat" = "Bulk actions: %d";
+"contacts.officialAuditAttentionFormat" = "Needs attention: %d";
+"contacts.copyOfficialAudit" = "Copy Official Audit";
 "contacts.exportSnapshot" = "Export Contact Snapshot";
 "contacts.exportBackup" = "Export Contacts Backup";
 "contacts.exportVisibleBackup" = "Export Visible Contacts Backup";

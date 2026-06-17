@@ -2198,6 +2198,107 @@ struct TS3ContactBulkActionSummary {
     }
 }
 
+struct TS3ContactOfficialManagementAuditSummary {
+    let visibleSummary: TS3ContactListSummary
+    let bulkActionSummary: TS3ContactBulkActionSummary
+    let hasFilterPresets: Bool
+    let hasVisibleExport: Bool
+    let hasOnlineContextActions: Bool
+
+    var officialAreaTotal: Int {
+        7
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasStatusCoverage,
+            hasVisibleSummary,
+            hasBulkMaintenance,
+            hasOnlineContextActions,
+            hasBackupCoverage,
+            hasFilterCoverage,
+            hasRowActionCoverage
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        18
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0
+            || visibleSummary.needsAttention
+            || bulkActionSummary.needsAttention
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "visibleContacts=\(visibleSummary.totalCount)",
+            "onlineContacts=\(visibleSummary.onlineCount)",
+            "statusCoverage=\(statusCoverageCount)/\(TS3ContactStatus.allCases.count)",
+            "bulkActions=\(bulkActionSummary.effectiveActionCount)",
+            "onlineContextActions=\(hasOnlineContextActions ? "true" : "false")",
+            "backupCoverage=\(hasBackupCoverage ? "true" : "false")",
+            "filterPresets=\(hasFilterPresets ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        visibleSummary: TS3ContactListSummary,
+        bulkActionSummary: TS3ContactBulkActionSummary,
+        hasFilterPresets: Bool,
+        hasVisibleExport: Bool,
+        hasOnlineContextActions: Bool
+    ) {
+        self.visibleSummary = visibleSummary
+        self.bulkActionSummary = bulkActionSummary
+        self.hasFilterPresets = hasFilterPresets
+        self.hasVisibleExport = hasVisibleExport
+        self.hasOnlineContextActions = hasOnlineContextActions
+    }
+
+    private var hasStatusCoverage: Bool {
+        statusCoverageCount == TS3ContactStatus.allCases.count
+    }
+
+    private var statusCoverageCount: Int {
+        [
+            visibleSummary.neutralCount > 0,
+            visibleSummary.friendCount > 0,
+            visibleSummary.ignoredCount > 0,
+            visibleSummary.blockedCount > 0
+        ].filter { $0 }.count
+    }
+
+    private var hasVisibleSummary: Bool {
+        visibleSummary.totalCount > 0
+    }
+
+    private var hasBulkMaintenance: Bool {
+        bulkActionSummary.effectiveActionCount > 0
+    }
+
+    private var hasBackupCoverage: Bool {
+        hasVisibleExport || visibleSummary.totalCount > 0
+    }
+
+    private var hasFilterCoverage: Bool {
+        true
+    }
+
+    private var hasRowActionCoverage: Bool {
+        visibleSummary.totalCount > 0
+    }
+}
+
 struct TS3ContactImportPreview {
     let importedCount: Int
     let validCount: Int

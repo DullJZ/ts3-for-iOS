@@ -6516,6 +6516,16 @@ struct ContactsSheet: View {
         TS3ContactBulkActionSummary(contacts: visibleContacts)
     }
 
+    private var contactOfficialAuditSummary: TS3ContactOfficialManagementAuditSummary {
+        TS3ContactOfficialManagementAuditSummary(
+            visibleSummary: visibleContactSummary,
+            bulkActionSummary: contactBulkActionSummary,
+            hasFilterPresets: !model.contactFilterPresets.isEmpty,
+            hasVisibleExport: !visibleContacts.isEmpty,
+            hasOnlineContextActions: !model.onlineContactCandidates.isEmpty
+        )
+    }
+
     private var canMarkVisibleFriends: Bool {
         visibleContacts.contains { $0.status != .friend }
     }
@@ -6648,6 +6658,21 @@ struct ContactsSheet: View {
                             .foregroundColor(contactBulkActionSummary.needsAttention ? .orange : .secondary)
                         Button(localized("contacts.copyBulkSummary")) {
                             TS3PlatformSupport.copyToPasteboard(contactBulkActionSummary.clipboardSummary)
+                        }
+                        ServerInfoDetailRow(
+                            label: localized("contacts.officialAudit"),
+                            value: localized(
+                                "contacts.officialAuditFormat",
+                                contactOfficialAuditSummary.coveredOfficialAreaCount,
+                                contactOfficialAuditSummary.officialAreaTotal,
+                                contactOfficialAuditSummary.missingOfficialAreaCount
+                            )
+                        )
+                        Text(contactOfficialAuditText(contactOfficialAuditSummary))
+                            .font(.caption)
+                            .foregroundColor(contactOfficialAuditSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("contacts.copyOfficialAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(contactOfficialAuditSummary.clipboardSummary)
                         }
                     }
                 }
@@ -7016,6 +7041,16 @@ struct ContactsSheet: View {
             localized("contacts.bulkNeutralFormat", summary.neutralCount),
             localized("contacts.bulkNoteFormat", summary.appendNoteCount),
             localized("contacts.bulkDeleteFormat", summary.deleteVisibleCount)
+        ].joined(separator: " · ")
+    }
+
+    private func contactOfficialAuditText(_ summary: TS3ContactOfficialManagementAuditSummary) -> String {
+        [
+            localized("contacts.officialAuditActionsFormat", summary.officialActionCount),
+            localized("contacts.officialAuditVisibleFormat", summary.visibleSummary.totalCount),
+            localized("contacts.officialAuditOnlineFormat", summary.visibleSummary.onlineCount),
+            localized("contacts.officialAuditBulkFormat", summary.bulkActionSummary.effectiveActionCount),
+            localized("contacts.officialAuditAttentionFormat", summary.needsAttention ? 1 : 0)
         ].joined(separator: " · ")
     }
 

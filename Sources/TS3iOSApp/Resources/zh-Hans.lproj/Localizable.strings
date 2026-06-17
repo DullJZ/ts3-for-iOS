@@ -1287,6 +1287,14 @@
 "contacts.bulkNoteFormat" = "追加备注：%d";
 "contacts.bulkDeleteFormat" = "删除可见：%d";
 "contacts.copyBulkSummary" = "复制批量操作影响";
+"contacts.officialAudit" = "官方客户端审计";
+"contacts.officialAuditFormat" = "%d / %d 个官方区域，%d 个缺失";
+"contacts.officialAuditActionsFormat" = "动作：%d";
+"contacts.officialAuditVisibleFormat" = "可见：%d";
+"contacts.officialAuditOnlineFormat" = "在线：%d";
+"contacts.officialAuditBulkFormat" = "批量动作：%d";
+"contacts.officialAuditAttentionFormat" = "需要注意：%d";
+"contacts.copyOfficialAudit" = "复制官方审计";
 "contacts.exportSnapshot" = "导出联系人快照";
 "contacts.exportBackup" = "导出联系人备份";
 "contacts.exportVisibleBackup" = "导出可见联系人备份";

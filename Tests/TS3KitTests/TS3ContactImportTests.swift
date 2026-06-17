@@ -263,6 +263,61 @@ final class TS3ContactImportTests: XCTestCase {
         )
     }
 
+    func testContactOfficialManagementAuditSummaryTracksCoveredAreas() {
+        let contacts = [
+            makeContact(uniqueIdentifier: "uid-friend", nickname: "Friend", status: .friend, note: ""),
+            makeContact(uniqueIdentifier: "uid-blocked", nickname: "Blocked", status: .blocked, note: "review"),
+            makeContact(uniqueIdentifier: "uid-ignored", nickname: "Ignored", status: .ignored, note: ""),
+            makeContact(uniqueIdentifier: "uid-neutral", nickname: "Neutral", status: .neutral, note: "")
+        ]
+        let visibleSummary = TS3ContactListSummary(
+            contacts: contacts,
+            onlineUniqueIdentifiers: ["uid-friend", "uid-neutral"]
+        )
+        let bulkSummary = TS3ContactBulkActionSummary(contacts: contacts)
+
+        let summary = TS3ContactOfficialManagementAuditSummary(
+            visibleSummary: visibleSummary,
+            bulkActionSummary: bulkSummary,
+            hasFilterPresets: true,
+            hasVisibleExport: true,
+            hasOnlineContextActions: true
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 7)
+        XCTAssertEqual(summary.officialAreaTotal, 7)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 18)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=7/7 | missingOfficialAreas=0 | officialActions=18 | visibleContacts=4 | onlineContacts=2 | statusCoverage=4/4 | bulkActions=6 | onlineContextActions=true | backupCoverage=true | filterPresets=true | needsAttention=true"
+        )
+    }
+
+    func testContactOfficialManagementAuditSummaryFlagsEmptyCoverage() {
+        let visibleSummary = TS3ContactListSummary(contacts: [])
+        let bulkSummary = TS3ContactBulkActionSummary(contacts: [])
+
+        let summary = TS3ContactOfficialManagementAuditSummary(
+            visibleSummary: visibleSummary,
+            bulkActionSummary: bulkSummary,
+            hasFilterPresets: false,
+            hasVisibleExport: false,
+            hasOnlineContextActions: false
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 1)
+        XCTAssertEqual(summary.officialAreaTotal, 7)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 6)
+        XCTAssertEqual(summary.officialActionCount, 18)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=1/7 | missingOfficialAreas=6 | officialActions=18 | visibleContacts=0 | onlineContacts=0 | statusCoverage=0/4 | bulkActions=0 | onlineContextActions=false | backupCoverage=false | filterPresets=false | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testAppendNoteDraftAppliesDeduplicatedVisibleContacts() {
         let model = TS3AppModel()
