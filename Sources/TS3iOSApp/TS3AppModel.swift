@@ -5936,6 +5936,62 @@ struct TS3PermissionDraftCoverageSummary {
     }
 }
 
+enum TS3PermissionOfficialEditArea: String, CaseIterable, Codable {
+    case targetScope
+    case permissionValue
+    case inheritanceFlags
+    case validation
+}
+
+struct TS3PermissionOfficialEditAuditSummary {
+    let coverage: TS3PermissionDraftCoverageSummary
+
+    var areaCoverageCounts: [TS3PermissionOfficialEditArea: Int] {
+        [
+            .targetScope: [coverage.hasTarget].filter { $0 }.count,
+            .permissionValue: [coverage.hasName, coverage.hasNumericValue].filter { $0 }.count,
+            .inheritanceFlags: coverage.unsupportedRequestedFlagCount == 0 ? 1 + coverage.effectiveFlagCount : coverage.effectiveFlagCount,
+            .validation: coverage.validationIssueCount == 0 ? 1 : 0
+        ]
+    }
+
+    var coveredAreaCount: Int {
+        areaCoverageCounts.values.filter { $0 > 0 }.count
+    }
+
+    var totalOfficialAreaCount: Int {
+        TS3PermissionOfficialEditArea.allCases.count
+    }
+
+    var missingAreaCount: Int {
+        max(0, totalOfficialAreaCount - coveredAreaCount)
+    }
+
+    var needsAttention: Bool {
+        coverage.needsAttention || missingAreaCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3PermissionOfficialEditArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaCoverageCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "scope=\(coverage.scope.title)",
+            "officialAreas=\(coveredAreaCount)/\(totalOfficialAreaCount)",
+            "missingOfficialAreas=\(missingAreaCount)",
+            "requiredFields=\(coverage.requiredFieldCount)/\(coverage.requiredFieldTotal)",
+            "effectiveFlags=\(coverage.effectiveFlagCount)",
+            "unsupportedFlags=\(coverage.unsupportedRequestedFlagCount)",
+            "validationIssues=\(coverage.validationIssueCount)",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3FileEntrySummary: Identifiable {
     let id: String
     let channelId: Int

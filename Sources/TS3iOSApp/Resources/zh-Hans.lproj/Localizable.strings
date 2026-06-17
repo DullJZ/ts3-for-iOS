@@ -2857,6 +2857,17 @@
 "permissions.draftCoverageNegatedFormat" = "取反：%d / 支持 %d";
 "permissions.draftCoverageSkipFormat" = "跳过：%d / 支持 %d";
 "permissions.copyDraftCoverage" = "复制权限草稿覆盖";
+"permissions.officialEditAudit" = "官方编辑审计";
+"permissions.officialEditAuditFormat" = "%d / %d 个区域，%d 个缺失";
+"permissions.officialEditAuditAreaFormat" = "%@: %d";
+"permissions.officialEditAuditMissingFormat" = "%d 个缺失区域";
+"permissions.officialEditAuditUnsupportedFlagsFormat" = "%d 个不支持的标记";
+"permissions.officialEditAuditValidationFormat" = "%d 个校验问题";
+"permissions.copyOfficialEditAudit" = "复制官方编辑审计";
+"permissions.officialEdit.targetScope" = "目标范围";
+"permissions.officialEdit.permissionValue" = "权限值";
+"permissions.officialEdit.inheritanceFlags" = "继承标记";
+"permissions.officialEdit.validation" = "校验";
 "permissions.copyDraft" = "复制权限草稿";
 "permissions.addOrUpdate" = "添加或更新权限";
 "permissions.directory" = "权限目录";

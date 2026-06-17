@@ -2857,6 +2857,17 @@
 "permissions.draftCoverageNegatedFormat" = "Negated: %d / supported %d";
 "permissions.draftCoverageSkipFormat" = "Skip: %d / supported %d";
 "permissions.copyDraftCoverage" = "Copy Permission Draft Coverage";
+"permissions.officialEditAudit" = "Official Edit Audit";
+"permissions.officialEditAuditFormat" = "%d of %d areas, %d missing";
+"permissions.officialEditAuditAreaFormat" = "%@: %d";
+"permissions.officialEditAuditMissingFormat" = "%d missing areas";
+"permissions.officialEditAuditUnsupportedFlagsFormat" = "%d unsupported flags";
+"permissions.officialEditAuditValidationFormat" = "%d validation issues";
+"permissions.copyOfficialEditAudit" = "Copy Official Edit Audit";
+"permissions.officialEdit.targetScope" = "Target Scope";
+"permissions.officialEdit.permissionValue" = "Permission Value";
+"permissions.officialEdit.inheritanceFlags" = "Inheritance Flags";
+"permissions.officialEdit.validation" = "Validation";
 "permissions.copyDraft" = "Copy Permission Draft";
 "permissions.addOrUpdate" = "Add or Update Permission";
 "permissions.directory" = "Permission Directory";

@@ -126,4 +126,54 @@ final class TS3PermissionDraftValidatorTests: XCTestCase {
             "scope=Database Client | requiredFields=0/3 | target=false | name=false | numericValue=false | supportsNegated=false | usesNegated=false | supportsSkip=true | usesSkip=false | validationIssues=2 | needsAttention=true"
         )
     }
+
+    func testPermissionOfficialEditAuditSummaryCoversOfficialEditAreas() {
+        let draft = TS3PermissionEditDraft(
+            scope: .serverGroup,
+            target: "Admins (#6)",
+            name: "i_client_kick_power",
+            value: "75",
+            negated: true,
+            skip: true
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let audit = TS3PermissionOfficialEditAuditSummary(coverage: coverage)
+
+        XCTAssertEqual(audit.coveredAreaCount, 4)
+        XCTAssertEqual(audit.totalOfficialAreaCount, 4)
+        XCTAssertEqual(audit.missingAreaCount, 0)
+        XCTAssertFalse(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "scope=Server Group | officialAreas=4/4 | missingOfficialAreas=0 | requiredFields=3/3 | effectiveFlags=2 | unsupportedFlags=0 | validationIssues=0 | areas=targetScope:1,permissionValue:2,inheritanceFlags:3,validation:1 | needsAttention=false"
+        )
+    }
+
+    func testPermissionOfficialEditAuditSummaryFlagsMissingAndUnsupportedAreas() {
+        let draft = TS3PermissionEditDraft(
+            scope: .channel,
+            target: " ",
+            name: "i_channel_needed_join_power",
+            value: "kick",
+            negated: true,
+            skip: true
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let audit = TS3PermissionOfficialEditAuditSummary(coverage: coverage)
+
+        XCTAssertEqual(audit.coveredAreaCount, 2)
+        XCTAssertEqual(audit.totalOfficialAreaCount, 4)
+        XCTAssertEqual(audit.missingAreaCount, 2)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "scope=Channel | officialAreas=2/4 | missingOfficialAreas=2 | requiredFields=1/3 | effectiveFlags=2 | unsupportedFlags=2 | validationIssues=1 | areas=permissionValue:1,inheritanceFlags:2 | needsAttention=true"
+        )
+    }
 }

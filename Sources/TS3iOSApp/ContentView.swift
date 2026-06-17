@@ -21723,6 +21723,10 @@ struct PermissionsSheet: View {
         )
     }
 
+    var permissionOfficialEditAuditSummary: TS3PermissionOfficialEditAuditSummary {
+        TS3PermissionOfficialEditAuditSummary(coverage: permissionDraftCoverageSummary)
+    }
+
     var exportFilename: String {
         switch model.permissionEditScope {
         case .ownClient:
@@ -21994,6 +21998,21 @@ struct PermissionsSheet: View {
                         .foregroundColor(permissionDraftCoverageSummary.needsAttention ? .orange : .secondary)
                     Button(localized("permissions.copyDraftCoverage")) {
                         TS3PlatformSupport.copyToPasteboard(permissionDraftCoverageSummary.clipboardSummary)
+                    }
+                    ServerInfoDetailRow(
+                        label: localized("permissions.officialEditAudit"),
+                        value: localized(
+                            "permissions.officialEditAuditFormat",
+                            permissionOfficialEditAuditSummary.coveredAreaCount,
+                            permissionOfficialEditAuditSummary.totalOfficialAreaCount,
+                            permissionOfficialEditAuditSummary.missingAreaCount
+                        )
+                    )
+                    Text(permissionOfficialEditAuditText(permissionOfficialEditAuditSummary))
+                        .font(.caption)
+                        .foregroundColor(permissionOfficialEditAuditSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("permissions.copyOfficialEditAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(permissionOfficialEditAuditSummary.clipboardSummary)
                     }
                     if !permissionDraftValidationMessages.isEmpty {
                         ForEach(permissionDraftValidationMessages, id: \.self) { message in
@@ -22395,6 +22414,36 @@ struct PermissionsSheet: View {
             localized("permissions.draftCoverageNegatedFormat", summary.usesNegated ? 1 : 0, summary.supportsNegated ? 1 : 0),
             localized("permissions.draftCoverageSkipFormat", summary.usesSkip ? 1 : 0, summary.supportsSkip ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func permissionOfficialEditAuditText(_ summary: TS3PermissionOfficialEditAuditSummary) -> String {
+        var parts = TS3PermissionOfficialEditArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaCoverageCounts[area], count > 0 else { return nil }
+            return localized("permissions.officialEditAuditAreaFormat", title(for: area), count)
+        }
+        if summary.missingAreaCount > 0 {
+            parts.append(localized("permissions.officialEditAuditMissingFormat", summary.missingAreaCount))
+        }
+        if summary.coverage.unsupportedRequestedFlagCount > 0 {
+            parts.append(localized("permissions.officialEditAuditUnsupportedFlagsFormat", summary.coverage.unsupportedRequestedFlagCount))
+        }
+        if summary.coverage.validationIssueCount > 0 {
+            parts.append(localized("permissions.officialEditAuditValidationFormat", summary.coverage.validationIssueCount))
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private func title(for area: TS3PermissionOfficialEditArea) -> String {
+        switch area {
+        case .targetScope:
+            return localized("permissions.officialEdit.targetScope")
+        case .permissionValue:
+            return localized("permissions.officialEdit.permissionValue")
+        case .inheritanceFlags:
+            return localized("permissions.officialEdit.inheritanceFlags")
+        case .validation:
+            return localized("permissions.officialEdit.validation")
+        }
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
