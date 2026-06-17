@@ -222,6 +222,14 @@
 "shortcuts.capability.issueFormat" = "问题：%d 个无效，%d 个重复";
 "shortcuts.capability.iosLimit" = "iOS 使用屏幕控件；系统级全局热键不可用。";
 "shortcuts.copyCapabilitySummary" = "复制平台覆盖";
+"shortcuts.officialAudit" = "官方快捷键审计";
+"shortcuts.officialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
+"shortcuts.officialAuditActionsFormat" = "%d 个官方动作";
+"shortcuts.officialAuditEnabledFormat" = "有效启用：%d";
+"shortcuts.officialAuditCatalystFormat" = "Catalyst 菜单：%d";
+"shortcuts.officialAuditWhisperFormat" = "密语：%d";
+"shortcuts.officialAuditIssuesFormat" = "问题：%d 个无效，%d 个重复";
+"shortcuts.copyOfficialAudit" = "复制官方快捷键审计";
 "shortcuts.actions" = "动作";
 "shortcuts.keys" = "按键";
 "shortcuts.record" = "录制";

@@ -489,6 +489,22 @@ struct KeyboardShortcutsSheet: View {
                     Button("shortcuts.copyCapabilitySummary") {
                         TS3PlatformSupport.copyToPasteboard(summary.clipboardSummary)
                     }
+                    let officialAudit = shortcutOfficialAuditSummary
+                    ServerInfoDetailRow(
+                        label: NSLocalizedString("shortcuts.officialAudit", comment: ""),
+                        value: String(
+                            format: NSLocalizedString("shortcuts.officialAuditFormat", comment: ""),
+                            officialAudit.coveredOfficialAreaCount,
+                            officialAudit.officialAreaTotal,
+                            officialAudit.missingOfficialAreaCount
+                        )
+                    )
+                    Text(shortcutOfficialAuditText(officialAudit))
+                        .font(.caption)
+                        .foregroundColor(officialAudit.needsAttention ? .orange : .secondary)
+                    Button("shortcuts.copyOfficialAudit") {
+                        TS3PlatformSupport.copyToPasteboard(officialAudit.clipboardSummary)
+                    }
                 }
 
                 Section(header: Text("shortcuts.actions")) {
@@ -693,12 +709,38 @@ struct KeyboardShortcutsSheet: View {
         TS3KeyboardShortcutCapabilitySummary(shortcuts: model.keyboardShortcuts)
     }
 
+    private var shortcutOfficialAuditSummary: TS3KeyboardShortcutOfficialCoverageAuditSummary {
+        TS3KeyboardShortcutOfficialCoverageAuditSummary(
+            capabilitySummary: shortcutCapabilitySummary,
+            hasEditableBindings: true,
+            hasRecorder: true,
+            hasValidationWarnings: true,
+            hasDuplicateWarnings: true,
+            hasImportExport: true,
+            hasSelectableRestore: true,
+            hasBulkMaintenance: true,
+            hasCatalystMenus: true,
+            hasWhisperShortcuts: true,
+            documentsIOSLimitations: true
+        )
+    }
+
     private func shortcutCapabilityText(_ summary: TS3KeyboardShortcutCapabilitySummary) -> String {
         [
             String(format: NSLocalizedString("shortcuts.capability.catalystFormat", comment: ""), summary.catalystMenuCount),
             String(format: NSLocalizedString("shortcuts.capability.whisperFormat", comment: ""), summary.whisperShortcutCount),
             String(format: NSLocalizedString("shortcuts.capability.issueFormat", comment: ""), summary.invalidEnabledCount, summary.duplicateEnabledCount),
             NSLocalizedString("shortcuts.capability.iosLimit", comment: "")
+        ].joined(separator: " · ")
+    }
+
+    private func shortcutOfficialAuditText(_ summary: TS3KeyboardShortcutOfficialCoverageAuditSummary) -> String {
+        [
+            String(format: NSLocalizedString("shortcuts.officialAuditActionsFormat", comment: ""), summary.officialActionCount),
+            String(format: NSLocalizedString("shortcuts.officialAuditEnabledFormat", comment: ""), summary.capabilitySummary.validEnabledCount),
+            String(format: NSLocalizedString("shortcuts.officialAuditCatalystFormat", comment: ""), summary.capabilitySummary.catalystMenuCount),
+            String(format: NSLocalizedString("shortcuts.officialAuditWhisperFormat", comment: ""), summary.capabilitySummary.whisperShortcutCount),
+            String(format: NSLocalizedString("shortcuts.officialAuditIssuesFormat", comment: ""), summary.capabilitySummary.invalidEnabledCount, summary.capabilitySummary.duplicateEnabledCount)
         ].joined(separator: " · ")
     }
 

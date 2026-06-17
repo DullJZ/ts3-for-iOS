@@ -84,6 +84,92 @@ final class TS3KeyboardShortcutTests: XCTestCase {
         )
     }
 
+    func testKeyboardShortcutOfficialCoverageAuditSummaryCountsCoveredAreas() {
+        let capability = TS3KeyboardShortcutCapabilitySummary(shortcuts: [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W",
+                keys: "Command-Shift-W",
+                isEnabled: true
+            )
+        ])
+        let summary = TS3KeyboardShortcutOfficialCoverageAuditSummary(
+            capabilitySummary: capability,
+            hasEditableBindings: true,
+            hasRecorder: true,
+            hasValidationWarnings: true,
+            hasDuplicateWarnings: true,
+            hasImportExport: true,
+            hasSelectableRestore: true,
+            hasBulkMaintenance: true,
+            hasCatalystMenus: true,
+            hasWhisperShortcuts: true,
+            documentsIOSLimitations: true
+        )
+
+        XCTAssertEqual(summary.officialAreaTotal, 10)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 10)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 0)
+        XCTAssertEqual(summary.officialActionCount, 24)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=10/10 | missingOfficialAreas=0 | officialActions=24 | shortcuts=3 | enabled=3 | validEnabled=3 | invalidEnabled=0 | duplicateEnabled=2 | catalystMenu=3 | whisper=1 | editableBindings=true | recorder=true | validationWarnings=true | duplicateWarnings=true | importExport=true | selectableRestore=true | bulkMaintenance=true | catalystMenus=true | whisperShortcuts=true | iOSGlobalHotkeys=unavailable | documentsIOSLimitations=true | needsAttention=true"
+        )
+    }
+
+    func testKeyboardShortcutOfficialCoverageAuditSummaryFlagsMissingAreas() {
+        let capability = TS3KeyboardShortcutCapabilitySummary(shortcuts: [
+            TS3KeyboardShortcutBinding(
+                actionId: "show-shortcuts",
+                group: "Global",
+                action: "Show Keyboard Shortcuts",
+                defaultKeys: "Command-/",
+                keys: "Command-/",
+                isEnabled: true
+            )
+        ])
+        let summary = TS3KeyboardShortcutOfficialCoverageAuditSummary(
+            capabilitySummary: capability,
+            hasEditableBindings: true,
+            hasRecorder: false,
+            hasValidationWarnings: false,
+            hasDuplicateWarnings: false,
+            hasImportExport: false,
+            hasSelectableRestore: false,
+            hasBulkMaintenance: true,
+            hasCatalystMenus: true,
+            hasWhisperShortcuts: false,
+            documentsIOSLimitations: true
+        )
+
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 4)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 6)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "officialAreas=4/10 | missingOfficialAreas=6 | officialActions=24 | shortcuts=1 | enabled=1 | validEnabled=1 | invalidEnabled=0 | duplicateEnabled=0 | catalystMenu=1 | whisper=0 | editableBindings=true | recorder=false | validationWarnings=false | duplicateWarnings=false | importExport=false | selectableRestore=false | bulkMaintenance=true | catalystMenus=true | whisperShortcuts=false | iOSGlobalHotkeys=unavailable | documentsIOSLimitations=true | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testDefaultKeyboardShortcutsAreUniqueAndParseable() {
         var seenActionIds: Set<String> = []

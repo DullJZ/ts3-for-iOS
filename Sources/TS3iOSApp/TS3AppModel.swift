@@ -8765,6 +8765,78 @@ struct TS3KeyboardShortcutCapabilitySummary {
     ]
 }
 
+struct TS3KeyboardShortcutOfficialCoverageAuditSummary {
+    let capabilitySummary: TS3KeyboardShortcutCapabilitySummary
+    let hasEditableBindings: Bool
+    let hasRecorder: Bool
+    let hasValidationWarnings: Bool
+    let hasDuplicateWarnings: Bool
+    let hasImportExport: Bool
+    let hasSelectableRestore: Bool
+    let hasBulkMaintenance: Bool
+    let hasCatalystMenus: Bool
+    let hasWhisperShortcuts: Bool
+    let documentsIOSLimitations: Bool
+
+    var officialAreaTotal: Int {
+        10
+    }
+
+    var coveredOfficialAreaCount: Int {
+        [
+            hasEditableBindings,
+            hasRecorder,
+            hasValidationWarnings,
+            hasDuplicateWarnings,
+            hasImportExport,
+            hasSelectableRestore,
+            hasBulkMaintenance,
+            hasCatalystMenus,
+            hasWhisperShortcuts,
+            documentsIOSLimitations
+        ].filter { $0 }.count
+    }
+
+    var missingOfficialAreaCount: Int {
+        officialAreaTotal - coveredOfficialAreaCount
+    }
+
+    var officialActionCount: Int {
+        24
+    }
+
+    var needsAttention: Bool {
+        missingOfficialAreaCount > 0 || capabilitySummary.needsAttention
+    }
+
+    var clipboardSummary: String {
+        [
+            "officialAreas=\(coveredOfficialAreaCount)/\(officialAreaTotal)",
+            "missingOfficialAreas=\(missingOfficialAreaCount)",
+            "officialActions=\(officialActionCount)",
+            "shortcuts=\(capabilitySummary.totalCount)",
+            "enabled=\(capabilitySummary.enabledCount)",
+            "validEnabled=\(capabilitySummary.validEnabledCount)",
+            "invalidEnabled=\(capabilitySummary.invalidEnabledCount)",
+            "duplicateEnabled=\(capabilitySummary.duplicateEnabledCount)",
+            "catalystMenu=\(capabilitySummary.catalystMenuCount)",
+            "whisper=\(capabilitySummary.whisperShortcutCount)",
+            "editableBindings=\(hasEditableBindings ? "true" : "false")",
+            "recorder=\(hasRecorder ? "true" : "false")",
+            "validationWarnings=\(hasValidationWarnings ? "true" : "false")",
+            "duplicateWarnings=\(hasDuplicateWarnings ? "true" : "false")",
+            "importExport=\(hasImportExport ? "true" : "false")",
+            "selectableRestore=\(hasSelectableRestore ? "true" : "false")",
+            "bulkMaintenance=\(hasBulkMaintenance ? "true" : "false")",
+            "catalystMenus=\(hasCatalystMenus ? "true" : "false")",
+            "whisperShortcuts=\(hasWhisperShortcuts ? "true" : "false")",
+            "iOSGlobalHotkeys=unavailable",
+            "documentsIOSLimitations=\(documentsIOSLimitations ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3KeyboardShortcutImportPreview {
     struct Candidate: Identifiable, Equatable {
         let id: String

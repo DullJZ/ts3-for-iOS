@@ -222,6 +222,14 @@
 "shortcuts.capability.issueFormat" = "Issues: %d invalid, %d duplicate";
 "shortcuts.capability.iosLimit" = "iOS uses on-screen controls; system-wide hotkeys are unavailable.";
 "shortcuts.copyCapabilitySummary" = "Copy Platform Coverage";
+"shortcuts.officialAudit" = "Official Shortcut Audit";
+"shortcuts.officialAuditFormat" = "%d/%d areas covered, %d missing";
+"shortcuts.officialAuditActionsFormat" = "%d official actions";
+"shortcuts.officialAuditEnabledFormat" = "Valid enabled: %d";
+"shortcuts.officialAuditCatalystFormat" = "Catalyst menu: %d";
+"shortcuts.officialAuditWhisperFormat" = "Whisper: %d";
+"shortcuts.officialAuditIssuesFormat" = "Issues: %d invalid, %d duplicate";
+"shortcuts.copyOfficialAudit" = "Copy Official Shortcut Audit";
 "shortcuts.actions" = "Actions";
 "shortcuts.keys" = "Keys";
 "shortcuts.record" = "Record";
