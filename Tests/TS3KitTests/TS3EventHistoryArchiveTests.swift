@@ -325,6 +325,73 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         )
     }
 
+    func testPokeClearImpactSummaryReportsVisibleCleanupRisk() {
+        let duplicateId = UUID()
+        let impact = TS3PokeClearImpactSummary(pokes: [
+            TS3PokeSummary(
+                id: duplicateId,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+                senderId: 9,
+                senderName: "Morgan",
+                senderUniqueIdentifier: "uid-m",
+                message: "Ping",
+                isOwnPoke: false
+            ),
+            TS3PokeSummary(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100),
+                senderId: nil,
+                senderName: "Avery",
+                senderUniqueIdentifier: nil,
+                message: " ",
+                isOwnPoke: true
+            ),
+            TS3PokeSummary(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_200),
+                senderId: 10,
+                senderName: "Morgan",
+                senderUniqueIdentifier: " uid-m ",
+                message: "Again",
+                isOwnPoke: false
+            ),
+            TS3PokeSummary(
+                id: duplicateId,
+                timestamp: Date(timeIntervalSince1970: 1_700_000_300),
+                senderId: 11,
+                senderName: "Duplicate",
+                senderUniqueIdentifier: nil,
+                message: "Duplicate",
+                isOwnPoke: true
+            )
+        ])
+
+        XCTAssertEqual(impact.clearingCount, 3)
+        XCTAssertEqual(impact.incomingCount, 2)
+        XCTAssertEqual(impact.outgoingCount, 1)
+        XCTAssertEqual(impact.withUniqueIdCount, 2)
+        XCTAssertEqual(impact.withoutUniqueIdCount, 1)
+        XCTAssertEqual(impact.defaultMessageCount, 1)
+        XCTAssertEqual(impact.customMessageCount, 2)
+        XCTAssertEqual(impact.distinctParticipantCount, 2)
+        XCTAssertEqual(impact.earliestTimestamp, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(impact.latestTimestamp, Date(timeIntervalSince1970: 1_700_000_200))
+        XCTAssertTrue(impact.needsAttention)
+        XCTAssertEqual(
+            impact.clipboardSummary,
+            "clearing=3 | incoming=2 | outgoing=1 | withUid=2 | withoutUid=1 | defaultMessage=1 | customMessage=2 | distinctParticipants=2 | earliestTimestamp=1700000000 | latestTimestamp=1700000200 | needsAttention=true"
+        )
+    }
+
+    func testPokeClearImpactSummaryMarksEmptySelectionForReview() {
+        let impact = TS3PokeClearImpactSummary(pokes: [])
+
+        XCTAssertEqual(impact.clearingCount, 0)
+        XCTAssertTrue(impact.needsAttention)
+        XCTAssertEqual(
+            impact.clipboardSummary,
+            "clearing=0 | incoming=0 | outgoing=0 | withUid=0 | withoutUid=0 | defaultMessage=0 | customMessage=0 | distinctParticipants=0 | earliestTimestamp=none | latestTimestamp=none | needsAttention=true"
+        )
+    }
+
     func testPokeDraftValidatorRejectsMissingTargetAndMultilineMessage() {
         XCTAssertEqual(
             TS3PokeDraftValidator.validationMessages(

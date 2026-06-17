@@ -1460,6 +1460,74 @@ struct TS3PokeListSummary {
     }
 }
 
+struct TS3PokeClearImpactSummary {
+    let summary: TS3PokeListSummary
+
+    var clearingCount: Int {
+        summary.totalCount
+    }
+
+    var incomingCount: Int {
+        summary.incomingCount
+    }
+
+    var outgoingCount: Int {
+        summary.outgoingCount
+    }
+
+    var withUniqueIdCount: Int {
+        summary.withUniqueIdCount
+    }
+
+    var withoutUniqueIdCount: Int {
+        summary.withoutUniqueIdCount
+    }
+
+    var defaultMessageCount: Int {
+        summary.defaultMessageCount
+    }
+
+    var customMessageCount: Int {
+        summary.customMessageCount
+    }
+
+    var distinctParticipantCount: Int {
+        summary.distinctParticipantCount
+    }
+
+    var earliestTimestamp: Date? {
+        summary.earliestTimestamp
+    }
+
+    var latestTimestamp: Date? {
+        summary.latestTimestamp
+    }
+
+    var needsAttention: Bool {
+        clearingCount == 0 || incomingCount > 0 || withoutUniqueIdCount > 0 || customMessageCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "clearing=\(clearingCount)",
+            "incoming=\(incomingCount)",
+            "outgoing=\(outgoingCount)",
+            "withUid=\(withUniqueIdCount)",
+            "withoutUid=\(withoutUniqueIdCount)",
+            "defaultMessage=\(defaultMessageCount)",
+            "customMessage=\(customMessageCount)",
+            "distinctParticipants=\(distinctParticipantCount)",
+            "earliestTimestamp=\(earliestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "latestTimestamp=\(latestTimestamp.map { String(Int($0.timeIntervalSince1970)) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(pokes: [TS3PokeSummary]) {
+        summary = TS3PokeListSummary(pokes: pokes)
+    }
+}
+
 enum TS3PokeDraftValidator {
     static func validationMessages(
         targetName: String?,

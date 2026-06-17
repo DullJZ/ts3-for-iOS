@@ -9357,6 +9357,10 @@ struct EventsSheet: View {
         TS3PokeListSummary(pokes: visiblePokeEvents)
     }
 
+    private var visiblePokeClearImpact: TS3PokeClearImpactSummary {
+        TS3PokeClearImpactSummary(pokes: visiblePokeEvents)
+    }
+
     private var visibleEventsSnapshot: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -9516,6 +9520,17 @@ struct EventsSheet: View {
                         Text(localized("events.noMatchingPokes"))
                             .foregroundColor(.secondary)
                     } else {
+                        ServerInfoDetailRow(
+                            label: localized("events.pokeClearImpact"),
+                            value: localized("events.pokeClearImpactFormat", visiblePokeClearImpact.clearingCount)
+                        )
+                        Text(pokeClearImpactText(visiblePokeClearImpact))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button(localized("events.copyPokeClearImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(visiblePokeClearImpact.clipboardSummary)
+                        }
+                        .disabled(visiblePokeEvents.isEmpty)
                         ForEach(visiblePokeEvents) { poke in
                             PokeEventRow(poke: poke)
                                 .environmentObject(model)
@@ -9755,6 +9770,16 @@ struct EventsSheet: View {
             localized("events.pokeSummaryDefaultMessageFormat", summary.defaultMessageCount),
             localized("events.pokeSummaryCustomMessageFormat", summary.customMessageCount),
             localized("events.pokeSummaryParticipantsFormat", summary.distinctParticipantCount)
+        ].joined(separator: " · ")
+    }
+
+    private func pokeClearImpactText(_ impact: TS3PokeClearImpactSummary) -> String {
+        [
+            localized("events.pokeSummaryIncomingFormat", impact.incomingCount),
+            localized("events.pokeSummaryOutgoingFormat", impact.outgoingCount),
+            localized("events.pokeSummaryWithoutUidFormat", impact.withoutUniqueIdCount),
+            localized("events.pokeSummaryCustomMessageFormat", impact.customMessageCount),
+            localized("events.pokeClearImpactAttentionFormat", impact.needsAttention ? localized("common.yes") : localized("common.no"))
         ].joined(separator: " · ")
     }
 

@@ -376,6 +376,10 @@
 "events.pokeSummaryCustomMessageFormat" = "自定义消息：%d";
 "events.pokeSummaryParticipantsFormat" = "参与者：%d";
 "events.copyVisiblePokeSummary" = "复制可见戳一戳摘要";
+"events.pokeClearImpact" = "戳一戳清理影响";
+"events.pokeClearImpactFormat" = "将清理 %d 条可见戳一戳";
+"events.pokeClearImpactAttentionFormat" = "需要复核：%@";
+"events.copyPokeClearImpact" = "复制戳一戳清理影响";
 "events.noSavedFilterPresets" = "没有已保存的事件筛选预设";
 "events.noActivity" = "没有活动";
 "events.noMatchingActivity" = "没有匹配的活动";
