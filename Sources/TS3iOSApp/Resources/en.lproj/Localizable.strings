@@ -3230,6 +3230,11 @@
 "temporaryPasswords.sort.description" = "Description";
 "temporaryPasswords.deleteVisibleAlert.title" = "Delete Visible Temporary Passwords?";
 "temporaryPasswords.deleteVisibleAlert.messageFormat" = "This removes %d temporary passwords from the server.";
+"temporaryPasswords.deleteImpactFormat" = "Deleting %d passwords: %d server-default, %d channel-targeted.";
+"temporaryPasswords.deleteImpactExpirationFormat" = "Expiration present/missing: %d/%d.";
+"temporaryPasswords.deleteImpactTargetFormat" = "Target channel passwords/distinct channels: %d/%d.";
+"temporaryPasswords.deleteImpactAttentionFormat" = "Needs extra attention: %@.";
+"temporaryPasswords.copyDeleteImpact" = "Copy Delete Impact";
 "temporaryPasswords.deleteAllPresetsAlert.title" = "Delete All Temporary Password Filter Presets?";
 "temporaryPasswords.presetSummary.searchFormat" = "Search %@";
 "temporaryPasswords.import.preview" = "Preview";

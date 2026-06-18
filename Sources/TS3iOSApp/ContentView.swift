@@ -23626,6 +23626,10 @@ struct TemporaryServerPasswordsSheet: View {
         TS3TemporaryServerPasswordListSummary(passwords: filteredPasswords)
     }
 
+    private var visiblePasswordDeleteImpactSummary: TS3TemporaryServerPasswordDeleteImpactSummary {
+        TS3TemporaryServerPasswordDeleteImpactSummary(passwords: filteredPasswords, scope: .visible)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -23791,6 +23795,10 @@ struct TemporaryServerPasswordsSheet: View {
                     }
                     .foregroundColor(.red)
                     .disabled(model.state != .connected || filteredPasswords.isEmpty)
+                    Button(localized("temporaryPasswords.copyDeleteImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(visiblePasswordDeleteImpactSummary.clipboardSummary)
+                    }
+                    .disabled(filteredPasswords.isEmpty)
 
                     if model.temporaryServerPasswords.isEmpty {
                         Text(localized("temporaryPasswords.noTemporaryPasswords"))
@@ -23863,7 +23871,7 @@ struct TemporaryServerPasswordsSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text(localized("temporaryPasswords.deleteVisibleAlert.title")),
-                    message: Text(localized("temporaryPasswords.deleteVisibleAlert.messageFormat", filteredPasswords.count)),
+                    message: Text(temporaryPasswordDeleteImpactText(visiblePasswordDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteTemporaryServerPasswords(filteredPasswords)
                     },
@@ -24189,6 +24197,28 @@ struct TemporaryServerPasswordsSheet: View {
         ].joined(separator: " · ")
     }
 
+    private func temporaryPasswordDeleteImpactText(_ summary: TS3TemporaryServerPasswordDeleteImpactSummary) -> String {
+        [
+            localized(
+                "temporaryPasswords.deleteImpactFormat",
+                summary.passwordCount,
+                summary.listSummary.serverDefaultCount,
+                summary.listSummary.channelTargetCount
+            ),
+            localized(
+                "temporaryPasswords.deleteImpactExpirationFormat",
+                summary.listSummary.withExpirationCount,
+                summary.missingExpirationCount
+            ),
+            localized(
+                "temporaryPasswords.deleteImpactTargetFormat",
+                summary.listSummary.withTargetChannelPasswordCount,
+                summary.listSummary.distinctTargetChannelCount
+            ),
+            localized("temporaryPasswords.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -24361,7 +24391,7 @@ struct TemporaryServerPasswordRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("temporaryPasswords.row.deleteAlert.title")),
-                message: Text(entry.password),
+                message: Text(temporaryPasswordDeleteImpactText(TS3TemporaryServerPasswordDeleteImpactSummary(passwords: [entry], scope: .single))),
                 primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deleteTemporaryServerPassword(entry)
                 },
@@ -24429,6 +24459,28 @@ struct TemporaryServerPasswordRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func temporaryPasswordDeleteImpactText(_ summary: TS3TemporaryServerPasswordDeleteImpactSummary) -> String {
+        [
+            localized(
+                "temporaryPasswords.deleteImpactFormat",
+                summary.passwordCount,
+                summary.listSummary.serverDefaultCount,
+                summary.listSummary.channelTargetCount
+            ),
+            localized(
+                "temporaryPasswords.deleteImpactExpirationFormat",
+                summary.listSummary.withExpirationCount,
+                summary.missingExpirationCount
+            ),
+            localized(
+                "temporaryPasswords.deleteImpactTargetFormat",
+                summary.listSummary.withTargetChannelPasswordCount,
+                summary.listSummary.distinctTargetChannelCount
+            ),
+            localized("temporaryPasswords.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 }
 

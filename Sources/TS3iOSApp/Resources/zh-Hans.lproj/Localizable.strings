@@ -3230,6 +3230,11 @@
 "temporaryPasswords.sort.description" = "描述";
 "temporaryPasswords.deleteVisibleAlert.title" = "删除可见临时密码？";
 "temporaryPasswords.deleteVisibleAlert.messageFormat" = "这会从服务器移除 %d 个临时密码。";
+"temporaryPasswords.deleteImpactFormat" = "将删除 %d 个密码：%d 个服务器默认，%d 个频道目标。";
+"temporaryPasswords.deleteImpactExpirationFormat" = "有效期有/缺失：%d/%d。";
+"temporaryPasswords.deleteImpactTargetFormat" = "目标频道密码/不同目标频道：%d/%d。";
+"temporaryPasswords.deleteImpactAttentionFormat" = "需要额外注意：%@。";
+"temporaryPasswords.copyDeleteImpact" = "复制删除影响";
 "temporaryPasswords.deleteAllPresetsAlert.title" = "删除所有临时密码筛选预设？";
 "temporaryPasswords.presetSummary.searchFormat" = "搜索 %@";
 "temporaryPasswords.import.preview" = "预览";

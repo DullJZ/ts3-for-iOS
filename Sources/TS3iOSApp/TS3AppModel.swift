@@ -6867,6 +6867,53 @@ struct TS3TemporaryServerPasswordListSummary {
     }
 }
 
+struct TS3TemporaryServerPasswordDeleteImpactSummary {
+    enum Scope: String {
+        case single
+        case visible
+    }
+
+    let scope: Scope
+    let listSummary: TS3TemporaryServerPasswordListSummary
+
+    var passwordCount: Int {
+        listSummary.totalCount
+    }
+
+    var missingExpirationCount: Int {
+        passwordCount - listSummary.withExpirationCount
+    }
+
+    var needsAttention: Bool {
+        passwordCount == 0
+            || listSummary.serverDefaultCount > 0
+            || listSummary.withTargetChannelPasswordCount > 0
+            || missingExpirationCount > 0
+            || passwordCount >= 10
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.rawValue)",
+            "deleteTemporaryPasswords=\(passwordCount)",
+            "serverDefault=\(listSummary.serverDefaultCount)",
+            "channelTarget=\(listSummary.channelTargetCount)",
+            "withExpiration=\(listSummary.withExpirationCount)",
+            "missingExpiration=\(missingExpirationCount)",
+            "withTargetChannelPassword=\(listSummary.withTargetChannelPasswordCount)",
+            "withDescription=\(listSummary.describedCount)",
+            "withCreator=\(listSummary.withCreatorCount)",
+            "distinctTargetChannels=\(listSummary.distinctTargetChannelCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(passwords: [TS3TemporaryServerPasswordSummary], scope: Scope) {
+        self.scope = scope
+        self.listSummary = TS3TemporaryServerPasswordListSummary(passwords: passwords)
+    }
+}
+
 private struct TS3PrivilegeKeyBackupEntry: Codable {
     var key: String
     var type: Int?

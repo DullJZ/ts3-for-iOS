@@ -234,6 +234,87 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
         )
     }
 
+    func testTemporaryPasswordDeleteImpactSummaryCountsVisibleDeletionRisk() {
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let channelPassword = TS3TemporaryServerPasswordSummary(
+            id: "channel-pass",
+            password: "channel-pass",
+            creatorUniqueIdentifier: "creator-uid",
+            creatorDatabaseId: nil,
+            creatorName: nil,
+            targetChannelId: 12,
+            targetChannelPassword: "room-secret",
+            createdAt: createdAt,
+            durationSeconds: 3_600,
+            description: "Guest access"
+        )
+        let serverPassword = TS3TemporaryServerPasswordSummary(
+            id: "server-pass",
+            password: "server-pass",
+            creatorUniqueIdentifier: nil,
+            creatorDatabaseId: 91,
+            creatorName: nil,
+            targetChannelId: nil,
+            targetChannelPassword: nil,
+            createdAt: nil,
+            durationSeconds: nil,
+            description: nil
+        )
+
+        let summary = TS3TemporaryServerPasswordDeleteImpactSummary(
+            passwords: [channelPassword, channelPassword, serverPassword],
+            scope: .visible
+        )
+
+        XCTAssertEqual(summary.passwordCount, 2)
+        XCTAssertEqual(summary.listSummary.serverDefaultCount, 1)
+        XCTAssertEqual(summary.listSummary.channelTargetCount, 1)
+        XCTAssertEqual(summary.listSummary.withExpirationCount, 1)
+        XCTAssertEqual(summary.missingExpirationCount, 1)
+        XCTAssertEqual(summary.listSummary.withTargetChannelPasswordCount, 1)
+        XCTAssertEqual(summary.listSummary.distinctTargetChannelCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=visible | deleteTemporaryPasswords=2 | serverDefault=1 | channelTarget=1 | withExpiration=1 | missingExpiration=1 | withTargetChannelPassword=1 | withDescription=1 | withCreator=2 | distinctTargetChannels=1 | needsAttention=true"
+        )
+    }
+
+    func testTemporaryPasswordDeleteImpactSummaryFlagsEmptyAndLargeDeletion() {
+        let empty = TS3TemporaryServerPasswordDeleteImpactSummary(passwords: [], scope: .visible)
+
+        XCTAssertEqual(empty.passwordCount, 0)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(
+            empty.clipboardSummary,
+            "scope=visible | deleteTemporaryPasswords=0 | serverDefault=0 | channelTarget=0 | withExpiration=0 | missingExpiration=0 | withTargetChannelPassword=0 | withDescription=0 | withCreator=0 | distinctTargetChannels=0 | needsAttention=true"
+        )
+
+        let largeDeletion = TS3TemporaryServerPasswordDeleteImpactSummary(
+            passwords: (1...10).map { index in
+                TS3TemporaryServerPasswordSummary(
+                    id: "channel-pass-\(index)",
+                    password: "channel-pass-\(index)",
+                    creatorUniqueIdentifier: nil,
+                    creatorDatabaseId: nil,
+                    creatorName: "Admin",
+                    targetChannelId: index,
+                    targetChannelPassword: nil,
+                    createdAt: Date(timeIntervalSince1970: 1_700_000_000 + TimeInterval(index)),
+                    durationSeconds: 3_600,
+                    description: "Guest access"
+                )
+            },
+            scope: .visible
+        )
+
+        XCTAssertEqual(largeDeletion.passwordCount, 10)
+        XCTAssertEqual(largeDeletion.listSummary.serverDefaultCount, 0)
+        XCTAssertEqual(largeDeletion.missingExpirationCount, 0)
+        XCTAssertEqual(largeDeletion.listSummary.withTargetChannelPasswordCount, 0)
+        XCTAssertTrue(largeDeletion.needsAttention)
+    }
+
     @MainActor
     func testTemporaryPasswordFullInviteLinkUsesTargetChannelAndPassword() throws {
         let model = TS3AppModel()
