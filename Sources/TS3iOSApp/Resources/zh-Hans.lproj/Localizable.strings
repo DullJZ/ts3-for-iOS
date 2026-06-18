@@ -3115,6 +3115,17 @@
 "permissions.editReviewAreaFormat" = "复核 %@：%d";
 "permissions.editReviewAreaClipboardFormat" = "复核 %@：%d";
 "permissions.copyEditReview" = "复制编辑复核";
+"permissions.editReadiness" = "编辑就绪度";
+"permissions.editReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"permissions.editReadinessReady" = "权限编辑已可提交";
+"permissions.editReadinessMissingFormat" = "缺失：%@";
+"permissions.copyEditReadiness" = "复制编辑就绪度";
+"permissions.editRequirement.connected" = "已连接服务器";
+"permissions.editRequirement.targetSelected" = "已选择目标";
+"permissions.editRequirement.permissionName" = "权限名称";
+"permissions.editRequirement.numericValue" = "数字值";
+"permissions.editRequirement.supportedFlags" = "支持的标记";
+"permissions.editRequirement.validationClean" = "校验通过";
 "permissions.officialEdit.targetScope" = "目标范围";
 "permissions.officialEdit.permissionValue" = "权限值";
 "permissions.officialEdit.inheritanceFlags" = "继承标记";

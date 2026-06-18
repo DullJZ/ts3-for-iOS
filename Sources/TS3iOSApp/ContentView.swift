@@ -22449,6 +22449,13 @@ struct PermissionsSheet: View {
         TS3PermissionEditReviewSummary(audit: permissionOfficialEditAuditSummary)
     }
 
+    var permissionEditReadinessSummary: TS3PermissionEditReadinessSummary {
+        TS3PermissionEditReadinessSummary(
+            audit: permissionOfficialEditAuditSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
     var exportFilename: String {
         switch model.permissionEditScope {
         case .ownClient:
@@ -22757,6 +22764,21 @@ struct PermissionsSheet: View {
                         TS3PlatformSupport.copyToPasteboard(permissionEditReviewClipboard)
                     }
                     .disabled(!permissionEditReviewSummary.shouldReview)
+                    ServerInfoDetailRow(
+                        label: localized("permissions.editReadiness"),
+                        value: localized(
+                            "permissions.editReadinessFormat",
+                            permissionEditReadinessSummary.satisfiedRequirementCount,
+                            permissionEditReadinessSummary.totalRequirementCount,
+                            permissionEditReadinessSummary.missingRequirementCount
+                        )
+                    )
+                    Text(permissionEditReadinessText(permissionEditReadinessSummary))
+                        .font(.caption)
+                        .foregroundColor(permissionEditReadinessSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("permissions.copyEditReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(permissionEditReadinessSummary.clipboardSummary)
+                    }
                     if !permissionDraftValidationMessages.isEmpty {
                         ForEach(permissionDraftValidationMessages, id: \.self) { message in
                             Text(message)
@@ -23207,6 +23229,14 @@ struct PermissionsSheet: View {
         return parts.joined(separator: " | ")
     }
 
+    private func permissionEditReadinessText(_ summary: TS3PermissionEditReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("permissions.editReadinessReady")
+        }
+        let missing = summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        return localized("permissions.editReadinessMissingFormat", missing)
+    }
+
     private func permissionDeleteImpactText(_ summary: TS3PermissionDeleteImpactSummary) -> String {
         [
             localized(
@@ -23239,6 +23269,23 @@ struct PermissionsSheet: View {
             return localized("permissions.officialEdit.inheritanceFlags")
         case .validation:
             return localized("permissions.officialEdit.validation")
+        }
+    }
+
+    private func title(for requirement: TS3PermissionEditReadinessRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("permissions.editRequirement.connected")
+        case .targetSelected:
+            return localized("permissions.editRequirement.targetSelected")
+        case .permissionName:
+            return localized("permissions.editRequirement.permissionName")
+        case .numericValue:
+            return localized("permissions.editRequirement.numericValue")
+        case .supportedFlags:
+            return localized("permissions.editRequirement.supportedFlags")
+        case .validationClean:
+            return localized("permissions.editRequirement.validationClean")
         }
     }
 

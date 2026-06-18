@@ -7490,6 +7490,72 @@ struct TS3PermissionEditReviewSummary {
     }
 }
 
+enum TS3PermissionEditReadinessRequirement: String, CaseIterable, Codable {
+    case connected
+    case targetSelected
+    case permissionName
+    case numericValue
+    case supportedFlags
+    case validationClean
+}
+
+struct TS3PermissionEditReadinessSummary {
+    let audit: TS3PermissionOfficialEditAuditSummary
+    let isConnected: Bool
+
+    var requirementStates: [TS3PermissionEditReadinessRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .targetSelected: audit.coverage.hasTarget,
+            .permissionName: audit.coverage.hasName,
+            .numericValue: audit.coverage.hasNumericValue,
+            .supportedFlags: audit.coverage.unsupportedRequestedFlagCount == 0,
+            .validationClean: audit.coverage.validationIssueCount == 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3PermissionEditReadinessRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3PermissionEditReadinessRequirement] {
+        TS3PermissionEditReadinessRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !audit.coverage.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || audit.needsAttention || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3PermissionEditReadinessRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "scope=\(audit.coverage.scope.title)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "officialAreas=\(audit.coveredAreaCount)/\(audit.totalOfficialAreaCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3FileEntrySummary: Identifiable {
     let id: String
     let channelId: Int

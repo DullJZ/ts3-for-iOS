@@ -3115,6 +3115,17 @@
 "permissions.editReviewAreaFormat" = "Review %@: %d";
 "permissions.editReviewAreaClipboardFormat" = "Review %@: %d";
 "permissions.copyEditReview" = "Copy Edit Review";
+"permissions.editReadiness" = "Edit Readiness";
+"permissions.editReadinessFormat" = "%d/%d ready, %d missing";
+"permissions.editReadinessReady" = "Permission edit is ready to submit";
+"permissions.editReadinessMissingFormat" = "Missing: %@";
+"permissions.copyEditReadiness" = "Copy Edit Readiness";
+"permissions.editRequirement.connected" = "Connected server";
+"permissions.editRequirement.targetSelected" = "Selected target";
+"permissions.editRequirement.permissionName" = "Permission name";
+"permissions.editRequirement.numericValue" = "Numeric value";
+"permissions.editRequirement.supportedFlags" = "Supported flags";
+"permissions.editRequirement.validationClean" = "Validation clean";
 "permissions.officialEdit.targetScope" = "Target Scope";
 "permissions.officialEdit.permissionValue" = "Permission Value";
 "permissions.officialEdit.inheritanceFlags" = "Inheritance Flags";

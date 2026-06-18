@@ -240,4 +240,63 @@ final class TS3PermissionDraftValidatorTests: XCTestCase {
             "scope=Channel | reviewAreas=2 | reviewSignals=6 | primaryArea=inheritanceFlags | unsupportedFlags=2 | validationIssues=1 | areas=permissionValue:1,inheritanceFlags:2 | needsAttention=true"
         )
     }
+
+    func testPermissionEditReadinessSummaryCountsSubmitRequirements() {
+        let draft = TS3PermissionEditDraft(
+            scope: .serverGroup,
+            target: "Admins (#6)",
+            name: "i_client_kick_power",
+            value: "75",
+            negated: true,
+            skip: true
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let audit = TS3PermissionOfficialEditAuditSummary(coverage: coverage)
+        let readiness = TS3PermissionEditReadinessSummary(audit: audit, isConnected: true)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "scope=Server Group | readiness=6/6 | missingRequirements=0 | canSubmit=true | officialAreas=4/4 | requirements=connected:true,targetSelected:true,permissionName:true,numericValue:true,supportedFlags:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testPermissionEditReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let draft = TS3PermissionEditDraft(
+            scope: .channel,
+            target: " ",
+            name: "i_channel_needed_join_power",
+            value: "kick",
+            negated: true,
+            skip: true
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let audit = TS3PermissionOfficialEditAuditSummary(coverage: coverage)
+        let readiness = TS3PermissionEditReadinessSummary(audit: audit, isConnected: false)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 1)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .targetSelected, .numericValue, .supportedFlags, .validationClean]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "scope=Channel | readiness=1/6 | missingRequirements=5 | canSubmit=false | officialAreas=2/4 | requirements=connected:false,targetSelected:false,permissionName:true,numericValue:false,supportedFlags:false,validationClean:false | missing=connected,targetSelected,numericValue,supportedFlags,validationClean | needsAttention=true"
+        )
+    }
 }
