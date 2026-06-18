@@ -6646,6 +6646,13 @@ struct ContactsSheet: View {
         TS3ContactBulkActionSummary(contacts: visibleContacts)
     }
 
+    private var contactDeleteImpactSummary: TS3ContactDeleteImpactSummary {
+        TS3ContactDeleteImpactSummary(
+            contacts: visibleContacts,
+            onlineUniqueIdentifiers: Set(model.clients.compactMap(\.uniqueIdentifier))
+        )
+    }
+
     private var contactOfficialAuditSummary: TS3ContactOfficialManagementAuditSummary {
         TS3ContactOfficialManagementAuditSummary(
             visibleSummary: visibleContactSummary,
@@ -6788,6 +6795,25 @@ struct ContactsSheet: View {
                             .foregroundColor(contactBulkActionSummary.needsAttention ? .orange : .secondary)
                         Button(localized("contacts.copyBulkSummary")) {
                             TS3PlatformSupport.copyToPasteboard(contactBulkActionSummary.clipboardSummary)
+                        }
+                        ServerInfoDetailRow(
+                            label: localized("contacts.statusReview"),
+                            value: localized(
+                                "contacts.statusReviewFormat",
+                                contactStatusDraft(.friend).uniqueContacts.count,
+                                [
+                                    canMarkVisibleFriends,
+                                    canBlockVisibleContacts,
+                                    canIgnoreVisibleContacts,
+                                    canSetVisibleNeutral
+                                ].filter { $0 }.count
+                            )
+                        )
+                        Text(contactStatusReviewText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button(localized("contacts.copyStatusReview")) {
+                            TS3PlatformSupport.copyToPasteboard(contactStatusReviewSummary)
                         }
                         ServerInfoDetailRow(
                             label: localized("contacts.officialAudit"),
@@ -6961,7 +6987,7 @@ struct ContactsSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisibleContacts) {
                 Alert(
                     title: Text(localized("contacts.deleteVisibleAlert.title")),
-                    message: Text(localized("contacts.deleteVisibleAlert.messageFormat", visibleContacts.count)),
+                    message: Text(contactDeleteImpactMessage),
                     primaryButton: .destructive(Text(localized("contacts.delete"))) {
                         model.deleteContacts(visibleContacts)
                     },
@@ -7172,6 +7198,45 @@ struct ContactsSheet: View {
             localized("contacts.bulkNoteFormat", summary.appendNoteCount),
             localized("contacts.bulkDeleteFormat", summary.deleteVisibleCount)
         ].joined(separator: " · ")
+    }
+
+    private var contactStatusReviewSummary: String {
+        [
+            contactStatusDraft(.friend).clipboardSummary,
+            contactStatusDraft(.blocked).clipboardSummary,
+            contactStatusDraft(.ignored).clipboardSummary,
+            contactStatusDraft(.neutral).clipboardSummary
+        ].joined(separator: "\n")
+    }
+
+    private var contactStatusReviewText: String {
+        [
+            localized("contacts.statusReviewFriendFormat", contactStatusDraft(.friend).changedCount),
+            localized("contacts.statusReviewBlockFormat", contactStatusDraft(.blocked).changedCount),
+            localized("contacts.statusReviewIgnoreFormat", contactStatusDraft(.ignored).changedCount),
+            localized("contacts.statusReviewNeutralFormat", contactStatusDraft(.neutral).changedCount)
+        ].joined(separator: " · ")
+    }
+
+    private var contactDeleteImpactMessage: String {
+        let summary = contactDeleteImpactSummary
+        return [
+            localized("contacts.deleteVisibleAlert.messageFormat", summary.visibleCount),
+            localized(
+                "contacts.deleteVisibleImpactFormat",
+                summary.friendCount,
+                summary.blockedCount,
+                summary.ignoredCount,
+                summary.neutralCount
+            ),
+            localized(
+                "contacts.deleteVisibleImpactDetailFormat",
+                summary.notedCount,
+                summary.onlineCount,
+                summary.needsAttention ? 1 : 0
+            ),
+            summary.clipboardSummary
+        ].joined(separator: "\n")
     }
 
     private func contactOfficialAuditText(_ summary: TS3ContactOfficialManagementAuditSummary) -> String {

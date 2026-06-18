@@ -2444,6 +2444,73 @@ struct TS3ContactBulkActionSummary {
     }
 }
 
+struct TS3ContactDeleteImpactSummary {
+    let contacts: [TS3ContactEntry]
+    let onlineUniqueIdentifiers: Set<String>
+
+    var visibleCount: Int {
+        uniqueContacts.count
+    }
+
+    var friendCount: Int {
+        count(status: .friend)
+    }
+
+    var blockedCount: Int {
+        count(status: .blocked)
+    }
+
+    var ignoredCount: Int {
+        count(status: .ignored)
+    }
+
+    var neutralCount: Int {
+        count(status: .neutral)
+    }
+
+    var notedCount: Int {
+        uniqueContacts.filter { !$0.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+    }
+
+    var onlineCount: Int {
+        uniqueContacts.filter { onlineUniqueIdentifiers.contains($0.uniqueIdentifier) }.count
+    }
+
+    var needsAttention: Bool {
+        visibleCount > 1 || blockedCount > 0 || ignoredCount > 0 || notedCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=Delete Contacts",
+            "contacts=\(visibleCount)",
+            "friends=\(friendCount)",
+            "blocked=\(blockedCount)",
+            "ignored=\(ignoredCount)",
+            "neutral=\(neutralCount)",
+            "noted=\(notedCount)",
+            "online=\(onlineCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(contacts: [TS3ContactEntry], onlineUniqueIdentifiers: Set<String> = []) {
+        self.contacts = contacts
+        self.onlineUniqueIdentifiers = onlineUniqueIdentifiers
+    }
+
+    private var uniqueContacts: [TS3ContactEntry] {
+        var seen = Set<String>()
+        return contacts.filter { contact in
+            seen.insert(contact.uniqueIdentifier).inserted
+        }
+    }
+
+    private func count(status: TS3ContactStatus) -> Int {
+        uniqueContacts.filter { $0.status == status }.count
+    }
+}
+
 struct TS3ContactOfficialManagementAuditSummary {
     let visibleSummary: TS3ContactListSummary
     let bulkActionSummary: TS3ContactBulkActionSummary
@@ -2652,11 +2719,11 @@ struct TS3ContactStatusDraft {
         "Set \(uniqueContacts.count) contacts to \(status.title). \(changedCount) changed. \(unchangedCount) unchanged. Targets \(targetSummary)"
     }
 
-    private var changedCount: Int {
+    var changedCount: Int {
         uniqueContacts.filter { $0.status != status }.count
     }
 
-    private var unchangedCount: Int {
+    var unchangedCount: Int {
         uniqueContacts.count - changedCount
     }
 

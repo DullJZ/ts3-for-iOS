@@ -1365,6 +1365,13 @@
 "contacts.bulkNoteFormat" = "追加备注：%d";
 "contacts.bulkDeleteFormat" = "删除可见：%d";
 "contacts.copyBulkSummary" = "复制批量操作影响";
+"contacts.statusReview" = "状态变更审查";
+"contacts.statusReviewFormat" = "%d 个可见联系人，%d 个可用状态变更";
+"contacts.statusReviewFriendFormat" = "好友变更：%d";
+"contacts.statusReviewBlockFormat" = "屏蔽变更：%d";
+"contacts.statusReviewIgnoreFormat" = "忽略变更：%d";
+"contacts.statusReviewNeutralFormat" = "中立变更：%d";
+"contacts.copyStatusReview" = "复制状态变更审查";
 "contacts.officialAudit" = "官方客户端审计";
 "contacts.officialAuditFormat" = "%d / %d 个官方区域，%d 个缺失";
 "contacts.officialAuditActionsFormat" = "动作：%d";
@@ -1395,6 +1402,8 @@
 "contacts.deleteAllPresetsAlert.messageFormat" = "这会移除 %d 个已保存的本地筛选预设。";
 "contacts.deleteVisibleAlert.title" = "删除可见联系人？";
 "contacts.deleteVisibleAlert.messageFormat" = "这会移除 %d 个匹配当前筛选条件的联系人。";
+"contacts.deleteVisibleImpactFormat" = "好友/屏蔽/忽略/中立：%d/%d/%d/%d";
+"contacts.deleteVisibleImpactDetailFormat" = "有备注：%d，当前在线：%d，需要注意：%d";
 "contacts.presetSummary.sortFormat" = "排序 %@";
 "contacts.presetSummary.descending" = "降序";
 "contacts.presetSummary.searchFormat" = "搜索 %@";

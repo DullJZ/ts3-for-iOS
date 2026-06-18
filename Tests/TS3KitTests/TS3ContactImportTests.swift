@@ -195,6 +195,8 @@ final class TS3ContactImportTests: XCTestCase {
 
         XCTAssertTrue(draft.validationMessages.isEmpty)
         XCTAssertEqual(draft.uniqueContacts.map(\.uniqueIdentifier), ["uid-first", "uid-second"])
+        XCTAssertEqual(draft.changedCount, 1)
+        XCTAssertEqual(draft.unchangedCount, 1)
         XCTAssertEqual(
             draft.clipboardSummary,
             "contacts=2 | targets=First, Second | status=Blocked | changed=1 | unchanged=1"
@@ -212,6 +214,32 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(
             draft.clipboardSummary,
             "contacts=0 | targets=None | status=Ignored | changed=0 | unchanged=0"
+        )
+    }
+
+    func testContactDeleteImpactSummaryDeduplicatesAndCountsVisibleRisk() {
+        let friend = makeContact(uniqueIdentifier: "uid-friend", nickname: "Friend", status: .friend, note: "")
+        let blocked = makeContact(uniqueIdentifier: "uid-blocked", nickname: "Blocked", status: .blocked, note: "review")
+        let ignored = makeContact(uniqueIdentifier: "uid-ignored", nickname: "Ignored", status: .ignored, note: "")
+        let neutral = makeContact(uniqueIdentifier: "uid-neutral", nickname: "Neutral", status: .neutral, note: "")
+        let duplicate = makeContact(uniqueIdentifier: "uid-friend", nickname: "Friend Copy", status: .blocked, note: "ignored")
+
+        let summary = TS3ContactDeleteImpactSummary(
+            contacts: [friend, blocked, ignored, neutral, duplicate],
+            onlineUniqueIdentifiers: ["uid-friend", "uid-neutral"]
+        )
+
+        XCTAssertEqual(summary.visibleCount, 4)
+        XCTAssertEqual(summary.friendCount, 1)
+        XCTAssertEqual(summary.blockedCount, 1)
+        XCTAssertEqual(summary.ignoredCount, 1)
+        XCTAssertEqual(summary.neutralCount, 1)
+        XCTAssertEqual(summary.notedCount, 1)
+        XCTAssertEqual(summary.onlineCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Delete Contacts | contacts=4 | friends=1 | blocked=1 | ignored=1 | neutral=1 | noted=1 | online=2 | needsAttention=true"
         )
     }
 

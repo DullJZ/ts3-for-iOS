@@ -1365,6 +1365,13 @@
 "contacts.bulkNoteFormat" = "Append note: %d";
 "contacts.bulkDeleteFormat" = "Delete visible: %d";
 "contacts.copyBulkSummary" = "Copy Bulk Action Impact";
+"contacts.statusReview" = "Status Change Review";
+"contacts.statusReviewFormat" = "%d visible contacts, %d status changes available";
+"contacts.statusReviewFriendFormat" = "Friend changes: %d";
+"contacts.statusReviewBlockFormat" = "Block changes: %d";
+"contacts.statusReviewIgnoreFormat" = "Ignore changes: %d";
+"contacts.statusReviewNeutralFormat" = "Neutral changes: %d";
+"contacts.copyStatusReview" = "Copy Status Change Review";
 "contacts.officialAudit" = "Official Client Audit";
 "contacts.officialAuditFormat" = "%d of %d official areas, %d missing";
 "contacts.officialAuditActionsFormat" = "Actions: %d";
@@ -1395,6 +1402,8 @@
 "contacts.deleteAllPresetsAlert.messageFormat" = "This removes %d saved local filter presets.";
 "contacts.deleteVisibleAlert.title" = "Delete Visible Contacts?";
 "contacts.deleteVisibleAlert.messageFormat" = "This removes %d contacts matching the current filters.";
+"contacts.deleteVisibleImpactFormat" = "Friends/blocked/ignored/neutral: %d/%d/%d/%d";
+"contacts.deleteVisibleImpactDetailFormat" = "With notes: %d, online now: %d, needs attention: %d";
 "contacts.presetSummary.sortFormat" = "Sort %@";
 "contacts.presetSummary.descending" = "Descending";
 "contacts.presetSummary.searchFormat" = "Search %@";
