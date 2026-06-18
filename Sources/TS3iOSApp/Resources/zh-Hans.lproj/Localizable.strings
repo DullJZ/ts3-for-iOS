@@ -1272,6 +1272,13 @@
 "serverSettings.coverageChangedAreaFormat" = "%d 个变更区域，%d 个字段";
 "serverSettings.coverageUncoveredFormat" = "%d 个未覆盖区域";
 "serverSettings.copyCoverageSummary" = "复制覆盖摘要";
+"serverSettings.fieldCoverageSummary" = "已跟踪字段覆盖";
+"serverSettings.fieldCoverageSummaryFormat" = "%d 个已跟踪字段，%d 个已变更，%d 个缺失区域";
+"serverSettings.fieldCoverageTrackedFormat" = "%d 个字段覆盖 %d/%d 个区域";
+"serverSettings.fieldCoverageChangedFormat" = "%d 个变更字段，涉及 %d 个区域";
+"serverSettings.fieldCoverageMissingFormat" = "%d 个区域缺少已跟踪字段";
+"serverSettings.fieldCoverageAreaClipboardFormat" = "%@：%d 个已跟踪字段，%d 个已变更";
+"serverSettings.copyFieldCoverageSummary" = "复制字段覆盖";
 "serverSettings.navigationSummary" = "复核导航";
 "serverSettings.navigationSummaryFormat" = "%d 个区域，%d 项变化，先看：%@";
 "serverSettings.navigationNoReview" = "没有需要复核的设置分组";

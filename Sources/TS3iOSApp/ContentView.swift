@@ -18399,6 +18399,21 @@ struct ServerSettingsEditorSheet: View {
                         TS3PlatformSupport.copyToPasteboard(settingsCoverageSummaryClipboard)
                     }
                     ServerInfoDetailRow(
+                        label: localized("serverSettings.fieldCoverageSummary"),
+                        value: localized(
+                            "serverSettings.fieldCoverageSummaryFormat",
+                            settingsFieldCoverageSummary.trackedFieldCount,
+                            settingsFieldCoverageSummary.changedFieldCount,
+                            settingsFieldCoverageSummary.missingTrackedAreaCount
+                        )
+                    )
+                    Text(settingsFieldCoverageSummaryText)
+                        .font(.caption)
+                        .foregroundColor(settingsFieldCoverageSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverSettings.copyFieldCoverageSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsFieldCoverageSummaryClipboard)
+                    }
+                    ServerInfoDetailRow(
                         label: localized("serverSettings.navigationSummary"),
                         value: localized(
                             "serverSettings.navigationSummaryFormat",
@@ -18931,6 +18946,10 @@ struct ServerSettingsEditorSheet: View {
         settingsCoverageSummary(for: currentDraft)
     }
 
+    private var settingsFieldCoverageSummary: TS3ServerSettingsFieldCoverageSummary {
+        settingsFieldCoverageSummary(for: currentDraft)
+    }
+
     private var settingsNavigationSummary: TS3ServerSettingsNavigationSummary {
         settingsNavigationSummary(for: currentDraft)
     }
@@ -18946,6 +18965,34 @@ struct ServerSettingsEditorSheet: View {
             summary.clipboardSummary
         ]
         return lines.joined(separator: "\n")
+    }
+
+    private var settingsFieldCoverageSummaryText: String {
+        settingsFieldCoverageSummaryText(for: settingsFieldCoverageSummary)
+    }
+
+    private var settingsFieldCoverageSummaryClipboard: String {
+        let summary = settingsFieldCoverageSummary
+        let areas = TS3ServerSettingsImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let fieldCount = summary.areaFieldCounts[area], fieldCount > 0 else { return nil }
+                return localized(
+                    "serverSettings.fieldCoverageAreaClipboardFormat",
+                    title(for: area),
+                    fieldCount,
+                    summary.changedAreaCounts[area] ?? 0
+                )
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.fieldCoverageSummary"),
+            summary.clipboardSummary,
+            areas
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
     }
 
     private var settingsNavigationSummaryText: String {
@@ -19064,6 +19111,14 @@ struct ServerSettingsEditorSheet: View {
         )
     }
 
+    private func settingsFieldCoverageSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsFieldCoverageSummary {
+        TS3ServerSettingsFieldCoverageSummary(
+            areaFieldCounts: settingsAreaFieldCounts,
+            changedAreaCounts: settingsAreaChangeCounts(for: draft),
+            validationIssueCount: serverDraftValidationMessages(for: draft).count
+        )
+    }
+
     private func settingsNavigationSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsNavigationSummary {
         TS3ServerSettingsNavigationSummary(
             areaChangeCounts: settingsAreaChangeCounts(for: draft),
@@ -19079,6 +19134,17 @@ struct ServerSettingsEditorSheet: View {
             .defaultGroups: defaultGroupChangeRows(for: draft).count,
             .antiFloodAndComplaints: antiFloodAndComplaintChangeRows(for: draft).count,
             .serverLogOptions: serverLogOptionChangeRows(for: draft).count
+        ]
+    }
+
+    private var settingsAreaFieldCounts: [TS3ServerSettingsImpactArea: Int] {
+        [
+            .general: 11,
+            .hostBranding: 9,
+            .limitsAndSecurity: 9,
+            .defaultGroups: 3,
+            .antiFloodAndComplaints: 9,
+            .serverLogOptions: 6
         ]
     }
 
@@ -19213,6 +19279,29 @@ struct ServerSettingsEditorSheet: View {
         }
         if summary.uncoveredAreaCount > 0 {
             parts.append(localized("serverSettings.coverageUncoveredFormat", summary.uncoveredAreaCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func settingsFieldCoverageSummaryText(for summary: TS3ServerSettingsFieldCoverageSummary) -> String {
+        var parts = [
+            localized(
+                "serverSettings.fieldCoverageTrackedFormat",
+                summary.trackedFieldCount,
+                summary.trackedAreaCount,
+                summary.totalAreaCount
+            ),
+            localized(
+                "serverSettings.fieldCoverageChangedFormat",
+                summary.changedFieldCount,
+                summary.changedAreaCount
+            )
+        ]
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.missingTrackedAreaCount > 0 {
+            parts.append(localized("serverSettings.fieldCoverageMissingFormat", summary.missingTrackedAreaCount))
         }
         return parts.joined(separator: " · ")
     }

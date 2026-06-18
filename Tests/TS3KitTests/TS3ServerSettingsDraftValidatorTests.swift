@@ -186,6 +186,64 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsFieldCoverageSummaryCountsTrackedFieldsAndChanges() {
+        let summary = TS3ServerSettingsFieldCoverageSummary(
+            areaFieldCounts: [
+                .general: 11,
+                .hostBranding: 9,
+                .limitsAndSecurity: 9,
+                .defaultGroups: 3,
+                .antiFloodAndComplaints: 9,
+                .serverLogOptions: 6
+            ],
+            changedAreaCounts: [
+                .general: 2,
+                .limitsAndSecurity: 1,
+                .serverLogOptions: 3
+            ],
+            validationIssueCount: 2
+        )
+
+        XCTAssertEqual(summary.trackedFieldCount, 47)
+        XCTAssertEqual(summary.changedFieldCount, 6)
+        XCTAssertEqual(summary.trackedAreaCount, 6)
+        XCTAssertEqual(summary.totalAreaCount, 6)
+        XCTAssertEqual(summary.missingTrackedAreaCount, 0)
+        XCTAssertEqual(summary.changedAreaCount, 3)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "trackedFields=47 | changedFields=6 | trackedAreas=6/6 | missingTrackedAreas=0 | changedAreas=3 | validationIssues=2 | areas=general:11/2,hostBranding:9/0,limitsAndSecurity:9/1,defaultGroups:3/0,antiFloodAndComplaints:9/0,serverLogOptions:6/3 | needsAttention=true"
+        )
+    }
+
+    func testServerSettingsFieldCoverageSummaryFlagsMissingTrackedAreas() {
+        let summary = TS3ServerSettingsFieldCoverageSummary(
+            areaFieldCounts: [
+                .general: 2,
+                .hostBranding: 0,
+                .limitsAndSecurity: -1
+            ],
+            changedAreaCounts: [
+                .general: 1,
+                .hostBranding: 4
+            ],
+            validationIssueCount: -2
+        )
+
+        XCTAssertEqual(summary.trackedFieldCount, 2)
+        XCTAssertEqual(summary.changedFieldCount, 5)
+        XCTAssertEqual(summary.trackedAreaCount, 1)
+        XCTAssertEqual(summary.missingTrackedAreaCount, 5)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "trackedFields=2 | changedFields=5 | trackedAreas=1/6 | missingTrackedAreas=5 | changedAreas=2 | validationIssues=0 | areas=general:2/1 | needsAttention=true"
+        )
+    }
+
     func testServerSettingsNavigationSummaryOrdersChangedAreasAndPrimaryArea() {
         let summary = TS3ServerSettingsNavigationSummary(
             areaChangeCounts: [

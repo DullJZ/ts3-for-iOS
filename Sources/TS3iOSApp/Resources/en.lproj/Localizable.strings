@@ -1272,6 +1272,13 @@
 "serverSettings.coverageChangedAreaFormat" = "%d changed areas, %d fields";
 "serverSettings.coverageUncoveredFormat" = "%d uncovered areas";
 "serverSettings.copyCoverageSummary" = "Copy Coverage Summary";
+"serverSettings.fieldCoverageSummary" = "Tracked Field Coverage";
+"serverSettings.fieldCoverageSummaryFormat" = "%d tracked fields, %d changed, %d missing areas";
+"serverSettings.fieldCoverageTrackedFormat" = "%d tracked fields across %d/%d areas";
+"serverSettings.fieldCoverageChangedFormat" = "%d changed fields across %d areas";
+"serverSettings.fieldCoverageMissingFormat" = "%d areas missing tracked fields";
+"serverSettings.fieldCoverageAreaClipboardFormat" = "%@: %d tracked fields, %d changed";
+"serverSettings.copyFieldCoverageSummary" = "Copy Field Coverage";
 "serverSettings.navigationSummary" = "Review Navigation";
 "serverSettings.navigationSummaryFormat" = "%d areas, %d changes, first: %@";
 "serverSettings.navigationNoReview" = "No changed setting sections to review";

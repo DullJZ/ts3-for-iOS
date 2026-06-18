@@ -1245,6 +1245,69 @@ struct TS3ServerSettingsCoverageSummary {
     }
 }
 
+struct TS3ServerSettingsFieldCoverageSummary {
+    let areaFieldCounts: [TS3ServerSettingsImpactArea: Int]
+    let changedAreaCounts: [TS3ServerSettingsImpactArea: Int]
+    let validationIssueCount: Int
+
+    var trackedAreaCount: Int {
+        areaFieldCounts.values.filter { $0 > 0 }.count
+    }
+
+    var totalAreaCount: Int {
+        TS3ServerSettingsImpactArea.allCases.count
+    }
+
+    var missingTrackedAreaCount: Int {
+        max(0, totalAreaCount - trackedAreaCount)
+    }
+
+    var trackedFieldCount: Int {
+        areaFieldCounts.values.reduce(0, +)
+    }
+
+    var changedFieldCount: Int {
+        changedAreaCounts.values.reduce(0, +)
+    }
+
+    var changedAreaCount: Int {
+        changedAreaCounts.values.filter { $0 > 0 }.count
+    }
+
+    var needsAttention: Bool {
+        missingTrackedAreaCount > 0 || validationIssueCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areas = TS3ServerSettingsImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let fieldCount = areaFieldCounts[area], fieldCount > 0 else { return nil }
+                return "\(area.rawValue):\(fieldCount)/\(changedAreaCounts[area] ?? 0)"
+            }
+            .joined(separator: ",")
+        return [
+            "trackedFields=\(trackedFieldCount)",
+            "changedFields=\(changedFieldCount)",
+            "trackedAreas=\(trackedAreaCount)/\(totalAreaCount)",
+            "missingTrackedAreas=\(missingTrackedAreaCount)",
+            "changedAreas=\(changedAreaCount)",
+            "validationIssues=\(validationIssueCount)",
+            "areas=\(areas.isEmpty ? "none" : areas)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        areaFieldCounts: [TS3ServerSettingsImpactArea: Int],
+        changedAreaCounts: [TS3ServerSettingsImpactArea: Int],
+        validationIssueCount: Int
+    ) {
+        self.areaFieldCounts = areaFieldCounts.filter { $0.value > 0 }
+        self.changedAreaCounts = changedAreaCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+    }
+}
+
 struct TS3ServerSettingsNavigationSummary {
     let areaChangeCounts: [TS3ServerSettingsImpactArea: Int]
     let validationIssueCount: Int
