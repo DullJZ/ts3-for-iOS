@@ -24492,6 +24492,10 @@ struct PrivilegeKeysSheet: View {
         TS3PrivilegeKeyListSummary(keys: filteredPrivilegeKeys)
     }
 
+    private var visiblePrivilegeKeyDeleteImpactSummary: TS3PrivilegeKeyDeleteImpactSummary {
+        TS3PrivilegeKeyDeleteImpactSummary(keys: filteredPrivilegeKeys, scope: .visible)
+    }
+
     init(
         initialTargetType: TS3PrivilegeKeyTargetType? = nil,
         initialServerGroupId: Int? = nil,
@@ -24765,6 +24769,11 @@ struct PrivilegeKeysSheet: View {
                     .disabled(model.state != .connected || filteredPrivilegeKeys.isEmpty)
                     .foregroundColor(.red)
 
+                    Button(localized("privilegeKeys.copyDeleteImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(visiblePrivilegeKeyDeleteImpactSummary.clipboardSummary)
+                    }
+                    .disabled(filteredPrivilegeKeys.isEmpty)
+
                     if model.privilegeKeys.isEmpty {
                         Text(localized("privilegeKeys.noKeys"))
                             .foregroundColor(.secondary)
@@ -24844,7 +24853,7 @@ struct PrivilegeKeysSheet: View {
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
                     title: Text(localized("privilegeKeys.deleteVisibleAlert.title")),
-                    message: Text(localized("privilegeKeys.deleteVisibleAlert.messageFormat", filteredPrivilegeKeys.count)),
+                    message: Text(privilegeKeyDeleteImpactText(visiblePrivilegeKeyDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deletePrivilegeKeys(filteredPrivilegeKeys)
                     },
@@ -25165,6 +25174,28 @@ struct PrivilegeKeysSheet: View {
             localized("privilegeKeys.officialAuditTypesFormat", summary.visibleKeySummary.serverGroupCount, summary.visibleKeySummary.channelGroupCount),
             localized("privilegeKeys.officialAuditMutationFormat", summary.canMutateServer ? localized("common.yes") : localized("common.no"))
         ].joined(separator: " · ")
+    }
+
+    private func privilegeKeyDeleteImpactText(_ summary: TS3PrivilegeKeyDeleteImpactSummary) -> String {
+        [
+            localized(
+                "privilegeKeys.deleteImpactFormat",
+                summary.keyCount,
+                summary.listSummary.serverGroupCount,
+                summary.listSummary.channelGroupCount
+            ),
+            localized(
+                "privilegeKeys.deleteImpactUnknownFormat",
+                summary.listSummary.unknownTypeCount
+            ),
+            localized(
+                "privilegeKeys.deleteImpactScopeFormat",
+                summary.listSummary.channelScopedCount,
+                summary.listSummary.describedCount,
+                summary.listSummary.customSetCount
+            ),
+            localized("privilegeKeys.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 
     private func privilegeKeyBackupPreviewMessage(_ preview: TS3PrivilegeKeyBackupPreview) -> String {
@@ -25569,7 +25600,7 @@ struct PrivilegeKeyRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("privilegeKeys.deleteKeyAlert.title")),
-                message: Text(key.key),
+                message: Text(privilegeKeyDeleteImpactText(TS3PrivilegeKeyDeleteImpactSummary(keys: [key], scope: .single))),
                 primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deletePrivilegeKey(key)
                 },
@@ -25660,6 +25691,28 @@ struct PrivilegeKeyRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func privilegeKeyDeleteImpactText(_ summary: TS3PrivilegeKeyDeleteImpactSummary) -> String {
+        [
+            localized(
+                "privilegeKeys.deleteImpactFormat",
+                summary.keyCount,
+                summary.listSummary.serverGroupCount,
+                summary.listSummary.channelGroupCount
+            ),
+            localized(
+                "privilegeKeys.deleteImpactUnknownFormat",
+                summary.listSummary.unknownTypeCount
+            ),
+            localized(
+                "privilegeKeys.deleteImpactScopeFormat",
+                summary.listSummary.channelScopedCount,
+                summary.listSummary.describedCount,
+                summary.listSummary.customSetCount
+            ),
+            localized("privilegeKeys.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 }
 

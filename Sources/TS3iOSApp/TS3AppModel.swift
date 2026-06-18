@@ -6394,6 +6394,48 @@ struct TS3PrivilegeKeyListSummary {
     }
 }
 
+struct TS3PrivilegeKeyDeleteImpactSummary {
+    enum Scope: String {
+        case single
+        case visible
+    }
+
+    let scope: Scope
+    let listSummary: TS3PrivilegeKeyListSummary
+
+    var keyCount: Int {
+        listSummary.totalCount
+    }
+
+    var needsAttention: Bool {
+        keyCount == 0
+            || listSummary.unknownTypeCount > 0
+            || listSummary.customSetCount > 0
+            || listSummary.channelScopedCount > 0
+            || keyCount >= 10
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.rawValue)",
+            "deleteKeys=\(keyCount)",
+            "serverGroup=\(listSummary.serverGroupCount)",
+            "channelGroup=\(listSummary.channelGroupCount)",
+            "unknown=\(listSummary.unknownTypeCount)",
+            "channelScoped=\(listSummary.channelScopedCount)",
+            "withDescription=\(listSummary.describedCount)",
+            "withCustomSet=\(listSummary.customSetCount)",
+            "latestCreated=\(listSummary.latestCreatedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(keys: [TS3PrivilegeKeySummary], scope: Scope) {
+        self.scope = scope
+        self.listSummary = TS3PrivilegeKeyListSummary(keys: keys)
+    }
+}
+
 enum TS3PrivilegeKeyConnectionImpactSource: String, Equatable {
     case generated
     case listed

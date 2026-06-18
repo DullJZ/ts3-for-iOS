@@ -535,6 +535,11 @@
 "privilegeKeys.noMatchingKeys" = "没有匹配的权限密钥";
 "privilegeKeys.deleteVisibleAlert.title" = "删除可见权限密钥？";
 "privilegeKeys.deleteVisibleAlert.messageFormat" = "这会从服务器移除 %d 个权限密钥。";
+"privilegeKeys.deleteImpactFormat" = "将删除 %d 个密钥：%d 个服务器组，%d 个频道组。";
+"privilegeKeys.deleteImpactUnknownFormat" = "未知类型：%d。";
+"privilegeKeys.deleteImpactScopeFormat" = "限定频道/描述/自定义权限集：%d/%d/%d。";
+"privilegeKeys.deleteImpactAttentionFormat" = "需要额外注意：%@。";
+"privilegeKeys.copyDeleteImpact" = "复制删除影响";
 "privilegeKeys.deleteAllPresetsAlert.title" = "删除所有权限密钥筛选预设？";
 "privilegeKeys.filter.all" = "所有密钥";
 "privilegeKeys.filter.unknown" = "未知类型";

@@ -410,6 +410,78 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyDeleteImpactSummaryCountsVisibleDeletionRisk() {
+        let serverKey = makeKey(
+            key: "server-key",
+            type: .serverGroup,
+            groupId: 6,
+            channelId: nil,
+            description: "admins"
+        )
+        let channelKey = makeKey(
+            key: "channel-key",
+            type: .channelGroup,
+            groupId: 9,
+            channelId: 12,
+            customSet: "token_custom"
+        )
+        let unknownKey = makeKey(key: "unknown-key", type: nil, groupId: 99, channelId: nil)
+        let duplicate = makeKey(
+            key: "server-key",
+            type: .channelGroup,
+            groupId: 10,
+            channelId: 13,
+            customSet: "ignored"
+        )
+
+        let summary = TS3PrivilegeKeyDeleteImpactSummary(
+            keys: [serverKey, channelKey, unknownKey, duplicate],
+            scope: .visible
+        )
+
+        XCTAssertEqual(summary.keyCount, 3)
+        XCTAssertEqual(summary.listSummary.serverGroupCount, 1)
+        XCTAssertEqual(summary.listSummary.channelGroupCount, 1)
+        XCTAssertEqual(summary.listSummary.unknownTypeCount, 1)
+        XCTAssertEqual(summary.listSummary.channelScopedCount, 1)
+        XCTAssertEqual(summary.listSummary.describedCount, 1)
+        XCTAssertEqual(summary.listSummary.customSetCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=visible | deleteKeys=3 | serverGroup=1 | channelGroup=1 | unknown=1 | channelScoped=1 | withDescription=1 | withCustomSet=1 | latestCreated=2023-11-14T22:13:20Z | needsAttention=true"
+        )
+    }
+
+    func testPrivilegeKeyDeleteImpactSummaryFlagsEmptyAndLargeDeletion() {
+        let empty = TS3PrivilegeKeyDeleteImpactSummary(keys: [], scope: .visible)
+
+        XCTAssertEqual(empty.keyCount, 0)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(
+            empty.clipboardSummary,
+            "scope=visible | deleteKeys=0 | serverGroup=0 | channelGroup=0 | unknown=0 | channelScoped=0 | withDescription=0 | withCustomSet=0 | latestCreated=none | needsAttention=true"
+        )
+
+        let largeDeletion = TS3PrivilegeKeyDeleteImpactSummary(
+            keys: (1...10).map { index in
+                makeKey(
+                    key: "server-key-\(index)",
+                    type: .serverGroup,
+                    groupId: index,
+                    channelId: nil
+                )
+            },
+            scope: .visible
+        )
+
+        XCTAssertEqual(largeDeletion.keyCount, 10)
+        XCTAssertEqual(largeDeletion.listSummary.unknownTypeCount, 0)
+        XCTAssertEqual(largeDeletion.listSummary.customSetCount, 0)
+        XCTAssertEqual(largeDeletion.listSummary.channelScopedCount, 0)
+        XCTAssertTrue(largeDeletion.needsAttention)
+    }
+
     func testPrivilegeKeyOfficialCoverageAuditSummaryCountsCoveredAreas() {
         let draftSummary = TS3PrivilegeKeyDraftCoverageSummary(
             targetType: .channelGroup,

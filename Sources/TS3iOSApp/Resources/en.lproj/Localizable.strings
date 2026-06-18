@@ -535,6 +535,11 @@
 "privilegeKeys.noMatchingKeys" = "No matching privilege keys";
 "privilegeKeys.deleteVisibleAlert.title" = "Delete Visible Privilege Keys?";
 "privilegeKeys.deleteVisibleAlert.messageFormat" = "This removes %d privilege keys from the server.";
+"privilegeKeys.deleteImpactFormat" = "Deleting %d keys: %d server-group, %d channel-group.";
+"privilegeKeys.deleteImpactUnknownFormat" = "Unknown type: %d.";
+"privilegeKeys.deleteImpactScopeFormat" = "Channel-scoped/description/custom set: %d/%d/%d.";
+"privilegeKeys.deleteImpactAttentionFormat" = "Needs extra attention: %@.";
+"privilegeKeys.copyDeleteImpact" = "Copy Delete Impact";
 "privilegeKeys.deleteAllPresetsAlert.title" = "Delete All Privilege Key Filter Presets?";
 "privilegeKeys.filter.all" = "All Keys";
 "privilegeKeys.filter.unknown" = "Unknown Type";
