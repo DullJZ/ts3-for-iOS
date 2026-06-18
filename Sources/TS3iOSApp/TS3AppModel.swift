@@ -1634,6 +1634,124 @@ struct TS3TalkRequestQueueSummary {
     }
 }
 
+enum TS3ClientModerationAction: String, CaseIterable, Codable {
+    case kickChannel
+    case kickServer
+    case ban
+}
+
+enum TS3ClientModerationRequirement: String, CaseIterable, Codable {
+    case connected
+    case target
+    case positiveClientId
+    case singleLineReason
+    case validBanDuration
+}
+
+struct TS3ClientModerationReadinessSummary {
+    let action: TS3ClientModerationAction
+    let targetName: String?
+    let targetClientId: Int?
+    let reason: String
+    let isBanPermanent: Bool
+    let isBanCustomDuration: Bool
+    let banDurationSeconds: Int?
+    let isConnected: Bool
+
+    var hasTargetName: Bool {
+        Self.normalized(targetName) != nil
+    }
+
+    var hasTargetClientId: Bool {
+        (targetClientId ?? 0) > 0
+    }
+
+    var hasSingleLineReason: Bool {
+        reason.rangeOfCharacter(from: .newlines) == nil
+    }
+
+    var hasReason: Bool {
+        Self.normalized(reason) != nil
+    }
+
+    var hasValidBanDuration: Bool {
+        action != .ban || isBanPermanent || !isBanCustomDuration || (banDurationSeconds ?? 0) > 0
+    }
+
+    var requirementStates: [TS3ClientModerationRequirement: Bool] {
+        var states: [TS3ClientModerationRequirement: Bool] = [
+            .connected: isConnected,
+            .target: hasTargetName || hasTargetClientId,
+            .positiveClientId: hasTargetClientId,
+            .singleLineReason: hasSingleLineReason
+        ]
+        if action == .ban {
+            states[.validBanDuration] = hasValidBanDuration
+        }
+        return states
+    }
+
+    var requirements: [TS3ClientModerationRequirement] {
+        action == .ban
+            ? TS3ClientModerationRequirement.allCases
+            : TS3ClientModerationRequirement.allCases.filter { $0 != .validBanDuration }
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirements.filter { requirementStates[$0] == true }.count
+    }
+
+    var totalRequirementCount: Int {
+        requirements.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3ClientModerationRequirement] {
+        requirements.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected
+            && hasTargetClientId
+            && hasSingleLineReason
+            && hasValidBanDuration
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirementSummary = requirements
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "action=\(action.rawValue)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "targetName=\(hasTargetName ? "true" : "false")",
+            "clientId=\(hasTargetClientId ? "true" : "false")",
+            "reason=\(hasReason ? "true" : "false")",
+            "banDuration=\(action == .ban ? (isBanPermanent ? "permanent" : "temporary") : "n/a")",
+            "customBanDuration=\(action == .ban && isBanCustomDuration ? "true" : "false")",
+            "requirements=\(requirementSummary)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TS3ChatMessageSummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date

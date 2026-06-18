@@ -6160,6 +6160,23 @@ struct UserActionSheet: View {
                                     .foregroundColor(.red)
                             }
                         }
+                        if let moderationReadinessSummary {
+                            ServerInfoDetailRow(
+                                label: localized("clientActions.moderationReadiness"),
+                                value: localized(
+                                    "clientActions.moderationReadinessFormat",
+                                    moderationReadinessSummary.satisfiedRequirementCount,
+                                    moderationReadinessSummary.totalRequirementCount,
+                                    moderationReadinessSummary.missingRequirementCount
+                                )
+                            )
+                            Text(moderationReadinessText(moderationReadinessSummary))
+                                .font(.caption)
+                                .foregroundColor(moderationReadinessSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("clientActions.copyModerationReadiness")) {
+                                TS3PlatformSupport.copyToPasteboard(moderationReadinessSummary.clipboardSummary)
+                            }
+                        }
                     }
                     if mode == .ban {
                         Section(header: Text(localized("ban.duration"))) {
@@ -6265,11 +6282,38 @@ struct UserActionSheet: View {
             return !pokeSendReadinessSummary.canSubmit
         case .offlineMessage:
             return !offlineMessageSendReadinessSummary.canSubmit
-        case .editDescription, .contactNote, .kickChannel, .kickServer:
+        case .kickChannel, .kickServer, .ban:
+            return moderationReadinessSummary?.canSubmit != true
+        case .editDescription, .contactNote:
             return false
-        case .ban:
-            return banDuration == .custom && TS3BanDuration.customSeconds(from: customBanMinutes) == nil
         }
+    }
+
+    private var moderationAction: TS3ClientModerationAction? {
+        switch mode {
+        case .kickChannel:
+            return .kickChannel
+        case .kickServer:
+            return .kickServer
+        case .ban:
+            return .ban
+        default:
+            return nil
+        }
+    }
+
+    private var moderationReadinessSummary: TS3ClientModerationReadinessSummary? {
+        guard let moderationAction else { return nil }
+        return TS3ClientModerationReadinessSummary(
+            action: moderationAction,
+            targetName: user.nickname,
+            targetClientId: user.id,
+            reason: text,
+            isBanPermanent: banDuration == .permanent,
+            isBanCustomDuration: banDuration == .custom,
+            banDurationSeconds: banDuration.seconds(customMinutes: customBanMinutes),
+            isConnected: model.state == .connected
+        )
     }
 
     private var offlineDraftId: String {
@@ -6433,6 +6477,31 @@ struct UserActionSheet: View {
             return localized("clientActions.pokeSendRequirement.singleLineMessage")
         case .validationClean:
             return localized("clientActions.pokeSendRequirement.validationClean")
+        }
+    }
+
+    private func moderationReadinessText(_ summary: TS3ClientModerationReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("clientActions.moderationReadinessReady")
+        }
+        return localized(
+            "clientActions.moderationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3ClientModerationRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("clientActions.moderationRequirement.connected")
+        case .target:
+            return localized("clientActions.moderationRequirement.target")
+        case .positiveClientId:
+            return localized("clientActions.moderationRequirement.positiveClientId")
+        case .singleLineReason:
+            return localized("clientActions.moderationRequirement.singleLineReason")
+        case .validBanDuration:
+            return localized("clientActions.moderationRequirement.validBanDuration")
         }
     }
 

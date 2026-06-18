@@ -63,6 +63,62 @@ final class TS3ClientActionTests: XCTestCase {
         XCTAssertEqual(summary.clipboardSummary, "requests=0 | channels=0 | messages=0")
     }
 
+    func testClientModerationReadinessSummaryCountsKickRequirements() {
+        let summary = TS3ClientModerationReadinessSummary(
+            action: .kickServer,
+            targetName: " Guest ",
+            targetClientId: 12,
+            reason: " Rule violation ",
+            isBanPermanent: false,
+            isBanCustomDuration: false,
+            banDurationSeconds: nil,
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.requirements, [.connected, .target, .positiveClientId, .singleLineReason])
+        XCTAssertEqual(summary.satisfiedRequirementCount, 4)
+        XCTAssertEqual(summary.totalRequirementCount, 4)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertTrue(summary.canSubmit)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "action=kickServer | readiness=4/4 | missingRequirements=0 | canSubmit=true | targetName=true | clientId=true | reason=true | banDuration=n/a | customBanDuration=false | requirements=connected:true,target:true,positiveClientId:true,singleLineReason:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testClientModerationReadinessSummaryFlagsDisconnectedInvalidBan() {
+        let summary = TS3ClientModerationReadinessSummary(
+            action: .ban,
+            targetName: " ",
+            targetClientId: 0,
+            reason: "spam\nabuse",
+            isBanPermanent: false,
+            isBanCustomDuration: true,
+            banDurationSeconds: nil,
+            isConnected: false
+        )
+
+        XCTAssertEqual(
+            summary.requirements,
+            [.connected, .target, .positiveClientId, .singleLineReason, .validBanDuration]
+        )
+        XCTAssertEqual(summary.satisfiedRequirementCount, 0)
+        XCTAssertEqual(summary.totalRequirementCount, 5)
+        XCTAssertEqual(summary.missingRequirementCount, 5)
+        XCTAssertEqual(
+            summary.missingRequirements,
+            [.connected, .target, .positiveClientId, .singleLineReason, .validBanDuration]
+        )
+        XCTAssertFalse(summary.canSubmit)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "action=ban | readiness=0/5 | missingRequirements=5 | canSubmit=false | targetName=false | clientId=false | reason=true | banDuration=temporary | customBanDuration=true | requirements=connected:false,target:false,positiveClientId:false,singleLineReason:false,validBanDuration:false | missing=connected,target,positiveClientId,singleLineReason,validBanDuration | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testOnlineUserComplaintAndContactEntryPointsOpenTargetedSheets() {
         let model = TS3AppModel()

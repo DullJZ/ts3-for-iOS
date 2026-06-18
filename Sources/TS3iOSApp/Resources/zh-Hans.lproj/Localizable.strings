@@ -1551,6 +1551,16 @@
 "clientActions.send" = "发送";
 "clientActions.submitComplaint" = "提交投诉";
 "clientActions.kick" = "踢出";
+"clientActions.moderationReadiness" = "动作就绪度";
+"clientActions.moderationReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"clientActions.moderationReadinessReady" = "动作已可提交";
+"clientActions.moderationReadinessMissingFormat" = "缺失：%@";
+"clientActions.copyModerationReadiness" = "复制动作就绪度";
+"clientActions.moderationRequirement.connected" = "已连接服务器";
+"clientActions.moderationRequirement.target" = "目标客户端";
+"clientActions.moderationRequirement.positiveClientId" = "有效客户端 ID";
+"clientActions.moderationRequirement.singleLineReason" = "单行原因";
+"clientActions.moderationRequirement.validBanDuration" = "有效封禁时长";
 "clientActions.copyClientInformation" = "复制客户端信息";
 "clientActions.exportClientInformation" = "导出客户端信息";
 "clientActions.subject" = "主题";

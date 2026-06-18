@@ -1551,6 +1551,16 @@
 "clientActions.send" = "Send";
 "clientActions.submitComplaint" = "Submit Complaint";
 "clientActions.kick" = "Kick";
+"clientActions.moderationReadiness" = "Action Readiness";
+"clientActions.moderationReadinessFormat" = "%d/%d ready, %d missing";
+"clientActions.moderationReadinessReady" = "Action is ready to submit";
+"clientActions.moderationReadinessMissingFormat" = "Missing: %@";
+"clientActions.copyModerationReadiness" = "Copy Action Readiness";
+"clientActions.moderationRequirement.connected" = "Connected server";
+"clientActions.moderationRequirement.target" = "Target client";
+"clientActions.moderationRequirement.positiveClientId" = "Valid client ID";
+"clientActions.moderationRequirement.singleLineReason" = "Single-line reason";
+"clientActions.moderationRequirement.validBanDuration" = "Valid ban duration";
 "clientActions.copyClientInformation" = "Copy Client Information";
 "clientActions.exportClientInformation" = "Export Client Information";
 "clientActions.subject" = "Subject";
