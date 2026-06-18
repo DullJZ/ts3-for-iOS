@@ -11576,6 +11576,40 @@ struct TS3ContactBookmarkDraftSummary {
     }
 }
 
+struct TS3DatabaseClientBookmarkDraftSummary {
+    let record: TS3DatabaseClientSummary
+    let contactStatus: TS3ContactStatus
+    let hasContactNote: Bool
+    let bookmark: TS3BookmarkSummary?
+
+    var canSave: Bool {
+        bookmark != nil
+    }
+
+    var hasUniqueIdentifier: Bool {
+        record.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "db=\(record.id)",
+            "nickname=\(record.nickname)",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "status=\(contactStatus.title)",
+            "canSave=\(canSave ? "true" : "false")"
+        ]
+        if hasContactNote {
+            parts.append("contactNote=true")
+        }
+        if let bookmark {
+            parts.append(contentsOf: bookmark.connectionSummaryParts(name: bookmark.name))
+        } else {
+            parts.append("server=missing")
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3ConnectionFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -15257,6 +15291,34 @@ final class TS3AppModel: ObservableObject {
         TS3ContactBookmarkDraftSummary(contact: contact, bookmark: contactBookmark(for: contact))
     }
 
+    func databaseClientBookmarkSummary(for record: TS3DatabaseClientSummary) -> String {
+        databaseClientBookmarkDraftSummary(for: record).clipboardSummary
+    }
+
+    func databaseClientBookmarkDraftSummary(for record: TS3DatabaseClientSummary) -> TS3DatabaseClientBookmarkDraftSummary {
+        TS3DatabaseClientBookmarkDraftSummary(
+            record: record,
+            contactStatus: contactStatus(for: record),
+            hasContactNote: contactNote(for: record) != nil,
+            bookmark: databaseClientBookmark(for: record)
+        )
+    }
+
+    func saveDatabaseClientBookmark(for record: TS3DatabaseClientSummary) {
+        guard let bookmark = databaseClientBookmark(for: record) else {
+            lastError = "Connect to or enter a server before saving a database-client bookmark."
+            return
+        }
+        bookmarks.removeAll {
+            $0.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
+                && $0.port == bookmark.port
+                && $0.note.contains("clientDb=\(record.id)")
+        }
+        bookmarks.insert(bookmark, at: 0)
+        saveBookmarks()
+        lastError = nil
+    }
+
     func saveContactBookmark(for contact: TS3ContactEntry) {
         guard let bookmark = contactBookmark(for: contact) else {
             lastError = "Connect to or enter a server before saving a contact bookmark."
@@ -15286,6 +15348,36 @@ final class TS3AppModel: ObservableObject {
         return TS3BookmarkSummary(
             name: "\(contact.nickname) @ \(host)",
             folder: "Contacts",
+            note: noteParts.joined(separator: " | "),
+            host: host,
+            port: serverPort.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "9987" : serverPort.trimmingCharacters(in: .whitespacesAndNewlines),
+            nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneticNickname: phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            serverPassword: serverPassword,
+            defaultChannel: defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines),
+            defaultChannelPassword: defaultChannelPassword,
+            privilegeKey: privilegeKey
+        )
+    }
+
+    private func databaseClientBookmark(for record: TS3DatabaseClientSummary) -> TS3BookmarkSummary? {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else { return nil }
+        var noteParts = [
+            "clientDb=\(record.id)",
+            "contactStatus=\(contactStatus(for: record).title)"
+        ]
+        if let uniqueIdentifier = record.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !uniqueIdentifier.isEmpty {
+            noteParts.append("clientUid=\(uniqueIdentifier)")
+        }
+        if let note = contactNote(for: record)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !note.isEmpty {
+            noteParts.append("contactNote=\(note)")
+        }
+        return TS3BookmarkSummary(
+            name: "\(record.nickname) @ \(host)",
+            folder: "Database Clients",
             note: noteParts.joined(separator: " | "),
             host: host,
             port: serverPort.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "9987" : serverPort.trimmingCharacters(in: .whitespacesAndNewlines),

@@ -103,6 +103,69 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testSavingDatabaseClientBookmarkCarriesClientAuditNote() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = "9990"
+        model.nickname = "Avery"
+        model.defaultChannel = "Ops/Lobby"
+        let record = TS3DatabaseClientSummary(
+            id: 42,
+            uniqueIdentifier: "uid-db",
+            nickname: "Riley",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        model.setContactStatus(.friend, for: record)
+        model.setContactNote("raid lead", for: record)
+
+        model.saveDatabaseClientBookmark(for: record)
+
+        let bookmark = try XCTUnwrap(model.bookmarks.first)
+        XCTAssertEqual(bookmark.name, "Riley @ voice.example.test")
+        XCTAssertEqual(bookmark.folder, "Database Clients")
+        XCTAssertEqual(bookmark.host, "voice.example.test")
+        XCTAssertEqual(bookmark.port, "9990")
+        XCTAssertEqual(bookmark.nickname, "Avery")
+        XCTAssertEqual(bookmark.defaultChannel, "Ops/Lobby")
+        XCTAssertEqual(bookmark.note, "clientDb=42 | contactStatus=Friend | clientUid=uid-db | contactNote=raid lead")
+        XCTAssertEqual(
+            model.databaseClientBookmarkSummary(for: record),
+            "db=42 | nickname=Riley | uid=true | status=Friend | canSave=true | contactNote=true | name=Riley @ voice.example.test | folder=Database Clients | server=voice.example.test:9990 | nickname=Avery | note=clientDb=42 | contactStatus=Friend | clientUid=uid-db | contactNote=raid lead | defaultChannel=Ops/Lobby | serverPassword=No | channelPassword=No | privilegeKey=No"
+        )
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testDatabaseClientBookmarkDraftSummaryReportsMissingServer() {
+        let model = TS3AppModel()
+        model.serverHost = " "
+        let record = TS3DatabaseClientSummary(
+            id: 42,
+            uniqueIdentifier: nil,
+            nickname: "Riley",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+
+        let summary = model.databaseClientBookmarkDraftSummary(for: record)
+
+        XCTAssertFalse(summary.canSave)
+        XCTAssertFalse(summary.hasUniqueIdentifier)
+        XCTAssertFalse(summary.hasContactNote)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "db=42 | nickname=Riley | uid=false | status=Neutral | canSave=false | server=missing"
+        )
+    }
+
     func testConnectionFilterPresetSummaryAndAccessibilityText() {
         let preset = makeConnectionFilterPreset(
             id: UUID(),

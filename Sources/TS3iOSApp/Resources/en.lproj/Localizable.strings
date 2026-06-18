@@ -1657,6 +1657,8 @@
 "database.actionRequirement.offlineMessage" = "Offline messaging";
 "database.actionRequirement.banPermission" = "Ban permission";
 "database.actionRequirement.serverGroups" = "Server groups";
+"database.saveClientBookmark" = "Save Client Bookmark";
+"database.copyClientBookmarkDraft" = "Copy Client Bookmark Draft";
 "database.summary.descriptionsFormat" = "%d with descriptions";
 "database.summary.lastIPsFormat" = "%d with last IPs";
 "database.summary.connectionsFormat" = "%d with connection counts";

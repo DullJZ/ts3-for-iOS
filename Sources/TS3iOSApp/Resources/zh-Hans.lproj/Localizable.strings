@@ -1657,6 +1657,8 @@
 "database.actionRequirement.offlineMessage" = "离线消息";
 "database.actionRequirement.banPermission" = "封禁权限";
 "database.actionRequirement.serverGroups" = "服务器组";
+"database.saveClientBookmark" = "保存客户端书签";
+"database.copyClientBookmarkDraft" = "复制客户端书签草稿";
 "database.summary.descriptionsFormat" = "%d 个有描述";
 "database.summary.lastIPsFormat" = "%d 个有最后 IP";
 "database.summary.connectionsFormat" = "%d 个有连接次数";

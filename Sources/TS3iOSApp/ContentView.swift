@@ -17140,6 +17140,13 @@ struct ClientDatabaseSheet: View {
                             model.refreshOnlineLocations(for: selected)
                         }
                         .disabled(selected.uniqueIdentifier == nil)
+                        Button(localized("database.saveClientBookmark")) {
+                            model.saveDatabaseClientBookmark(for: selected)
+                        }
+                        .disabled(!model.databaseClientBookmarkDraftSummary(for: selected).canSave)
+                        Button(localized("database.copyClientBookmarkDraft")) {
+                            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: selected))
+                        }
                         if model.hasOnlineClientActions(for: selected) {
                             Button(localized("groups.members.row.pokeOnlineClient")) {
                                 onlineActionMode = .poke
@@ -18309,110 +18316,17 @@ struct DatabaseClientRow: View {
         Button {
             model.loadDatabaseClientDetails(record)
         } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(record.nickname)
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text("DB \(record.id)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                    Text(uniqueIdentifier)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                HStack(spacing: 8) {
-                    if contactStatus == .friend {
-                        Text(localized("contacts.status.friend"))
-                    }
-                    if contactStatus == .blocked {
-                        Text(localized("contacts.status.blocked"))
-                    }
-                    if let note = model.contactNote(for: record) {
-                        Text(localized("clientActions.noteFormat", note))
-                    }
-                }
-                .font(.caption)
-                .foregroundColor(.secondary)
-            }
-            .padding(.vertical, 3)
+            rowLabel
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button(localized("contacts.row.copyNickname")) {
-                TS3PlatformSupport.copyToPasteboard(record.nickname)
-            }
-            Button(localized("groups.members.row.copyDatabaseId")) {
-                TS3PlatformSupport.copyToPasteboard("\(record.id)")
-            }
-            Button(localized("groups.row.copySummary")) {
-                TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
-            }
-            if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Button(localized("contacts.row.copyUniqueId")) {
-                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
-                }
-                Menu(localized("groups.members.row.contact")) {
-                    Button(localized("groups.members.row.markFriend")) {
-                        model.setContactStatus(.friend, for: record)
-                    }
-                    .disabled(contactStatus == .friend)
-                    Button(localized("groups.members.row.blockContact")) {
-                        model.setContactStatus(.blocked, for: record)
-                    }
-                    .disabled(contactStatus == .blocked)
-                    Button(localized("groups.members.row.ignoreContact")) {
-                        model.setContactStatus(.ignored, for: record)
-                    }
-                    .disabled(contactStatus == .ignored)
-                    Button(localized("groups.members.row.setNeutral")) {
-                        model.setContactStatus(.neutral, for: record)
-                    }
-                    .disabled(contactStatus == .neutral && model.contactNote(for: record) == nil)
-                    Button(localized("groups.members.row.editNote")) {
-                        databaseActionMode = .contactNote
-                    }
-                }
-            }
-            Button(localized("groups.members.row.sendOfflineMessage")) {
-                databaseActionMode = .offlineMessage
-            }
-            .disabled(!model.canSendOfflineMessage(to: record))
-            Button(localized("groups.members.row.submitComplaint")) {
-                databaseActionMode = .complain
-            }
-            Button(localized("database.viewComplaints")) {
-                model.refreshComplaints(for: record)
-                isShowingComplaints = true
-            }
-            Button(localized("groups.members.row.banUniqueId")) {
-                databaseActionMode = .ban
-            }
-            .disabled(!model.canBanDatabaseClient(record))
-            if model.hasOnlineClientActions(for: record) {
-                Button(localized("groups.members.row.pokeOnlineClient")) {
-                    onlineActionMode = .poke
-                }
-                Button(localized("contacts.row.sendPrivateMessage")) {
-                    onlineActionMode = .privateMessage
-                }
-                Button(localized("contacts.row.clientInfo")) {
-                    onlineActionMode = .info
-                }
-            }
-            if !model.serverGroups.isEmpty {
-                Menu(localized("database.addServerGroup")) {
-                    ForEach(model.serverGroups) { group in
-                        Button(group.name) {
-                            model.addServerGroup(group, to: record)
-                        }
-                    }
-                }
-            }
+            identityContextMenuItems
+            contactContextMenuItems
+            messagingContextMenuItems
+            bookmarkContextMenuItems
+            moderationContextMenuItems
+            onlineContextMenuItems
+            serverGroupContextMenuItems
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(record.nickname)
@@ -18443,6 +18357,14 @@ struct DatabaseClientRow: View {
             model.refreshComplaints(for: record)
             isShowingComplaints = true
         }
+        .accessibilityAction(named: localized("database.saveClientBookmark")) {
+            if model.databaseClientBookmarkDraftSummary(for: record).canSave {
+                model.saveDatabaseClientBookmark(for: record)
+            }
+        }
+        .accessibilityAction(named: localized("database.copyClientBookmarkDraft")) {
+            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: record))
+        }
         .accessibilityAction(named: localized("groups.members.row.banUniqueId")) {
             if model.canBanDatabaseClient(record) {
                 databaseActionMode = .ban
@@ -18467,6 +18389,157 @@ struct DatabaseClientRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private var databaseIdText: String {
+        String(record.id)
+    }
+
+    @ViewBuilder
+    private var rowLabel: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(record.nickname)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("DB \(databaseIdText)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+                Text(uniqueIdentifier)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            rowStatusBadges
+        }
+        .padding(.vertical, 3)
+    }
+
+    @ViewBuilder
+    private var rowStatusBadges: some View {
+        HStack(spacing: 8) {
+            if contactStatus == .friend {
+                Text(localized("contacts.status.friend"))
+            }
+            if contactStatus == .blocked {
+                Text(localized("contacts.status.blocked"))
+            }
+            if let note = model.contactNote(for: record) {
+                Text(localized("clientActions.noteFormat", note))
+            }
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+    }
+
+    @ViewBuilder
+    private var identityContextMenuItems: some View {
+        Button(localized("contacts.row.copyNickname")) {
+            TS3PlatformSupport.copyToPasteboard(record.nickname)
+        }
+        Button(localized("groups.members.row.copyDatabaseId")) {
+            TS3PlatformSupport.copyToPasteboard(databaseIdText)
+        }
+        Button(localized("groups.row.copySummary")) {
+            TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
+        }
+        if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
+            Button(localized("contacts.row.copyUniqueId")) {
+                TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var contactContextMenuItems: some View {
+        if record.uniqueIdentifier?.isEmpty == false {
+            Menu(localized("groups.members.row.contact")) {
+                Button(localized("groups.members.row.markFriend")) {
+                    model.setContactStatus(.friend, for: record)
+                }
+                .disabled(contactStatus == .friend)
+                Button(localized("groups.members.row.blockContact")) {
+                    model.setContactStatus(.blocked, for: record)
+                }
+                .disabled(contactStatus == .blocked)
+                Button(localized("groups.members.row.ignoreContact")) {
+                    model.setContactStatus(.ignored, for: record)
+                }
+                .disabled(contactStatus == .ignored)
+                Button(localized("groups.members.row.setNeutral")) {
+                    model.setContactStatus(.neutral, for: record)
+                }
+                .disabled(contactStatus == .neutral && model.contactNote(for: record) == nil)
+                Button(localized("groups.members.row.editNote")) {
+                    databaseActionMode = .contactNote
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var messagingContextMenuItems: some View {
+        Button(localized("groups.members.row.sendOfflineMessage")) {
+            databaseActionMode = .offlineMessage
+        }
+        .disabled(!model.canSendOfflineMessage(to: record))
+        Button(localized("groups.members.row.submitComplaint")) {
+            databaseActionMode = .complain
+        }
+        Button(localized("database.viewComplaints")) {
+            model.refreshComplaints(for: record)
+            isShowingComplaints = true
+        }
+    }
+
+    @ViewBuilder
+    private var bookmarkContextMenuItems: some View {
+        Button(localized("database.saveClientBookmark")) {
+            model.saveDatabaseClientBookmark(for: record)
+        }
+        .disabled(!model.databaseClientBookmarkDraftSummary(for: record).canSave)
+        Button(localized("database.copyClientBookmarkDraft")) {
+            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: record))
+        }
+    }
+
+    @ViewBuilder
+    private var moderationContextMenuItems: some View {
+        Button(localized("groups.members.row.banUniqueId")) {
+            databaseActionMode = .ban
+        }
+        .disabled(!model.canBanDatabaseClient(record))
+    }
+
+    @ViewBuilder
+    private var onlineContextMenuItems: some View {
+        if model.hasOnlineClientActions(for: record) {
+            Button(localized("groups.members.row.pokeOnlineClient")) {
+                onlineActionMode = .poke
+            }
+            Button(localized("contacts.row.sendPrivateMessage")) {
+                onlineActionMode = .privateMessage
+            }
+            Button(localized("contacts.row.clientInfo")) {
+                onlineActionMode = .info
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var serverGroupContextMenuItems: some View {
+        if !model.serverGroups.isEmpty {
+            Menu(localized("database.addServerGroup")) {
+                ForEach(model.serverGroups) { group in
+                    Button(group.name) {
+                        model.addServerGroup(group, to: record)
+                    }
+                }
+            }
+        }
     }
 }
 
