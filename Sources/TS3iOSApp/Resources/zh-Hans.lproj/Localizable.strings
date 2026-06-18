@@ -674,6 +674,12 @@
 "channelEditor.coverageChangedAreaFormat" = "%d 个变更区域，%d 个字段";
 "channelEditor.coverageUncoveredFormat" = "%d 个未覆盖区域";
 "channelEditor.copyCoverageSummary" = "复制覆盖摘要";
+"channelEditor.navigationSummary" = "复核导航";
+"channelEditor.navigationSummaryFormat" = "%d 个区域，%d 项变化，先看：%@";
+"channelEditor.navigationNoReview" = "没有需要复核的频道分组";
+"channelEditor.navigationAreaFormat" = "打开 %@：%d 项变化";
+"channelEditor.navigationAreaClipboardFormat" = "打开 %@：%d 项变化";
+"channelEditor.copyNavigationSummary" = "复制复核导航";
 "channelEditor.impactSummary" = "影响摘要";
 "channelEditor.impactSummaryFormat" = "%d 项变化，%d 个区域，%d 个校验问题，%d 个编解码警告";
 "channelEditor.impactNoChanges" = "没有频道设置影响";

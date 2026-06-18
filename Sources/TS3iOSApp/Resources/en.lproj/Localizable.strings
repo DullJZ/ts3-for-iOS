@@ -674,6 +674,12 @@
 "channelEditor.coverageChangedAreaFormat" = "%d changed areas, %d fields";
 "channelEditor.coverageUncoveredFormat" = "%d uncovered areas";
 "channelEditor.copyCoverageSummary" = "Copy Coverage Summary";
+"channelEditor.navigationSummary" = "Review Navigation";
+"channelEditor.navigationSummaryFormat" = "%d areas, %d changes, first: %@";
+"channelEditor.navigationNoReview" = "No changed channel sections to review";
+"channelEditor.navigationAreaFormat" = "Open %@: %d changes";
+"channelEditor.navigationAreaClipboardFormat" = "Open %@: %d changes";
+"channelEditor.copyNavigationSummary" = "Copy Review Navigation";
 "channelEditor.impactSummary" = "Impact Summary";
 "channelEditor.impactSummaryFormat" = "%d changes, %d areas, %d validation issues, %d codec warnings";
 "channelEditor.impactNoChanges" = "No channel setting impacts";

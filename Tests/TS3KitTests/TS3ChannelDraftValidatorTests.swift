@@ -298,6 +298,59 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorNavigationSummaryOrdersChangedAreasAndPrimaryArea() {
+        let summary = TS3ChannelEditorNavigationSummary(
+            areaChangeCounts: [
+                .channel: 2,
+                .voice: 5,
+                .permissionGates: 5,
+                .limits: 1
+            ],
+            validationIssueCount: 1,
+            codecWarningCount: 2
+        )
+
+        XCTAssertEqual(summary.changedAreas, [
+            .channel,
+            .voice,
+            .permissionGates,
+            .limits
+        ])
+        XCTAssertEqual(summary.changedAreaCount, 4)
+        XCTAssertEqual(summary.totalChangeCount, 13)
+        XCTAssertEqual(summary.validationIssueCount, 1)
+        XCTAssertEqual(summary.codecWarningCount, 2)
+        XCTAssertEqual(summary.primaryArea, .voice)
+        XCTAssertTrue(summary.shouldReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "reviewAreas=4 | changes=13 | validationIssues=1 | codecWarnings=2 | primaryArea=voice | areas=channel:2,voice:5,permissionGates:5,limits:1 | shouldReview=true"
+        )
+    }
+
+    func testChannelEditorNavigationSummaryHandlesCleanDraft() {
+        let summary = TS3ChannelEditorNavigationSummary(
+            areaChangeCounts: [
+                .channel: 0,
+                .voice: -1
+            ],
+            validationIssueCount: -2,
+            codecWarningCount: -3
+        )
+
+        XCTAssertTrue(summary.changedAreas.isEmpty)
+        XCTAssertEqual(summary.changedAreaCount, 0)
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.codecWarningCount, 0)
+        XCTAssertNil(summary.primaryArea)
+        XCTAssertFalse(summary.shouldReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "reviewAreas=0 | changes=0 | validationIssues=0 | codecWarnings=0 | primaryArea=none | areas=none | shouldReview=false"
+        )
+    }
+
     func testChannelEditorReviewSummaryDeduplicatesSensitiveChanges() {
         let summary = TS3ChannelEditorReviewSummary(
             reviewItems: [

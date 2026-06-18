@@ -977,6 +977,68 @@ struct TS3ChannelEditorCoverageSummary {
     }
 }
 
+struct TS3ChannelEditorNavigationSummary {
+    let areaChangeCounts: [TS3ChannelEditorImpactArea: Int]
+    let validationIssueCount: Int
+    let codecWarningCount: Int
+
+    var changedAreas: [TS3ChannelEditorImpactArea] {
+        TS3ChannelEditorImpactArea.allCases.filter { (areaChangeCounts[$0] ?? 0) > 0 }
+    }
+
+    var changedAreaCount: Int {
+        changedAreas.count
+    }
+
+    var totalChangeCount: Int {
+        areaChangeCounts.values.reduce(0, +)
+    }
+
+    var shouldReview: Bool {
+        totalChangeCount > 0 || validationIssueCount > 0 || codecWarningCount > 0
+    }
+
+    var primaryArea: TS3ChannelEditorImpactArea? {
+        changedAreas.max { lhs, rhs in
+            let lhsCount = areaChangeCounts[lhs] ?? 0
+            let rhsCount = areaChangeCounts[rhs] ?? 0
+            if lhsCount == rhsCount {
+                return Self.orderIndex(lhs) > Self.orderIndex(rhs)
+            }
+            return lhsCount < rhsCount
+        }
+    }
+
+    var clipboardSummary: String {
+        let areas = changedAreas
+            .map { "\($0.rawValue):\(areaChangeCounts[$0] ?? 0)" }
+            .joined(separator: ",")
+        return [
+            "reviewAreas=\(changedAreaCount)",
+            "changes=\(totalChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "codecWarnings=\(codecWarningCount)",
+            "primaryArea=\(primaryArea?.rawValue ?? "none")",
+            "areas=\(areas.isEmpty ? "none" : areas)",
+            "shouldReview=\(shouldReview ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        areaChangeCounts: [TS3ChannelEditorImpactArea: Int],
+        validationIssueCount: Int,
+        codecWarningCount: Int
+    ) {
+        self.areaChangeCounts = areaChangeCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.codecWarningCount = max(0, codecWarningCount)
+    }
+
+    private static func orderIndex(_ area: TS3ChannelEditorImpactArea) -> Int {
+        TS3ChannelEditorImpactArea.allCases.firstIndex(of: area) ?? .max
+    }
+}
+
 struct TS3ChannelEditorReviewSummary {
     let reviewItems: [String]
     let validationIssueCount: Int

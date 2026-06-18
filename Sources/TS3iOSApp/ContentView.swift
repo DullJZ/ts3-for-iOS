@@ -30075,6 +30075,22 @@ struct ChannelEditorSheet: View {
                                 TS3PlatformSupport.copyToPasteboard(channelCoverageSummaryClipboard)
                             }
                             ServerInfoDetailRow(
+                                label: localized("channelEditor.navigationSummary"),
+                                value: localized(
+                                    "channelEditor.navigationSummaryFormat",
+                                    channelNavigationSummary.changedAreaCount,
+                                    channelNavigationSummary.totalChangeCount,
+                                    channelNavigationSummary.primaryArea.map { title(for: $0) } ?? localized("common.none")
+                                )
+                            )
+                            Text(channelNavigationSummaryText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button(localized("channelEditor.copyNavigationSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(channelNavigationSummaryClipboard)
+                            }
+                            .disabled(!channelNavigationSummary.shouldReview)
+                            ServerInfoDetailRow(
                                 label: localized("channelEditor.impactSummary"),
                                 value: localized(
                                     "channelEditor.impactSummaryFormat",
@@ -30636,6 +30652,10 @@ struct ChannelEditorSheet: View {
         channelCoverageSummary(for: currentDraft)
     }
 
+    private var channelNavigationSummary: TS3ChannelEditorNavigationSummary {
+        channelNavigationSummary(for: currentDraft)
+    }
+
     private var channelCoverageSummaryText: String {
         channelCoverageSummaryText(for: channelCoverageSummary)
     }
@@ -30645,6 +30665,27 @@ struct ChannelEditorSheet: View {
             localized("channelEditor.coverageSummary"),
             channelCoverageSummary.clipboardSummary
         ].joined(separator: "\n")
+    }
+
+    private var channelNavigationSummaryText: String {
+        channelNavigationSummaryText(for: channelNavigationSummary)
+    }
+
+    private var channelNavigationSummaryClipboard: String {
+        let summary = channelNavigationSummary
+        let areas = summary.changedAreas
+            .map { area in
+                localized("channelEditor.navigationAreaClipboardFormat", title(for: area), summary.areaChangeCounts[area] ?? 0)
+            }
+            .joined(separator: "\n")
+        return [
+            localized("channelEditor.navigationSummary"),
+            summary.clipboardSummary,
+            areas
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
     }
 
     private var channelImpactSummaryText: String {
@@ -30791,6 +30832,14 @@ struct ChannelEditorSheet: View {
         )
     }
 
+    private func channelNavigationSummary(for draft: ChannelDraft) -> TS3ChannelEditorNavigationSummary {
+        TS3ChannelEditorNavigationSummary(
+            areaChangeCounts: channelAreaChangeCounts(for: draft),
+            validationIssueCount: draftValidationMessages(for: draft).count,
+            codecWarningCount: codecDiagnosticMessages.count
+        )
+    }
+
     private func channelAreaChangeCounts(for draft: ChannelDraft) -> [TS3ChannelEditorImpactArea: Int] {
         guard case let .edit(channel) = mode else { return [:] }
         return [
@@ -30892,6 +30941,20 @@ struct ChannelEditorSheet: View {
         var parts = TS3ChannelEditorImpactArea.allCases.compactMap { area -> String? in
             guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
             return localized("channelEditor.impactAreaFormat", title(for: area), count)
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("channelEditor.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.codecWarningCount > 0 {
+            parts.append(localized("channelEditor.codecWarningCountFormat", summary.codecWarningCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func channelNavigationSummaryText(for summary: TS3ChannelEditorNavigationSummary) -> String {
+        guard summary.shouldReview else { return localized("channelEditor.navigationNoReview") }
+        var parts = summary.changedAreas.map { area in
+            localized("channelEditor.navigationAreaFormat", title(for: area), summary.areaChangeCounts[area] ?? 0)
         }
         if summary.validationIssueCount > 0 {
             parts.append(localized("channelEditor.validationIssueCountFormat", summary.validationIssueCount))
