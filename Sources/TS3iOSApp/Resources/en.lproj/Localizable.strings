@@ -3025,6 +3025,12 @@
 "permissions.officialEditAuditUnsupportedFlagsFormat" = "%d unsupported flags";
 "permissions.officialEditAuditValidationFormat" = "%d validation issues";
 "permissions.copyOfficialEditAudit" = "Copy Official Edit Audit";
+"permissions.editReview" = "Edit Review";
+"permissions.editReviewFormat" = "%d areas, %d signals, first: %@";
+"permissions.editReviewNoAttention" = "No permission edit review items";
+"permissions.editReviewAreaFormat" = "Review %@: %d";
+"permissions.editReviewAreaClipboardFormat" = "Review %@: %d";
+"permissions.copyEditReview" = "Copy Edit Review";
 "permissions.officialEdit.targetScope" = "Target Scope";
 "permissions.officialEdit.permissionValue" = "Permission Value";
 "permissions.officialEdit.inheritanceFlags" = "Inheritance Flags";

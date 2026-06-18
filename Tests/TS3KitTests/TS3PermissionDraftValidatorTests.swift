@@ -152,6 +152,39 @@ final class TS3PermissionDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testPermissionEditReviewSummaryCountsOfficialEditSignals() {
+        let draft = TS3PermissionEditDraft(
+            scope: .serverGroup,
+            target: "Admins (#6)",
+            name: "i_client_kick_power",
+            value: "75",
+            negated: true,
+            skip: true
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let audit = TS3PermissionOfficialEditAuditSummary(coverage: coverage)
+        let summary = TS3PermissionEditReviewSummary(audit: audit)
+
+        XCTAssertEqual(summary.reviewAreas, [
+            .targetScope,
+            .permissionValue,
+            .inheritanceFlags,
+            .validation
+        ])
+        XCTAssertEqual(summary.reviewAreaCount, 4)
+        XCTAssertEqual(summary.totalReviewSignalCount, 7)
+        XCTAssertEqual(summary.primaryArea, .inheritanceFlags)
+        XCTAssertTrue(summary.shouldReview)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=Server Group | reviewAreas=4 | reviewSignals=7 | primaryArea=inheritanceFlags | unsupportedFlags=0 | validationIssues=0 | areas=targetScope:1,permissionValue:2,inheritanceFlags:3,validation:1 | needsAttention=false"
+        )
+    }
+
     func testPermissionOfficialEditAuditSummaryFlagsMissingAndUnsupportedAreas() {
         let draft = TS3PermissionEditDraft(
             scope: .channel,
@@ -174,6 +207,37 @@ final class TS3PermissionDraftValidatorTests: XCTestCase {
         XCTAssertEqual(
             audit.clipboardSummary,
             "scope=Channel | officialAreas=2/4 | missingOfficialAreas=2 | requiredFields=1/3 | effectiveFlags=2 | unsupportedFlags=2 | validationIssues=1 | areas=permissionValue:1,inheritanceFlags:2 | needsAttention=true"
+        )
+    }
+
+    func testPermissionEditReviewSummaryIncludesUnsupportedFlagsAndValidationIssues() {
+        let draft = TS3PermissionEditDraft(
+            scope: .channel,
+            target: " ",
+            name: "i_channel_needed_join_power",
+            value: "kick",
+            negated: true,
+            skip: true
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let audit = TS3PermissionOfficialEditAuditSummary(coverage: coverage)
+        let summary = TS3PermissionEditReviewSummary(audit: audit)
+
+        XCTAssertEqual(summary.reviewAreas, [
+            .permissionValue,
+            .inheritanceFlags
+        ])
+        XCTAssertEqual(summary.reviewAreaCount, 2)
+        XCTAssertEqual(summary.totalReviewSignalCount, 6)
+        XCTAssertEqual(summary.primaryArea, .inheritanceFlags)
+        XCTAssertTrue(summary.shouldReview)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=Channel | reviewAreas=2 | reviewSignals=6 | primaryArea=inheritanceFlags | unsupportedFlags=2 | validationIssues=1 | areas=permissionValue:1,inheritanceFlags:2 | needsAttention=true"
         )
     }
 }

@@ -6830,6 +6830,71 @@ struct TS3PermissionOfficialEditAuditSummary {
     }
 }
 
+struct TS3PermissionEditReviewSummary {
+    let audit: TS3PermissionOfficialEditAuditSummary
+
+    var areaReviewCounts: [TS3PermissionOfficialEditArea: Int] {
+        audit.areaCoverageCounts.filter { $0.value > 0 }
+    }
+
+    var reviewAreas: [TS3PermissionOfficialEditArea] {
+        TS3PermissionOfficialEditArea.allCases.filter { (areaReviewCounts[$0] ?? 0) > 0 }
+    }
+
+    var reviewAreaCount: Int {
+        reviewAreas.count
+    }
+
+    var totalReviewSignalCount: Int {
+        areaReviewCounts.values.reduce(0, +)
+            + audit.coverage.unsupportedRequestedFlagCount
+            + audit.coverage.validationIssueCount
+    }
+
+    var primaryArea: TS3PermissionOfficialEditArea? {
+        reviewAreas.max { lhs, rhs in
+            let lhsCount = areaReviewCounts[lhs] ?? 0
+            let rhsCount = areaReviewCounts[rhs] ?? 0
+            if lhsCount == rhsCount {
+                return Self.orderIndex(lhs) > Self.orderIndex(rhs)
+            }
+            return lhsCount < rhsCount
+        }
+    }
+
+    var shouldReview: Bool {
+        totalReviewSignalCount > 0 || audit.needsAttention
+    }
+
+    var needsAttention: Bool {
+        audit.needsAttention
+    }
+
+    var clipboardSummary: String {
+        let areas = reviewAreas
+            .map { "\($0.rawValue):\(areaReviewCounts[$0] ?? 0)" }
+            .joined(separator: ",")
+        return [
+            "scope=\(audit.coverage.scope.title)",
+            "reviewAreas=\(reviewAreaCount)",
+            "reviewSignals=\(totalReviewSignalCount)",
+            "primaryArea=\(primaryArea?.rawValue ?? "none")",
+            "unsupportedFlags=\(audit.coverage.unsupportedRequestedFlagCount)",
+            "validationIssues=\(audit.coverage.validationIssueCount)",
+            "areas=\(areas.isEmpty ? "none" : areas)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(audit: TS3PermissionOfficialEditAuditSummary) {
+        self.audit = audit
+    }
+
+    private static func orderIndex(_ area: TS3PermissionOfficialEditArea) -> Int {
+        TS3PermissionOfficialEditArea.allCases.firstIndex(of: area) ?? .max
+    }
+}
+
 struct TS3FileEntrySummary: Identifiable {
     let id: String
     let channelId: Int

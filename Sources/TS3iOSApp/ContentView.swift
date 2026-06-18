@@ -22149,6 +22149,10 @@ struct PermissionsSheet: View {
         TS3PermissionOfficialEditAuditSummary(coverage: permissionDraftCoverageSummary)
     }
 
+    var permissionEditReviewSummary: TS3PermissionEditReviewSummary {
+        TS3PermissionEditReviewSummary(audit: permissionOfficialEditAuditSummary)
+    }
+
     var exportFilename: String {
         switch model.permissionEditScope {
         case .ownClient:
@@ -22436,6 +22440,22 @@ struct PermissionsSheet: View {
                     Button(localized("permissions.copyOfficialEditAudit")) {
                         TS3PlatformSupport.copyToPasteboard(permissionOfficialEditAuditSummary.clipboardSummary)
                     }
+                    ServerInfoDetailRow(
+                        label: localized("permissions.editReview"),
+                        value: localized(
+                            "permissions.editReviewFormat",
+                            permissionEditReviewSummary.reviewAreaCount,
+                            permissionEditReviewSummary.totalReviewSignalCount,
+                            permissionEditReviewSummary.primaryArea.map { title(for: $0) } ?? localized("common.none")
+                        )
+                    )
+                    Text(permissionEditReviewText(permissionEditReviewSummary))
+                        .font(.caption)
+                        .foregroundColor(permissionEditReviewSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("permissions.copyEditReview")) {
+                        TS3PlatformSupport.copyToPasteboard(permissionEditReviewClipboard)
+                    }
+                    .disabled(!permissionEditReviewSummary.shouldReview)
                     if !permissionDraftValidationMessages.isEmpty {
                         ForEach(permissionDraftValidationMessages, id: \.self) { message in
                             Text(message)
@@ -22851,6 +22871,37 @@ struct PermissionsSheet: View {
         }
         if summary.coverage.validationIssueCount > 0 {
             parts.append(localized("permissions.officialEditAuditValidationFormat", summary.coverage.validationIssueCount))
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private var permissionEditReviewClipboard: String {
+        let summary = permissionEditReviewSummary
+        let areas = summary.reviewAreas
+            .map { area in
+                localized("permissions.editReviewAreaClipboardFormat", title(for: area), summary.areaReviewCounts[area] ?? 0)
+            }
+            .joined(separator: "\n")
+        return [
+            localized("permissions.editReview"),
+            summary.clipboardSummary,
+            areas
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
+    }
+
+    private func permissionEditReviewText(_ summary: TS3PermissionEditReviewSummary) -> String {
+        guard summary.shouldReview else { return localized("permissions.editReviewNoAttention") }
+        var parts = summary.reviewAreas.map { area in
+            localized("permissions.editReviewAreaFormat", title(for: area), summary.areaReviewCounts[area] ?? 0)
+        }
+        if summary.audit.coverage.unsupportedRequestedFlagCount > 0 {
+            parts.append(localized("permissions.officialEditAuditUnsupportedFlagsFormat", summary.audit.coverage.unsupportedRequestedFlagCount))
+        }
+        if summary.audit.coverage.validationIssueCount > 0 {
+            parts.append(localized("permissions.officialEditAuditValidationFormat", summary.audit.coverage.validationIssueCount))
         }
         return parts.joined(separator: " | ")
     }

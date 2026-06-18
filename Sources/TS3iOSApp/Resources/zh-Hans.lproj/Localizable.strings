@@ -3025,6 +3025,12 @@
 "permissions.officialEditAuditUnsupportedFlagsFormat" = "%d 个不支持的标记";
 "permissions.officialEditAuditValidationFormat" = "%d 个校验问题";
 "permissions.copyOfficialEditAudit" = "复制官方编辑审计";
+"permissions.editReview" = "编辑复核";
+"permissions.editReviewFormat" = "%d 个区域，%d 个信号，先看：%@";
+"permissions.editReviewNoAttention" = "没有权限编辑复核项";
+"permissions.editReviewAreaFormat" = "复核 %@：%d";
+"permissions.editReviewAreaClipboardFormat" = "复核 %@：%d";
+"permissions.copyEditReview" = "复制编辑复核";
 "permissions.officialEdit.targetScope" = "目标范围";
 "permissions.officialEdit.permissionValue" = "权限值";
 "permissions.officialEdit.inheritanceFlags" = "继承标记";
