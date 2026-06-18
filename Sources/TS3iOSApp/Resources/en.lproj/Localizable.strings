@@ -1244,6 +1244,12 @@
 "serverSettings.coverageChangedAreaFormat" = "%d changed areas, %d fields";
 "serverSettings.coverageUncoveredFormat" = "%d uncovered areas";
 "serverSettings.copyCoverageSummary" = "Copy Coverage Summary";
+"serverSettings.navigationSummary" = "Review Navigation";
+"serverSettings.navigationSummaryFormat" = "%d areas, %d changes, first: %@";
+"serverSettings.navigationNoReview" = "No changed setting sections to review";
+"serverSettings.navigationAreaFormat" = "Open %@: %d changes";
+"serverSettings.navigationAreaClipboardFormat" = "Open %@: %d changes";
+"serverSettings.copyNavigationSummary" = "Copy Review Navigation";
 "serverSettings.impactSummary" = "Impact Summary";
 "serverSettings.impactSummaryFormat" = "%d changes, %d areas, %d validation issues";
 "serverSettings.impactNoChanges" = "No server setting impacts";

@@ -1244,6 +1244,12 @@
 "serverSettings.coverageChangedAreaFormat" = "%d 个变更区域，%d 个字段";
 "serverSettings.coverageUncoveredFormat" = "%d 个未覆盖区域";
 "serverSettings.copyCoverageSummary" = "复制覆盖摘要";
+"serverSettings.navigationSummary" = "复核导航";
+"serverSettings.navigationSummaryFormat" = "%d 个区域，%d 项变化，先看：%@";
+"serverSettings.navigationNoReview" = "没有需要复核的设置分组";
+"serverSettings.navigationAreaFormat" = "打开 %@：%d 项变化";
+"serverSettings.navigationAreaClipboardFormat" = "打开 %@：%d 项变化";
+"serverSettings.copyNavigationSummary" = "复制复核导航";
 "serverSettings.impactSummary" = "影响摘要";
 "serverSettings.impactSummaryFormat" = "%d 项变化，%d 个区域，%d 个校验问题";
 "serverSettings.impactNoChanges" = "没有服务器设置影响";

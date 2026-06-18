@@ -1183,6 +1183,61 @@ struct TS3ServerSettingsCoverageSummary {
     }
 }
 
+struct TS3ServerSettingsNavigationSummary {
+    let areaChangeCounts: [TS3ServerSettingsImpactArea: Int]
+    let validationIssueCount: Int
+
+    var changedAreas: [TS3ServerSettingsImpactArea] {
+        TS3ServerSettingsImpactArea.allCases.filter { (areaChangeCounts[$0] ?? 0) > 0 }
+    }
+
+    var changedAreaCount: Int {
+        changedAreas.count
+    }
+
+    var totalChangeCount: Int {
+        areaChangeCounts.values.reduce(0, +)
+    }
+
+    var shouldReview: Bool {
+        totalChangeCount > 0 || validationIssueCount > 0
+    }
+
+    var primaryArea: TS3ServerSettingsImpactArea? {
+        changedAreas.max { lhs, rhs in
+            let lhsCount = areaChangeCounts[lhs] ?? 0
+            let rhsCount = areaChangeCounts[rhs] ?? 0
+            if lhsCount == rhsCount {
+                return Self.orderIndex(lhs) > Self.orderIndex(rhs)
+            }
+            return lhsCount < rhsCount
+        }
+    }
+
+    var clipboardSummary: String {
+        let areas = changedAreas
+            .map { "\($0.rawValue):\(areaChangeCounts[$0] ?? 0)" }
+            .joined(separator: ",")
+        return [
+            "reviewAreas=\(changedAreaCount)",
+            "changes=\(totalChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "primaryArea=\(primaryArea?.rawValue ?? "none")",
+            "areas=\(areas.isEmpty ? "none" : areas)",
+            "shouldReview=\(shouldReview ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(areaChangeCounts: [TS3ServerSettingsImpactArea: Int], validationIssueCount: Int) {
+        self.areaChangeCounts = areaChangeCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+    }
+
+    private static func orderIndex(_ area: TS3ServerSettingsImpactArea) -> Int {
+        TS3ServerSettingsImpactArea.allCases.firstIndex(of: area) ?? .max
+    }
+}
+
 struct TS3ServerSettingsReviewSummary {
     let reviewItems: [String]
     let validationIssueCount: Int

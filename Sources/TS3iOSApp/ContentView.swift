@@ -18242,6 +18242,22 @@ struct ServerSettingsEditorSheet: View {
                         TS3PlatformSupport.copyToPasteboard(settingsCoverageSummaryClipboard)
                     }
                     ServerInfoDetailRow(
+                        label: localized("serverSettings.navigationSummary"),
+                        value: localized(
+                            "serverSettings.navigationSummaryFormat",
+                            settingsNavigationSummary.changedAreaCount,
+                            settingsNavigationSummary.totalChangeCount,
+                            settingsNavigationSummary.primaryArea.map { title(for: $0) } ?? localized("common.none")
+                        )
+                    )
+                    Text(settingsNavigationSummaryText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button(localized("serverSettings.copyNavigationSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsNavigationSummaryClipboard)
+                    }
+                    .disabled(!settingsNavigationSummary.shouldReview)
+                    ServerInfoDetailRow(
                         label: localized("serverSettings.impactSummary"),
                         value: localized(
                             "serverSettings.impactSummaryFormat",
@@ -18758,6 +18774,10 @@ struct ServerSettingsEditorSheet: View {
         settingsCoverageSummary(for: currentDraft)
     }
 
+    private var settingsNavigationSummary: TS3ServerSettingsNavigationSummary {
+        settingsNavigationSummary(for: currentDraft)
+    }
+
     private var settingsCoverageSummaryText: String {
         settingsCoverageSummaryText(for: settingsCoverageSummary)
     }
@@ -18769,6 +18789,28 @@ struct ServerSettingsEditorSheet: View {
             summary.clipboardSummary
         ]
         return lines.joined(separator: "\n")
+    }
+
+    private var settingsNavigationSummaryText: String {
+        settingsNavigationSummaryText(for: settingsNavigationSummary)
+    }
+
+    private var settingsNavigationSummaryClipboard: String {
+        let summary = settingsNavigationSummary
+        let areas = summary.changedAreas
+            .map { area in
+                localized("serverSettings.navigationAreaClipboardFormat", title(for: area), summary.areaChangeCounts[area] ?? 0)
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.navigationSummary"),
+            summary.clipboardSummary,
+            areas
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
     }
 
     private var settingsImpactSummaryText: String {
@@ -18861,6 +18903,13 @@ struct ServerSettingsEditorSheet: View {
     private func settingsCoverageSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsCoverageSummary {
         TS3ServerSettingsCoverageSummary(
             changedAreaCounts: settingsAreaChangeCounts(for: draft),
+            validationIssueCount: serverDraftValidationMessages(for: draft).count
+        )
+    }
+
+    private func settingsNavigationSummary(for draft: ServerSettingsDraft) -> TS3ServerSettingsNavigationSummary {
+        TS3ServerSettingsNavigationSummary(
+            areaChangeCounts: settingsAreaChangeCounts(for: draft),
             validationIssueCount: serverDraftValidationMessages(for: draft).count
         )
     }
@@ -18979,6 +19028,17 @@ struct ServerSettingsEditorSheet: View {
         var parts = TS3ServerSettingsImpactArea.allCases.compactMap { area -> String? in
             guard let count = summary.areaChangeCounts[area], count > 0 else { return nil }
             return localized("serverSettings.impactAreaFormat", title(for: area), count)
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func settingsNavigationSummaryText(for summary: TS3ServerSettingsNavigationSummary) -> String {
+        guard summary.shouldReview else { return localized("serverSettings.navigationNoReview") }
+        var parts = summary.changedAreas.map { area in
+            localized("serverSettings.navigationAreaFormat", title(for: area), summary.areaChangeCounts[area] ?? 0)
         }
         if summary.validationIssueCount > 0 {
             parts.append(localized("serverSettings.validationIssueCountFormat", summary.validationIssueCount))

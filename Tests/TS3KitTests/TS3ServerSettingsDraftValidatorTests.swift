@@ -186,6 +186,56 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsNavigationSummaryOrdersChangedAreasAndPrimaryArea() {
+        let summary = TS3ServerSettingsNavigationSummary(
+            areaChangeCounts: [
+                .general: 2,
+                .hostBranding: 4,
+                .limitsAndSecurity: 4,
+                .defaultGroups: 1,
+                .serverLogOptions: 0
+            ],
+            validationIssueCount: 3
+        )
+
+        XCTAssertEqual(summary.changedAreas, [
+            .general,
+            .hostBranding,
+            .limitsAndSecurity,
+            .defaultGroups
+        ])
+        XCTAssertEqual(summary.changedAreaCount, 4)
+        XCTAssertEqual(summary.totalChangeCount, 11)
+        XCTAssertEqual(summary.validationIssueCount, 3)
+        XCTAssertEqual(summary.primaryArea, .hostBranding)
+        XCTAssertTrue(summary.shouldReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "reviewAreas=4 | changes=11 | validationIssues=3 | primaryArea=hostBranding | areas=general:2,hostBranding:4,limitsAndSecurity:4,defaultGroups:1 | shouldReview=true"
+        )
+    }
+
+    func testServerSettingsNavigationSummaryHandlesCleanDraft() {
+        let summary = TS3ServerSettingsNavigationSummary(
+            areaChangeCounts: [
+                .general: 0,
+                .hostBranding: -2
+            ],
+            validationIssueCount: -1
+        )
+
+        XCTAssertTrue(summary.changedAreas.isEmpty)
+        XCTAssertEqual(summary.changedAreaCount, 0)
+        XCTAssertEqual(summary.totalChangeCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertNil(summary.primaryArea)
+        XCTAssertFalse(summary.shouldReview)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "reviewAreas=0 | changes=0 | validationIssues=0 | primaryArea=none | areas=none | shouldReview=false"
+        )
+    }
+
     func testServerSettingsReviewSummaryDeduplicatesSensitiveChanges() {
         let summary = TS3ServerSettingsReviewSummary(
             reviewItems: [
