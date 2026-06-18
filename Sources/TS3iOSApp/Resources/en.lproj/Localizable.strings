@@ -2684,6 +2684,8 @@
 "groups.row.copyNameFormat" = "%@ Copy";
 "groups.row.deleteAlert.title" = "Delete Group?";
 "groups.row.forceDeleteAlert.title" = "Force Delete Group?";
+"groups.row.deleteImpactFormat" = "%@ %@ %@ (%d), type %@.";
+"groups.row.deleteImpactAttentionFormat" = "Needs attention: %d";
 "groups.members.status" = "Status";
 "groups.members.channelContext" = "Channel Context";
 "groups.members.filterChannel" = "Filter Channel";
@@ -2747,6 +2749,8 @@
 "groups.members.snapshot.searchFormat" = "Search: %@";
 "groups.members.removeVisibleAlert.title" = "Remove Visible Members?";
 "groups.members.removeVisibleAlert.messageFormat" = "This removes %d members from %@.";
+"groups.members.removeVisibleImpactFormat" = "Remove %d visible members from %@: %d online, %d offline.";
+"groups.members.removeVisibleImpactDetailFormat" = "Without UID: %d, channels: %d, needs attention: %d";
 "groups.members.deleteAllPresetsAlert.title" = "Delete All Group Member Filter Presets?";
 "groups.members.row.info" = "Info";
 "groups.members.row.contact" = "Contact";

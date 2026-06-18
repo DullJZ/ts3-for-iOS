@@ -5093,6 +5093,31 @@ struct TS3GroupImportImpactSummary {
     }
 }
 
+struct TS3GroupDeleteImpactSummary {
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
+    let force: Bool
+
+    var operationTitle: String {
+        force ? "Force Delete" : "Delete"
+    }
+
+    var needsAttention: Bool {
+        force || group.type == .query || group.type == nil
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=\(operationTitle)",
+            "target=\(target.title)",
+            "group=\(group.name) (\(group.id))",
+            "type=\(group.typeTitle)",
+            "force=\(force ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3GroupListSummary {
     let groups: [TS3GroupSummary]
     let target: TS3GroupManagementTarget
@@ -5153,6 +5178,57 @@ struct TS3GroupListSummary {
 
     private func count(type: TS3PermissionGroupDatabaseType) -> Int {
         groups.filter { $0.type == type }.count
+    }
+}
+
+struct TS3GroupMemberRemovalImpactSummary {
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
+    let members: [TS3GroupClientSummary]
+
+    var memberCount: Int {
+        uniqueMembers.count
+    }
+
+    var onlineCount: Int {
+        uniqueMembers.filter { $0.channelId != nil }.count
+    }
+
+    var offlineCount: Int {
+        uniqueMembers.filter { $0.channelId == nil }.count
+    }
+
+    var withoutUniqueIdCount: Int {
+        uniqueMembers.filter { $0.uniqueIdentifier?.isEmpty != false }.count
+    }
+
+    var distinctChannelCount: Int {
+        Set(uniqueMembers.compactMap(\.channelId)).count
+    }
+
+    var needsAttention: Bool {
+        memberCount > 1 || withoutUniqueIdCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=Remove Members",
+            "target=\(target.title)",
+            "group=\(group.name) (\(group.id))",
+            "members=\(memberCount)",
+            "online=\(onlineCount)",
+            "offline=\(offlineCount)",
+            "withoutUid=\(withoutUniqueIdCount)",
+            "distinctChannels=\(distinctChannelCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var uniqueMembers: [TS3GroupClientSummary] {
+        var seen = Set<Int>()
+        return members.filter { member in
+            seen.insert(member.clientDatabaseId).inserted
+        }
     }
 }
 

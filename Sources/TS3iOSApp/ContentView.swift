@@ -14994,7 +14994,7 @@ struct GroupManagementRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("groups.row.deleteAlert.title")),
-                message: Text(group.name),
+                message: Text(deleteImpactMessage(force: false)),
                 primaryButton: .destructive(Text(localized("groups.row.delete"))) {
                     deleteGroup(force: false)
                 },
@@ -15005,7 +15005,7 @@ struct GroupManagementRow: View {
             EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
                 Alert(
                     title: Text(localized("groups.row.forceDeleteAlert.title")),
-                    message: Text(group.name),
+                    message: Text(deleteImpactMessage(force: true)),
                     primaryButton: .destructive(Text(localized("groups.row.forceDelete"))) {
                         deleteGroup(force: true)
                     },
@@ -15067,6 +15067,22 @@ struct GroupManagementRow: View {
         }
     }
 
+    private func deleteImpactMessage(force: Bool) -> String {
+        let summary = TS3GroupDeleteImpactSummary(group: group, target: target, force: force)
+        return [
+            localized(
+                "groups.row.deleteImpactFormat",
+                force ? localized("groups.row.forceDelete") : localized("groups.row.delete"),
+                targetTitle(target),
+                group.name,
+                group.id,
+                group.typeTitle
+            ),
+            localized("groups.row.deleteImpactAttentionFormat", summary.needsAttention ? 1 : 0),
+            summary.clipboardSummary
+        ].joined(separator: "\n")
+    }
+
     private var privilegeKeyTargetType: TS3PrivilegeKeyTargetType {
         switch target {
         case .server:
@@ -15082,6 +15098,15 @@ struct GroupManagementRow: View {
             return model.serverGroups
         case .channel:
             return model.channelGroups
+        }
+    }
+
+    private func targetTitle(_ target: TS3GroupManagementTarget) -> String {
+        switch target {
+        case .server:
+            return localized("groups.target.server")
+        case .channel:
+            return localized("groups.target.channel")
         }
     }
 
@@ -15536,7 +15561,7 @@ struct GroupClientListSheet: View {
             .alert(isPresented: $isConfirmingRemoveVisible) {
                 Alert(
                     title: Text(localized("groups.members.removeVisibleAlert.title")),
-                    message: Text(localized("groups.members.removeVisibleAlert.messageFormat", filteredClients.count, group.name)),
+                    message: Text(removeVisibleMembersImpactMessage),
                     primaryButton: .destructive(Text(localized("groups.members.remove"))) {
                         model.removeServerGroup(group, from: filteredClients)
                     },
@@ -15570,6 +15595,26 @@ struct GroupClientListSheet: View {
             || channelContextFilter != .allChannels
             || sortMode != .nickname
             || !sortAscending
+    }
+
+    private var removeVisibleMembersImpactMessage: String {
+        let summary = TS3GroupMemberRemovalImpactSummary(group: group, target: target, members: filteredClients)
+        return [
+            localized(
+                "groups.members.removeVisibleImpactFormat",
+                summary.memberCount,
+                group.name,
+                summary.onlineCount,
+                summary.offlineCount
+            ),
+            localized(
+                "groups.members.removeVisibleImpactDetailFormat",
+                summary.withoutUniqueIdCount,
+                summary.distinctChannelCount,
+                summary.needsAttention ? 1 : 0
+            ),
+            summary.clipboardSummary
+        ].joined(separator: "\n")
     }
 
     private var parsedNewMemberDatabaseId: Int? {

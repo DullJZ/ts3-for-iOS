@@ -539,6 +539,87 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupDeleteImpactSummaryFlagsForceQueryAndUnknownDeletes() {
+        let regular = TS3GroupDeleteImpactSummary(
+            group: TS3GroupSummary(id: 6, name: "Admins", type: .regular),
+            target: .server,
+            force: false
+        )
+        let forced = TS3GroupDeleteImpactSummary(
+            group: TS3GroupSummary(id: 7, name: "Guests", type: .regular),
+            target: .channel,
+            force: true
+        )
+        let query = TS3GroupDeleteImpactSummary(
+            group: TS3GroupSummary(id: 8, name: "Query", type: .query),
+            target: .server,
+            force: false
+        )
+        let unknown = TS3GroupDeleteImpactSummary(
+            group: TS3GroupSummary(id: 9, name: "Unknown", type: nil),
+            target: .channel,
+            force: false
+        )
+
+        XCTAssertEqual(regular.operationTitle, "Delete")
+        XCTAssertFalse(regular.needsAttention)
+        XCTAssertEqual(
+            regular.clipboardSummary,
+            "operation=Delete | target=Server Groups | group=Admins (6) | type=Regular | force=false | needsAttention=false"
+        )
+        XCTAssertEqual(forced.operationTitle, "Force Delete")
+        XCTAssertTrue(forced.needsAttention)
+        XCTAssertTrue(query.needsAttention)
+        XCTAssertTrue(unknown.needsAttention)
+    }
+
+    func testGroupMemberRemovalImpactSummaryDeduplicatesAndCountsRisks() {
+        let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let members = [
+            TS3GroupClientSummary(client: TS3GroupClient(
+                clientDatabaseId: 42,
+                uniqueIdentifier: "uid-42",
+                nickname: "Taylor",
+                channelId: 9
+            )),
+            TS3GroupClientSummary(client: TS3GroupClient(
+                clientDatabaseId: 43,
+                uniqueIdentifier: nil,
+                nickname: "Morgan",
+                channelId: nil
+            )),
+            TS3GroupClientSummary(client: TS3GroupClient(
+                clientDatabaseId: 44,
+                uniqueIdentifier: "",
+                nickname: "Casey",
+                channelId: 10
+            )),
+            TS3GroupClientSummary(client: TS3GroupClient(
+                clientDatabaseId: 42,
+                uniqueIdentifier: "duplicate",
+                nickname: "Duplicate",
+                channelId: 11
+            ))
+        ]
+
+        let summary = TS3GroupMemberRemovalImpactSummary(
+            group: group,
+            target: .server,
+            members: members
+        )
+
+        XCTAssertEqual(summary.memberCount, 3)
+        XCTAssertEqual(summary.onlineCount, 2)
+        XCTAssertEqual(summary.offlineCount, 1)
+        XCTAssertEqual(summary.withoutUniqueIdCount, 2)
+        XCTAssertEqual(summary.distinctChannelCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Remove Members | target=Server Groups | group=Admins (6) | members=3 | online=2 | offline=1 | withoutUid=2 | distinctChannels=2 | needsAttention=true"
+        )
+    }
+
     func testGroupFilterPresetSummariesAreCopyableAndAccessible() {
         let preset = TS3GroupFilterPreset(
             name: "Server operators",

@@ -2684,6 +2684,8 @@
 "groups.row.copyNameFormat" = "%@ 副本";
 "groups.row.deleteAlert.title" = "删除组？";
 "groups.row.forceDeleteAlert.title" = "强制删除组？";
+"groups.row.deleteImpactFormat" = "%@%@ %@（%d），类型 %@。";
+"groups.row.deleteImpactAttentionFormat" = "需要注意：%d";
 "groups.members.status" = "状态";
 "groups.members.channelContext" = "频道范围";
 "groups.members.filterChannel" = "筛选频道";
@@ -2747,6 +2749,8 @@
 "groups.members.snapshot.searchFormat" = "搜索：%@";
 "groups.members.removeVisibleAlert.title" = "移除可见成员？";
 "groups.members.removeVisibleAlert.messageFormat" = "这会从 %2$@ 移除 %1$d 个成员。";
+"groups.members.removeVisibleImpactFormat" = "从 %2$@ 移除 %1$d 个可见成员：%3$d 个在线，%4$d 个离线。";
+"groups.members.removeVisibleImpactDetailFormat" = "无 UID：%d，频道：%d，需要注意：%d";
 "groups.members.deleteAllPresetsAlert.title" = "删除所有组成员筛选预设？";
 "groups.members.row.info" = "信息";
 "groups.members.row.contact" = "联系人";
