@@ -2965,6 +2965,12 @@
 "complaints.deleteAll" = "Delete All Complaints";
 "complaints.deleteAllAlert.title" = "Delete All Complaints?";
 "complaints.deleteVisibleAlert.title" = "Delete Visible Complaints?";
+"complaints.deleteImpactFormat" = "Deleting %d complaints across %d targets.";
+"complaints.deleteImpactSourcesFormat" = "Sources named/anonymous: %d/%d.";
+"complaints.deleteImpactMessagesFormat" = "Messages present/missing: %d/%d.";
+"complaints.deleteImpactDatesFormat" = "Dates present/missing: %d/%d.";
+"complaints.deleteImpactAttentionFormat" = "Needs extra attention: %@.";
+"complaints.copyDeleteImpact" = "Copy Delete Impact";
 "complaints.deleteAllPresetsAlert.title" = "Delete All Complaint Filter Presets?";
 "complaints.filter.all" = "All Complaints";
 "complaints.filter.namedSource" = "Named Source";

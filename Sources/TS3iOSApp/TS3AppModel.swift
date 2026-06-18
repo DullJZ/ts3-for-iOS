@@ -4191,6 +4191,58 @@ struct TS3ComplaintListSummary {
     }
 }
 
+struct TS3ComplaintDeleteImpactSummary {
+    enum Scope: String {
+        case single
+        case visible
+        case all
+    }
+
+    let scope: Scope
+    let listSummary: TS3ComplaintListSummary
+
+    var complaintCount: Int {
+        listSummary.totalCount
+    }
+
+    var missingMessageCount: Int {
+        complaintCount - listSummary.messageCount
+    }
+
+    var missingDateCount: Int {
+        complaintCount - listSummary.datedCount
+    }
+
+    var needsAttention: Bool {
+        complaintCount == 0
+            || listSummary.anonymousSourceCount > 0
+            || missingMessageCount > 0
+            || missingDateCount > 0
+            || complaintCount >= 10
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.rawValue)",
+            "deleteComplaints=\(complaintCount)",
+            "targets=\(listSummary.targetCount)",
+            "namedSources=\(listSummary.namedSourceCount)",
+            "anonymousSources=\(listSummary.anonymousSourceCount)",
+            "withMessages=\(listSummary.messageCount)",
+            "missingMessages=\(missingMessageCount)",
+            "withDates=\(listSummary.datedCount)",
+            "missingDates=\(missingDateCount)",
+            "latestTimestamp=\(listSummary.latestTimestamp.map { ISO8601DateFormatter().string(from: $0) } ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(complaints: [TS3ComplaintSummary], scope: Scope) {
+        self.scope = scope
+        self.listSummary = TS3ComplaintListSummary(complaints: complaints)
+    }
+}
+
 enum TS3ComplaintDraftValidator {
     static func validationMessages(
         targetName: String?,

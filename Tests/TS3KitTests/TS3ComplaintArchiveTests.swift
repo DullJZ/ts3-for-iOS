@@ -185,6 +185,89 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         )
     }
 
+    func testComplaintDeleteImpactSummaryCountsVisibleDeletionRisk() {
+        let named = TS3ComplaintSummary(
+            id: "target-22-source-44",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 44,
+            sourceName: "Reporter",
+            message: "Abuse",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let anonymous = TS3ComplaintSummary(
+            id: "target-23-source-45",
+            targetClientDatabaseId: 23,
+            targetName: nil,
+            sourceClientDatabaseId: 45,
+            sourceName: nil,
+            message: nil,
+            timestamp: nil
+        )
+        let duplicate = TS3ComplaintSummary(
+            id: "target-22-source-44",
+            targetClientDatabaseId: 22,
+            targetName: "Duplicate",
+            sourceClientDatabaseId: 46,
+            sourceName: "Ignored",
+            message: "Ignored duplicate",
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        let summary = TS3ComplaintDeleteImpactSummary(
+            complaints: [named, anonymous, duplicate],
+            scope: .visible
+        )
+
+        XCTAssertEqual(summary.complaintCount, 2)
+        XCTAssertEqual(summary.listSummary.targetCount, 2)
+        XCTAssertEqual(summary.listSummary.namedSourceCount, 1)
+        XCTAssertEqual(summary.listSummary.anonymousSourceCount, 1)
+        XCTAssertEqual(summary.listSummary.messageCount, 1)
+        XCTAssertEqual(summary.missingMessageCount, 1)
+        XCTAssertEqual(summary.listSummary.datedCount, 1)
+        XCTAssertEqual(summary.missingDateCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=visible | deleteComplaints=2 | targets=2 | namedSources=1 | anonymousSources=1 | withMessages=1 | missingMessages=1 | withDates=1 | missingDates=1 | latestTimestamp=2023-11-14T22:13:20Z | needsAttention=true"
+        )
+    }
+
+    func testComplaintDeleteImpactSummaryFlagsEmptyAndLargeDeletion() {
+        let empty = TS3ComplaintDeleteImpactSummary(complaints: [], scope: .all)
+
+        XCTAssertEqual(empty.complaintCount, 0)
+        XCTAssertEqual(empty.missingMessageCount, 0)
+        XCTAssertEqual(empty.missingDateCount, 0)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(
+            empty.clipboardSummary,
+            "scope=all | deleteComplaints=0 | targets=0 | namedSources=0 | anonymousSources=0 | withMessages=0 | missingMessages=0 | withDates=0 | missingDates=0 | latestTimestamp=none | needsAttention=true"
+        )
+
+        let largeDeletion = TS3ComplaintDeleteImpactSummary(
+            complaints: (1...10).map { index in
+                TS3ComplaintSummary(
+                    id: "target-\(index)-source-\(index + 100)",
+                    targetClientDatabaseId: index,
+                    targetName: "Target \(index)",
+                    sourceClientDatabaseId: index + 100,
+                    sourceName: "Reporter \(index)",
+                    message: "Abuse",
+                    timestamp: Date(timeIntervalSince1970: 1_700_000_000 + TimeInterval(index))
+                )
+            },
+            scope: .all
+        )
+
+        XCTAssertEqual(largeDeletion.complaintCount, 10)
+        XCTAssertEqual(largeDeletion.listSummary.anonymousSourceCount, 0)
+        XCTAssertEqual(largeDeletion.missingMessageCount, 0)
+        XCTAssertEqual(largeDeletion.missingDateCount, 0)
+        XCTAssertTrue(largeDeletion.needsAttention)
+    }
+
     func testComplaintOfficialCoverageAuditSummaryCountsCoveredAreas() {
         let draftSummary = TS3ComplaintDraftCoverageSummary(
             targetName: " Target ",

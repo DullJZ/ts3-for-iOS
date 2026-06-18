@@ -2965,6 +2965,12 @@
 "complaints.deleteAll" = "删除所有投诉";
 "complaints.deleteAllAlert.title" = "删除所有投诉？";
 "complaints.deleteVisibleAlert.title" = "删除可见投诉？";
+"complaints.deleteImpactFormat" = "将删除 %d 条投诉，涉及 %d 个目标。";
+"complaints.deleteImpactSourcesFormat" = "来源有名/匿名：%d/%d。";
+"complaints.deleteImpactMessagesFormat" = "消息有/缺失：%d/%d。";
+"complaints.deleteImpactDatesFormat" = "日期有/缺失：%d/%d。";
+"complaints.deleteImpactAttentionFormat" = "需要额外注意：%@。";
+"complaints.copyDeleteImpact" = "复制删除影响";
 "complaints.deleteAllPresetsAlert.title" = "删除所有投诉筛选预设？";
 "complaints.filter.all" = "所有投诉";
 "complaints.filter.namedSource" = "有名来源";

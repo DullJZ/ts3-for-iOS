@@ -26736,6 +26736,14 @@ struct ComplaintListSheet: View {
         TS3ComplaintListSummary(complaints: filteredComplaintEntries)
     }
 
+    private var visibleComplaintDeleteImpactSummary: TS3ComplaintDeleteImpactSummary {
+        TS3ComplaintDeleteImpactSummary(complaints: filteredComplaintEntries, scope: .visible)
+    }
+
+    private var allComplaintDeleteImpactSummary: TS3ComplaintDeleteImpactSummary {
+        TS3ComplaintDeleteImpactSummary(complaints: model.complaintEntries, scope: .all)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -26933,6 +26941,11 @@ struct ComplaintListSheet: View {
                         .foregroundColor(.red)
                         .disabled(model.state != .connected || filteredComplaintEntries.isEmpty)
 
+                        Button(localized("complaints.copyDeleteImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(visibleComplaintDeleteImpactSummary.clipboardSummary)
+                        }
+                        .disabled(filteredComplaintEntries.isEmpty)
+
                         if filteredComplaintEntries.isEmpty {
                             Text(localized("complaints.noMatchingComplaints"))
                                 .foregroundColor(.secondary)
@@ -27027,7 +27040,7 @@ struct ComplaintListSheet: View {
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
                     title: Text(localized("complaints.deleteAllAlert.title")),
-                    message: Text(model.complaintTarget?.nickname ?? localized("complaints.selectedUser")),
+                    message: Text(complaintDeleteImpactText(allComplaintDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("complaints.deleteAll"))) {
                         model.deleteAllComplaintsForCurrentTarget()
                     },
@@ -27037,7 +27050,7 @@ struct ComplaintListSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text(localized("complaints.deleteVisibleAlert.title")),
-                    message: Text(model.complaintTarget?.nickname ?? localized("complaints.selectedUser")),
+                    message: Text(complaintDeleteImpactText(visibleComplaintDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteComplaints(filteredComplaintEntries)
                     },
@@ -27250,6 +27263,32 @@ struct ComplaintListSheet: View {
             localized("complaints.officialAuditSourcesFormat", summary.visibleComplaintSummary.namedSourceCount, summary.visibleComplaintSummary.anonymousSourceCount),
             localized("complaints.officialAuditMutationFormat", summary.canMutateServer ? localized("common.yes") : localized("common.no"))
         ].joined(separator: " · ")
+    }
+
+    private func complaintDeleteImpactText(_ summary: TS3ComplaintDeleteImpactSummary) -> String {
+        [
+            localized(
+                "complaints.deleteImpactFormat",
+                summary.complaintCount,
+                summary.listSummary.targetCount
+            ),
+            localized(
+                "complaints.deleteImpactSourcesFormat",
+                summary.listSummary.namedSourceCount,
+                summary.listSummary.anonymousSourceCount
+            ),
+            localized(
+                "complaints.deleteImpactMessagesFormat",
+                summary.listSummary.messageCount,
+                summary.missingMessageCount
+            ),
+            localized(
+                "complaints.deleteImpactDatesFormat",
+                summary.listSummary.datedCount,
+                summary.missingDateCount
+            ),
+            localized("complaints.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 
     private func applyPreset(_ preset: TS3ComplaintFilterPreset) {
@@ -27650,7 +27689,7 @@ struct ComplaintEntryRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("complaints.row.deleteAlert.title")),
-                message: Text(entry.sourceTitle),
+                message: Text(complaintDeleteImpactText(TS3ComplaintDeleteImpactSummary(complaints: [entry], scope: .single))),
                 primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deleteComplaint(entry)
                 },
@@ -27710,6 +27749,32 @@ struct ComplaintEntryRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func complaintDeleteImpactText(_ summary: TS3ComplaintDeleteImpactSummary) -> String {
+        [
+            localized(
+                "complaints.deleteImpactFormat",
+                summary.complaintCount,
+                summary.listSummary.targetCount
+            ),
+            localized(
+                "complaints.deleteImpactSourcesFormat",
+                summary.listSummary.namedSourceCount,
+                summary.listSummary.anonymousSourceCount
+            ),
+            localized(
+                "complaints.deleteImpactMessagesFormat",
+                summary.listSummary.messageCount,
+                summary.missingMessageCount
+            ),
+            localized(
+                "complaints.deleteImpactDatesFormat",
+                summary.listSummary.datedCount,
+                summary.missingDateCount
+            ),
+            localized("complaints.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 
     fileprivate static func dateText(_ date: Date) -> String {
