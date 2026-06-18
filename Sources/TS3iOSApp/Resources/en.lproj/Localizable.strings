@@ -1894,6 +1894,7 @@
 "whisper.summaryLargestPresetFormat" = "Largest preset: %d targets";
 "whisper.summaryLatestUpdateFormat" = "Latest update: %@";
 "whisper.copyVisibleSummary" = "Copy Visible Whisper Summary";
+"whisper.copyDeleteImpact" = "Copy Delete Impact";
 "whisper.selectVisiblePresets" = "Select Visible Presets";
 "whisper.deleteVisiblePresets" = "Delete Visible Presets";
 "whisper.visiblePresets" = "Visible Presets";
@@ -1950,8 +1951,15 @@
 "whisper.groupTarget.channelFamily" = "Channel Family";
 "whisper.groupTarget.completeChannelFamily" = "Complete Channel Family";
 "whisper.groupTarget.subchannels" = "Subchannels";
+"whisper.deletePresetAlert.title" = "Delete Whisper Preset?";
 "whisper.deleteVisibleAlert.title" = "Delete Visible Whisper Presets?";
 "whisper.deleteVisibleAlert.messageFormat" = "This removes %d saved whisper presets.";
+"whisper.deleteImpactFormat" = "Deletes %d whisper presets (%@ scope).";
+"whisper.deleteImpactScope.single" = "single";
+"whisper.deleteImpactScope.visible" = "visible";
+"whisper.deleteImpactTargetsFormat" = "Targets affected: %d channels, %d users, %d saved references.";
+"whisper.deleteImpactTypesFormat" = "Preset types: %d channel-only, %d user-only, %d mixed, %d empty.";
+"whisper.deleteImpactAttentionFormat" = "Needs attention: %@";
 "whisper.deleteAllFilterPresetsAlert.title" = "Delete All Whisper Filter Presets?";
 "whisper.deleteAllFilterPresetsAlert.messageFormat" = "This removes %d saved local filter presets.";
 "whisper.import.preview" = "Preview";

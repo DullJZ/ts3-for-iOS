@@ -131,6 +131,86 @@ final class TS3WhisperActivationLogTests: XCTestCase {
         )
     }
 
+    func testWhisperPresetDeleteImpactSummaryCountsVisibleDeletionRisk() throws {
+        let channelPreset = TS3WhisperPreset(
+            id: try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000041")),
+            name: "Channels",
+            channelIds: [1, 1, 2, -1],
+            clientIds: [],
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+        let summary = TS3WhisperPresetDeleteImpactSummary(
+            presets: [
+                channelPreset,
+                channelPreset,
+                TS3WhisperPreset(
+                    id: try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000042")),
+                    name: "Users",
+                    channelIds: [],
+                    clientIds: [7, 7, 8, 0],
+                    updatedAt: Date(timeIntervalSince1970: 20)
+                ),
+                TS3WhisperPreset(
+                    id: try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000043")),
+                    name: "Mixed",
+                    channelIds: [2, 3],
+                    clientIds: [8, 9],
+                    updatedAt: Date(timeIntervalSince1970: 30)
+                )
+            ],
+            scope: .visible
+        )
+
+        XCTAssertEqual(summary.presetCount, 3)
+        XCTAssertEqual(summary.listSummary.channelOnlyCount, 1)
+        XCTAssertEqual(summary.listSummary.clientOnlyCount, 1)
+        XCTAssertEqual(summary.listSummary.mixedCount, 1)
+        XCTAssertEqual(summary.listSummary.emptyCount, 0)
+        XCTAssertEqual(summary.targetReferenceCount, 8)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=visible | deleteWhisperPresets=3 | channelOnly=1 | clientOnly=1 | mixed=1 | empty=0 | channelTargets=4 | clientTargets=4 | distinctChannels=3 | distinctClients=3 | largestPresetTargets=4 | needsAttention=true"
+        )
+    }
+
+    func testWhisperPresetDeleteImpactSummaryFlagsEmptyAndLargeDeletion() throws {
+        let empty = TS3WhisperPresetDeleteImpactSummary(presets: [], scope: .visible)
+
+        XCTAssertEqual(empty.presetCount, 0)
+        XCTAssertTrue(empty.needsAttention)
+
+        let largeDeletion = TS3WhisperPresetDeleteImpactSummary(
+            presets: (1...10).map { index in
+                TS3WhisperPreset(
+                    name: "Preset \(index)",
+                    channelIds: [],
+                    clientIds: [index],
+                    updatedAt: Date(timeIntervalSince1970: TimeInterval(index))
+                )
+            },
+            scope: .visible
+        )
+
+        XCTAssertEqual(largeDeletion.presetCount, 10)
+        XCTAssertTrue(largeDeletion.needsAttention)
+
+        let emptyPreset = TS3WhisperPresetDeleteImpactSummary(
+            presets: [
+                TS3WhisperPreset(
+                    name: "Empty",
+                    channelIds: [],
+                    clientIds: [],
+                    updatedAt: Date(timeIntervalSince1970: 1)
+                )
+            ],
+            scope: .single
+        )
+
+        XCTAssertEqual(emptyPreset.listSummary.emptyCount, 1)
+        XCTAssertTrue(emptyPreset.needsAttention)
+    }
+
     @MainActor
     func testWhisperPresetBackupPreviewSanitizesCandidates() throws {
         let existingId = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000001"))

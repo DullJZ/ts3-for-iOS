@@ -1894,6 +1894,7 @@
 "whisper.summaryLargestPresetFormat" = "最大预设：%d 个目标";
 "whisper.summaryLatestUpdateFormat" = "最近更新：%@";
 "whisper.copyVisibleSummary" = "复制可见密语摘要";
+"whisper.copyDeleteImpact" = "复制删除影响";
 "whisper.selectVisiblePresets" = "选择可见预设";
 "whisper.deleteVisiblePresets" = "删除可见预设";
 "whisper.visiblePresets" = "可见预设";
@@ -1950,8 +1951,15 @@
 "whisper.groupTarget.channelFamily" = "频道族";
 "whisper.groupTarget.completeChannelFamily" = "完整频道族";
 "whisper.groupTarget.subchannels" = "子频道";
+"whisper.deletePresetAlert.title" = "删除密语预设？";
 "whisper.deleteVisibleAlert.title" = "删除可见密语预设？";
 "whisper.deleteVisibleAlert.messageFormat" = "这会移除 %d 个已保存的密语预设。";
+"whisper.deleteImpactFormat" = "将删除 %d 个密语预设（%@ 范围）。";
+"whisper.deleteImpactScope.single" = "单个";
+"whisper.deleteImpactScope.visible" = "可见";
+"whisper.deleteImpactTargetsFormat" = "受影响目标：%d 个频道、%d 个用户、%d 个已保存引用。";
+"whisper.deleteImpactTypesFormat" = "预设类型：%d 个仅频道、%d 个仅用户、%d 个混合、%d 个空预设。";
+"whisper.deleteImpactAttentionFormat" = "需要注意：%@";
 "whisper.deleteAllFilterPresetsAlert.title" = "删除所有密语筛选预设？";
 "whisper.deleteAllFilterPresetsAlert.messageFormat" = "这会移除 %d 个已保存的本地筛选预设。";
 "whisper.import.preview" = "预览";

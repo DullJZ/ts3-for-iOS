@@ -28134,11 +28134,13 @@ struct WhisperSheet: View {
     }
 
     private enum WhisperConfirmation: Identifiable {
+        case deletePreset(TS3WhisperPreset)
         case deleteVisiblePresets
         case deleteAllFilterPresets
 
         var id: String {
             switch self {
+            case .deletePreset(let preset): return "deletePreset-\(preset.id.uuidString)"
             case .deleteVisiblePresets: return "deleteVisiblePresets"
             case .deleteAllFilterPresets: return "deleteAllFilterPresets"
             }
@@ -28241,6 +28243,10 @@ struct WhisperSheet: View {
 
     private var visibleWhisperPresetSummary: TS3WhisperPresetListSummary {
         TS3WhisperPresetListSummary(presets: filteredWhisperPresets)
+    }
+
+    private var visibleWhisperPresetDeleteImpactSummary: TS3WhisperPresetDeleteImpactSummary {
+        TS3WhisperPresetDeleteImpactSummary(presets: filteredWhisperPresets, scope: .visible)
     }
 
     private var whisperOfficialAuditSummary: TS3WhisperOfficialCoverageAuditSummary {
@@ -28544,6 +28550,10 @@ struct WhisperSheet: View {
                         TS3PlatformSupport.copyToPasteboard(visibleWhisperPresetSummary.clipboardSummary)
                     }
                     .disabled(filteredWhisperPresets.isEmpty)
+                    Button(localized("whisper.copyDeleteImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(visibleWhisperPresetDeleteImpactSummary.clipboardSummary)
+                    }
+                    .disabled(filteredWhisperPresets.isEmpty)
                     Menu {
                         Button(localized("whisper.selectVisiblePresets")) {
                             selectVisibleWhisperPresets()
@@ -28593,7 +28603,7 @@ struct WhisperSheet: View {
                                             whisperPresetName = preset.name
                                         }
                                         Button(localized("whisper.deletePreset")) {
-                                            model.deleteWhisperPreset(preset)
+                                            confirmation = .deletePreset(preset)
                                         }
                                     } label: {
                                         Image(systemName: "ellipsis.circle")
@@ -28772,10 +28782,19 @@ struct WhisperSheet: View {
             }
             .alert(item: $confirmation) { confirmation in
                 switch confirmation {
+                case .deletePreset(let preset):
+                    return Alert(
+                        title: Text(localized("whisper.deletePresetAlert.title")),
+                        message: Text(whisperPresetDeleteImpactText(TS3WhisperPresetDeleteImpactSummary(presets: [preset], scope: .single))),
+                        primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
+                            model.deleteWhisperPreset(preset)
+                        },
+                        secondaryButton: .cancel()
+                    )
                 case .deleteVisiblePresets:
                     return Alert(
                         title: Text(localized("whisper.deleteVisibleAlert.title")),
-                        message: Text(localized("whisper.deleteVisibleAlert.messageFormat", filteredWhisperPresets.count)),
+                        message: Text(whisperPresetDeleteImpactText(visibleWhisperPresetDeleteImpactSummary)),
                         primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                             model.deleteWhisperPresets(filteredWhisperPresets)
                         },
@@ -29032,6 +29051,39 @@ struct WhisperSheet: View {
                 summary.latestUpdatedAt.map(Self.dateText) ?? localized("common.none")
             )
         ].joined(separator: " · ")
+    }
+
+    private func whisperPresetDeleteImpactText(_ summary: TS3WhisperPresetDeleteImpactSummary) -> String {
+        [
+            localized(
+                "whisper.deleteImpactFormat",
+                summary.presetCount,
+                whisperPresetDeleteScopeTitle(summary.scope)
+            ),
+            localized(
+                "whisper.deleteImpactTargetsFormat",
+                summary.listSummary.distinctChannelTargets,
+                summary.listSummary.distinctClientTargets,
+                summary.targetReferenceCount
+            ),
+            localized(
+                "whisper.deleteImpactTypesFormat",
+                summary.listSummary.channelOnlyCount,
+                summary.listSummary.clientOnlyCount,
+                summary.listSummary.mixedCount,
+                summary.listSummary.emptyCount
+            ),
+            localized("whisper.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
+    }
+
+    private func whisperPresetDeleteScopeTitle(_ scope: TS3WhisperPresetDeleteImpactSummary.Scope) -> String {
+        switch scope {
+        case .single:
+            return localized("whisper.deleteImpactScope.single")
+        case .visible:
+            return localized("whisper.deleteImpactScope.visible")
+        }
     }
 
     private func whisperOfficialAuditText(_ summary: TS3WhisperOfficialCoverageAuditSummary) -> String {

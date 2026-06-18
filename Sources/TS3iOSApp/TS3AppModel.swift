@@ -12538,6 +12538,55 @@ struct TS3WhisperPresetListSummary {
     }
 }
 
+struct TS3WhisperPresetDeleteImpactSummary {
+    enum Scope: String {
+        case single
+        case visible
+    }
+
+    let scope: Scope
+    let listSummary: TS3WhisperPresetListSummary
+
+    var presetCount: Int {
+        listSummary.totalCount
+    }
+
+    var targetReferenceCount: Int {
+        listSummary.totalChannelTargets + listSummary.totalClientTargets
+    }
+
+    var needsAttention: Bool {
+        presetCount == 0
+            || listSummary.emptyCount > 0
+            || listSummary.mixedCount > 0
+            || listSummary.distinctChannelTargets > 0
+            || listSummary.distinctClientTargets > 0
+            || presetCount >= 10
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.rawValue)",
+            "deleteWhisperPresets=\(presetCount)",
+            "channelOnly=\(listSummary.channelOnlyCount)",
+            "clientOnly=\(listSummary.clientOnlyCount)",
+            "mixed=\(listSummary.mixedCount)",
+            "empty=\(listSummary.emptyCount)",
+            "channelTargets=\(listSummary.totalChannelTargets)",
+            "clientTargets=\(listSummary.totalClientTargets)",
+            "distinctChannels=\(listSummary.distinctChannelTargets)",
+            "distinctClients=\(listSummary.distinctClientTargets)",
+            "largestPresetTargets=\(listSummary.largestTargetCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(presets: [TS3WhisperPreset], scope: Scope) {
+        self.scope = scope
+        self.listSummary = TS3WhisperPresetListSummary(presets: presets)
+    }
+}
+
 struct TS3WhisperOfficialCoverageAuditSummary {
     let presetSummary: TS3WhisperPresetListSummary
     let routeDescription: String
