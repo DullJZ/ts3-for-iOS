@@ -2996,6 +2996,16 @@
 "complaints.draftCoverageDatabaseIdFormat" = "Database ID: %d";
 "complaints.draftCoverageMessageFormat" = "Message: %d";
 "complaints.copyDraftCoverage" = "Copy Complaint Draft Coverage";
+"complaints.creationReadiness" = "Creation Readiness";
+"complaints.creationReadinessFormat" = "%d/%d ready, %d missing";
+"complaints.creationReadinessReady" = "Complaint is ready to submit";
+"complaints.creationReadinessMissingFormat" = "Missing: %@";
+"complaints.copyCreationReadiness" = "Copy Creation Readiness";
+"complaints.creationRequirement.connected" = "Connected server";
+"complaints.creationRequirement.target" = "Complaint target";
+"complaints.creationRequirement.message" = "Complaint message";
+"complaints.creationRequirement.singleLineMessage" = "Single-line message";
+"complaints.creationRequirement.validationClean" = "Validation clean";
 "complaints.copyComplaintSummary" = "Copy Complaint Summary";
 "complaints.searchComplaints" = "Search complaints";
 "complaints.noSavedFilterPresets" = "No saved complaint filter presets";

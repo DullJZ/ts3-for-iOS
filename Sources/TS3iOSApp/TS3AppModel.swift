@@ -4502,6 +4502,7 @@ struct TS3ComplaintDraftCoverageSummary {
     let hasTargetClientId: Bool
     let hasTargetDatabaseId: Bool
     let hasMessage: Bool
+    let hasSingleLineMessage: Bool
     let validationIssueCount: Int
 
     var targetFieldCount: Int {
@@ -4519,6 +4520,7 @@ struct TS3ComplaintDraftCoverageSummary {
             "clientId=\(hasTargetClientId ? "true" : "false")",
             "databaseId=\(hasTargetDatabaseId ? "true" : "false")",
             "message=\(hasMessage ? "true" : "false")",
+            "singleLineMessage=\(hasSingleLineMessage ? "true" : "false")",
             "validationIssues=\(validationIssueCount)",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")
@@ -4535,6 +4537,7 @@ struct TS3ComplaintDraftCoverageSummary {
         self.hasTargetClientId = targetClientId != nil
         self.hasTargetDatabaseId = targetDatabaseId != nil
         self.hasMessage = Self.normalized(message) != nil
+        self.hasSingleLineMessage = !Self.containsNewline(message)
         self.validationIssueCount = validationMessages.count
     }
 
@@ -4542,6 +4545,75 @@ struct TS3ComplaintDraftCoverageSummary {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
+enum TS3ComplaintCreationRequirement: String, CaseIterable, Codable {
+    case connected
+    case target
+    case message
+    case singleLineMessage
+    case validationClean
+}
+
+struct TS3ComplaintCreationReadinessSummary {
+    let draftCoverageSummary: TS3ComplaintDraftCoverageSummary
+    let isConnected: Bool
+
+    var requirementStates: [TS3ComplaintCreationRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .target: draftCoverageSummary.targetFieldCount > 0,
+            .message: draftCoverageSummary.hasMessage,
+            .singleLineMessage: draftCoverageSummary.hasSingleLineMessage,
+            .validationClean: draftCoverageSummary.validationIssueCount == 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3ComplaintCreationRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3ComplaintCreationRequirement] {
+        TS3ComplaintCreationRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !draftCoverageSummary.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3ComplaintCreationRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "targetFields=\(draftCoverageSummary.targetFieldCount)",
+            "message=\(draftCoverageSummary.hasMessage ? "true" : "false")",
+            "validationIssues=\(draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
     }
 }
 

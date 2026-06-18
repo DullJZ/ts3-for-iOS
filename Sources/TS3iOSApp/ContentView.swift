@@ -27330,6 +27330,22 @@ struct ComplaintListSheet: View {
                         Button(localized("complaints.copyDraftCoverage")) {
                             TS3PlatformSupport.copyToPasteboard(complaintDraftCoverageSummary(for: target).clipboardSummary)
                         }
+                        let creationReadiness = complaintCreationReadinessSummary(for: target)
+                        ServerInfoDetailRow(
+                            label: localized("complaints.creationReadiness"),
+                            value: localized(
+                                "complaints.creationReadinessFormat",
+                                creationReadiness.satisfiedRequirementCount,
+                                creationReadiness.totalRequirementCount,
+                                creationReadiness.missingRequirementCount
+                            )
+                        )
+                        Text(complaintCreationReadinessText(creationReadiness))
+                            .font(.caption)
+                            .foregroundColor(creationReadiness.needsAttention ? .orange : .secondary)
+                        Button(localized("complaints.copyCreationReadiness")) {
+                            TS3PlatformSupport.copyToPasteboard(creationReadiness.clipboardSummary)
+                        }
                         Text(complaintDraftSummary(for: target))
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -27776,6 +27792,13 @@ struct ComplaintListSheet: View {
         )
     }
 
+    private func complaintCreationReadinessSummary(for target: TS3UserSummary) -> TS3ComplaintCreationReadinessSummary {
+        TS3ComplaintCreationReadinessSummary(
+            draftCoverageSummary: complaintDraftCoverageSummary(for: target),
+            isConnected: model.state == .connected
+        )
+    }
+
     private func complaintDraftCoverageText(_ summary: TS3ComplaintDraftCoverageSummary) -> String {
         [
             localized("complaints.draftCoverageTargetNameFormat", summary.hasTargetName ? 1 : 0),
@@ -27783,6 +27806,31 @@ struct ComplaintListSheet: View {
             localized("complaints.draftCoverageDatabaseIdFormat", summary.hasTargetDatabaseId ? 1 : 0),
             localized("complaints.draftCoverageMessageFormat", summary.hasMessage ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func complaintCreationReadinessText(_ summary: TS3ComplaintCreationReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("complaints.creationReadinessReady")
+        }
+        return localized(
+            "complaints.creationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3ComplaintCreationRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("complaints.creationRequirement.connected")
+        case .target:
+            return localized("complaints.creationRequirement.target")
+        case .message:
+            return localized("complaints.creationRequirement.message")
+        case .singleLineMessage:
+            return localized("complaints.creationRequirement.singleLineMessage")
+        case .validationClean:
+            return localized("complaints.creationRequirement.validationClean")
+        }
     }
 
     private func complaintListSummaryText(_ summary: TS3ComplaintListSummary) -> String {

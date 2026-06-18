@@ -71,7 +71,7 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertFalse(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "targetFields=3 | targetName=true | clientId=true | databaseId=true | message=true | validationIssues=0 | needsAttention=false"
+            "targetFields=3 | targetName=true | clientId=true | databaseId=true | message=true | singleLineMessage=true | validationIssues=0 | needsAttention=false"
         )
     }
 
@@ -99,7 +99,72 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "targetFields=0 | targetName=false | clientId=false | databaseId=false | message=false | validationIssues=3 | needsAttention=true"
+            "targetFields=0 | targetName=false | clientId=false | databaseId=false | message=false | singleLineMessage=false | validationIssues=3 | needsAttention=true"
+        )
+    }
+
+    func testComplaintCreationReadinessSummaryCountsSubmitRequirements() {
+        let validationMessages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse "
+        )
+        let coverage = TS3ComplaintDraftCoverageSummary(
+            targetName: " Target ",
+            targetClientId: 12,
+            targetDatabaseId: 22,
+            message: " Abuse ",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3ComplaintCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 5)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=5/5 | missingRequirements=0 | canSubmit=true | targetFields=3 | message=true | validationIssues=0 | requirements=connected:true,target:true,message:true,singleLineMessage:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testComplaintCreationReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let validationMessages = TS3ComplaintDraftValidator.validationMessages(
+            targetName: " ",
+            targetClientId: nil,
+            targetDatabaseId: nil,
+            message: " \n "
+        )
+        let coverage = TS3ComplaintDraftCoverageSummary(
+            targetName: " ",
+            targetClientId: nil,
+            targetDatabaseId: nil,
+            message: " \n ",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3ComplaintCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .target, .message, .singleLineMessage, .validationClean]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=0/5 | missingRequirements=5 | canSubmit=false | targetFields=0 | message=false | validationIssues=3 | requirements=connected:false,target:false,message:false,singleLineMessage:false,validationClean:false | missing=connected,target,message,singleLineMessage,validationClean | needsAttention=true"
         )
     }
 

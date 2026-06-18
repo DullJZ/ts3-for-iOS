@@ -2996,6 +2996,16 @@
 "complaints.draftCoverageDatabaseIdFormat" = "数据库 ID：%d";
 "complaints.draftCoverageMessageFormat" = "消息：%d";
 "complaints.copyDraftCoverage" = "复制投诉草稿覆盖";
+"complaints.creationReadiness" = "创建就绪度";
+"complaints.creationReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"complaints.creationReadinessReady" = "投诉已可提交";
+"complaints.creationReadinessMissingFormat" = "缺失：%@";
+"complaints.copyCreationReadiness" = "复制创建就绪度";
+"complaints.creationRequirement.connected" = "已连接服务器";
+"complaints.creationRequirement.target" = "投诉目标";
+"complaints.creationRequirement.message" = "投诉消息";
+"complaints.creationRequirement.singleLineMessage" = "单行消息";
+"complaints.creationRequirement.validationClean" = "校验通过";
 "complaints.copyComplaintSummary" = "复制投诉摘要";
 "complaints.searchComplaints" = "搜索投诉";
 "complaints.noSavedFilterPresets" = "没有已保存的投诉筛选预设";
