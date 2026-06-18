@@ -2,6 +2,42 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3ServerLogPresetTests: XCTestCase {
+    func testServerLogWriteDraftSummaryValidatesAndBuildsCopyableSummary() {
+        let info = TS3ServerLogWriteDraftSummary(level: .info, message: "  Maintenance started  ")
+
+        XCTAssertEqual(info.trimmedMessage, "Maintenance started")
+        XCTAssertTrue(info.hasMessage)
+        XCTAssertEqual(info.messageLength, 19)
+        XCTAssertEqual(info.validationMessages, [])
+        XCTAssertFalse(info.needsAttention)
+        XCTAssertEqual(
+            info.clipboardSummary,
+            "operation=Write Server Log Entry | level=info | messageLength=19 | hasMessage=true | validationIssues=0 | needsAttention=false | message=Maintenance started"
+        )
+
+        let warning = TS3ServerLogWriteDraftSummary(level: .warning, message: "Disk almost full")
+        XCTAssertTrue(warning.needsAttention)
+        XCTAssertEqual(warning.validationMessages, [])
+    }
+
+    func testServerLogWriteDraftSummaryRejectsEmptyMultilineAndLongMessages() {
+        let empty = TS3ServerLogWriteDraftSummary(level: .error, message: "   ")
+        XCTAssertEqual(empty.validationMessages, ["Enter a server log message before writing."])
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(
+            empty.clipboardSummary,
+            "operation=Write Server Log Entry | level=error | messageLength=0 | hasMessage=false | validationIssues=1 | needsAttention=true | message=Missing"
+        )
+
+        let multiline = TS3ServerLogWriteDraftSummary(level: .info, message: "first\nsecond")
+        XCTAssertEqual(multiline.validationMessages, ["Server log message must be a single line."])
+        XCTAssertTrue(multiline.needsAttention)
+
+        let long = TS3ServerLogWriteDraftSummary(level: .debug, message: String(repeating: "x", count: 1_025))
+        XCTAssertEqual(long.validationMessages, ["Server log message must be 1024 characters or fewer."])
+        XCTAssertTrue(long.needsAttention)
+    }
+
     func testServerLogQueryDraftSummariesAndValidation() {
         let draft = TS3ServerLogQueryDraft(
             limitText: " 250 ",

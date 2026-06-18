@@ -2548,6 +2548,12 @@
 "serverLogs.addEntry" = "添加条目";
 "serverLogs.level" = "级别";
 "serverLogs.message" = "消息";
+"serverLogs.writeReview" = "写入审查";
+"serverLogs.writeReviewFormat" = "%@，%d 个字符，%d 个校验问题";
+"serverLogs.writeReviewHasMessageFormat" = "消息：%d";
+"serverLogs.writeReviewValidationFormat" = "校验问题：%d";
+"serverLogs.writeReviewAttentionFormat" = "需要注意：%d";
+"serverLogs.copyWriteReview" = "复制写入审查";
 "serverLogs.writeServerLogEntry" = "写入服务器日志条目";
 "serverLogs.serverLog" = "服务器日志";
 "serverLogs.noMatchingEntries" = "没有匹配的日志条目";

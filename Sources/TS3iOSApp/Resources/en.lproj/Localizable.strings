@@ -2548,6 +2548,12 @@
 "serverLogs.addEntry" = "Add Entry";
 "serverLogs.level" = "Level";
 "serverLogs.message" = "Message";
+"serverLogs.writeReview" = "Write Review";
+"serverLogs.writeReviewFormat" = "%@, %d characters, %d validation issues";
+"serverLogs.writeReviewHasMessageFormat" = "Message: %d";
+"serverLogs.writeReviewValidationFormat" = "Validation issues: %d";
+"serverLogs.writeReviewAttentionFormat" = "Needs attention: %d";
+"serverLogs.copyWriteReview" = "Copy Write Review";
 "serverLogs.writeServerLogEntry" = "Write Server Log Entry";
 "serverLogs.serverLog" = "Server Log";
 "serverLogs.noMatchingEntries" = "No matching log entries";

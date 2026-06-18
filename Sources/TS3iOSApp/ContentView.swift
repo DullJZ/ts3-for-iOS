@@ -12897,10 +12897,30 @@ struct ServerLogsSheet: View {
                     }
                     TextField(localized("serverLogs.message"), text: $newLogMessage)
                         .ts3PlainTextField()
+                    ServerInfoDetailRow(
+                        label: localized("serverLogs.writeReview"),
+                        value: localized(
+                            "serverLogs.writeReviewFormat",
+                            logLevelTitle(writeDraftSummary.level),
+                            writeDraftSummary.messageLength,
+                            writeDraftSummary.validationMessages.count
+                        )
+                    )
+                    Text(serverLogWriteReviewText(writeDraftSummary))
+                        .font(.caption)
+                        .foregroundColor(writeDraftSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverLogs.copyWriteReview")) {
+                        TS3PlatformSupport.copyToPasteboard(writeDraftSummary.clipboardSummary)
+                    }
+                    ForEach(writeDraftSummary.validationMessages, id: \.self) { message in
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                     Button(localized("serverLogs.writeServerLogEntry")) {
                         model.addServerLogEntry(
                             level: newLogLevel,
-                            message: newLogMessage,
+                            message: writeDraftSummary.trimmedMessage,
                             limit: parsedLineLimit,
                             reverse: reverseOrder,
                             instance: instanceLogs,
@@ -12908,7 +12928,7 @@ struct ServerLogsSheet: View {
                         )
                         newLogMessage = ""
                     }
-                    .disabled(model.state != .connected || newLogMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canRunQuery)
+                    .disabled(model.state != .connected || !writeDraftSummary.validationMessages.isEmpty || !canRunQuery)
                 }
 
                 Section(header: Text(localized("serverLogs.serverLog"))) {
@@ -13095,6 +13115,10 @@ struct ServerLogsSheet: View {
 
     private var queryCoverageSummary: TS3ServerLogQueryCoverageSummary {
         TS3ServerLogQueryCoverageSummary(draft: currentQueryDraft)
+    }
+
+    private var writeDraftSummary: TS3ServerLogWriteDraftSummary {
+        TS3ServerLogWriteDraftSummary(level: newLogLevel, message: newLogMessage)
     }
 
     private func serverLogQueryCoverageText(_ summary: TS3ServerLogQueryCoverageSummary) -> String {
@@ -13357,6 +13381,14 @@ struct ServerLogsSheet: View {
             parts.append(localized("serverLogs.clearImpactAllCached"))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private func serverLogWriteReviewText(_ summary: TS3ServerLogWriteDraftSummary) -> String {
+        [
+            localized("serverLogs.writeReviewHasMessageFormat", summary.hasMessage ? 1 : 0),
+            localized("serverLogs.writeReviewValidationFormat", summary.validationMessages.count),
+            localized("serverLogs.writeReviewAttentionFormat", summary.needsAttention ? 1 : 0)
+        ].joined(separator: " · ")
     }
 
     private func serverLogOfficialAuditText(_ summary: TS3ServerLogOfficialCoverageAuditSummary) -> String {

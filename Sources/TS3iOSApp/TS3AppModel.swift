@@ -11579,6 +11579,53 @@ struct TS3ServerLogQueryCoverageSummary {
     }
 }
 
+struct TS3ServerLogWriteDraftSummary {
+    let level: TS3LogLevel
+    let message: String
+
+    var trimmedMessage: String {
+        message.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var hasMessage: Bool {
+        !trimmedMessage.isEmpty
+    }
+
+    var messageLength: Int {
+        trimmedMessage.count
+    }
+
+    var validationMessages: [String] {
+        var messages: [String] = []
+        if !hasMessage {
+            messages.append("Enter a server log message before writing.")
+        }
+        if trimmedMessage.rangeOfCharacter(from: .newlines) != nil {
+            messages.append("Server log message must be a single line.")
+        }
+        if messageLength > 1_024 {
+            messages.append("Server log message must be 1024 characters or fewer.")
+        }
+        return messages
+    }
+
+    var needsAttention: Bool {
+        !validationMessages.isEmpty || level == .warning || level == .error || level == .debug
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=Write Server Log Entry",
+            "level=\(level.rawValue)",
+            "messageLength=\(messageLength)",
+            "hasMessage=\(hasMessage ? "true" : "false")",
+            "validationIssues=\(validationMessages.count)",
+            "needsAttention=\(needsAttention ? "true" : "false")",
+            "message=\(hasMessage ? trimmedMessage : "Missing")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3ServerLogOfficialCoverageAuditSummary {
     let queryCoverageSummary: TS3ServerLogQueryCoverageSummary
     let visibleLogSummary: TS3ServerLogListSummary
