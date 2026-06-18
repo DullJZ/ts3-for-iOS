@@ -23852,6 +23852,38 @@ struct TemporaryServerPasswordsSheet: View {
                     Button(localized("temporaryPasswords.copyDraftCoverage")) {
                         TS3PlatformSupport.copyToPasteboard(temporaryPasswordDraftCoverageSummary.clipboardSummary)
                     }
+                    let creationReadiness = temporaryPasswordCreationReadinessSummary
+                    ServerInfoDetailRow(
+                        label: localized("temporaryPasswords.creationReadiness"),
+                        value: localized(
+                            "temporaryPasswords.creationReadinessFormat",
+                            creationReadiness.satisfiedRequirementCount,
+                            creationReadiness.totalRequirementCount,
+                            creationReadiness.missingRequirementCount
+                        )
+                    )
+                    Text(temporaryPasswordCreationReadinessText(creationReadiness))
+                        .font(.caption)
+                        .foregroundColor(creationReadiness.needsAttention ? .orange : .secondary)
+                    Button(localized("temporaryPasswords.copyCreationReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(creationReadiness.clipboardSummary)
+                    }
+                    let officialAudit = temporaryPasswordOfficialWorkflowAuditSummary
+                    ServerInfoDetailRow(
+                        label: localized("temporaryPasswords.officialAudit"),
+                        value: localized(
+                            "temporaryPasswords.officialAuditFormat",
+                            officialAudit.coveredAreaCount,
+                            officialAudit.totalOfficialAreaCount,
+                            officialAudit.missingAreaCount
+                        )
+                    )
+                    Text(temporaryPasswordOfficialWorkflowAuditText(officialAudit))
+                        .font(.caption)
+                        .foregroundColor(officialAudit.needsAttention ? .orange : .secondary)
+                    Button(localized("temporaryPasswords.copyOfficialAudit")) {
+                        TS3PlatformSupport.copyToPasteboard(officialAudit.clipboardSummary)
+                    }
                     Text(temporaryPasswordDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -24122,6 +24154,23 @@ struct TemporaryServerPasswordsSheet: View {
         )
     }
 
+    private var temporaryPasswordCreationReadinessSummary: TS3TemporaryServerPasswordCreationReadinessSummary {
+        TS3TemporaryServerPasswordCreationReadinessSummary(
+            draftCoverageSummary: temporaryPasswordDraftCoverageSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
+    private var temporaryPasswordOfficialWorkflowAuditSummary: TS3TemporaryServerPasswordOfficialWorkflowAuditSummary {
+        TS3TemporaryServerPasswordOfficialWorkflowAuditSummary(
+            draftCoverageSummary: temporaryPasswordDraftCoverageSummary,
+            visibleSummary: visiblePasswordSummary,
+            deleteImpactSummary: visiblePasswordDeleteImpactSummary,
+            presetCount: model.temporaryServerPasswordFilterPresets.count,
+            isConnected: model.state == .connected
+        )
+    }
+
     private func temporaryPasswordDraftCoverageText(_ summary: TS3TemporaryServerPasswordDraftCoverageSummary) -> String {
         [
             localized("temporaryPasswords.draftCoveragePasswordFormat", summary.hasPassword ? 1 : 0),
@@ -24130,6 +24179,64 @@ struct TemporaryServerPasswordsSheet: View {
             localized("temporaryPasswords.draftCoverageTargetChannelFormat", summary.hasTargetChannel ? 1 : 0),
             localized("temporaryPasswords.draftCoverageTargetPasswordFormat", summary.hasTargetChannelPassword ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func temporaryPasswordCreationReadinessText(_ summary: TS3TemporaryServerPasswordCreationReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("temporaryPasswords.creationReadinessReady")
+        }
+        return localized(
+            "temporaryPasswords.creationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func temporaryPasswordOfficialWorkflowAuditText(_ summary: TS3TemporaryServerPasswordOfficialWorkflowAuditSummary) -> String {
+        var parts = TS3TemporaryServerPasswordOfficialWorkflowArea.allCases.compactMap { area -> String? in
+            guard let count = summary.areaCoverageCounts[area], count > 0 else { return nil }
+            return localized("temporaryPasswords.officialAuditAreaFormat", title(for: area), count)
+        }
+        if summary.missingAreaCount > 0 {
+            parts.append(localized("temporaryPasswords.officialAuditMissingFormat", summary.missingAreaCount))
+        }
+        if !summary.isConnected {
+            parts.append(localized("temporaryPasswords.officialAuditDisconnected"))
+        }
+        return parts.joined(separator: " | ")
+    }
+
+    private func title(for requirement: TS3TemporaryServerPasswordCreationRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("temporaryPasswords.creationRequirement.connected")
+        case .password:
+            return localized("temporaryPasswords.creationRequirement.password")
+        case .duration:
+            return localized("temporaryPasswords.creationRequirement.duration")
+        case .singleLineDescription:
+            return localized("temporaryPasswords.creationRequirement.singleLineDescription")
+        case .targetChannelForTargetPassword:
+            return localized("temporaryPasswords.creationRequirement.targetChannelForTargetPassword")
+        case .singleLineTargetPassword:
+            return localized("temporaryPasswords.creationRequirement.singleLineTargetPassword")
+        }
+    }
+
+    private func title(for area: TS3TemporaryServerPasswordOfficialWorkflowArea) -> String {
+        switch area {
+        case .createDraft:
+            return localized("temporaryPasswords.officialArea.createDraft")
+        case .targetReview:
+            return localized("temporaryPasswords.officialArea.targetReview")
+        case .visibleReview:
+            return localized("temporaryPasswords.officialArea.visibleReview")
+        case .filterPresets:
+            return localized("temporaryPasswords.officialArea.filterPresets")
+        case .deleteReview:
+            return localized("temporaryPasswords.officialArea.deleteReview")
+        case .serverMutation:
+            return localized("temporaryPasswords.officialArea.serverMutation")
+        }
     }
 
     private var normalizedSearchText: String {

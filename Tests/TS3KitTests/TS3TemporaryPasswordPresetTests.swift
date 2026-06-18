@@ -123,6 +123,166 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
         )
     }
 
+    func testTemporaryPasswordCreationReadinessSummaryCountsSubmitRequirements() {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: " guest-pass ",
+            durationSeconds: 3_600,
+            description: "Guest access",
+            targetChannelId: 12,
+            targetChannelPassword: "secret"
+        )
+        let coverage = TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: " guest-pass ",
+            durationSeconds: 3_600,
+            description: "Guest access",
+            targetChannelId: 12,
+            targetChannelPassword: "secret",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3TemporaryServerPasswordCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=6/6 | missingRequirements=0 | canSubmit=true | requiredFields=2/2 | optionalFields=3 | validationIssues=0 | requirements=connected:true,password:true,duration:true,singleLineDescription:true,targetChannelForTargetPassword:true,singleLineTargetPassword:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testTemporaryPasswordCreationReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: " ",
+            durationSeconds: nil,
+            description: "Guest\naccess",
+            targetChannelId: nil,
+            targetChannelPassword: "secret\nagain"
+        )
+        let coverage = TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: " ",
+            durationSeconds: nil,
+            description: "Guest\naccess",
+            targetChannelId: nil,
+            targetChannelPassword: "secret\nagain",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3TemporaryServerPasswordCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 6)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [
+                .connected,
+                .password,
+                .duration,
+                .singleLineDescription,
+                .targetChannelForTargetPassword,
+                .singleLineTargetPassword
+            ]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=0/6 | missingRequirements=6 | canSubmit=false | requiredFields=0/2 | optionalFields=2 | validationIssues=5 | requirements=connected:false,password:false,duration:false,singleLineDescription:false,targetChannelForTargetPassword:false,singleLineTargetPassword:false | missing=connected,password,duration,singleLineDescription,targetChannelForTargetPassword,singleLineTargetPassword | needsAttention=true"
+        )
+    }
+
+    func testTemporaryPasswordOfficialWorkflowAuditSummaryCountsCoveredAreas() {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: "guest-pass",
+            durationSeconds: 3_600,
+            description: "Guest access",
+            targetChannelId: 12,
+            targetChannelPassword: "secret"
+        )
+        let coverage = TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: "guest-pass",
+            durationSeconds: 3_600,
+            description: "Guest access",
+            targetChannelId: 12,
+            targetChannelPassword: "secret",
+            validationMessages: validationMessages
+        )
+        let entry = TS3TemporaryServerPasswordSummary(
+            id: "guest-pass",
+            password: "guest-pass",
+            creatorUniqueIdentifier: "creator-uid",
+            creatorDatabaseId: nil,
+            creatorName: "Admin",
+            targetChannelId: 12,
+            targetChannelPassword: "secret",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            durationSeconds: 3_600,
+            description: "Guest access"
+        )
+        let visibleSummary = TS3TemporaryServerPasswordListSummary(passwords: [entry])
+        let deleteImpact = TS3TemporaryServerPasswordDeleteImpactSummary(passwords: [entry], scope: .visible)
+        let audit = TS3TemporaryServerPasswordOfficialWorkflowAuditSummary(
+            draftCoverageSummary: coverage,
+            visibleSummary: visibleSummary,
+            deleteImpactSummary: deleteImpact,
+            presetCount: 2,
+            isConnected: true
+        )
+
+        XCTAssertEqual(audit.coveredAreaCount, 6)
+        XCTAssertEqual(audit.totalOfficialAreaCount, 6)
+        XCTAssertEqual(audit.missingAreaCount, 0)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "officialAreas=6/6 | missingOfficialAreas=0 | draftRequiredFields=2/2 | visiblePasswords=1 | filterPresets=2 | deleteReviewPasswords=1 | connected=true | areas=createDraft:2,targetReview:3,visibleReview:1,filterPresets:1,deleteReview:1,serverMutation:1 | needsAttention=true"
+        )
+    }
+
+    func testTemporaryPasswordOfficialWorkflowAuditSummaryFlagsMissingAreas() {
+        let validationMessages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
+            password: "",
+            durationSeconds: nil,
+            description: "",
+            targetChannelId: nil,
+            targetChannelPassword: ""
+        )
+        let coverage = TS3TemporaryServerPasswordDraftCoverageSummary(
+            password: "",
+            durationSeconds: nil,
+            description: "",
+            targetChannelId: nil,
+            targetChannelPassword: "",
+            validationMessages: validationMessages
+        )
+        let visibleSummary = TS3TemporaryServerPasswordListSummary(passwords: [])
+        let deleteImpact = TS3TemporaryServerPasswordDeleteImpactSummary(passwords: [], scope: .visible)
+        let audit = TS3TemporaryServerPasswordOfficialWorkflowAuditSummary(
+            draftCoverageSummary: coverage,
+            visibleSummary: visibleSummary,
+            deleteImpactSummary: deleteImpact,
+            presetCount: 0,
+            isConnected: false
+        )
+
+        XCTAssertEqual(audit.coveredAreaCount, 1)
+        XCTAssertEqual(audit.totalOfficialAreaCount, 6)
+        XCTAssertEqual(audit.missingAreaCount, 5)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "officialAreas=1/6 | missingOfficialAreas=5 | draftRequiredFields=0/2 | visiblePasswords=0 | filterPresets=0 | deleteReviewPasswords=0 | connected=false | areas=targetReview:1 | needsAttention=true"
+        )
+    }
+
     func testTemporaryPasswordSummaryCopyAndAccessibilityText() {
         let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = TS3TemporaryServerPasswordSummary(

@@ -8224,6 +8224,9 @@ struct TS3TemporaryServerPasswordDraftCoverageSummary {
     let hasDescription: Bool
     let hasTargetChannel: Bool
     let hasTargetChannelPassword: Bool
+    let hasSingleLineDescription: Bool
+    let hasSingleLineTargetChannelPassword: Bool
+    let hasTargetChannelForTargetPassword: Bool
     let validationIssueCount: Int
 
     var optionalFieldCount: Int {
@@ -8265,12 +8268,154 @@ struct TS3TemporaryServerPasswordDraftCoverageSummary {
         self.hasDescription = Self.normalized(description) != nil
         self.hasTargetChannel = (targetChannelId ?? 0) > 0
         self.hasTargetChannelPassword = Self.normalized(targetChannelPassword) != nil
+        self.hasSingleLineDescription = !Self.containsNewline(description)
+        self.hasSingleLineTargetChannelPassword = !Self.containsNewline(targetChannelPassword)
+        self.hasTargetChannelForTargetPassword = self.hasTargetChannel || !self.hasTargetChannelPassword
         self.validationIssueCount = validationMessages.count
     }
 
     private static func normalized(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
+enum TS3TemporaryServerPasswordCreationRequirement: String, CaseIterable, Codable {
+    case connected
+    case password
+    case duration
+    case singleLineDescription
+    case targetChannelForTargetPassword
+    case singleLineTargetPassword
+}
+
+struct TS3TemporaryServerPasswordCreationReadinessSummary {
+    let draftCoverageSummary: TS3TemporaryServerPasswordDraftCoverageSummary
+    let isConnected: Bool
+
+    var requirementStates: [TS3TemporaryServerPasswordCreationRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .password: draftCoverageSummary.hasPassword,
+            .duration: draftCoverageSummary.hasDuration,
+            .singleLineDescription: draftCoverageSummary.hasSingleLineDescription,
+            .targetChannelForTargetPassword: draftCoverageSummary.hasTargetChannelForTargetPassword,
+            .singleLineTargetPassword: draftCoverageSummary.hasSingleLineTargetChannelPassword
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3TemporaryServerPasswordCreationRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3TemporaryServerPasswordCreationRequirement] {
+        TS3TemporaryServerPasswordCreationRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !draftCoverageSummary.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3TemporaryServerPasswordCreationRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "requiredFields=\(draftCoverageSummary.requiredFieldCount)/2",
+            "optionalFields=\(draftCoverageSummary.optionalFieldCount)",
+            "validationIssues=\(draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+}
+
+enum TS3TemporaryServerPasswordOfficialWorkflowArea: String, CaseIterable, Codable {
+    case createDraft
+    case targetReview
+    case visibleReview
+    case filterPresets
+    case deleteReview
+    case serverMutation
+}
+
+struct TS3TemporaryServerPasswordOfficialWorkflowAuditSummary {
+    let draftCoverageSummary: TS3TemporaryServerPasswordDraftCoverageSummary
+    let visibleSummary: TS3TemporaryServerPasswordListSummary
+    let deleteImpactSummary: TS3TemporaryServerPasswordDeleteImpactSummary
+    let presetCount: Int
+    let isConnected: Bool
+
+    var areaCoverageCounts: [TS3TemporaryServerPasswordOfficialWorkflowArea: Int] {
+        [
+            .createDraft: draftCoverageSummary.requiredFieldCount,
+            .targetReview: 1 + (draftCoverageSummary.hasTargetChannel ? 1 : 0) + (draftCoverageSummary.hasTargetChannelPassword ? 1 : 0),
+            .visibleReview: visibleSummary.totalCount > 0 ? 1 : 0,
+            .filterPresets: presetCount > 0 ? 1 : 0,
+            .deleteReview: deleteImpactSummary.passwordCount > 0 ? 1 : 0,
+            .serverMutation: isConnected ? 1 : 0
+        ]
+    }
+
+    var coveredAreaCount: Int {
+        areaCoverageCounts.values.filter { $0 > 0 }.count
+    }
+
+    var totalOfficialAreaCount: Int {
+        TS3TemporaryServerPasswordOfficialWorkflowArea.allCases.count
+    }
+
+    var missingAreaCount: Int {
+        max(0, totalOfficialAreaCount - coveredAreaCount)
+    }
+
+    var needsAttention: Bool {
+        missingAreaCount > 0
+            || draftCoverageSummary.needsAttention
+            || deleteImpactSummary.needsAttention
+            || !isConnected
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3TemporaryServerPasswordOfficialWorkflowArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaCoverageCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "officialAreas=\(coveredAreaCount)/\(totalOfficialAreaCount)",
+            "missingOfficialAreas=\(missingAreaCount)",
+            "draftRequiredFields=\(draftCoverageSummary.requiredFieldCount)/2",
+            "visiblePasswords=\(visibleSummary.totalCount)",
+            "filterPresets=\(presetCount)",
+            "deleteReviewPasswords=\(deleteImpactSummary.passwordCount)",
+            "connected=\(isConnected ? "true" : "false")",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
     }
 }
 
