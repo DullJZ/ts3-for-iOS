@@ -218,8 +218,20 @@ struct DebugLogView: View {
                 format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeCatalystFormat", comment: ""),
                 summary.denseAdministrationDynamicTypeAuditSummary.catalystSharedSurfaceCount
             ),
+            String(
+                format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeResponsiveFormat", comment: ""),
+                surfaceListText(summary.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceNames)
+            ),
+            String(
+                format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypePendingSurfacesFormat", comment: ""),
+                surfaceListText(summary.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceNames)
+            ),
             String(format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeFormat", comment: ""), summary.hasDenseAdministrationDynamicTypeAuditPending ? NSLocalizedString("common.yes", comment: "") : NSLocalizedString("common.no", comment: ""))
         ].joined(separator: " · ")
+    }
+
+    private func surfaceListText(_ names: [String]) -> String {
+        names.isEmpty ? NSLocalizedString("common.none", comment: "") : names.joined(separator: ", ")
     }
 
     private func logTranscript(from entries: [TS3LogEntry]) -> String {

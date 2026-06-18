@@ -12,6 +12,18 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
                 totalSurfaceCount: 14,
                 responsiveSurfaceCount: 10,
                 catalystSharedSurfaceCount: 14,
+                responsiveSurfaceNames: [
+                    "Debug Log",
+                    "Server Logs",
+                    "Client Database",
+                    "Contacts",
+                    "Ban List",
+                    "Complaints",
+                    "Temporary Passwords",
+                    "Privilege Keys",
+                    "File Browser",
+                    "Offline Messages"
+                ],
                 pendingSurfaceNames: [
                     "Server Settings",
                     "Channel Editor",
@@ -36,6 +48,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertEqual(summary.officialActionCount, 20)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(summary.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceCount, 4)
+        XCTAssertEqual(summary.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceNames.count, 10)
         XCTAssertEqual(
             summary.clipboardSummary,
             "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=5 | dynamicTypeResponsiveSurfaces=9 | denseAdminDynamicTypeSurfaces=14 | denseAdminDynamicTypeResponsive=10 | denseAdminDynamicTypePending=4 | denseAdminCatalystSharedSurfaces=14 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
@@ -47,6 +60,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
             totalSurfaceCount: 5,
             responsiveSurfaceCount: 3,
             catalystSharedSurfaceCount: 5,
+            responsiveSurfaceNames: ["Logs", "Bans", "Complaints"],
             pendingSurfaceNames: ["Permissions", "Groups"]
         )
 
@@ -54,7 +68,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "denseAdminDynamicTypeSurfaces=5 | denseAdminDynamicTypeResponsive=3 | denseAdminDynamicTypePending=2 | denseAdminCatalystSharedSurfaces=5 | denseAdminPendingSurfaces=Permissions,Groups | needsAttention=true"
+            "denseAdminDynamicTypeSurfaces=5 | denseAdminDynamicTypeResponsive=3 | denseAdminDynamicTypePending=2 | denseAdminCatalystSharedSurfaces=5 | denseAdminResponsiveSurfaces=Logs,Bans,Complaints | denseAdminPendingSurfaces=Permissions,Groups | needsAttention=true"
         )
     }
 
@@ -68,6 +82,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
                 totalSurfaceCount: 2,
                 responsiveSurfaceCount: 2,
                 catalystSharedSurfaceCount: 1,
+                responsiveSurfaceNames: ["Logs", "Bans"],
                 pendingSurfaceNames: []
             ),
             hasSharedSwiftUISheets: true,
@@ -102,6 +117,8 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(report.contains("Dense Administration Dynamic Type Responsive: 10"))
         XCTAssertTrue(report.contains("Dense Administration Dynamic Type Pending: 4"))
         XCTAssertTrue(report.contains("Dense Administration Catalyst Shared Surfaces: 14"))
+        XCTAssertTrue(report.contains("Dense Administration Dynamic Type Responsive Surfaces: Debug Log, Server Logs, Client Database, Contacts, Ban List, Complaints, Temporary Passwords, Privilege Keys, File Browser, Offline Messages"))
+        XCTAssertTrue(report.contains("Dense Administration Dynamic Type Pending Surfaces: Server Settings, Channel Editor, Permission Editor, Group Management"))
         XCTAssertTrue(report.contains("Dynamic Type Coverage: Yes"))
         XCTAssertTrue(report.contains("Dense Administration Dynamic Type Audit Pending: Yes"))
         XCTAssertTrue(report.contains(model.platformAccessibilityCoverageAuditSummary.denseAdministrationDynamicTypeAuditSummary.clipboardSummary))

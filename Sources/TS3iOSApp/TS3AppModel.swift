@@ -10567,6 +10567,7 @@ struct TS3DenseAdministrationDynamicTypeAuditSummary {
     let totalSurfaceCount: Int
     let responsiveSurfaceCount: Int
     let catalystSharedSurfaceCount: Int
+    let responsiveSurfaceNames: [String]
     let pendingSurfaceNames: [String]
 
     var pendingSurfaceCount: Int {
@@ -10583,6 +10584,7 @@ struct TS3DenseAdministrationDynamicTypeAuditSummary {
             "denseAdminDynamicTypeResponsive=\(responsiveSurfaceCount)",
             "denseAdminDynamicTypePending=\(pendingSurfaceCount)",
             "denseAdminCatalystSharedSurfaces=\(catalystSharedSurfaceCount)",
+            "denseAdminResponsiveSurfaces=\(responsiveSurfaceNames.isEmpty ? "none" : responsiveSurfaceNames.joined(separator: ","))",
             "denseAdminPendingSurfaces=\(pendingSurfaceNames.isEmpty ? "none" : pendingSurfaceNames.joined(separator: ","))",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")
@@ -15782,6 +15784,18 @@ final class TS3AppModel: ObservableObject {
                 totalSurfaceCount: 14,
                 responsiveSurfaceCount: 10,
                 catalystSharedSurfaceCount: 14,
+                responsiveSurfaceNames: [
+                    "Debug Log",
+                    "Server Logs",
+                    "Client Database",
+                    "Contacts",
+                    "Ban List",
+                    "Complaints",
+                    "Temporary Passwords",
+                    "Privilege Keys",
+                    "File Browser",
+                    "Offline Messages"
+                ],
                 pendingSurfaceNames: [
                     "Server Settings",
                     "Channel Editor",
@@ -26846,6 +26860,8 @@ final class TS3AppModel: ObservableObject {
             "Dense Administration Dynamic Type Responsive: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceCount)",
             "Dense Administration Dynamic Type Pending: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceCount)",
             "Dense Administration Catalyst Shared Surfaces: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.catalystSharedSurfaceCount)",
+            "Dense Administration Dynamic Type Responsive Surfaces: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceNames.joined(separator: ", "))",
+            "Dense Administration Dynamic Type Pending Surfaces: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceNames.joined(separator: ", "))",
             "Dynamic Type Coverage: \(accessibilityAudit.hasDynamicTypeCoverage ? "Yes" : "No")",
             "Dense Administration Dynamic Type Audit Pending: \(accessibilityAudit.hasDenseAdministrationDynamicTypeAuditPending ? "Yes" : "No")",
             accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.clipboardSummary,

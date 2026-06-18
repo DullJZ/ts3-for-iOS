@@ -954,6 +954,8 @@
 "debug.accessibilityAuditDynamicTypeSurfaceFormat" = "Dynamic Type surfaces: %d";
 "debug.accessibilityAuditDenseDynamicTypeSurfaceFormat" = "Dense admin Dynamic Type: %d/%d reviewed, %d pending";
 "debug.accessibilityAuditDenseDynamicTypeCatalystFormat" = "Dense admin Catalyst shared surfaces: %d";
+"debug.accessibilityAuditDenseDynamicTypeResponsiveFormat" = "Dense admin responsive surfaces: %@";
+"debug.accessibilityAuditDenseDynamicTypePendingSurfacesFormat" = "Dense admin pending surfaces: %@";
 "debug.accessibilityAuditDenseDynamicTypeFormat" = "Dense admin Dynamic Type audit pending: %@";
 "debug.copyAccessibilityAudit" = "Copy Platform Accessibility Audit";
 "voiceStatus.micMuted" = "Mic Muted";

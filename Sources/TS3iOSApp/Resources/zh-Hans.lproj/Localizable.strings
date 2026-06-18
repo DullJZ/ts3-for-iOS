@@ -954,6 +954,8 @@
 "debug.accessibilityAuditDynamicTypeSurfaceFormat" = "动态字体界面：%d";
 "debug.accessibilityAuditDenseDynamicTypeSurfaceFormat" = "密集管理页动态字体：已审计 %d/%d，待审计 %d";
 "debug.accessibilityAuditDenseDynamicTypeCatalystFormat" = "密集管理页 Catalyst 共享界面：%d";
+"debug.accessibilityAuditDenseDynamicTypeResponsiveFormat" = "密集管理页已适配界面：%@";
+"debug.accessibilityAuditDenseDynamicTypePendingSurfacesFormat" = "密集管理页待审计界面：%@";
 "debug.accessibilityAuditDenseDynamicTypeFormat" = "密集管理页动态字体审计待完成：%@";
 "debug.copyAccessibilityAudit" = "复制平台无障碍审计";
 "voiceStatus.micMuted" = "麦克风已静音";
