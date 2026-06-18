@@ -3416,6 +3416,7 @@ struct TS3OfflineMessageDraftCoverageSummary {
     let hasRecipientUniqueIdentifier: Bool
     let allowsRecipientLookup: Bool
     let hasSubject: Bool
+    let hasSingleLineSubject: Bool
     let hasBody: Bool
     let validationIssueCount: Int
 
@@ -3439,6 +3440,7 @@ struct TS3OfflineMessageDraftCoverageSummary {
             "recipientLookup=\(allowsRecipientLookup ? "true" : "false")",
             "contentFields=\(requiredContentFieldCount)/2",
             "subject=\(hasSubject ? "true" : "false")",
+            "singleLineSubject=\(hasSingleLineSubject ? "true" : "false")",
             "body=\(hasBody ? "true" : "false")",
             "validationIssues=\(validationIssueCount)",
             "needsAttention=\(needsAttention ? "true" : "false")"
@@ -3457,6 +3459,7 @@ struct TS3OfflineMessageDraftCoverageSummary {
         self.hasRecipientUniqueIdentifier = Self.normalized(recipientUniqueIdentifier) != nil
         self.allowsRecipientLookup = allowsRecipientLookup
         self.hasSubject = Self.normalized(subject) != nil
+        self.hasSingleLineSubject = !Self.containsNewline(subject)
         self.hasBody = Self.normalized(message) != nil
         self.validationIssueCount = validationMessages.count
     }
@@ -3465,6 +3468,77 @@ struct TS3OfflineMessageDraftCoverageSummary {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
+enum TS3OfflineMessageSendRequirement: String, CaseIterable, Codable {
+    case connected
+    case recipient
+    case subject
+    case body
+    case singleLineSubject
+    case validationClean
+}
+
+struct TS3OfflineMessageSendReadinessSummary {
+    let draftCoverageSummary: TS3OfflineMessageDraftCoverageSummary
+    let isConnected: Bool
+
+    var requirementStates: [TS3OfflineMessageSendRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .recipient: draftCoverageSummary.recipientFieldCount > 0,
+            .subject: draftCoverageSummary.hasSubject,
+            .body: draftCoverageSummary.hasBody,
+            .singleLineSubject: draftCoverageSummary.hasSingleLineSubject,
+            .validationClean: draftCoverageSummary.validationIssueCount == 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3OfflineMessageSendRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3OfflineMessageSendRequirement] {
+        TS3OfflineMessageSendRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !draftCoverageSummary.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3OfflineMessageSendRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "recipientFields=\(draftCoverageSummary.recipientFieldCount)",
+            "contentFields=\(draftCoverageSummary.requiredContentFieldCount)/2",
+            "validationIssues=\(draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
     }
 }
 

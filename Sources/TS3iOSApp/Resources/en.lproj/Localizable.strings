@@ -1562,6 +1562,17 @@
 "clientActions.offlineDraftCoverageSubjectFormat" = "Subject: %d";
 "clientActions.offlineDraftCoverageBodyFormat" = "Body: %d";
 "clientActions.copyOfflineDraftCoverage" = "Copy Offline Message Draft Coverage";
+"clientActions.offlineSendReadiness" = "Send Readiness";
+"clientActions.offlineSendReadinessFormat" = "%d/%d ready, %d missing";
+"clientActions.offlineSendReadinessReady" = "Offline message is ready to send";
+"clientActions.offlineSendReadinessMissingFormat" = "Missing: %@";
+"clientActions.copyOfflineSendReadiness" = "Copy Send Readiness";
+"clientActions.offlineSendRequirement.connected" = "Connected server";
+"clientActions.offlineSendRequirement.recipient" = "Recipient";
+"clientActions.offlineSendRequirement.subject" = "Subject";
+"clientActions.offlineSendRequirement.body" = "Message body";
+"clientActions.offlineSendRequirement.singleLineSubject" = "Single-line subject";
+"clientActions.offlineSendRequirement.validationClean" = "Validation clean";
 "clientActions.copyOfflineMessageSummary" = "Copy Offline Message Summary";
 "clientActions.pokeDraftCoverage" = "Poke Draft Coverage";
 "clientActions.pokeDraftCoverageFormat" = "%d target fields, %d validation issues";

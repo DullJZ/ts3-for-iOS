@@ -78,7 +78,7 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         XCTAssertFalse(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "recipientFields=2 | recipientName=true | recipientUid=false | recipientLookup=true | contentFields=2/2 | subject=true | body=true | validationIssues=0 | needsAttention=false"
+            "recipientFields=2 | recipientName=true | recipientUid=false | recipientLookup=true | contentFields=2/2 | subject=true | singleLineSubject=true | body=true | validationIssues=0 | needsAttention=false"
         )
     }
 
@@ -109,7 +109,75 @@ final class TS3OfflineMessageArchiveTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "recipientFields=0 | recipientName=false | recipientUid=false | recipientLookup=false | contentFields=1/2 | subject=true | body=false | validationIssues=4 | needsAttention=true"
+            "recipientFields=0 | recipientName=false | recipientUid=false | recipientLookup=false | contentFields=1/2 | subject=true | singleLineSubject=false | body=false | validationIssues=4 | needsAttention=true"
+        )
+    }
+
+    func testOfflineMessageSendReadinessSummaryCountsSubmitRequirements() {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true
+        )
+        let coverage = TS3OfflineMessageDraftCoverageSummary(
+            recipientName: "Online User",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello",
+            message: "Catch you later",
+            allowsRecipientLookup: true,
+            validationMessages: validationMessages
+        )
+        let readiness = TS3OfflineMessageSendReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=6/6 | missingRequirements=0 | canSubmit=true | recipientFields=2 | contentFields=2/2 | validationIssues=0 | requirements=connected:true,recipient:true,subject:true,body:true,singleLineSubject:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testOfflineMessageSendReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: " ",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello\nagain",
+            message: " "
+        )
+        let coverage = TS3OfflineMessageDraftCoverageSummary(
+            recipientName: " ",
+            recipientUniqueIdentifier: nil,
+            subject: "Hello\nagain",
+            message: " ",
+            allowsRecipientLookup: false,
+            validationMessages: validationMessages
+        )
+        let readiness = TS3OfflineMessageSendReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 1)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .recipient, .body, .singleLineSubject, .validationClean]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=1/6 | missingRequirements=5 | canSubmit=false | recipientFields=0 | contentFields=1/2 | validationIssues=4 | requirements=connected:false,recipient:false,subject:true,body:false,singleLineSubject:false,validationClean:false | missing=connected,recipient,body,singleLineSubject,validationClean | needsAttention=true"
         )
     }
 

@@ -1562,6 +1562,17 @@
 "clientActions.offlineDraftCoverageSubjectFormat" = "主题：%d";
 "clientActions.offlineDraftCoverageBodyFormat" = "正文：%d";
 "clientActions.copyOfflineDraftCoverage" = "复制离线消息草稿覆盖";
+"clientActions.offlineSendReadiness" = "发送就绪度";
+"clientActions.offlineSendReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"clientActions.offlineSendReadinessReady" = "离线消息已可发送";
+"clientActions.offlineSendReadinessMissingFormat" = "缺失：%@";
+"clientActions.copyOfflineSendReadiness" = "复制发送就绪度";
+"clientActions.offlineSendRequirement.connected" = "已连接服务器";
+"clientActions.offlineSendRequirement.recipient" = "收件人";
+"clientActions.offlineSendRequirement.subject" = "主题";
+"clientActions.offlineSendRequirement.body" = "消息正文";
+"clientActions.offlineSendRequirement.singleLineSubject" = "单行主题";
+"clientActions.offlineSendRequirement.validationClean" = "校验通过";
 "clientActions.copyOfflineMessageSummary" = "复制离线消息摘要";
 "clientActions.pokeDraftCoverage" = "戳一戳草稿覆盖";
 "clientActions.pokeDraftCoverageFormat" = "%d 个目标字段，%d 个校验问题";

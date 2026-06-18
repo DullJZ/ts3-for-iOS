@@ -6091,6 +6091,21 @@ struct UserActionSheet: View {
                             Button(localized("clientActions.copyOfflineDraftCoverage")) {
                                 TS3PlatformSupport.copyToPasteboard(offlineMessageDraftCoverageSummary.clipboardSummary)
                             }
+                            ServerInfoDetailRow(
+                                label: localized("clientActions.offlineSendReadiness"),
+                                value: localized(
+                                    "clientActions.offlineSendReadinessFormat",
+                                    offlineMessageSendReadinessSummary.satisfiedRequirementCount,
+                                    offlineMessageSendReadinessSummary.totalRequirementCount,
+                                    offlineMessageSendReadinessSummary.missingRequirementCount
+                                )
+                            )
+                            Text(offlineMessageSendReadinessText(offlineMessageSendReadinessSummary))
+                                .font(.caption)
+                                .foregroundColor(offlineMessageSendReadinessSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("clientActions.copyOfflineSendReadiness")) {
+                                TS3PlatformSupport.copyToPasteboard(offlineMessageSendReadinessSummary.clipboardSummary)
+                            }
                             Text(offlineMessageDraftSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -6234,7 +6249,7 @@ struct UserActionSheet: View {
         case .poke:
             return !pokeDraftValidationMessages.isEmpty
         case .offlineMessage:
-            return !offlineMessageDraftValidationMessages.isEmpty
+            return !offlineMessageSendReadinessSummary.canSubmit
         case .editDescription, .contactNote, .kickChannel, .kickServer:
             return false
         case .ban:
@@ -6299,6 +6314,13 @@ struct UserActionSheet: View {
         )
     }
 
+    private var offlineMessageSendReadinessSummary: TS3OfflineMessageSendReadinessSummary {
+        TS3OfflineMessageSendReadinessSummary(
+            draftCoverageSummary: offlineMessageDraftCoverageSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
     private func offlineMessageDraftCoverageText(_ summary: TS3OfflineMessageDraftCoverageSummary) -> String {
         [
             localized("clientActions.offlineDraftCoverageRecipientNameFormat", summary.hasRecipientName ? 1 : 0),
@@ -6307,6 +6329,33 @@ struct UserActionSheet: View {
             localized("clientActions.offlineDraftCoverageSubjectFormat", summary.hasSubject ? 1 : 0),
             localized("clientActions.offlineDraftCoverageBodyFormat", summary.hasBody ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func offlineMessageSendReadinessText(_ summary: TS3OfflineMessageSendReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("clientActions.offlineSendReadinessReady")
+        }
+        return localized(
+            "clientActions.offlineSendReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3OfflineMessageSendRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("clientActions.offlineSendRequirement.connected")
+        case .recipient:
+            return localized("clientActions.offlineSendRequirement.recipient")
+        case .subject:
+            return localized("clientActions.offlineSendRequirement.subject")
+        case .body:
+            return localized("clientActions.offlineSendRequirement.body")
+        case .singleLineSubject:
+            return localized("clientActions.offlineSendRequirement.singleLineSubject")
+        case .validationClean:
+            return localized("clientActions.offlineSendRequirement.validationClean")
+        }
     }
 
     private var pokeDraftValidationMessages: [String] {
