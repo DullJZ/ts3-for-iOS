@@ -1580,6 +1580,15 @@
 "clientActions.pokeDraftCoverageClientIdFormat" = "Client ID: %d";
 "clientActions.pokeDraftCoverageCustomMessageFormat" = "Custom message: %d";
 "clientActions.copyPokeDraftCoverage" = "Copy Poke Draft Coverage";
+"clientActions.pokeSendReadiness" = "Send Readiness";
+"clientActions.pokeSendReadinessFormat" = "%d/%d ready, %d missing";
+"clientActions.pokeSendReadinessReady" = "Poke is ready to send";
+"clientActions.pokeSendReadinessMissingFormat" = "Missing: %@";
+"clientActions.copyPokeSendReadiness" = "Copy Poke Send Readiness";
+"clientActions.pokeSendRequirement.connected" = "Connected server";
+"clientActions.pokeSendRequirement.target" = "Poke target";
+"clientActions.pokeSendRequirement.singleLineMessage" = "Single-line message";
+"clientActions.pokeSendRequirement.validationClean" = "Validation clean";
 "clientActions.copyPokeSummary" = "Copy Poke Summary";
 "clientActions.clientId" = "Client ID";
 "clientActions.uniqueId" = "Unique ID";

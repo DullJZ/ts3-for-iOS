@@ -1580,6 +1580,15 @@
 "clientActions.pokeDraftCoverageClientIdFormat" = "客户端 ID：%d";
 "clientActions.pokeDraftCoverageCustomMessageFormat" = "自定义消息：%d";
 "clientActions.copyPokeDraftCoverage" = "复制戳一戳草稿覆盖";
+"clientActions.pokeSendReadiness" = "发送就绪度";
+"clientActions.pokeSendReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"clientActions.pokeSendReadinessReady" = "戳一戳已可发送";
+"clientActions.pokeSendReadinessMissingFormat" = "缺失：%@";
+"clientActions.copyPokeSendReadiness" = "复制戳一戳发送就绪度";
+"clientActions.pokeSendRequirement.connected" = "已连接服务器";
+"clientActions.pokeSendRequirement.target" = "戳一戳目标";
+"clientActions.pokeSendRequirement.singleLineMessage" = "单行消息";
+"clientActions.pokeSendRequirement.validationClean" = "校验通过";
 "clientActions.copyPokeSummary" = "复制戳一戳摘要";
 "clientActions.clientId" = "客户端 ID";
 "clientActions.uniqueId" = "唯一 ID";

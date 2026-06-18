@@ -6133,6 +6133,21 @@ struct UserActionSheet: View {
                             Button(localized("clientActions.copyPokeDraftCoverage")) {
                                 TS3PlatformSupport.copyToPasteboard(pokeDraftCoverageSummary.clipboardSummary)
                             }
+                            ServerInfoDetailRow(
+                                label: localized("clientActions.pokeSendReadiness"),
+                                value: localized(
+                                    "clientActions.pokeSendReadinessFormat",
+                                    pokeSendReadinessSummary.satisfiedRequirementCount,
+                                    pokeSendReadinessSummary.totalRequirementCount,
+                                    pokeSendReadinessSummary.missingRequirementCount
+                                )
+                            )
+                            Text(pokeSendReadinessText(pokeSendReadinessSummary))
+                                .font(.caption)
+                                .foregroundColor(pokeSendReadinessSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("clientActions.copyPokeSendReadiness")) {
+                                TS3PlatformSupport.copyToPasteboard(pokeSendReadinessSummary.clipboardSummary)
+                            }
                             Text(pokeDraftSummary)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -6247,7 +6262,7 @@ struct UserActionSheet: View {
         case .privateMessage, .complain:
             return textIsEmpty
         case .poke:
-            return !pokeDraftValidationMessages.isEmpty
+            return !pokeSendReadinessSummary.canSubmit
         case .offlineMessage:
             return !offlineMessageSendReadinessSummary.canSubmit
         case .editDescription, .contactNote, .kickChannel, .kickServer:
@@ -6383,12 +6398,42 @@ struct UserActionSheet: View {
         )
     }
 
+    private var pokeSendReadinessSummary: TS3PokeSendReadinessSummary {
+        TS3PokeSendReadinessSummary(
+            draftCoverageSummary: pokeDraftCoverageSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
     private func pokeDraftCoverageText(_ summary: TS3PokeDraftCoverageSummary) -> String {
         [
             localized("clientActions.pokeDraftCoverageTargetNameFormat", summary.hasTargetName ? 1 : 0),
             localized("clientActions.pokeDraftCoverageClientIdFormat", summary.hasTargetClientId ? 1 : 0),
             localized("clientActions.pokeDraftCoverageCustomMessageFormat", summary.hasCustomMessage ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func pokeSendReadinessText(_ summary: TS3PokeSendReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("clientActions.pokeSendReadinessReady")
+        }
+        return localized(
+            "clientActions.pokeSendReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3PokeSendRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("clientActions.pokeSendRequirement.connected")
+        case .target:
+            return localized("clientActions.pokeSendRequirement.target")
+        case .singleLineMessage:
+            return localized("clientActions.pokeSendRequirement.singleLineMessage")
+        case .validationClean:
+            return localized("clientActions.pokeSendRequirement.validationClean")
+        }
     }
 
     private var infoSnapshot: String {

@@ -570,7 +570,7 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         XCTAssertFalse(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "targetFields=2 | targetName=true | clientId=true | customMessage=true | validationIssues=0 | needsAttention=false"
+            "targetFields=2 | targetName=true | clientId=true | customMessage=true | singleLineMessage=true | validationIssues=0 | needsAttention=false"
         )
     }
 
@@ -595,7 +595,68 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "targetFields=0 | targetName=false | clientId=false | customMessage=true | validationIssues=2 | needsAttention=true"
+            "targetFields=0 | targetName=false | clientId=false | customMessage=true | singleLineMessage=false | validationIssues=2 | needsAttention=true"
+        )
+    }
+
+    func testPokeSendReadinessSummaryCountsSubmitRequirements() {
+        let validationMessages = TS3PokeDraftValidator.validationMessages(
+            targetName: " Taylor ",
+            targetClientId: 12,
+            message: " Wake up "
+        )
+        let coverage = TS3PokeDraftCoverageSummary(
+            targetName: " Taylor ",
+            targetClientId: 12,
+            message: " Wake up ",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3PokeSendReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 4)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=4/4 | missingRequirements=0 | canSubmit=true | targetFields=2 | customMessage=true | validationIssues=0 | requirements=connected:true,target:true,singleLineMessage:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testPokeSendReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let validationMessages = TS3PokeDraftValidator.validationMessages(
+            targetName: " ",
+            targetClientId: nil,
+            message: "Wake\nup"
+        )
+        let coverage = TS3PokeDraftCoverageSummary(
+            targetName: " ",
+            targetClientId: nil,
+            message: "Wake\nup",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3PokeSendReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 4)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .target, .singleLineMessage, .validationClean]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=0/4 | missingRequirements=4 | canSubmit=false | targetFields=0 | customMessage=true | validationIssues=2 | requirements=connected:false,target:false,singleLineMessage:false,validationClean:false | missing=connected,target,singleLineMessage,validationClean | needsAttention=true"
         )
     }
 
