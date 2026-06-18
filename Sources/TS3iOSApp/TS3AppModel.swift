@@ -5130,6 +5130,69 @@ struct TS3DatabaseClientOfficialActionAuditSummary {
     }
 }
 
+enum TS3DatabaseClientActionRequirement: String, CaseIterable, Codable {
+    case uniqueIdentifier
+    case onlineClient
+    case offlineMessage
+    case banPermission
+    case serverGroups
+}
+
+struct TS3DatabaseClientActionReadinessSummary {
+    let actionSummary: TS3DatabaseClientActionSummary
+
+    var requirementStates: [TS3DatabaseClientActionRequirement: Bool] {
+        [
+            .uniqueIdentifier: actionSummary.hasUniqueIdentifier,
+            .onlineClient: actionSummary.isOnline,
+            .offlineMessage: actionSummary.canSendOfflineMessage,
+            .banPermission: actionSummary.canBan,
+            .serverGroups: actionSummary.hasUniqueIdentifier && actionSummary.serverGroupCount > 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3DatabaseClientActionRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3DatabaseClientActionRequirement] {
+        TS3DatabaseClientActionRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var blockedOfficialAreaCount: Int {
+        TS3DatabaseClientOfficialActionAuditSummary(actionSummary: actionSummary).blockedAreaCount
+    }
+
+    var needsAttention: Bool {
+        missingRequirementCount > 0 || actionSummary.needsAttention || blockedOfficialAreaCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3DatabaseClientActionRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "db=\(actionSummary.record.id)",
+            "nickname=\(actionSummary.record.nickname)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "blockedOfficialAreas=\(blockedOfficialAreaCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3DatabaseClientBackupPreview {
     struct Candidate: Identifiable, Equatable {
         let id: Int

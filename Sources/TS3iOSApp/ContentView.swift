@@ -16855,6 +16855,22 @@ struct ClientDatabaseSheet: View {
                         Button(localized("database.copyOfficialActionAudit")) {
                             TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
                         }
+                        let actionReadiness = databaseClientActionReadinessSummary(for: selected)
+                        ServerInfoDetailRow(
+                            label: localized("database.actionReadiness"),
+                            value: localized(
+                                "database.actionReadinessFormat",
+                                actionReadiness.satisfiedRequirementCount,
+                                actionReadiness.totalRequirementCount,
+                                actionReadiness.missingRequirementCount
+                            )
+                        )
+                        Text(databaseClientActionReadinessText(actionReadiness))
+                            .font(.caption)
+                            .foregroundColor(actionReadiness.needsAttention ? .orange : .secondary)
+                        Button(localized("database.copyActionReadiness")) {
+                            TS3PlatformSupport.copyToPasteboard(actionReadiness.clipboardSummary)
+                        }
                         Button(localized("database.copySelectedSnapshot")) {
                             TS3PlatformSupport.copyToPasteboard(databaseClientSnapshot(for: selected))
                         }
@@ -17318,6 +17334,10 @@ struct ClientDatabaseSheet: View {
         TS3DatabaseClientOfficialActionAuditSummary(actionSummary: databaseClientActionSummary(for: record))
     }
 
+    private func databaseClientActionReadinessSummary(for record: TS3DatabaseClientSummary) -> TS3DatabaseClientActionReadinessSummary {
+        TS3DatabaseClientActionReadinessSummary(actionSummary: databaseClientActionSummary(for: record))
+    }
+
     private func databaseClientActionSummaryText(_ summary: TS3DatabaseClientActionSummary) -> String {
         var parts = [
             localized("database.actionSummaryIdentityFormat", summary.identityActionCount),
@@ -17351,6 +17371,17 @@ struct ClientDatabaseSheet: View {
         return parts.joined(separator: " · ")
     }
 
+    private func databaseClientActionReadinessText(_ summary: TS3DatabaseClientActionReadinessSummary) -> String {
+        let missing = summary.missingRequirements
+        if missing.isEmpty {
+            return localized("database.actionReadinessAllReady")
+        }
+        return localized(
+            "database.actionReadinessMissingFormat",
+            missing.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
     private func title(for area: TS3DatabaseClientOfficialActionArea) -> String {
         switch area {
         case .identityLookup:
@@ -17363,6 +17394,21 @@ struct ClientDatabaseSheet: View {
             return localized("database.officialAction.administration")
         case .onlineContext:
             return localized("database.officialAction.onlineContext")
+        }
+    }
+
+    private func title(for requirement: TS3DatabaseClientActionRequirement) -> String {
+        switch requirement {
+        case .uniqueIdentifier:
+            return localized("database.actionRequirement.uniqueIdentifier")
+        case .onlineClient:
+            return localized("database.actionRequirement.onlineClient")
+        case .offlineMessage:
+            return localized("database.actionRequirement.offlineMessage")
+        case .banPermission:
+            return localized("database.actionRequirement.banPermission")
+        case .serverGroups:
+            return localized("database.actionRequirement.serverGroups")
         }
     }
 

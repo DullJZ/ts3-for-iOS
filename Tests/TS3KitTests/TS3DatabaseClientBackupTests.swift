@@ -232,6 +232,77 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         )
     }
 
+    func testDatabaseClientActionReadinessSummaryCountsRequirements() {
+        let client = TS3DatabaseClientSummary(
+            id: 7,
+            uniqueIdentifier: "uid-b",
+            nickname: "Beta",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        let actionSummary = TS3DatabaseClientActionSummary(
+            record: client,
+            isOnline: true,
+            canSendOfflineMessage: true,
+            canBan: true,
+            contactStatus: .friend,
+            hasContactNote: true,
+            serverGroupCount: 3
+        )
+        let readiness = TS3DatabaseClientActionReadinessSummary(actionSummary: actionSummary)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 5)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertEqual(readiness.blockedOfficialAreaCount, 0)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "db=7 | nickname=Beta | readiness=5/5 | missingRequirements=0 | blockedOfficialAreas=0 | requirements=uniqueIdentifier:true,onlineClient:true,offlineMessage:true,banPermission:true,serverGroups:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testDatabaseClientActionReadinessSummaryFlagsMissingRequirements() {
+        let client = TS3DatabaseClientSummary(
+            id: 6,
+            uniqueIdentifier: " ",
+            nickname: "Alpha",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        let actionSummary = TS3DatabaseClientActionSummary(
+            record: client,
+            isOnline: false,
+            canSendOfflineMessage: false,
+            canBan: false,
+            contactStatus: .neutral,
+            hasContactNote: false,
+            serverGroupCount: 3
+        )
+        let readiness = TS3DatabaseClientActionReadinessSummary(actionSummary: actionSummary)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.uniqueIdentifier, .onlineClient, .offlineMessage, .banPermission, .serverGroups]
+        )
+        XCTAssertEqual(readiness.blockedOfficialAreaCount, 2)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "db=6 | nickname=Alpha | readiness=0/5 | missingRequirements=5 | blockedOfficialAreas=2 | requirements=uniqueIdentifier:false,onlineClient:false,offlineMessage:false,banPermission:false,serverGroups:false | missing=uniqueIdentifier,onlineClient,offlineMessage,banPermission,serverGroups | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testDatabaseClientBackupPreviewSanitizesCountsAndSummaries() throws {
         let model = TS3AppModel()
