@@ -22280,6 +22280,10 @@ struct PermissionsSheet: View {
         filteredDisplayedPermissions.map(\.clipboardSummary).joined(separator: "\n")
     }
 
+    var visiblePermissionDeleteImpactSummary: TS3PermissionDeleteImpactSummary {
+        TS3PermissionDeleteImpactSummary(permissions: filteredDisplayedPermissions, scope: .visible)
+    }
+
     var permissionDraft: TS3PermissionEditDraft {
         TS3PermissionEditDraft(
             scope: model.permissionEditScope,
@@ -22455,6 +22459,11 @@ struct PermissionsSheet: View {
                     }
                     .disabled(model.state != .connected || filteredDisplayedPermissions.isEmpty)
                     .foregroundColor(.red)
+
+                    Button(localized("permissions.copyDeleteImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(visiblePermissionDeleteImpactSummary.clipboardSummary)
+                    }
+                    .disabled(filteredDisplayedPermissions.isEmpty)
 
                     Picker(localized("permissions.filter"), selection: $assignedFilter) {
                         ForEach(AssignedPermissionFilter.allCases) { filter in
@@ -22729,7 +22738,7 @@ struct PermissionsSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text(localized("permissions.deleteVisibleAlert.title")),
-                    message: Text(localized("permissions.deleteVisibleAlert.messageFormat", filteredDisplayedPermissions.count)),
+                    message: Text(permissionDeleteImpactText(visiblePermissionDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteSelectedPermissions(filteredDisplayedPermissions)
                     },
@@ -23063,6 +23072,28 @@ struct PermissionsSheet: View {
         return parts.joined(separator: " | ")
     }
 
+    private func permissionDeleteImpactText(_ summary: TS3PermissionDeleteImpactSummary) -> String {
+        [
+            localized(
+                "permissions.deleteImpactFormat",
+                summary.permissionCount,
+                summary.directCount
+            ),
+            localized(
+                "permissions.deleteImpactFlagsFormat",
+                summary.negatedCount,
+                summary.skippedCount
+            ),
+            localized(
+                "permissions.deleteImpactValuesFormat",
+                summary.positiveValueCount,
+                summary.zeroValueCount,
+                summary.negativeValueCount
+            ),
+            localized("permissions.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
+    }
+
     private func title(for area: TS3PermissionOfficialEditArea) -> String {
         switch area {
         case .targetScope:
@@ -23337,7 +23368,7 @@ struct PermissionRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("permissions.row.deleteAlert.title")),
-                message: Text(permission.name),
+                message: Text(permissionDeleteImpactText(TS3PermissionDeleteImpactSummary(permissions: [permission], scope: .single))),
                 primaryButton: .destructive(Text(localized("common.delete"))) {
                     delete()
                 },
@@ -23414,6 +23445,28 @@ struct PermissionRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func permissionDeleteImpactText(_ summary: TS3PermissionDeleteImpactSummary) -> String {
+        [
+            localized(
+                "permissions.deleteImpactFormat",
+                summary.permissionCount,
+                summary.directCount
+            ),
+            localized(
+                "permissions.deleteImpactFlagsFormat",
+                summary.negatedCount,
+                summary.skippedCount
+            ),
+            localized(
+                "permissions.deleteImpactValuesFormat",
+                summary.positiveValueCount,
+                summary.zeroValueCount,
+                summary.negativeValueCount
+            ),
+            localized("permissions.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 }
 

@@ -6027,6 +6027,74 @@ struct TS3PermissionSummary: Identifiable {
     }
 }
 
+struct TS3PermissionDeleteImpactSummary {
+    enum Scope: String {
+        case single
+        case visible
+    }
+
+    let scope: Scope
+    let permissions: [TS3PermissionSummary]
+
+    var permissionCount: Int {
+        permissions.count
+    }
+
+    var negatedCount: Int {
+        permissions.filter(\.isNegated).count
+    }
+
+    var skippedCount: Int {
+        permissions.filter(\.isSkipped).count
+    }
+
+    var directCount: Int {
+        permissions.filter { !$0.isNegated && !$0.isSkipped }.count
+    }
+
+    var positiveValueCount: Int {
+        permissions.filter { $0.value > 0 }.count
+    }
+
+    var zeroValueCount: Int {
+        permissions.filter { $0.value == 0 }.count
+    }
+
+    var negativeValueCount: Int {
+        permissions.filter { $0.value < 0 }.count
+    }
+
+    var needsAttention: Bool {
+        permissionCount == 0
+            || negatedCount > 0
+            || skippedCount > 0
+            || negativeValueCount > 0
+            || permissionCount >= 10
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.rawValue)",
+            "deletePermissions=\(permissionCount)",
+            "direct=\(directCount)",
+            "negated=\(negatedCount)",
+            "skip=\(skippedCount)",
+            "positive=\(positiveValueCount)",
+            "zero=\(zeroValueCount)",
+            "negative=\(negativeValueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(permissions: [TS3PermissionSummary], scope: Scope) {
+        var seen = Set<String>()
+        self.permissions = permissions.filter { permission in
+            seen.insert(permission.id).inserted
+        }
+        self.scope = scope
+    }
+}
+
 enum TS3PrivilegeKeyTargetType: String, CaseIterable, Identifiable {
     case serverGroup
     case channelGroup

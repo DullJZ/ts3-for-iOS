@@ -53,6 +53,56 @@ final class TS3PermissionBackupTests: XCTestCase {
         )
     }
 
+    func testPermissionDeleteImpactSummaryCountsVisibleDeletionRisk() {
+        let direct = makePermission("i_channel_join_power", value: 50)
+        let negated = makePermission("i_client_kick_power", value: 75, isNegated: true)
+        let skipped = makePermission("b_virtualserver_modify_name", value: 0, isSkipped: true)
+        let negative = makePermission("i_client_needed_kick_power", value: -1)
+        let duplicate = makePermission("i_channel_join_power", value: 99, isNegated: true, isSkipped: true)
+
+        let summary = TS3PermissionDeleteImpactSummary(
+            permissions: [direct, negated, skipped, negative, duplicate],
+            scope: .visible
+        )
+
+        XCTAssertEqual(summary.permissionCount, 4)
+        XCTAssertEqual(summary.directCount, 2)
+        XCTAssertEqual(summary.negatedCount, 1)
+        XCTAssertEqual(summary.skippedCount, 1)
+        XCTAssertEqual(summary.positiveValueCount, 2)
+        XCTAssertEqual(summary.zeroValueCount, 1)
+        XCTAssertEqual(summary.negativeValueCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=visible | deletePermissions=4 | direct=2 | negated=1 | skip=1 | positive=2 | zero=1 | negative=1 | needsAttention=true"
+        )
+    }
+
+    func testPermissionDeleteImpactSummaryFlagsEmptyAndLargeDeletion() {
+        let empty = TS3PermissionDeleteImpactSummary(permissions: [], scope: .visible)
+
+        XCTAssertEqual(empty.permissionCount, 0)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(
+            empty.clipboardSummary,
+            "scope=visible | deletePermissions=0 | direct=0 | negated=0 | skip=0 | positive=0 | zero=0 | negative=0 | needsAttention=true"
+        )
+
+        let largeDeletion = TS3PermissionDeleteImpactSummary(
+            permissions: (1...10).map { index in
+                makePermission("permission_\(index)", value: index)
+            },
+            scope: .visible
+        )
+
+        XCTAssertEqual(largeDeletion.permissionCount, 10)
+        XCTAssertEqual(largeDeletion.negatedCount, 0)
+        XCTAssertEqual(largeDeletion.skippedCount, 0)
+        XCTAssertEqual(largeDeletion.negativeValueCount, 0)
+        XCTAssertTrue(largeDeletion.needsAttention)
+    }
+
     @MainActor
     func testPermissionBackupPreviewListsOverwriteAndNewPermissionNames() throws {
         let source = TS3AppModel()

@@ -3109,6 +3109,11 @@
 "permissions.accessibility.valueFormat" = "值 %d";
 "permissions.deleteVisibleAlert.title" = "删除可见权限？";
 "permissions.deleteVisibleAlert.messageFormat" = "这会从当前目标移除 %d 条权限。";
+"permissions.deleteImpactFormat" = "将删除 %d 条权限：%d 条直接权限。";
+"permissions.deleteImpactFlagsFormat" = "取反/跳过标记：%d/%d。";
+"permissions.deleteImpactValuesFormat" = "权限值正/零/负：%d/%d/%d。";
+"permissions.deleteImpactAttentionFormat" = "需要额外注意：%@。";
+"permissions.copyDeleteImpact" = "复制删除影响";
 "permissions.deleteAllPresetsAlert.title" = "删除所有权限筛选预设？";
 "permissions.presetSummary.sortFormat" = "排序 %@";
 "permissions.presetSummary.assignedFormat" = "已分配 %@";

@@ -3109,6 +3109,11 @@
 "permissions.accessibility.valueFormat" = "Value %d";
 "permissions.deleteVisibleAlert.title" = "Delete Visible Permissions?";
 "permissions.deleteVisibleAlert.messageFormat" = "This removes %d permission entries from the current target.";
+"permissions.deleteImpactFormat" = "Deleting %d permissions: %d direct.";
+"permissions.deleteImpactFlagsFormat" = "Negated/skip flags: %d/%d.";
+"permissions.deleteImpactValuesFormat" = "Values positive/zero/negative: %d/%d/%d.";
+"permissions.deleteImpactAttentionFormat" = "Needs extra attention: %@.";
+"permissions.copyDeleteImpact" = "Copy Delete Impact";
 "permissions.deleteAllPresetsAlert.title" = "Delete All Permission Filter Presets?";
 "permissions.presetSummary.sortFormat" = "Sort %@";
 "permissions.presetSummary.assignedFormat" = "Assigned %@";
