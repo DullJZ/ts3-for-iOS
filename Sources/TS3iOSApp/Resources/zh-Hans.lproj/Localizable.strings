@@ -505,6 +505,17 @@
 "privilegeKeys.draftCoverageDescriptionFormat" = "描述：%d";
 "privilegeKeys.draftCoverageCustomSetFormat" = "自定义权限集：%d";
 "privilegeKeys.copyDraftCoverage" = "复制密钥草稿覆盖";
+"privilegeKeys.creationReadiness" = "创建就绪度";
+"privilegeKeys.creationReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"privilegeKeys.creationReadinessReady" = "权限密钥已可创建";
+"privilegeKeys.creationReadinessMissingFormat" = "缺失：%@";
+"privilegeKeys.copyCreationReadiness" = "复制创建就绪度";
+"privilegeKeys.creationRequirement.connected" = "已连接服务器";
+"privilegeKeys.creationRequirement.groupTarget" = "组目标";
+"privilegeKeys.creationRequirement.channelTarget" = "频道目标";
+"privilegeKeys.creationRequirement.singleLineDescription" = "单行描述";
+"privilegeKeys.creationRequirement.singleLineCustomSet" = "单行自定义权限集";
+"privilegeKeys.creationRequirement.validationClean" = "校验通过";
 "privilegeKeys.createPrivilegeKey" = "创建权限密钥";
 "privilegeKeys.existingKeys" = "现有密钥";
 "privilegeKeys.searchKeys" = "搜索密钥";

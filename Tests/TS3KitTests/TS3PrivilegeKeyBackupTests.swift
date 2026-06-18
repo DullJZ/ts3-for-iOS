@@ -127,6 +127,82 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyCreationReadinessSummaryCountsSubmitRequirements() {
+        let validationMessages = TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: .channelGroup,
+            groupId: 9,
+            channelId: 12,
+            description: "Channel admin",
+            customSet: "token_custom"
+        )
+        let coverage = TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: .channelGroup,
+            groupId: 9,
+            channelId: 12,
+            description: "Channel admin",
+            customSet: "token_custom",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3PrivilegeKeyCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "type=channelGroup | readiness=6/6 | missingRequirements=0 | canSubmit=true | targetFields=2/2 | validationIssues=0 | requirements=connected:true,groupTarget:true,channelTarget:true,singleLineDescription:true,singleLineCustomSet:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testPrivilegeKeyCreationReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let validationMessages = TS3PrivilegeKeyDraftValidator.validationMessages(
+            targetType: .channelGroup,
+            groupId: 0,
+            channelId: nil,
+            description: "Line one\nLine two",
+            customSet: "token=one\ntoken=two"
+        )
+        let coverage = TS3PrivilegeKeyDraftCoverageSummary(
+            targetType: .channelGroup,
+            groupId: 0,
+            channelId: nil,
+            description: "Line one\nLine two",
+            customSet: "token=one\ntoken=two",
+            validationMessages: validationMessages
+        )
+        let readiness = TS3PrivilegeKeyCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 6)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [
+                .connected,
+                .groupTarget,
+                .channelTarget,
+                .singleLineDescription,
+                .singleLineCustomSet,
+                .validationClean
+            ]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "type=channelGroup | readiness=0/6 | missingRequirements=6 | canSubmit=false | targetFields=0/2 | validationIssues=4 | requirements=connected:false,groupTarget:false,channelTarget:false,singleLineDescription:false,singleLineCustomSet:false,validationClean:false | missing=connected,groupTarget,channelTarget,singleLineDescription,singleLineCustomSet,validationClean | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testPrivilegeKeyBackupPreviewCountsTypesAndFirstKeyDetails() throws {
         let model = TS3AppModel()

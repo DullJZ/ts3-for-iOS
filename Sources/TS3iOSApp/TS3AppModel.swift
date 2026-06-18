@@ -6377,6 +6377,8 @@ struct TS3PrivilegeKeyDraftCoverageSummary {
     let hasChannel: Bool
     let hasDescription: Bool
     let hasCustomSet: Bool
+    let hasSingleLineDescription: Bool
+    let hasSingleLineCustomSet: Bool
     let validationIssueCount: Int
 
     var coveredTargetFieldCount: Int {
@@ -6425,12 +6427,85 @@ struct TS3PrivilegeKeyDraftCoverageSummary {
         self.hasChannel = (channelId ?? 0) > 0
         self.hasDescription = Self.normalized(description) != nil
         self.hasCustomSet = Self.normalized(customSet) != nil
+        self.hasSingleLineDescription = !Self.containsNewline(description)
+        self.hasSingleLineCustomSet = !Self.containsNewline(customSet)
         self.validationIssueCount = validationMessages.count
     }
 
     private static func normalized(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
+enum TS3PrivilegeKeyCreationRequirement: String, CaseIterable, Codable {
+    case connected
+    case groupTarget
+    case channelTarget
+    case singleLineDescription
+    case singleLineCustomSet
+    case validationClean
+}
+
+struct TS3PrivilegeKeyCreationReadinessSummary {
+    let draftCoverageSummary: TS3PrivilegeKeyDraftCoverageSummary
+    let isConnected: Bool
+
+    var requirementStates: [TS3PrivilegeKeyCreationRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .groupTarget: draftCoverageSummary.hasGroup,
+            .channelTarget: !draftCoverageSummary.requiresChannel || draftCoverageSummary.hasChannel,
+            .singleLineDescription: draftCoverageSummary.hasSingleLineDescription,
+            .singleLineCustomSet: draftCoverageSummary.hasSingleLineCustomSet,
+            .validationClean: draftCoverageSummary.validationIssueCount == 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3PrivilegeKeyCreationRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3PrivilegeKeyCreationRequirement] {
+        TS3PrivilegeKeyCreationRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !draftCoverageSummary.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3PrivilegeKeyCreationRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "type=\(draftCoverageSummary.targetType.rawValue)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "targetFields=\(draftCoverageSummary.coveredTargetFieldCount)/\(draftCoverageSummary.requiredTargetFieldCount)",
+            "validationIssues=\(draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
     }
 }
 

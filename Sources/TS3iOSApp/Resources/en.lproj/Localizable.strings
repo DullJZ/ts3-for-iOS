@@ -505,6 +505,17 @@
 "privilegeKeys.draftCoverageDescriptionFormat" = "Description: %d";
 "privilegeKeys.draftCoverageCustomSetFormat" = "Custom set: %d";
 "privilegeKeys.copyDraftCoverage" = "Copy Key Draft Coverage";
+"privilegeKeys.creationReadiness" = "Creation Readiness";
+"privilegeKeys.creationReadinessFormat" = "%d/%d ready, %d missing";
+"privilegeKeys.creationReadinessReady" = "Privilege key is ready to create";
+"privilegeKeys.creationReadinessMissingFormat" = "Missing: %@";
+"privilegeKeys.copyCreationReadiness" = "Copy Creation Readiness";
+"privilegeKeys.creationRequirement.connected" = "Connected server";
+"privilegeKeys.creationRequirement.groupTarget" = "Group target";
+"privilegeKeys.creationRequirement.channelTarget" = "Channel target";
+"privilegeKeys.creationRequirement.singleLineDescription" = "Single-line description";
+"privilegeKeys.creationRequirement.singleLineCustomSet" = "Single-line custom set";
+"privilegeKeys.creationRequirement.validationClean" = "Validation clean";
 "privilegeKeys.createPrivilegeKey" = "Create Privilege Key";
 "privilegeKeys.existingKeys" = "Existing Keys";
 "privilegeKeys.searchKeys" = "Search keys";

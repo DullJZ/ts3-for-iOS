@@ -25005,6 +25005,22 @@ struct PrivilegeKeysSheet: View {
                     Button(localized("privilegeKeys.copyDraftCoverage")) {
                         TS3PlatformSupport.copyToPasteboard(privilegeKeyDraftCoverageSummary.clipboardSummary)
                     }
+                    let creationReadiness = privilegeKeyCreationReadinessSummary
+                    ServerInfoDetailRow(
+                        label: localized("privilegeKeys.creationReadiness"),
+                        value: localized(
+                            "privilegeKeys.creationReadinessFormat",
+                            creationReadiness.satisfiedRequirementCount,
+                            creationReadiness.totalRequirementCount,
+                            creationReadiness.missingRequirementCount
+                        )
+                    )
+                    Text(privilegeKeyCreationReadinessText(creationReadiness))
+                        .font(.caption)
+                        .foregroundColor(creationReadiness.needsAttention ? .orange : .secondary)
+                    Button(localized("privilegeKeys.copyCreationReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(creationReadiness.clipboardSummary)
+                    }
                     Text(privilegeKeyDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -25354,6 +25370,13 @@ struct PrivilegeKeysSheet: View {
         )
     }
 
+    private var privilegeKeyCreationReadinessSummary: TS3PrivilegeKeyCreationReadinessSummary {
+        TS3PrivilegeKeyCreationReadinessSummary(
+            draftCoverageSummary: privilegeKeyDraftCoverageSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
     private func privilegeKeyDraftCoverageText(_ summary: TS3PrivilegeKeyDraftCoverageSummary) -> String {
         [
             localized("privilegeKeys.draftCoverageTypeFormat", targetTypeTitle(summary.targetType)),
@@ -25362,6 +25385,33 @@ struct PrivilegeKeysSheet: View {
             localized("privilegeKeys.draftCoverageDescriptionFormat", summary.hasDescription ? 1 : 0),
             localized("privilegeKeys.draftCoverageCustomSetFormat", summary.hasCustomSet ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func privilegeKeyCreationReadinessText(_ summary: TS3PrivilegeKeyCreationReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("privilegeKeys.creationReadinessReady")
+        }
+        return localized(
+            "privilegeKeys.creationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3PrivilegeKeyCreationRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("privilegeKeys.creationRequirement.connected")
+        case .groupTarget:
+            return localized("privilegeKeys.creationRequirement.groupTarget")
+        case .channelTarget:
+            return localized("privilegeKeys.creationRequirement.channelTarget")
+        case .singleLineDescription:
+            return localized("privilegeKeys.creationRequirement.singleLineDescription")
+        case .singleLineCustomSet:
+            return localized("privilegeKeys.creationRequirement.singleLineCustomSet")
+        case .validationClean:
+            return localized("privilegeKeys.creationRequirement.validationClean")
+        }
     }
 
     private func privilegeKeyConnectionImpactText(_ impact: TS3PrivilegeKeyConnectionImpactSummary) -> String {
