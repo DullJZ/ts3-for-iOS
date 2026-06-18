@@ -15580,6 +15580,13 @@ struct GroupClientListSheet: View {
         )
     }
 
+    private var memberChangeReadinessSummary: TS3GroupMemberChangeReadinessSummary {
+        TS3GroupMemberChangeReadinessSummary(
+            draftCoverageSummary: memberDraftCoverageSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
     private var officialManagementAuditSummary: TS3GroupOfficialManagementAuditSummary {
         TS3GroupOfficialManagementAuditSummary(
             target: target,
@@ -15746,7 +15753,7 @@ struct GroupClientListSheet: View {
                         Button(localized("groups.members.addByDatabaseId")) {
                             addMemberByDatabaseId()
                         }
-                        .disabled(model.state != .connected || !memberDraftValidationMessages.isEmpty)
+                        .disabled(!memberChangeReadinessSummary.canSubmit)
                         Button(localized("groups.members.removeVisibleMembers")) {
                             isConfirmingRemoveVisible = true
                         }
@@ -15776,7 +15783,7 @@ struct GroupClientListSheet: View {
                         Button(localized("groups.members.setChannelGroupByDatabaseId")) {
                             setChannelGroupByDatabaseId()
                         }
-                        .disabled(model.state != .connected || !memberDraftValidationMessages.isEmpty)
+                        .disabled(!memberChangeReadinessSummary.canSubmit)
                     }
                 }
 
@@ -16121,6 +16128,21 @@ struct GroupClientListSheet: View {
         Button(localized("groups.members.copyDraftCoverage")) {
             TS3PlatformSupport.copyToPasteboard(memberDraftCoverageSummary.clipboardSummary)
         }
+        ServerInfoDetailRow(
+            label: localized("groups.members.changeReadiness"),
+            value: localized(
+                "groups.members.changeReadinessFormat",
+                memberChangeReadinessSummary.satisfiedRequirementCount,
+                memberChangeReadinessSummary.totalRequirementCount,
+                memberChangeReadinessSummary.missingRequirementCount
+            )
+        )
+        Text(memberChangeReadinessText(memberChangeReadinessSummary))
+            .font(.caption)
+            .foregroundColor(memberChangeReadinessSummary.needsAttention ? .orange : .secondary)
+        Button(localized("groups.members.copyChangeReadiness")) {
+            TS3PlatformSupport.copyToPasteboard(memberChangeReadinessSummary.clipboardSummary)
+        }
     }
 
     private func memberDraftOperationTitle(_ operation: TS3GroupMemberDraftValidator.Operation) -> String {
@@ -16140,6 +16162,31 @@ struct GroupClientListSheet: View {
             localized("groups.members.draftCoverageClientDatabaseIdFormat", summary.hasClientDatabaseId ? 1 : 0),
             localized("groups.members.draftCoverageChannelFormat", summary.hasChannel ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func memberChangeReadinessText(_ summary: TS3GroupMemberChangeReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("groups.members.changeReadinessReady")
+        }
+        return localized(
+            "groups.members.changeReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3GroupMemberChangeRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("groups.members.changeRequirement.connected")
+        case .group:
+            return localized("groups.members.changeRequirement.group")
+        case .clientDatabaseId:
+            return localized("groups.members.changeRequirement.clientDatabaseId")
+        case .channel:
+            return localized("groups.members.changeRequirement.channel")
+        case .validationClean:
+            return localized("groups.members.changeRequirement.validationClean")
+        }
     }
 
     private func officialManagementAuditText(_ summary: TS3GroupOfficialManagementAuditSummary) -> String {

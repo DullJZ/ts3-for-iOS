@@ -341,6 +341,82 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupMemberChangeReadinessSummaryCountsServerMemberRequirements() {
+        let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .addServerMember,
+            target: .server,
+            group: group,
+            clientDatabaseId: "42",
+            channelId: nil
+        )
+        let coverage = TS3GroupMemberDraftCoverageSummary(
+            operation: .addServerMember,
+            target: .server,
+            group: group,
+            clientDatabaseId: "42",
+            channelId: nil,
+            validationMessages: validationMessages
+        )
+        let readiness = TS3GroupMemberChangeReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.requirements, [.connected, .group, .clientDatabaseId, .validationClean])
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 4)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "operation=Add Member | target=Server Groups | readiness=4/4 | missingRequirements=0 | canSubmit=true | requiredFields=2/2 | validationIssues=0 | requirements=connected:true,group:true,clientDatabaseId:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testGroupMemberChangeReadinessSummaryFlagsDisconnectedInvalidChannelMemberDraft() {
+        let brokenGroup = TS3GroupSummary(id: 0, name: "Broken", type: nil)
+        let validationMessages = TS3GroupMemberDraftValidator.validationMessages(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: brokenGroup,
+            clientDatabaseId: "abc",
+            channelId: nil
+        )
+        let coverage = TS3GroupMemberDraftCoverageSummary(
+            operation: .setChannelGroup,
+            target: .channel,
+            group: brokenGroup,
+            clientDatabaseId: "abc",
+            channelId: nil,
+            validationMessages: validationMessages
+        )
+        let readiness = TS3GroupMemberChangeReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(
+            readiness.requirements,
+            [.connected, .group, .clientDatabaseId, .channel, .validationClean]
+        )
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .group, .clientDatabaseId, .channel, .validationClean]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "operation=Set Channel Group | target=Channel Groups | readiness=0/5 | missingRequirements=5 | canSubmit=false | requiredFields=0/3 | validationIssues=3 | requirements=connected:false,group:false,clientDatabaseId:false,channel:false,validationClean:false | missing=connected,group,clientDatabaseId,channel,validationClean | needsAttention=true"
+        )
+    }
+
     func testGroupClipboardSummaryIncludesIdNameAndType() {
         let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
 

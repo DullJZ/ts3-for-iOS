@@ -6384,6 +6384,81 @@ struct TS3GroupMemberDraftCoverageSummary {
     }
 }
 
+enum TS3GroupMemberChangeRequirement: String, CaseIterable, Codable {
+    case connected
+    case group
+    case clientDatabaseId
+    case channel
+    case validationClean
+}
+
+struct TS3GroupMemberChangeReadinessSummary {
+    let draftCoverageSummary: TS3GroupMemberDraftCoverageSummary
+    let isConnected: Bool
+
+    var requirements: [TS3GroupMemberChangeRequirement] {
+        draftCoverageSummary.requiresChannel
+            ? TS3GroupMemberChangeRequirement.allCases
+            : TS3GroupMemberChangeRequirement.allCases.filter { $0 != .channel }
+    }
+
+    var requirementStates: [TS3GroupMemberChangeRequirement: Bool] {
+        var states: [TS3GroupMemberChangeRequirement: Bool] = [
+            .connected: isConnected,
+            .group: draftCoverageSummary.hasGroup,
+            .clientDatabaseId: draftCoverageSummary.hasClientDatabaseId,
+            .validationClean: draftCoverageSummary.validationIssueCount == 0
+        ]
+        if draftCoverageSummary.requiresChannel {
+            states[.channel] = draftCoverageSummary.hasChannel
+        }
+        return states
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirements.filter { requirementStates[$0] == true }.count
+    }
+
+    var totalRequirementCount: Int {
+        requirements.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3GroupMemberChangeRequirement] {
+        requirements.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !draftCoverageSummary.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirementSummary = requirements
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "operation=\(draftCoverageSummary.operation.rawValue)",
+            "target=\(draftCoverageSummary.target.title)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "requiredFields=\(draftCoverageSummary.requiredFieldCount)/\(draftCoverageSummary.requiredFieldTotal)",
+            "validationIssues=\(draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirementSummary)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3GroupOfficialManagementAuditSummary {
     let target: TS3GroupManagementTarget
     let visibleGroupSummary: TS3GroupListSummary?

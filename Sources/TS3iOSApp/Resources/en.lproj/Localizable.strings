@@ -2823,6 +2823,16 @@
 "groups.members.draftCoverageClientDatabaseIdFormat" = "Client DB: %d";
 "groups.members.draftCoverageChannelFormat" = "Channel: %d";
 "groups.members.copyDraftCoverage" = "Copy Member Draft Coverage";
+"groups.members.changeReadiness" = "Change Readiness";
+"groups.members.changeReadinessFormat" = "%d/%d ready, %d missing";
+"groups.members.changeReadinessReady" = "Member change is ready to submit";
+"groups.members.changeReadinessMissingFormat" = "Missing: %@";
+"groups.members.copyChangeReadiness" = "Copy Change Readiness";
+"groups.members.changeRequirement.connected" = "Connected server";
+"groups.members.changeRequirement.group" = "Group";
+"groups.members.changeRequirement.clientDatabaseId" = "Client database ID";
+"groups.members.changeRequirement.channel" = "Channel";
+"groups.members.changeRequirement.validationClean" = "Validation clean";
 "groups.members.operation.addServerMember" = "Add Member";
 "groups.members.operation.setChannelGroup" = "Set Channel Group";
 "groups.members.copyMemberChangeSummary" = "Copy Member Change Summary";

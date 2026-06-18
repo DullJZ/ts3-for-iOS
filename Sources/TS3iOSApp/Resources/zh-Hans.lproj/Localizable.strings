@@ -2823,6 +2823,16 @@
 "groups.members.draftCoverageClientDatabaseIdFormat" = "客户端 DB：%d";
 "groups.members.draftCoverageChannelFormat" = "频道：%d";
 "groups.members.copyDraftCoverage" = "复制成员草稿覆盖";
+"groups.members.changeReadiness" = "变更就绪度";
+"groups.members.changeReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"groups.members.changeReadinessReady" = "成员变更已可提交";
+"groups.members.changeReadinessMissingFormat" = "缺失：%@";
+"groups.members.copyChangeReadiness" = "复制变更就绪度";
+"groups.members.changeRequirement.connected" = "已连接服务器";
+"groups.members.changeRequirement.group" = "组";
+"groups.members.changeRequirement.clientDatabaseId" = "客户端数据库 ID";
+"groups.members.changeRequirement.channel" = "频道";
+"groups.members.changeRequirement.validationClean" = "校验通过";
 "groups.members.operation.addServerMember" = "添加成员";
 "groups.members.operation.setChannelGroup" = "设置频道组";
 "groups.members.copyMemberChangeSummary" = "复制成员变更摘要";
