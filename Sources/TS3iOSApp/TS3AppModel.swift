@@ -9599,11 +9599,38 @@ struct TS3KeyboardShortcutOfficialCoverageAuditSummary {
     }
 }
 
+struct TS3DenseAdministrationDynamicTypeAuditSummary {
+    let totalSurfaceCount: Int
+    let responsiveSurfaceCount: Int
+    let catalystSharedSurfaceCount: Int
+    let pendingSurfaceNames: [String]
+
+    var pendingSurfaceCount: Int {
+        max(totalSurfaceCount - responsiveSurfaceCount, pendingSurfaceNames.count)
+    }
+
+    var needsAttention: Bool {
+        pendingSurfaceCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "denseAdminDynamicTypeSurfaces=\(totalSurfaceCount)",
+            "denseAdminDynamicTypeResponsive=\(responsiveSurfaceCount)",
+            "denseAdminDynamicTypePending=\(pendingSurfaceCount)",
+            "denseAdminCatalystSharedSurfaces=\(catalystSharedSurfaceCount)",
+            "denseAdminPendingSurfaces=\(pendingSurfaceNames.isEmpty ? "none" : pendingSurfaceNames.joined(separator: ","))",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3PlatformAccessibilityCoverageAuditSummary {
     let localizedSurfaceCount: Int
     let voiceOverRowActionSurfaceCount: Int
     let catalystMenuGroupCount: Int
     let dynamicTypeResponsiveSurfaceCount: Int
+    let denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary
     let hasSharedSwiftUISheets: Bool
     let hasCompactVoiceStatus: Bool
     let hasVoiceOverGlobalVoiceState: Bool
@@ -9613,7 +9640,10 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
     let hasCopyableAuditSummaries: Bool
     let hasDiagnosticExport: Bool
     let hasDynamicTypeCoverage: Bool
-    let hasDenseAdministrationDynamicTypeAuditPending: Bool
+
+    var hasDenseAdministrationDynamicTypeAuditPending: Bool {
+        denseAdministrationDynamicTypeAuditSummary.needsAttention
+    }
 
     var officialAreaTotal: Int {
         9
@@ -9654,6 +9684,10 @@ struct TS3PlatformAccessibilityCoverageAuditSummary {
             "voiceOverRowActionSurfaces=\(voiceOverRowActionSurfaceCount)",
             "catalystMenuGroups=\(catalystMenuGroupCount)",
             "dynamicTypeResponsiveSurfaces=\(dynamicTypeResponsiveSurfaceCount)",
+            "denseAdminDynamicTypeSurfaces=\(denseAdministrationDynamicTypeAuditSummary.totalSurfaceCount)",
+            "denseAdminDynamicTypeResponsive=\(denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceCount)",
+            "denseAdminDynamicTypePending=\(denseAdministrationDynamicTypeAuditSummary.pendingSurfaceCount)",
+            "denseAdminCatalystSharedSurfaces=\(denseAdministrationDynamicTypeAuditSummary.catalystSharedSurfaceCount)",
             "sharedSwiftUISheets=\(hasSharedSwiftUISheets ? "true" : "false")",
             "compactVoiceStatus=\(hasCompactVoiceStatus ? "true" : "false")",
             "voiceOverGlobalVoiceState=\(hasVoiceOverGlobalVoiceState ? "true" : "false")",
@@ -14780,6 +14814,17 @@ final class TS3AppModel: ObservableObject {
             voiceOverRowActionSurfaceCount: 24,
             catalystMenuGroupCount: 5,
             dynamicTypeResponsiveSurfaceCount: 9,
+            denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary(
+                totalSurfaceCount: 14,
+                responsiveSurfaceCount: 10,
+                catalystSharedSurfaceCount: 14,
+                pendingSurfaceNames: [
+                    "Server Settings",
+                    "Channel Editor",
+                    "Permission Editor",
+                    "Group Management"
+                ]
+            ),
             hasSharedSwiftUISheets: true,
             hasCompactVoiceStatus: true,
             hasVoiceOverGlobalVoiceState: true,
@@ -14788,8 +14833,7 @@ final class TS3AppModel: ObservableObject {
             hasCatalystMenuCoverage: true,
             hasCopyableAuditSummaries: true,
             hasDiagnosticExport: true,
-            hasDynamicTypeCoverage: true,
-            hasDenseAdministrationDynamicTypeAuditPending: true
+            hasDynamicTypeCoverage: true
         )
     }
 
@@ -25834,8 +25878,13 @@ final class TS3AppModel: ObservableObject {
             "VoiceOver Row Action Surfaces: \(accessibilityAudit.voiceOverRowActionSurfaceCount)",
             "Catalyst Menu Groups: \(accessibilityAudit.catalystMenuGroupCount)",
             "Dynamic Type Responsive Surfaces: \(accessibilityAudit.dynamicTypeResponsiveSurfaceCount)",
+            "Dense Administration Dynamic Type Surfaces: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.totalSurfaceCount)",
+            "Dense Administration Dynamic Type Responsive: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceCount)",
+            "Dense Administration Dynamic Type Pending: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceCount)",
+            "Dense Administration Catalyst Shared Surfaces: \(accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.catalystSharedSurfaceCount)",
             "Dynamic Type Coverage: \(accessibilityAudit.hasDynamicTypeCoverage ? "Yes" : "No")",
             "Dense Administration Dynamic Type Audit Pending: \(accessibilityAudit.hasDenseAdministrationDynamicTypeAuditPending ? "Yes" : "No")",
+            accessibilityAudit.denseAdministrationDynamicTypeAuditSummary.clipboardSummary,
             accessibilityAudit.clipboardSummary
         ].joined(separator: "\n"))
 

@@ -8,6 +8,17 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
             voiceOverRowActionSurfaceCount: 24,
             catalystMenuGroupCount: 5,
             dynamicTypeResponsiveSurfaceCount: 9,
+            denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary(
+                totalSurfaceCount: 14,
+                responsiveSurfaceCount: 10,
+                catalystSharedSurfaceCount: 14,
+                pendingSurfaceNames: [
+                    "Server Settings",
+                    "Channel Editor",
+                    "Permission Editor",
+                    "Group Management"
+                ]
+            ),
             hasSharedSwiftUISheets: true,
             hasCompactVoiceStatus: true,
             hasVoiceOverGlobalVoiceState: true,
@@ -16,8 +27,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
             hasCatalystMenuCoverage: true,
             hasCopyableAuditSummaries: true,
             hasDiagnosticExport: true,
-            hasDynamicTypeCoverage: true,
-            hasDenseAdministrationDynamicTypeAuditPending: true
+            hasDynamicTypeCoverage: true
         )
 
         XCTAssertEqual(summary.officialAreaTotal, 9)
@@ -25,9 +35,26 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertEqual(summary.missingOfficialAreaCount, 0)
         XCTAssertEqual(summary.officialActionCount, 20)
         XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(summary.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceCount, 4)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=5 | dynamicTypeResponsiveSurfaces=9 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
+            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=5 | dynamicTypeResponsiveSurfaces=9 | denseAdminDynamicTypeSurfaces=14 | denseAdminDynamicTypeResponsive=10 | denseAdminDynamicTypePending=4 | denseAdminCatalystSharedSurfaces=14 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
+        )
+    }
+
+    func testDenseAdministrationDynamicTypeAuditSummaryCountsPendingSurfaces() {
+        let summary = TS3DenseAdministrationDynamicTypeAuditSummary(
+            totalSurfaceCount: 5,
+            responsiveSurfaceCount: 3,
+            catalystSharedSurfaceCount: 5,
+            pendingSurfaceNames: ["Permissions", "Groups"]
+        )
+
+        XCTAssertEqual(summary.pendingSurfaceCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "denseAdminDynamicTypeSurfaces=5 | denseAdminDynamicTypeResponsive=3 | denseAdminDynamicTypePending=2 | denseAdminCatalystSharedSurfaces=5 | denseAdminPendingSurfaces=Permissions,Groups | needsAttention=true"
         )
     }
 
@@ -37,6 +64,12 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
             voiceOverRowActionSurfaceCount: 2,
             catalystMenuGroupCount: 1,
             dynamicTypeResponsiveSurfaceCount: 0,
+            denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary(
+                totalSurfaceCount: 2,
+                responsiveSurfaceCount: 2,
+                catalystSharedSurfaceCount: 1,
+                pendingSurfaceNames: []
+            ),
             hasSharedSwiftUISheets: true,
             hasCompactVoiceStatus: false,
             hasVoiceOverGlobalVoiceState: false,
@@ -45,8 +78,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
             hasCatalystMenuCoverage: true,
             hasCopyableAuditSummaries: false,
             hasDiagnosticExport: true,
-            hasDynamicTypeCoverage: false,
-            hasDenseAdministrationDynamicTypeAuditPending: false
+            hasDynamicTypeCoverage: false
         )
 
         XCTAssertEqual(summary.coveredOfficialAreaCount, 4)
@@ -54,7 +86,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=4/9 | missingOfficialAreas=5 | officialActions=20 | localizedSurfaces=4 | voiceOverRowActionSurfaces=2 | catalystMenuGroups=1 | dynamicTypeResponsiveSurfaces=0 | sharedSwiftUISheets=true | compactVoiceStatus=false | voiceOverGlobalVoiceState=false | voiceOverRowActions=true | localizedAdminSurfaces=false | catalystMenuCoverage=true | copyableAuditSummaries=false | diagnosticExport=true | dynamicTypeCoverage=false | denseAdministrationDynamicTypeAuditPending=false | needsAttention=true"
+            "officialAreas=4/9 | missingOfficialAreas=5 | officialActions=20 | localizedSurfaces=4 | voiceOverRowActionSurfaces=2 | catalystMenuGroups=1 | dynamicTypeResponsiveSurfaces=0 | denseAdminDynamicTypeSurfaces=2 | denseAdminDynamicTypeResponsive=2 | denseAdminDynamicTypePending=0 | denseAdminCatalystSharedSurfaces=1 | sharedSwiftUISheets=true | compactVoiceStatus=false | voiceOverGlobalVoiceState=false | voiceOverRowActions=true | localizedAdminSurfaces=false | catalystMenuCoverage=true | copyableAuditSummaries=false | diagnosticExport=true | dynamicTypeCoverage=false | denseAdministrationDynamicTypeAuditPending=false | needsAttention=true"
         )
     }
 
@@ -66,8 +98,13 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(report.contains("Platform Accessibility Coverage"))
         XCTAssertTrue(report.contains("Official Areas: 9/9"))
         XCTAssertTrue(report.contains("Dynamic Type Responsive Surfaces: 9"))
+        XCTAssertTrue(report.contains("Dense Administration Dynamic Type Surfaces: 14"))
+        XCTAssertTrue(report.contains("Dense Administration Dynamic Type Responsive: 10"))
+        XCTAssertTrue(report.contains("Dense Administration Dynamic Type Pending: 4"))
+        XCTAssertTrue(report.contains("Dense Administration Catalyst Shared Surfaces: 14"))
         XCTAssertTrue(report.contains("Dynamic Type Coverage: Yes"))
         XCTAssertTrue(report.contains("Dense Administration Dynamic Type Audit Pending: Yes"))
+        XCTAssertTrue(report.contains(model.platformAccessibilityCoverageAuditSummary.denseAdministrationDynamicTypeAuditSummary.clipboardSummary))
         XCTAssertTrue(report.contains(model.platformAccessibilityCoverageAuditSummary.clipboardSummary))
     }
 }

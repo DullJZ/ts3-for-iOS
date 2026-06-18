@@ -208,6 +208,16 @@ struct DebugLogView: View {
             String(format: NSLocalizedString("debug.accessibilityAuditVoiceOverFormat", comment: ""), summary.voiceOverRowActionSurfaceCount),
             String(format: NSLocalizedString("debug.accessibilityAuditCatalystFormat", comment: ""), summary.catalystMenuGroupCount),
             String(format: NSLocalizedString("debug.accessibilityAuditDynamicTypeSurfaceFormat", comment: ""), summary.dynamicTypeResponsiveSurfaceCount),
+            String(
+                format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeSurfaceFormat", comment: ""),
+                summary.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceCount,
+                summary.denseAdministrationDynamicTypeAuditSummary.totalSurfaceCount,
+                summary.denseAdministrationDynamicTypeAuditSummary.pendingSurfaceCount
+            ),
+            String(
+                format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeCatalystFormat", comment: ""),
+                summary.denseAdministrationDynamicTypeAuditSummary.catalystSharedSurfaceCount
+            ),
             String(format: NSLocalizedString("debug.accessibilityAuditDenseDynamicTypeFormat", comment: ""), summary.hasDenseAdministrationDynamicTypeAuditPending ? NSLocalizedString("common.yes", comment: "") : NSLocalizedString("common.no", comment: ""))
         ].joined(separator: " · ")
     }
