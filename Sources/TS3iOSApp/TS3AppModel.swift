@@ -977,6 +977,73 @@ struct TS3ChannelEditorCoverageSummary {
     }
 }
 
+struct TS3ChannelEditorFieldCoverageSummary {
+    let areaFieldCounts: [TS3ChannelEditorImpactArea: Int]
+    let changedAreaCounts: [TS3ChannelEditorImpactArea: Int]
+    let validationIssueCount: Int
+    let codecWarningCount: Int
+
+    var trackedAreaCount: Int {
+        areaFieldCounts.values.filter { $0 > 0 }.count
+    }
+
+    var totalAreaCount: Int {
+        TS3ChannelEditorImpactArea.allCases.count
+    }
+
+    var missingTrackedAreaCount: Int {
+        max(0, totalAreaCount - trackedAreaCount)
+    }
+
+    var trackedFieldCount: Int {
+        areaFieldCounts.values.reduce(0, +)
+    }
+
+    var changedFieldCount: Int {
+        changedAreaCounts.values.reduce(0, +)
+    }
+
+    var changedAreaCount: Int {
+        changedAreaCounts.values.filter { $0 > 0 }.count
+    }
+
+    var needsAttention: Bool {
+        missingTrackedAreaCount > 0 || validationIssueCount > 0 || codecWarningCount > 0
+    }
+
+    var clipboardSummary: String {
+        let areas = TS3ChannelEditorImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let fieldCount = areaFieldCounts[area], fieldCount > 0 else { return nil }
+                return "\(area.rawValue):\(fieldCount)/\(changedAreaCounts[area] ?? 0)"
+            }
+            .joined(separator: ",")
+        return [
+            "trackedFields=\(trackedFieldCount)",
+            "changedFields=\(changedFieldCount)",
+            "trackedAreas=\(trackedAreaCount)/\(totalAreaCount)",
+            "missingTrackedAreas=\(missingTrackedAreaCount)",
+            "changedAreas=\(changedAreaCount)",
+            "validationIssues=\(validationIssueCount)",
+            "codecWarnings=\(codecWarningCount)",
+            "areas=\(areas.isEmpty ? "none" : areas)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        areaFieldCounts: [TS3ChannelEditorImpactArea: Int],
+        changedAreaCounts: [TS3ChannelEditorImpactArea: Int],
+        validationIssueCount: Int,
+        codecWarningCount: Int
+    ) {
+        self.areaFieldCounts = areaFieldCounts.filter { $0.value > 0 }
+        self.changedAreaCounts = changedAreaCounts.filter { $0.value > 0 }
+        self.validationIssueCount = max(0, validationIssueCount)
+        self.codecWarningCount = max(0, codecWarningCount)
+    }
+}
+
 struct TS3ChannelEditorNavigationSummary {
     let areaChangeCounts: [TS3ChannelEditorImpactArea: Int]
     let validationIssueCount: Int

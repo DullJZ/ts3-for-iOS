@@ -694,6 +694,13 @@
 "channelEditor.coverageChangedAreaFormat" = "%d 个变更区域，%d 个字段";
 "channelEditor.coverageUncoveredFormat" = "%d 个未覆盖区域";
 "channelEditor.copyCoverageSummary" = "复制覆盖摘要";
+"channelEditor.fieldCoverageSummary" = "已跟踪字段覆盖";
+"channelEditor.fieldCoverageSummaryFormat" = "%d 个已跟踪字段，%d 个已变更，%d 个缺失区域";
+"channelEditor.fieldCoverageTrackedFormat" = "%d 个字段覆盖 %d/%d 个区域";
+"channelEditor.fieldCoverageChangedFormat" = "%d 个变更字段，涉及 %d 个区域";
+"channelEditor.fieldCoverageMissingFormat" = "%d 个区域缺少已跟踪字段";
+"channelEditor.fieldCoverageAreaClipboardFormat" = "%@：%d 个已跟踪字段，%d 个已变更";
+"channelEditor.copyFieldCoverageSummary" = "复制字段覆盖";
 "channelEditor.navigationSummary" = "复核导航";
 "channelEditor.navigationSummaryFormat" = "%d 个区域，%d 项变化，先看：%@";
 "channelEditor.navigationNoReview" = "没有需要复核的频道分组";

@@ -694,6 +694,13 @@
 "channelEditor.coverageChangedAreaFormat" = "%d changed areas, %d fields";
 "channelEditor.coverageUncoveredFormat" = "%d uncovered areas";
 "channelEditor.copyCoverageSummary" = "Copy Coverage Summary";
+"channelEditor.fieldCoverageSummary" = "Tracked Field Coverage";
+"channelEditor.fieldCoverageSummaryFormat" = "%d tracked fields, %d changed, %d missing areas";
+"channelEditor.fieldCoverageTrackedFormat" = "%d tracked fields across %d/%d areas";
+"channelEditor.fieldCoverageChangedFormat" = "%d changed fields across %d areas";
+"channelEditor.fieldCoverageMissingFormat" = "%d areas missing tracked fields";
+"channelEditor.fieldCoverageAreaClipboardFormat" = "%@: %d tracked fields, %d changed";
+"channelEditor.copyFieldCoverageSummary" = "Copy Field Coverage";
 "channelEditor.navigationSummary" = "Review Navigation";
 "channelEditor.navigationSummaryFormat" = "%d areas, %d changes, first: %@";
 "channelEditor.navigationNoReview" = "No changed channel sections to review";

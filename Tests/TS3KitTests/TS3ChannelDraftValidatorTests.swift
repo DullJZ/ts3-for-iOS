@@ -298,6 +298,66 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorFieldCoverageSummaryCountsTrackedFieldsAndChanges() {
+        let summary = TS3ChannelEditorFieldCoverageSummary(
+            areaFieldCounts: [
+                .channel: 15,
+                .voice: 6,
+                .permissionGates: 6,
+                .limits: 5
+            ],
+            changedAreaCounts: [
+                .channel: 2,
+                .voice: 1,
+                .limits: 3
+            ],
+            validationIssueCount: 1,
+            codecWarningCount: 2
+        )
+
+        XCTAssertEqual(summary.trackedFieldCount, 32)
+        XCTAssertEqual(summary.changedFieldCount, 6)
+        XCTAssertEqual(summary.trackedAreaCount, 4)
+        XCTAssertEqual(summary.totalAreaCount, 4)
+        XCTAssertEqual(summary.missingTrackedAreaCount, 0)
+        XCTAssertEqual(summary.changedAreaCount, 3)
+        XCTAssertEqual(summary.validationIssueCount, 1)
+        XCTAssertEqual(summary.codecWarningCount, 2)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "trackedFields=32 | changedFields=6 | trackedAreas=4/4 | missingTrackedAreas=0 | changedAreas=3 | validationIssues=1 | codecWarnings=2 | areas=channel:15/2,voice:6/1,permissionGates:6/0,limits:5/3 | needsAttention=true"
+        )
+    }
+
+    func testChannelEditorFieldCoverageSummaryFlagsMissingTrackedAreas() {
+        let summary = TS3ChannelEditorFieldCoverageSummary(
+            areaFieldCounts: [
+                .channel: 4,
+                .voice: 0,
+                .permissionGates: -1
+            ],
+            changedAreaCounts: [
+                .channel: 1,
+                .voice: 2
+            ],
+            validationIssueCount: -2,
+            codecWarningCount: 1
+        )
+
+        XCTAssertEqual(summary.trackedFieldCount, 4)
+        XCTAssertEqual(summary.changedFieldCount, 3)
+        XCTAssertEqual(summary.trackedAreaCount, 1)
+        XCTAssertEqual(summary.missingTrackedAreaCount, 3)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.codecWarningCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "trackedFields=4 | changedFields=3 | trackedAreas=1/4 | missingTrackedAreas=3 | changedAreas=2 | validationIssues=0 | codecWarnings=1 | areas=channel:4/1 | needsAttention=true"
+        )
+    }
+
     func testChannelEditorNavigationSummaryOrdersChangedAreasAndPrimaryArea() {
         let summary = TS3ChannelEditorNavigationSummary(
             areaChangeCounts: [

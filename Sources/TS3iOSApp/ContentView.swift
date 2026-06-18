@@ -30717,6 +30717,21 @@ struct ChannelEditorSheet: View {
                                 TS3PlatformSupport.copyToPasteboard(channelCoverageSummaryClipboard)
                             }
                             ServerInfoDetailRow(
+                                label: localized("channelEditor.fieldCoverageSummary"),
+                                value: localized(
+                                    "channelEditor.fieldCoverageSummaryFormat",
+                                    channelFieldCoverageSummary.trackedFieldCount,
+                                    channelFieldCoverageSummary.changedFieldCount,
+                                    channelFieldCoverageSummary.missingTrackedAreaCount
+                                )
+                            )
+                            Text(channelFieldCoverageSummaryText)
+                                .font(.caption)
+                                .foregroundColor(channelFieldCoverageSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("channelEditor.copyFieldCoverageSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(channelFieldCoverageSummaryClipboard)
+                            }
+                            ServerInfoDetailRow(
                                 label: localized("channelEditor.navigationSummary"),
                                 value: localized(
                                     "channelEditor.navigationSummaryFormat",
@@ -31294,6 +31309,10 @@ struct ChannelEditorSheet: View {
         channelCoverageSummary(for: currentDraft)
     }
 
+    private var channelFieldCoverageSummary: TS3ChannelEditorFieldCoverageSummary {
+        channelFieldCoverageSummary(for: currentDraft)
+    }
+
     private var channelNavigationSummary: TS3ChannelEditorNavigationSummary {
         channelNavigationSummary(for: currentDraft)
     }
@@ -31307,6 +31326,33 @@ struct ChannelEditorSheet: View {
             localized("channelEditor.coverageSummary"),
             channelCoverageSummary.clipboardSummary
         ].joined(separator: "\n")
+    }
+
+    private var channelFieldCoverageSummaryText: String {
+        channelFieldCoverageSummaryText(for: channelFieldCoverageSummary)
+    }
+
+    private var channelFieldCoverageSummaryClipboard: String {
+        let summary = channelFieldCoverageSummary
+        let areas = TS3ChannelEditorImpactArea.allCases
+            .compactMap { area -> String? in
+                guard let fieldCount = summary.areaFieldCounts[area], fieldCount > 0 else { return nil }
+                return localized(
+                    "channelEditor.fieldCoverageAreaClipboardFormat",
+                    title(for: area),
+                    fieldCount,
+                    summary.changedAreaCounts[area] ?? 0
+                )
+            }
+            .joined(separator: "\n")
+        return [
+            localized("channelEditor.fieldCoverageSummary"),
+            summary.clipboardSummary,
+            areas
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
     }
 
     private var channelNavigationSummaryText: String {
@@ -31474,6 +31520,15 @@ struct ChannelEditorSheet: View {
         )
     }
 
+    private func channelFieldCoverageSummary(for draft: ChannelDraft) -> TS3ChannelEditorFieldCoverageSummary {
+        TS3ChannelEditorFieldCoverageSummary(
+            areaFieldCounts: channelAreaFieldCounts,
+            changedAreaCounts: channelAreaChangeCounts(for: draft),
+            validationIssueCount: draftValidationMessages(for: draft).count,
+            codecWarningCount: codecDiagnosticMessages.count
+        )
+    }
+
     private func channelNavigationSummary(for draft: ChannelDraft) -> TS3ChannelEditorNavigationSummary {
         TS3ChannelEditorNavigationSummary(
             areaChangeCounts: channelAreaChangeCounts(for: draft),
@@ -31489,6 +31544,15 @@ struct ChannelEditorSheet: View {
             .voice: voiceChangeRows(for: channel, draft: draft).count,
             .permissionGates: permissionGateChangeRows(for: channel, draft: draft).count,
             .limits: limitChangeRows(for: channel, draft: draft).count
+        ]
+    }
+
+    private var channelAreaFieldCounts: [TS3ChannelEditorImpactArea: Int] {
+        [
+            .channel: 15,
+            .voice: 6,
+            .permissionGates: 6,
+            .limits: 5
         ]
     }
 
@@ -31620,6 +31684,32 @@ struct ChannelEditorSheet: View {
         }
         if summary.uncoveredAreaCount > 0 {
             parts.append(localized("channelEditor.coverageUncoveredFormat", summary.uncoveredAreaCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func channelFieldCoverageSummaryText(for summary: TS3ChannelEditorFieldCoverageSummary) -> String {
+        var parts = [
+            localized(
+                "channelEditor.fieldCoverageTrackedFormat",
+                summary.trackedFieldCount,
+                summary.trackedAreaCount,
+                summary.totalAreaCount
+            ),
+            localized(
+                "channelEditor.fieldCoverageChangedFormat",
+                summary.changedFieldCount,
+                summary.changedAreaCount
+            )
+        ]
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("channelEditor.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.codecWarningCount > 0 {
+            parts.append(localized("channelEditor.codecWarningCountFormat", summary.codecWarningCount))
+        }
+        if summary.missingTrackedAreaCount > 0 {
+            parts.append(localized("channelEditor.fieldCoverageMissingFormat", summary.missingTrackedAreaCount))
         }
         return parts.joined(separator: " · ")
     }
