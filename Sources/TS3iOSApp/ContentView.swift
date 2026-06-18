@@ -25750,6 +25750,14 @@ struct BanListSheet: View {
         TS3BanListSummary(entries: filteredBanEntries)
     }
 
+    private var visibleBanDeleteImpactSummary: TS3BanDeleteImpactSummary {
+        TS3BanDeleteImpactSummary(entries: filteredBanEntries, scope: .visible)
+    }
+
+    private var allBanDeleteImpactSummary: TS3BanDeleteImpactSummary {
+        TS3BanDeleteImpactSummary(entries: model.banEntries, scope: .all)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -25934,6 +25942,10 @@ struct BanListSheet: View {
                         }
                         .foregroundColor(.red)
                         .disabled(model.state != .connected || filteredBanEntries.isEmpty)
+                        Button(localized("ban.copyDeleteImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(visibleBanDeleteImpactSummary.clipboardSummary)
+                        }
+                        .disabled(filteredBanEntries.isEmpty)
                     }
 
                     if filteredBanEntries.isEmpty {
@@ -26031,7 +26043,7 @@ struct BanListSheet: View {
             .alert(isPresented: $isConfirmingDeleteAll) {
                 Alert(
                     title: Text(localized("ban.deleteAllAlert.title")),
-                    message: Text(localized("ban.deleteAllAlert.message")),
+                    message: Text(banDeleteImpactText(allBanDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("ban.deleteAllBans"))) {
                         model.deleteAllBans()
                     },
@@ -26041,7 +26053,7 @@ struct BanListSheet: View {
             .alert(isPresented: $isConfirmingDeleteVisible) {
                 Alert(
                     title: Text(localized("ban.deleteVisibleAlert.title")),
-                    message: Text(localized("ban.deleteVisibleAlert.messageFormat", filteredBanEntries.count)),
+                    message: Text(banDeleteImpactText(visibleBanDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("common.delete"))) {
                         model.deleteBans(filteredBanEntries)
                     },
@@ -26250,6 +26262,35 @@ struct BanListSheet: View {
                 summary.highestBanId.map(String.init) ?? localized("common.none")
             )
         ].joined(separator: " · ")
+    }
+
+    private func banDeleteImpactText(_ summary: TS3BanDeleteImpactSummary) -> String {
+        [
+            localized(
+                "ban.deleteImpactFormat",
+                summary.entryCount,
+                summary.listSummary.permanentCount,
+                summary.listSummary.temporaryCount
+            ),
+            localized(
+                "ban.deleteImpactTargetsFormat",
+                summary.listSummary.ipRuleCount,
+                summary.listSummary.nameRuleCount,
+                summary.listSummary.uniqueIdentifierRuleCount,
+                summary.listSummary.lastNicknameRuleCount
+            ),
+            localized(
+                "ban.deleteImpactReasonFormat",
+                summary.listSummary.withReasonCount,
+                summary.missingReasonCount
+            ),
+            localized(
+                "ban.summaryIdRangeFormat",
+                summary.listSummary.lowestBanId.map(String.init) ?? localized("common.none"),
+                summary.listSummary.highestBanId.map(String.init) ?? localized("common.none")
+            ),
+            localized("ban.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 
     private func exportPresets() {
@@ -27735,7 +27776,7 @@ struct BanEntryRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("ban.row.deleteAlert.title")),
-                message: Text(entry.displayTitle),
+                message: Text(banDeleteImpactText(TS3BanDeleteImpactSummary(entries: [entry], scope: .single))),
                 primaryButton: .destructive(Text(localized("common.delete"))) {
                     model.deleteBan(entry)
                 },
@@ -27789,6 +27830,35 @@ struct BanEntryRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func banDeleteImpactText(_ summary: TS3BanDeleteImpactSummary) -> String {
+        [
+            localized(
+                "ban.deleteImpactFormat",
+                summary.entryCount,
+                summary.listSummary.permanentCount,
+                summary.listSummary.temporaryCount
+            ),
+            localized(
+                "ban.deleteImpactTargetsFormat",
+                summary.listSummary.ipRuleCount,
+                summary.listSummary.nameRuleCount,
+                summary.listSummary.uniqueIdentifierRuleCount,
+                summary.listSummary.lastNicknameRuleCount
+            ),
+            localized(
+                "ban.deleteImpactReasonFormat",
+                summary.listSummary.withReasonCount,
+                summary.missingReasonCount
+            ),
+            localized(
+                "ban.summaryIdRangeFormat",
+                summary.listSummary.lowestBanId.map(String.init) ?? localized("common.none"),
+                summary.listSummary.highestBanId.map(String.init) ?? localized("common.none")
+            ),
+            localized("ban.deleteImpactAttentionFormat", summary.needsAttention ? localized("common.yes") : localized("common.no"))
+        ].joined(separator: "\n")
     }
 }
 

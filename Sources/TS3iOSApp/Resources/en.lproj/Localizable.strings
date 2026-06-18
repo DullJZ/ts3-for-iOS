@@ -2859,6 +2859,11 @@
 "ban.deleteAllAlert.message" = "This removes every ban entry on the server.";
 "ban.deleteVisibleAlert.title" = "Delete Visible Bans?";
 "ban.deleteVisibleAlert.messageFormat" = "This removes %d ban entries from the server.";
+"ban.deleteImpactFormat" = "Deleting %d bans: %d permanent, %d temporary.";
+"ban.deleteImpactTargetsFormat" = "Targets IP/name/UID/nickname: %d/%d/%d/%d.";
+"ban.deleteImpactReasonFormat" = "Reasons: %d present, %d missing.";
+"ban.deleteImpactAttentionFormat" = "Needs extra attention: %@.";
+"ban.copyDeleteImpact" = "Copy Delete Impact";
 "ban.deleteAllPresetsAlert.title" = "Delete All Ban Filter Presets?";
 "ban.row.durationFormat" = "Duration: %@";
 "ban.row.invokerFormat" = "Invoker: %@";

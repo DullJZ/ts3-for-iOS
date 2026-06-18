@@ -3539,6 +3539,56 @@ struct TS3BanListSummary {
     }
 }
 
+struct TS3BanDeleteImpactSummary {
+    enum Scope: String {
+        case single
+        case visible
+        case all
+    }
+
+    let scope: Scope
+    let listSummary: TS3BanListSummary
+
+    var entryCount: Int {
+        listSummary.totalCount
+    }
+
+    var missingReasonCount: Int {
+        entryCount - listSummary.withReasonCount
+    }
+
+    var needsAttention: Bool {
+        entryCount == 0
+            || listSummary.permanentCount > 0
+            || missingReasonCount > 0
+            || entryCount >= 10
+    }
+
+    var clipboardSummary: String {
+        [
+            "scope=\(scope.rawValue)",
+            "deleteBans=\(entryCount)",
+            "ip=\(listSummary.ipRuleCount)",
+            "name=\(listSummary.nameRuleCount)",
+            "uid=\(listSummary.uniqueIdentifierRuleCount)",
+            "lastNickname=\(listSummary.lastNicknameRuleCount)",
+            "permanent=\(listSummary.permanentCount)",
+            "temporary=\(listSummary.temporaryCount)",
+            "withReason=\(listSummary.withReasonCount)",
+            "missingReason=\(missingReasonCount)",
+            "enforcements=\(listSummary.enforcementCount)",
+            "lowestBanId=\(listSummary.lowestBanId.map(String.init) ?? "none")",
+            "highestBanId=\(listSummary.highestBanId.map(String.init) ?? "none")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(entries: [TS3BanEntrySummary], scope: Scope) {
+        self.scope = scope
+        self.listSummary = TS3BanListSummary(entries: entries)
+    }
+}
+
 struct TS3BanDraftCoverageSummary {
     let hasIP: Bool
     let hasName: Bool

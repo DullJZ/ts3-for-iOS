@@ -250,6 +250,74 @@ final class TS3BanBackupTests: XCTestCase {
         )
     }
 
+    func testBanDeleteImpactSummaryCountsVisibleDeletionRisk() {
+        let summary = TS3BanDeleteImpactSummary(entries: [
+            makeBan(
+                id: 17,
+                ip: "192.0.2.10",
+                uniqueIdentifier: "uid-bad",
+                durationSeconds: 0,
+                reason: "spam",
+                enforcements: 2
+            ),
+            makeBan(
+                id: 18,
+                name: "Bad Guest",
+                lastNickname: "Recent Guest",
+                durationSeconds: 600,
+                reason: nil,
+                enforcements: 3
+            ),
+            makeBan(
+                id: 18,
+                ip: "198.51.100.5",
+                durationSeconds: 60,
+                reason: "duplicate",
+                enforcements: 9
+            )
+        ], scope: .visible)
+
+        XCTAssertEqual(summary.entryCount, 2)
+        XCTAssertEqual(summary.listSummary.ipRuleCount, 1)
+        XCTAssertEqual(summary.listSummary.nameRuleCount, 1)
+        XCTAssertEqual(summary.listSummary.uniqueIdentifierRuleCount, 1)
+        XCTAssertEqual(summary.listSummary.lastNicknameRuleCount, 1)
+        XCTAssertEqual(summary.listSummary.permanentCount, 1)
+        XCTAssertEqual(summary.listSummary.temporaryCount, 1)
+        XCTAssertEqual(summary.listSummary.withReasonCount, 1)
+        XCTAssertEqual(summary.missingReasonCount, 1)
+        XCTAssertEqual(summary.listSummary.enforcementCount, 5)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "scope=visible | deleteBans=2 | ip=1 | name=1 | uid=1 | lastNickname=1 | permanent=1 | temporary=1 | withReason=1 | missingReason=1 | enforcements=5 | lowestBanId=17 | highestBanId=18 | needsAttention=true"
+        )
+    }
+
+    func testBanDeleteImpactSummaryFlagsEmptyAndLargeDeletion() {
+        let empty = TS3BanDeleteImpactSummary(entries: [], scope: .all)
+
+        XCTAssertEqual(empty.entryCount, 0)
+        XCTAssertEqual(empty.missingReasonCount, 0)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(
+            empty.clipboardSummary,
+            "scope=all | deleteBans=0 | ip=0 | name=0 | uid=0 | lastNickname=0 | permanent=0 | temporary=0 | withReason=0 | missingReason=0 | enforcements=0 | lowestBanId=none | highestBanId=none | needsAttention=true"
+        )
+
+        let largeTemporaryDeletion = TS3BanDeleteImpactSummary(
+            entries: (1...10).map { index in
+                makeBan(id: index, ip: "192.0.2.\(index)", durationSeconds: 600, reason: "cleanup")
+            },
+            scope: .all
+        )
+
+        XCTAssertEqual(largeTemporaryDeletion.entryCount, 10)
+        XCTAssertEqual(largeTemporaryDeletion.listSummary.permanentCount, 0)
+        XCTAssertEqual(largeTemporaryDeletion.missingReasonCount, 0)
+        XCTAssertTrue(largeTemporaryDeletion.needsAttention)
+    }
+
     func testBanOfficialCoverageAuditSummaryCountsCoveredAreas() {
         let validationMessages = TS3BanDraftValidator.validationMessages(
             ip: "192.0.2.10",

@@ -2859,6 +2859,11 @@
 "ban.deleteAllAlert.message" = "这会移除服务器上的所有封禁条目。";
 "ban.deleteVisibleAlert.title" = "删除可见封禁？";
 "ban.deleteVisibleAlert.messageFormat" = "这会从服务器移除 %d 条封禁。";
+"ban.deleteImpactFormat" = "将删除 %d 条封禁：%d 条永久，%d 条临时。";
+"ban.deleteImpactTargetsFormat" = "目标 IP/名称/UID/昵称：%d/%d/%d/%d。";
+"ban.deleteImpactReasonFormat" = "原因：%d 条有原因，%d 条缺失。";
+"ban.deleteImpactAttentionFormat" = "需要额外注意：%@。";
+"ban.copyDeleteImpact" = "复制删除影响";
 "ban.deleteAllPresetsAlert.title" = "删除所有封禁筛选预设？";
 "ban.row.durationFormat" = "时长：%@";
 "ban.row.invokerFormat" = "执行者：%@";
