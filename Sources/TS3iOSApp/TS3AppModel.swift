@@ -3728,6 +3728,8 @@ struct TS3BanDraftCoverageSummary {
     let hasReason: Bool
     let isPermanent: Bool
     let hasCustomDuration: Bool
+    let hasValidDuration: Bool
+    let hasSingleLineReason: Bool
     let validationIssueCount: Int
 
     var targetFieldCount: Int {
@@ -3769,6 +3771,7 @@ struct TS3BanDraftCoverageSummary {
         reason: String,
         isPermanent: Bool,
         isCustomDuration: Bool,
+        durationSeconds: Int? = nil,
         validationMessages: [String]
     ) {
         self.hasIP = Self.normalized(ip) != nil
@@ -3779,12 +3782,85 @@ struct TS3BanDraftCoverageSummary {
         self.hasReason = Self.normalized(reason) != nil
         self.isPermanent = isPermanent
         self.hasCustomDuration = isCustomDuration
+        self.hasValidDuration = isPermanent || !isCustomDuration || (durationSeconds ?? 0) > 0
+        self.hasSingleLineReason = !Self.containsNewline(reason)
         self.validationIssueCount = validationMessages.count
     }
 
     private static func normalized(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func containsNewline(_ text: String) -> Bool {
+        text.rangeOfCharacter(from: .newlines) != nil
+    }
+}
+
+enum TS3BanCreationRequirement: String, CaseIterable, Codable {
+    case connected
+    case target
+    case duration
+    case singleLineReason
+    case validationClean
+}
+
+struct TS3BanCreationReadinessSummary {
+    let draftCoverageSummary: TS3BanDraftCoverageSummary
+    let isConnected: Bool
+
+    var requirementStates: [TS3BanCreationRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .target: draftCoverageSummary.targetFieldCount > 0,
+            .duration: draftCoverageSummary.hasValidDuration,
+            .singleLineReason: draftCoverageSummary.hasSingleLineReason,
+            .validationClean: draftCoverageSummary.validationIssueCount == 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3BanCreationRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3BanCreationRequirement] {
+        TS3BanCreationRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && !draftCoverageSummary.needsAttention
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3BanCreationRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "targets=\(draftCoverageSummary.targetFieldCount)",
+            "duration=\(draftCoverageSummary.isPermanent ? "permanent" : "temporary")",
+            "customDuration=\(draftCoverageSummary.hasCustomDuration ? "true" : "false")",
+            "reason=\(draftCoverageSummary.hasReason ? "true" : "false")",
+            "validationIssues=\(draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
     }
 }
 

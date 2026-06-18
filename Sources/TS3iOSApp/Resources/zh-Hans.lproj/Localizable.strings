@@ -2873,6 +2873,16 @@
 "ban.draftCoverageTemporary" = "临时";
 "ban.draftCoverageReasonFormat" = "原因：%d";
 "ban.copyDraftCoverage" = "复制封禁草稿覆盖";
+"ban.creationReadiness" = "创建就绪度";
+"ban.creationReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"ban.creationReadinessReady" = "封禁规则已可添加";
+"ban.creationReadinessMissingFormat" = "缺失：%@";
+"ban.copyCreationReadiness" = "复制创建就绪度";
+"ban.creationRequirement.connected" = "已连接服务器";
+"ban.creationRequirement.target" = "封禁目标";
+"ban.creationRequirement.duration" = "有效时长";
+"ban.creationRequirement.singleLineReason" = "单行原因";
+"ban.creationRequirement.validationClean" = "校验通过";
 "ban.copyRuleSummary" = "复制封禁规则摘要";
 "ban.addRule" = "添加封禁规则";
 "ban.searchBans" = "搜索封禁";

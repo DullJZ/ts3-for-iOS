@@ -26295,6 +26295,22 @@ struct BanListSheet: View {
                     Button(localized("ban.copyDraftCoverage")) {
                         TS3PlatformSupport.copyToPasteboard(banDraftCoverageSummary.clipboardSummary)
                     }
+                    let creationReadiness = banCreationReadinessSummary
+                    ServerInfoDetailRow(
+                        label: localized("ban.creationReadiness"),
+                        value: localized(
+                            "ban.creationReadinessFormat",
+                            creationReadiness.satisfiedRequirementCount,
+                            creationReadiness.totalRequirementCount,
+                            creationReadiness.missingRequirementCount
+                        )
+                    )
+                    Text(banCreationReadinessText(creationReadiness))
+                        .font(.caption)
+                        .foregroundColor(creationReadiness.needsAttention ? .orange : .secondary)
+                    Button(localized("ban.copyCreationReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(creationReadiness.clipboardSummary)
+                    }
                     Text(banDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -26635,7 +26651,15 @@ struct BanListSheet: View {
             reason: reason,
             isPermanent: duration == .permanent,
             isCustomDuration: duration == .custom,
+            durationSeconds: duration.seconds(customMinutes: customBanMinutes),
             validationMessages: banDraftValidationMessages
+        )
+    }
+
+    private var banCreationReadinessSummary: TS3BanCreationReadinessSummary {
+        TS3BanCreationReadinessSummary(
+            draftCoverageSummary: banDraftCoverageSummary,
+            isConnected: model.state == .connected
         )
     }
 
@@ -26662,6 +26686,31 @@ struct BanListSheet: View {
             localized("ban.draftCoverageDurationFormat", summary.isPermanent ? localized("ban.draftCoveragePermanent") : localized("ban.draftCoverageTemporary")),
             localized("ban.draftCoverageReasonFormat", summary.hasReason ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func banCreationReadinessText(_ summary: TS3BanCreationReadinessSummary) -> String {
+        if summary.canSubmit {
+            return localized("ban.creationReadinessReady")
+        }
+        return localized(
+            "ban.creationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3BanCreationRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("ban.creationRequirement.connected")
+        case .target:
+            return localized("ban.creationRequirement.target")
+        case .duration:
+            return localized("ban.creationRequirement.duration")
+        case .singleLineReason:
+            return localized("ban.creationRequirement.singleLineReason")
+        case .validationClean:
+            return localized("ban.creationRequirement.validationClean")
+        }
     }
 
     private func banOfficialAuditText(_ summary: TS3BanOfficialCoverageAuditSummary) -> String {

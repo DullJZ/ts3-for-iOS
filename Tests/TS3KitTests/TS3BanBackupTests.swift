@@ -87,6 +87,7 @@ final class TS3BanBackupTests: XCTestCase {
             reason: " spam ",
             isPermanent: false,
             isCustomDuration: true,
+            durationSeconds: 5 * 60,
             validationMessages: validationMessages
         )
 
@@ -127,6 +128,7 @@ final class TS3BanBackupTests: XCTestCase {
             reason: "spam\nabuse",
             isPermanent: true,
             isCustomDuration: true,
+            durationSeconds: nil,
             validationMessages: validationMessages
         )
 
@@ -136,6 +138,89 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertEqual(
             summary.clipboardSummary,
             "targets=0 | ip=false | name=false | uid=false | mytsid=false | lastNickname=false | duration=permanent | customDuration=true | reason=true | validationIssues=3 | needsAttention=true"
+        )
+    }
+
+    func testBanCreationReadinessSummaryCountsSubmitRequirements() {
+        let validationMessages = TS3BanDraftValidator.validationMessages(
+            ip: "192.0.2.10",
+            name: "Bad Guest",
+            uniqueIdentifier: "uid-bad",
+            myTeamSpeakId: "myts-id",
+            lastNickname: "Recent Guest",
+            durationSeconds: 600,
+            isCustomDuration: true,
+            reason: "spam"
+        )
+        let coverage = TS3BanDraftCoverageSummary(
+            ip: "192.0.2.10",
+            name: "Bad Guest",
+            uniqueIdentifier: "uid-bad",
+            myTeamSpeakId: "myts-id",
+            lastNickname: "Recent Guest",
+            reason: "spam",
+            isPermanent: false,
+            isCustomDuration: true,
+            durationSeconds: 600,
+            validationMessages: validationMessages
+        )
+        let readiness = TS3BanCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: true
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 5)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=5/5 | missingRequirements=0 | canSubmit=true | targets=5 | duration=temporary | customDuration=true | reason=true | validationIssues=0 | requirements=connected:true,target:true,duration:true,singleLineReason:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testBanCreationReadinessSummaryFlagsDisconnectedInvalidDraft() {
+        let validationMessages = TS3BanDraftValidator.validationMessages(
+            ip: "",
+            name: "",
+            uniqueIdentifier: "",
+            myTeamSpeakId: "",
+            lastNickname: "",
+            durationSeconds: nil,
+            isCustomDuration: true,
+            reason: "spam\nabuse"
+        )
+        let coverage = TS3BanDraftCoverageSummary(
+            ip: "",
+            name: "",
+            uniqueIdentifier: "",
+            myTeamSpeakId: "",
+            lastNickname: "",
+            reason: "spam\nabuse",
+            isPermanent: false,
+            isCustomDuration: true,
+            durationSeconds: nil,
+            validationMessages: validationMessages
+        )
+        let readiness = TS3BanCreationReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: false
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .target, .duration, .singleLineReason, .validationClean]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "readiness=0/5 | missingRequirements=5 | canSubmit=false | targets=0 | duration=temporary | customDuration=true | reason=true | validationIssues=3 | requirements=connected:false,target:false,duration:false,singleLineReason:false,validationClean:false | missing=connected,target,duration,singleLineReason,validationClean | needsAttention=true"
         )
     }
 

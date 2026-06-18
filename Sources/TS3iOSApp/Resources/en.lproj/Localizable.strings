@@ -2873,6 +2873,16 @@
 "ban.draftCoverageTemporary" = "Temporary";
 "ban.draftCoverageReasonFormat" = "Reason: %d";
 "ban.copyDraftCoverage" = "Copy Ban Draft Coverage";
+"ban.creationReadiness" = "Creation Readiness";
+"ban.creationReadinessFormat" = "%d/%d ready, %d missing";
+"ban.creationReadinessReady" = "Ban rule is ready to add";
+"ban.creationReadinessMissingFormat" = "Missing: %@";
+"ban.copyCreationReadiness" = "Copy Creation Readiness";
+"ban.creationRequirement.connected" = "Connected server";
+"ban.creationRequirement.target" = "Ban target";
+"ban.creationRequirement.duration" = "Valid duration";
+"ban.creationRequirement.singleLineReason" = "Single-line reason";
+"ban.creationRequirement.validationClean" = "Validation clean";
 "ban.copyRuleSummary" = "Copy Ban Rule Summary";
 "ban.addRule" = "Add Ban Rule";
 "ban.searchBans" = "Search bans";
