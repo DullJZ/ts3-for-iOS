@@ -462,6 +462,16 @@
 "privilegeKeys.useGeneratedKey" = "Use Generated Key";
 "privilegeKeys.copyGeneratedKey" = "Copy Generated Key";
 "privilegeKeys.copyGeneratedKeySummary" = "Copy Generated Key Summary";
+"privilegeKeys.connectionImpact" = "Connection Impact";
+"privilegeKeys.connectionImpactFormat" = "%@, replace key: %@";
+"privilegeKeys.connectionImpact.notSet" = "Not set";
+"privilegeKeys.connectionImpactSourceFormat" = "Source: %@";
+"privilegeKeys.connectionImpactNicknameFormat" = "Nickname: %@";
+"privilegeKeys.connectionImpactDefaultChannelFormat" = "Default channel: %@";
+"privilegeKeys.connectionImpactInviteFormat" = "Invite link: %@";
+"privilegeKeys.connectionImpact.source.generated" = "Generated";
+"privilegeKeys.connectionImpact.source.listed" = "Listed";
+"privilegeKeys.copyConnectionImpact" = "Copy Connection Impact";
 "privilegeKeys.copyFullInviteLinkWithKey" = "Copy Full Invite Link With Key";
 "privilegeKeys.saveAsConnectionKey" = "Save as Connection Privilege Key";
 "privilegeKeys.exportGeneratedKey" = "Export Generated Key";

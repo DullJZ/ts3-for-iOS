@@ -462,6 +462,16 @@
 "privilegeKeys.useGeneratedKey" = "使用已生成密钥";
 "privilegeKeys.copyGeneratedKey" = "复制已生成密钥";
 "privilegeKeys.copyGeneratedKeySummary" = "复制已生成密钥摘要";
+"privilegeKeys.connectionImpact" = "连接影响";
+"privilegeKeys.connectionImpactFormat" = "%@，替换密钥：%@";
+"privilegeKeys.connectionImpact.notSet" = "未设置";
+"privilegeKeys.connectionImpactSourceFormat" = "来源：%@";
+"privilegeKeys.connectionImpactNicknameFormat" = "昵称：%@";
+"privilegeKeys.connectionImpactDefaultChannelFormat" = "默认频道：%@";
+"privilegeKeys.connectionImpactInviteFormat" = "邀请链接：%@";
+"privilegeKeys.connectionImpact.source.generated" = "已生成";
+"privilegeKeys.connectionImpact.source.listed" = "列表";
+"privilegeKeys.copyConnectionImpact" = "复制连接影响";
 "privilegeKeys.copyFullInviteLinkWithKey" = "复制带密钥的完整邀请链接";
 "privilegeKeys.saveAsConnectionKey" = "保存为连接权限密钥";
 "privilegeKeys.exportGeneratedKey" = "导出已生成密钥";

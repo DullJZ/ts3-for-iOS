@@ -484,6 +484,66 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyConnectionImpactSummaryDescribesReplacementAndInviteLinkImpact() {
+        let snapshot = TS3ConnectionSnapshot(
+            host: "voice.example.test",
+            port: "9987",
+            nickname: "Avery",
+            serverPassword: "secret",
+            defaultChannel: "Ops/Lobby",
+            defaultChannelPassword: "channel-secret",
+            privilegeKey: "old-key"
+        )
+
+        let summary = TS3PrivilegeKeyConnectionImpactSummary(
+            key: "  new-key  ",
+            source: .generated,
+            snapshot: snapshot
+        )
+
+        XCTAssertEqual(summary.key, "new-key")
+        XCTAssertEqual(summary.source, .generated)
+        XCTAssertTrue(summary.hasUsableKey)
+        XCTAssertTrue(summary.hasServerTarget)
+        XCTAssertTrue(summary.hasServerPassword)
+        XCTAssertTrue(summary.hasChannelPassword)
+        XCTAssertTrue(summary.isReplacingExistingKey)
+        XCTAssertEqual(summary.inviteLinkImpact, "privilegeKey=Configured")
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "key=Configured | source=generated | server=voice.example.test:9987 | nickname=Avery | defaultChannel=Ops/Lobby | serverPassword=Configured | channelPassword=Configured | replacesExistingKey=true | inviteLinkImpact=privilegeKey=Configured | needsAttention=false"
+        )
+    }
+
+    func testPrivilegeKeyConnectionImpactSummaryFlagsMissingServerTarget() {
+        let snapshot = TS3ConnectionSnapshot(
+            host: " ",
+            port: "",
+            nickname: "",
+            serverPassword: "",
+            defaultChannel: "",
+            defaultChannelPassword: "",
+            privilegeKey: ""
+        )
+
+        let summary = TS3PrivilegeKeyConnectionImpactSummary(
+            key: "listed-key",
+            source: .listed,
+            snapshot: snapshot
+        )
+
+        XCTAssertTrue(summary.hasUsableKey)
+        XCTAssertFalse(summary.hasServerTarget)
+        XCTAssertFalse(summary.isReplacingExistingKey)
+        XCTAssertEqual(summary.inviteLinkImpact, "unavailable")
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "key=Configured | source=listed | server=Not set:9987 | nickname=Not set | defaultChannel=None | serverPassword=No | channelPassword=No | replacesExistingKey=false | inviteLinkImpact=unavailable | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testSaveCurrentConnectionPrivilegeKeyTrimsAndIgnoresEmptyValues() {
         let model = TS3AppModel()

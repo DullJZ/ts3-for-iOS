@@ -24241,9 +24241,21 @@ struct PrivilegeKeysSheet: View {
             List {
                 if let key = model.generatedPrivilegeKey {
                     Section(header: Text(localized("privilegeKeys.generatedKey"))) {
+                        let impact = model.privilegeKeyConnectionImpactSummary(key: key, source: .generated)
                         Text(key)
                             .font(.system(.footnote, design: .monospaced))
                             .lineLimit(3)
+                        ServerInfoDetailRow(
+                            label: localized("privilegeKeys.connectionImpact"),
+                            value: localized(
+                                "privilegeKeys.connectionImpactFormat",
+                                impact.host.isEmpty ? localized("privilegeKeys.connectionImpact.notSet") : impact.host,
+                                impact.isReplacingExistingKey ? localized("common.yes") : localized("common.no")
+                            )
+                        )
+                        Text(privilegeKeyConnectionImpactText(impact))
+                            .font(.caption)
+                            .foregroundColor(impact.needsAttention ? .orange : .secondary)
                         Button(localized("privilegeKeys.useGeneratedKey")) {
                             model.usePrivilegeKey(key)
                         }
@@ -24253,6 +24265,9 @@ struct PrivilegeKeysSheet: View {
                         }
                         Button(localized("privilegeKeys.copyGeneratedKeySummary")) {
                             TS3PlatformSupport.copyToPasteboard(generatedKeySnapshot(key))
+                        }
+                        Button(localized("privilegeKeys.copyConnectionImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(impact.clipboardSummary)
                         }
                         Button(localized("privilegeKeys.copyFullInviteLinkWithKey")) {
                             model.copyCurrentFullInviteLink(privilegeKey: key)
@@ -24678,6 +24693,15 @@ struct PrivilegeKeysSheet: View {
         ].joined(separator: " | ")
     }
 
+    private func privilegeKeyConnectionImpactText(_ impact: TS3PrivilegeKeyConnectionImpactSummary) -> String {
+        [
+            localized("privilegeKeys.connectionImpactSourceFormat", privilegeKeyConnectionImpactSourceTitle(impact.source)),
+            localized("privilegeKeys.connectionImpactNicknameFormat", impact.nickname.isEmpty ? localized("privilegeKeys.connectionImpact.notSet") : impact.nickname),
+            localized("privilegeKeys.connectionImpactDefaultChannelFormat", impact.defaultChannel.isEmpty ? localized("common.none") : impact.defaultChannel),
+            localized("privilegeKeys.connectionImpactInviteFormat", impact.inviteLinkImpact)
+        ].joined(separator: " | ")
+    }
+
     private var normalizedSearchText: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
@@ -25026,6 +25050,15 @@ struct PrivilegeKeysSheet: View {
         }
     }
 
+    private func privilegeKeyConnectionImpactSourceTitle(_ source: TS3PrivilegeKeyConnectionImpactSource) -> String {
+        switch source {
+        case .generated:
+            return localized("privilegeKeys.connectionImpact.source.generated")
+        case .listed:
+            return localized("privilegeKeys.connectionImpact.source.listed")
+        }
+    }
+
     private func keyFilterTitle(_ filter: KeyFilter) -> String {
         switch filter {
         case .all:
@@ -25247,6 +25280,9 @@ struct PrivilegeKeyRow: View {
                     Button(localized("groups.row.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                     }
+                    Button(localized("privilegeKeys.copyConnectionImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(connectionImpactSummary.clipboardSummary)
+                    }
                     Button(localized("privilegeKeys.deleteKey")) {
                         isConfirmingDelete = true
                     }
@@ -25289,6 +25325,9 @@ struct PrivilegeKeyRow: View {
             Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
+            Button(localized("privilegeKeys.copyConnectionImpact")) {
+                TS3PlatformSupport.copyToPasteboard(connectionImpactSummary.clipboardSummary)
+            }
             Button(localized("privilegeKeys.deleteKey")) {
                 isConfirmingDelete = true
             }
@@ -25304,6 +25343,9 @@ struct PrivilegeKeyRow: View {
         ))
         .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
+        .accessibilityAction(named: localized("privilegeKeys.copyConnectionImpact")) {
+            TS3PlatformSupport.copyToPasteboard(connectionImpactSummary.clipboardSummary)
         }
         .accessibilityAction(named: localized("privilegeKeys.useKey")) {
             if model.state == .connected {
@@ -25334,6 +25376,10 @@ struct PrivilegeKeyRow: View {
             channelGroups: model.channelGroups,
             channels: model.channels
         )
+    }
+
+    private var connectionImpactSummary: TS3PrivilegeKeyConnectionImpactSummary {
+        model.privilegeKeyConnectionImpactSummary(key: key.key, source: .listed)
     }
 
     private static func dateText(_ date: Date) -> String {

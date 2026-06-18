@@ -6032,6 +6032,67 @@ struct TS3PrivilegeKeyListSummary {
     }
 }
 
+enum TS3PrivilegeKeyConnectionImpactSource: String, Equatable {
+    case generated
+    case listed
+}
+
+struct TS3PrivilegeKeyConnectionImpactSummary {
+    let key: String
+    let source: TS3PrivilegeKeyConnectionImpactSource
+    let host: String
+    let port: String
+    let nickname: String
+    let defaultChannel: String
+    let hasServerPassword: Bool
+    let hasChannelPassword: Bool
+    let isReplacingExistingKey: Bool
+
+    var hasUsableKey: Bool {
+        !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var hasServerTarget: Bool {
+        !host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var inviteLinkImpact: String {
+        hasUsableKey && hasServerTarget ? "privilegeKey=Configured" : "unavailable"
+    }
+
+    var needsAttention: Bool {
+        !hasUsableKey || !hasServerTarget
+    }
+
+    var clipboardSummary: String {
+        [
+            "key=\(hasUsableKey ? "Configured" : "No")",
+            "source=\(source.rawValue)",
+            "server=\(host.isEmpty ? "Not set" : host):\(port.isEmpty ? "9987" : port)",
+            "nickname=\(nickname.isEmpty ? "Not set" : nickname)",
+            "defaultChannel=\(defaultChannel.isEmpty ? "None" : defaultChannel)",
+            "serverPassword=\(hasServerPassword ? "Configured" : "No")",
+            "channelPassword=\(hasChannelPassword ? "Configured" : "No")",
+            "replacesExistingKey=\(isReplacingExistingKey ? "true" : "false")",
+            "inviteLinkImpact=\(inviteLinkImpact)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(key: String, source: TS3PrivilegeKeyConnectionImpactSource, snapshot: TS3ConnectionSnapshot) {
+        self.key = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.source = source
+        self.host = snapshot.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.port = snapshot.port.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.nickname = snapshot.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.defaultChannel = snapshot.defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.hasServerPassword = !snapshot.serverPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        self.hasChannelPassword = !snapshot.defaultChannelPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        self.isReplacingExistingKey = !snapshot.privilegeKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && snapshot.privilegeKey.trimmingCharacters(in: .whitespacesAndNewlines) != self.key
+    }
+}
+
 struct TS3PrivilegeKeyOfficialCoverageAuditSummary {
     let draftCoverageSummary: TS3PrivilegeKeyDraftCoverageSummary
     let visibleKeySummary: TS3PrivilegeKeyListSummary
@@ -13315,6 +13376,17 @@ final class TS3AppModel: ObservableObject {
         }
         TS3PlatformSupport.copyToPasteboard(link)
         lastError = nil
+    }
+
+    func privilegeKeyConnectionImpactSummary(
+        key: String,
+        source: TS3PrivilegeKeyConnectionImpactSource
+    ) -> TS3PrivilegeKeyConnectionImpactSummary {
+        TS3PrivilegeKeyConnectionImpactSummary(
+            key: key,
+            source: source,
+            snapshot: currentConnectionSnapshot()
+        )
     }
 
     func copyCurrentConnectionSummary() {
