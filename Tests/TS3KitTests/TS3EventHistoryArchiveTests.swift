@@ -2,6 +2,42 @@ import XCTest
 @testable import TS3iOSApp
 
 final class TS3EventHistoryArchiveTests: XCTestCase {
+    func testEventAndPokeRowActionLocalizationKeysExist() throws {
+        let keys = [
+            "events.activityRow.copySummary",
+            "events.activityRow.copyMessage",
+            "events.pokeRow.privateMessage",
+            "events.pokeRow.pokeBack",
+            "events.pokeRow.offlineReply",
+            "events.pokeRow.addContact",
+            "events.pokeRow.copyPoke",
+            "events.pokeRow.copyMessage",
+            "events.pokeRow.copyUser",
+            "events.pokeRow.copyUniqueId",
+            "events.pokeReply.subject",
+            "events.pokeReply.message",
+            "events.pokeReply.copySummary",
+            "events.pokeReply.send",
+            "events.pokeReply.defaultSubject"
+        ]
+        let resourceRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("Sources/TS3iOSApp/Resources")
+        let localizationFiles = [
+            resourceRoot.appendingPathComponent("en.lproj/Localizable.strings"),
+            resourceRoot.appendingPathComponent("zh-Hans.lproj/Localizable.strings")
+        ]
+
+        for fileURL in localizationFiles {
+            let contents = try String(contentsOf: fileURL)
+            for key in keys {
+                XCTAssertTrue(
+                    contents.contains("\"\(key)\" ="),
+                    "Missing \(key) in \(fileURL.path)"
+                )
+            }
+        }
+    }
+
     @MainActor
     func testEventHistoryArchivePreviewIncludesCopyableActivityAndPokeSummaries() throws {
         let model = TS3AppModel()

@@ -10385,20 +10385,20 @@ struct ActivityEventRow: View {
         }
         .padding(.vertical, 4)
         .contextMenu {
-            Button("Copy Summary") {
+            Button(localized("events.activityRow.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(event.clipboardSummary)
             }
-            Button("Copy Message") {
+            Button(localized("events.activityRow.copyMessage")) {
                 TS3PlatformSupport.copyToPasteboard(messageText)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(titleText)
         .accessibilityValue(accessibilityValue)
-        .accessibilityAction(named: "Copy Summary") {
+        .accessibilityAction(named: localized("events.activityRow.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(event.clipboardSummary)
         }
-        .accessibilityAction(named: "Copy Message") {
+        .accessibilityAction(named: localized("events.activityRow.copyMessage")) {
             TS3PlatformSupport.copyToPasteboard(messageText)
         }
     }
@@ -10428,6 +10428,11 @@ struct ActivityEventRow: View {
 
     private var accessibilityValue: String {
         event.rowAccessibilityValue(messageText: messageText, detailText: detailText)
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 
     private var isClientEvent: Bool {
@@ -10502,21 +10507,21 @@ struct PokeEventRow: View {
             if onlineSender != nil || poke.senderUniqueIdentifier?.isEmpty == false {
                 HStack(spacing: 12) {
                     if let onlineSender {
-                        Button("Private Message") {
+                        Button(localized("events.pokeRow.privateMessage")) {
                             replyTarget = onlineSender
                         }
                         .buttonStyle(.borderless)
-                        Button("Poke Back") {
+                        Button(localized("events.pokeRow.pokeBack")) {
                             model.pokeUser(onlineSender, message: "Poke")
                         }
                         .buttonStyle(.borderless)
                     }
                     if poke.senderUniqueIdentifier?.isEmpty == false {
-                        Button("Offline Reply") {
+                        Button(localized("events.pokeRow.offlineReply")) {
                             isShowingOfflineReply = true
                         }
                         .buttonStyle(.borderless)
-                        Button("Add Contact") {
+                        Button(localized("events.pokeRow.addContact")) {
                             model.addContact(from: poke)
                         }
                         .buttonStyle(.borderless)
@@ -10528,32 +10533,32 @@ struct PokeEventRow: View {
         .padding(.vertical, 4)
         .contextMenu {
             if let onlineSender {
-                Button("Private Message") {
+                Button(localized("events.pokeRow.privateMessage")) {
                     replyTarget = onlineSender
                 }
-                Button("Poke Back") {
+                Button(localized("events.pokeRow.pokeBack")) {
                     model.pokeUser(onlineSender, message: "Poke")
                 }
             }
             if poke.senderUniqueIdentifier?.isEmpty == false {
-                Button("Offline Reply") {
+                Button(localized("events.pokeRow.offlineReply")) {
                     isShowingOfflineReply = true
                 }
-                Button("Add Contact") {
+                Button(localized("events.pokeRow.addContact")) {
                     model.addContact(from: poke)
                 }
             }
-            Button("Copy Poke") {
+            Button(localized("events.pokeRow.copyPoke")) {
                 TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
             }
-            Button("Copy Message") {
+            Button(localized("events.pokeRow.copyMessage")) {
                 TS3PlatformSupport.copyToPasteboard(poke.messageText)
             }
-            Button("Copy User") {
+            Button(localized("events.pokeRow.copyUser")) {
                 TS3PlatformSupport.copyToPasteboard(poke.senderName)
             }
             if let uniqueIdentifier = poke.senderUniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Button("Copy Unique ID") {
+                Button(localized("events.pokeRow.copyUniqueId")) {
                     TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
                 }
             }
@@ -10561,22 +10566,22 @@ struct PokeEventRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(poke.displayTitle)
         .accessibilityValue(poke.accessibilityValue)
-        .accessibilityAction(named: "Copy Poke") {
+        .accessibilityAction(named: localized("events.pokeRow.copyPoke")) {
             TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
         }
-        .accessibilityAction(named: "Private Message") {
+        .accessibilityAction(named: localized("events.pokeRow.privateMessage")) {
             guard let onlineSender else { return }
             replyTarget = onlineSender
         }
-        .accessibilityAction(named: "Poke Back") {
+        .accessibilityAction(named: localized("events.pokeRow.pokeBack")) {
             guard let onlineSender else { return }
             model.pokeUser(onlineSender, message: "Poke")
         }
-        .accessibilityAction(named: "Offline Reply") {
+        .accessibilityAction(named: localized("events.pokeRow.offlineReply")) {
             guard poke.senderUniqueIdentifier?.isEmpty == false else { return }
             isShowingOfflineReply = true
         }
-        .accessibilityAction(named: "Add Contact") {
+        .accessibilityAction(named: localized("events.pokeRow.addContact")) {
             guard poke.senderUniqueIdentifier?.isEmpty == false else { return }
             model.addContact(from: poke)
         }
@@ -10600,27 +10605,32 @@ struct PokeEventRow: View {
         formatter.timeStyle = .medium
         return formatter.string(from: date)
     }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 struct PokeOfflineReplySheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let poke: TS3PokeSummary
-    @State private var subject = "Re: Poke"
+    @State private var subject = NSLocalizedString("events.pokeReply.defaultSubject", comment: "")
     @State private var message = ""
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(poke.senderName)) {
-                    TextField("Subject", text: $subject)
+                    TextField(localized("events.pokeReply.subject"), text: $subject)
                         .ts3PlainTextField()
-                    TextField("Message", text: $message)
+                    TextField(localized("events.pokeReply.message"), text: $message)
                         .ts3PlainTextField()
                     Text(offlineMessageDraftSummary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Button("Copy Offline Reply Summary") {
+                    Button(localized("events.pokeReply.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
                     }
                     ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
@@ -10630,16 +10640,16 @@ struct PokeOfflineReplySheet: View {
                     }
                 }
             }
-            .navigationTitle("Offline Reply")
+            .navigationTitle(localized("events.pokeRow.offlineReply"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Send") {
+                    Button(localized("events.pokeReply.send")) {
                         if let uniqueIdentifier = poke.senderUniqueIdentifier {
                             model.sendOfflineMessage(
                                 toUniqueIdentifier: uniqueIdentifier,
@@ -10711,6 +10721,11 @@ struct PokeOfflineReplySheet: View {
             subject: subject,
             message: message
         )
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
