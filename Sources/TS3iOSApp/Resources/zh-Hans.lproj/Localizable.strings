@@ -1567,6 +1567,7 @@
 "contacts.row.findDatabaseClient" = "查找数据库记录";
 "contacts.row.saveContactBookmark" = "保存联系人书签";
 "contacts.row.copyContactBookmark" = "复制联系人书签草稿";
+"contacts.row.copyContactBookmarkImpact" = "复制联系人书签影响";
 "contacts.row.banUniqueId" = "封禁唯一 ID";
 "contacts.row.copyNickname" = "复制昵称";
 "contacts.row.copyUniqueId" = "复制唯一 ID";
@@ -1769,6 +1770,7 @@
 "database.actionRequirement.serverGroups" = "服务器组";
 "database.saveClientBookmark" = "保存客户端书签";
 "database.copyClientBookmarkDraft" = "复制客户端书签草稿";
+"database.copyClientBookmarkImpact" = "复制客户端书签影响";
 "database.summary.descriptionsFormat" = "%d 个有描述";
 "database.summary.lastIPsFormat" = "%d 个有最后 IP";
 "database.summary.connectionsFormat" = "%d 个有连接次数";

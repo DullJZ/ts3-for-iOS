@@ -366,14 +366,14 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(summary.messagingActionCount, 3)
         XCTAssertEqual(summary.administrationActionCount, 2)
         XCTAssertEqual(summary.onlineContextActionCount, 3)
-        XCTAssertEqual(summary.bookmarkActionCount, 2)
-        XCTAssertEqual(summary.totalActionCount, 19)
+        XCTAssertEqual(summary.bookmarkActionCount, 3)
+        XCTAssertEqual(summary.totalActionCount, 20)
         XCTAssertEqual(summary.availableAreaCount, 6)
         XCTAssertEqual(summary.blockedAreaCount, 0)
         XCTAssertFalse(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "contact=Contact | uid=uid-contact | status=friend | officialActions=19 | availableOfficialAreas=6 | blockedOfficialAreas=0 | online=true | databaseRecord=true | bookmark=true | note=true | areas=identity:3,contactManagement:6,messaging:3,administration:2,onlineContext:3,bookmark:2 | needsAttention=false"
+            "contact=Contact | uid=uid-contact | status=friend | officialActions=20 | availableOfficialAreas=6 | blockedOfficialAreas=0 | online=true | databaseRecord=true | bookmark=true | note=true | areas=identity:3,contactManagement:6,messaging:3,administration:2,onlineContext:3,bookmark:3 | needsAttention=false"
         )
     }
 
@@ -395,14 +395,101 @@ final class TS3ContactImportTests: XCTestCase {
         XCTAssertEqual(summary.messagingActionCount, 1)
         XCTAssertEqual(summary.administrationActionCount, 1)
         XCTAssertEqual(summary.onlineContextActionCount, 0)
-        XCTAssertEqual(summary.bookmarkActionCount, 1)
-        XCTAssertEqual(summary.totalActionCount, 12)
+        XCTAssertEqual(summary.bookmarkActionCount, 2)
+        XCTAssertEqual(summary.totalActionCount, 13)
         XCTAssertEqual(summary.availableAreaCount, 5)
         XCTAssertEqual(summary.blockedAreaCount, 1)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "contact=Contact | uid=uid-contact | status=blocked | officialActions=12 | availableOfficialAreas=5 | blockedOfficialAreas=1 | online=false | databaseRecord=false | bookmark=false | note=false | areas=identity:3,contactManagement:6,messaging:1,administration:1,bookmark:1 | needsAttention=true"
+            "contact=Contact | uid=uid-contact | status=blocked | officialActions=13 | availableOfficialAreas=5 | blockedOfficialAreas=1 | online=false | databaseRecord=false | bookmark=false | note=false | areas=identity:3,contactManagement:6,messaging:1,administration:1,bookmark:2 | needsAttention=true"
+        )
+    }
+
+    @MainActor
+    func testContactBookmarkSaveImpactCountsReplacementAndCredentials() {
+        let model = TS3AppModel()
+        model.bookmarks = [
+            TS3BookmarkSummary(
+                name: "Old Contact",
+                note: "contactUid=uid-contact",
+                host: "voice.example.com",
+                port: "9987",
+                nickname: "",
+                serverPassword: "",
+                defaultChannel: "",
+                defaultChannelPassword: "",
+                privilegeKey: ""
+            ),
+            TS3BookmarkSummary(
+                name: "Other Contact",
+                note: "contactUid=uid-other",
+                host: "voice.example.com",
+                port: "9987",
+                nickname: "",
+                serverPassword: "",
+                defaultChannel: "",
+                defaultChannelPassword: "",
+                privilegeKey: ""
+            )
+        ]
+        model.serverHost = "Voice.Example.com"
+        model.serverPort = "9987"
+        model.nickname = "Me"
+        model.serverPassword = "secret"
+        model.defaultChannel = " Lobby "
+        model.privilegeKey = "token"
+
+        let contact = makeContact(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Contact",
+            status: .friend,
+            note: "trusted"
+        )
+        let impact = model.contactBookmarkSaveImpactSummary(for: contact)
+
+        XCTAssertTrue(impact.canSave)
+        XCTAssertFalse(impact.missingServer)
+        XCTAssertEqual(impact.replacementCount, 1)
+        XCTAssertTrue(impact.hasContactNote)
+        XCTAssertTrue(impact.hasDefaultChannel)
+        XCTAssertEqual(impact.credentialCount, 2)
+        XCTAssertTrue(impact.willReplaceExisting)
+        XCTAssertTrue(impact.needsAttention)
+        XCTAssertEqual(
+            impact.clipboardSummary,
+            "source=contact | target=Contact | identifier=uid-contact | canSave=true | missingServer=false | replacements=1 | contactNote=true | defaultChannel=true | credentials=2 | serverPassword=true | channelPassword=false | privilegeKey=true | needsAttention=true"
+        )
+    }
+
+    @MainActor
+    func testDatabaseClientBookmarkSaveImpactFlagsMissingServer() {
+        let model = TS3AppModel()
+        model.bookmarks = []
+        model.serverHost = " "
+        let record = TS3DatabaseClientSummary(
+            id: 42,
+            uniqueIdentifier: "uid-client",
+            nickname: "Client",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+
+        let impact = model.databaseClientBookmarkSaveImpactSummary(for: record)
+
+        XCTAssertFalse(impact.canSave)
+        XCTAssertTrue(impact.missingServer)
+        XCTAssertEqual(impact.replacementCount, 0)
+        XCTAssertFalse(impact.hasContactNote)
+        XCTAssertEqual(impact.credentialCount, 0)
+        XCTAssertFalse(impact.willReplaceExisting)
+        XCTAssertTrue(impact.needsAttention)
+        XCTAssertEqual(
+            impact.clipboardSummary,
+            "source=databaseClient | target=Client | identifier=42 | canSave=false | missingServer=true | replacements=0 | contactNote=false | defaultChannel=false | credentials=0 | serverPassword=false | channelPassword=false | privilegeKey=false | needsAttention=true"
         )
     }
 

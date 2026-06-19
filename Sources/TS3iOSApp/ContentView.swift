@@ -7900,6 +7900,65 @@ struct ContactRow: View {
     }
 
     var body: some View {
+        contactRowContent
+            .sheet(isPresented: $isEditing) {
+                contactEditorSheet
+            }
+            .sheet(item: $onlineActionMode) { mode in
+                if let onlineUser {
+                    UserActionSheet(mode: mode, user: onlineUser)
+                        .environmentObject(model)
+                }
+            }
+            .sheet(isPresented: $isShowingOfflineMessage) {
+                ContactOfflineMessageSheet(contact: contact)
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingBanContact) {
+                ContactBanSheet(contact: contact)
+                    .environmentObject(model)
+            }
+            .sheet(isPresented: $isShowingClientDatabase) {
+                ClientDatabaseSheet()
+                    .environmentObject(model)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(contact.nickname)
+            .accessibilityValue(contact.accessibilityValue(onlineNickname: onlineUser?.nickname))
+            .accessibilityAction(named: localized("contacts.row.copySummary")) {
+                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+            }
+            .accessibilityAction(named: localized("contacts.row.copyOfficialActions")) {
+                TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+            }
+            .accessibilityAction(named: localized("contacts.row.editContact")) {
+                isEditing = true
+            }
+            .accessibilityAction(named: localized("contacts.row.findDatabaseClient")) {
+                model.findDatabaseClient(for: contact)
+                isShowingClientDatabase = true
+            }
+            .accessibilityAction(named: localized("contacts.row.saveContactBookmark")) {
+                model.saveContactBookmark(for: contact)
+            }
+            .accessibilityAction(named: localized("contacts.row.copyContactBookmark")) {
+                copyContactBookmarkDraft()
+            }
+            .accessibilityAction(named: localized("contacts.row.copyContactBookmarkImpact")) {
+                copyContactBookmarkImpact()
+            }
+            .accessibilityAction(named: localized("clientActions.sendOfflineMessage")) {
+                isShowingOfflineMessage = true
+            }
+            .accessibilityAction(named: localized("contacts.row.banUniqueId")) {
+                isShowingBanContact = true
+            }
+            .accessibilityAction(named: localized("contacts.row.deleteContact")) {
+                model.deleteContact(contact)
+            }
+    }
+
+    private var contactRowContent: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -7928,174 +7987,142 @@ struct ContactRow: View {
             }
             Spacer()
             Menu {
-                if onlineUser != nil {
-                    Button(localized("contacts.row.sendPrivateMessage")) {
-                        onlineActionMode = .privateMessage
-                    }
-                    Button(localized("contacts.row.poke")) {
-                        onlineActionMode = .poke
-                    }
-                    Button(localized("contacts.row.clientInfo")) {
-                        onlineActionMode = .info
-                    }
-                    Divider()
-                }
-                Button(localized("clientActions.sendOfflineMessage")) {
-                    isShowingOfflineMessage = true
-                }
-                Button(localized("contacts.row.banUniqueId")) {
-                    isShowingBanContact = true
-                }
-                Button(localized("contacts.row.editContact")) {
-                    isEditing = true
-                }
-                Button(localized("contacts.row.findDatabaseClient")) {
-                    model.findDatabaseClient(for: contact)
-                    isShowingClientDatabase = true
-                }
-                Button(localized("contacts.row.saveContactBookmark")) {
-                    model.saveContactBookmark(for: contact)
-                }
-                .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Button(localized("contacts.row.copyContactBookmark")) {
-                    TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
-                }
-                Button(localized("contacts.row.copyNickname")) {
-                    TS3PlatformSupport.copyToPasteboard(contact.nickname)
-                }
-                Button(localized("contacts.row.copyUniqueId")) {
-                    TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
-                }
-                Button(localized("contacts.row.copySummary")) {
-                    TS3PlatformSupport.copyToPasteboard(clipboardSummary)
-                }
-                Button(localized("contacts.row.copyOfficialActions")) {
-                    TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
-                }
-                ForEach(TS3ContactStatus.allCases) { status in
-                    Button(localized("contacts.row.setStatusFormat", localizedStatusTitle(status))) {
-                        model.updateContact(contact, status: status, note: contact.note)
-                    }
-                    .disabled(contact.status == status)
-                }
-                Button(localized("contacts.row.deleteContact")) {
-                    model.deleteContact(contact)
-                }
+                contactMenuItems
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
             .buttonStyle(.borderless)
         }
-        .sheet(isPresented: $isEditing) {
-            ContactEditorSheet(
-                uniqueIdentifier: contact.uniqueIdentifier,
-                nickname: contact.nickname,
-                initialStatus: contact.status,
-                initialNote: contact.note,
-                submit: { uniqueIdentifier, nickname, status, note in
-                    model.addContact(
-                        uniqueIdentifier: uniqueIdentifier,
-                        nickname: nickname.isEmpty ? contact.nickname : nickname,
-                        status: status,
-                        note: note
-                    )
-                }
-            )
-        }
-        .sheet(item: $onlineActionMode) { mode in
-            if let onlineUser {
-                UserActionSheet(mode: mode, user: onlineUser)
-                    .environmentObject(model)
-            }
-        }
-        .sheet(isPresented: $isShowingOfflineMessage) {
-            ContactOfflineMessageSheet(contact: contact)
-                .environmentObject(model)
-        }
-        .sheet(isPresented: $isShowingBanContact) {
-            ContactBanSheet(contact: contact)
-                .environmentObject(model)
-        }
-        .sheet(isPresented: $isShowingClientDatabase) {
-            ClientDatabaseSheet()
-                .environmentObject(model)
-        }
         .contextMenu {
-            if onlineUser != nil {
-                Button(localized("contacts.row.sendPrivateMessage")) {
-                    onlineActionMode = .privateMessage
-                }
-                Button(localized("contacts.row.poke")) {
-                    onlineActionMode = .poke
-                }
-            }
-            Button(localized("clientActions.sendOfflineMessage")) {
-                isShowingOfflineMessage = true
-            }
-            Button(localized("contacts.row.banUniqueId")) {
-                isShowingBanContact = true
-            }
-            Button(localized("contacts.row.copyNickname")) {
-                TS3PlatformSupport.copyToPasteboard(contact.nickname)
-            }
-            Button(localized("contacts.row.copyUniqueId")) {
-                TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
-            }
-            Button(localized("contacts.row.copySummary")) {
-                TS3PlatformSupport.copyToPasteboard(clipboardSummary)
-            }
-            Button(localized("contacts.row.copyOfficialActions")) {
-                TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
-            }
-            Button(localized("contacts.row.editContact")) {
-                isEditing = true
-            }
-            Button(localized("contacts.row.findDatabaseClient")) {
-                model.findDatabaseClient(for: contact)
-                isShowingClientDatabase = true
-            }
-            Button(localized("contacts.row.saveContactBookmark")) {
-                model.saveContactBookmark(for: contact)
-            }
-            .disabled(model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button(localized("contacts.row.copyContactBookmark")) {
-                TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
-            }
-            Button(localized("contacts.row.deleteContact")) {
-                model.deleteContact(contact)
-            }
+            contactContextMenuItems
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(contact.nickname)
-        .accessibilityValue(contact.accessibilityValue(onlineNickname: onlineUser?.nickname))
-        .accessibilityAction(named: localized("contacts.row.copySummary")) {
-            TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+    }
+
+    @ViewBuilder
+    private var contactMenuItems: some View {
+        if onlineUser != nil {
+            Button(localized("contacts.row.sendPrivateMessage")) {
+                onlineActionMode = .privateMessage
+            }
+            Button(localized("contacts.row.poke")) {
+                onlineActionMode = .poke
+            }
+            Button(localized("contacts.row.clientInfo")) {
+                onlineActionMode = .info
+            }
+            Divider()
         }
-        .accessibilityAction(named: localized("contacts.row.copyOfficialActions")) {
-            TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+        Button(localized("clientActions.sendOfflineMessage")) {
+            isShowingOfflineMessage = true
         }
-        .accessibilityAction(named: localized("contacts.row.editContact")) {
+        Button(localized("contacts.row.banUniqueId")) {
+            isShowingBanContact = true
+        }
+        Button(localized("contacts.row.editContact")) {
             isEditing = true
         }
-        .accessibilityAction(named: localized("contacts.row.findDatabaseClient")) {
+        Button(localized("contacts.row.findDatabaseClient")) {
             model.findDatabaseClient(for: contact)
             isShowingClientDatabase = true
         }
-        .accessibilityAction(named: localized("contacts.row.saveContactBookmark")) {
+        Button(localized("contacts.row.saveContactBookmark")) {
             model.saveContactBookmark(for: contact)
         }
-        .accessibilityAction(named: localized("contacts.row.copyContactBookmark")) {
-            TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
+        .disabled(!canSaveContactBookmark)
+        Button(localized("contacts.row.copyContactBookmark")) {
+            copyContactBookmarkDraft()
         }
-        .accessibilityAction(named: localized("clientActions.sendOfflineMessage")) {
-            isShowingOfflineMessage = true
+        Button(localized("contacts.row.copyContactBookmarkImpact")) {
+            copyContactBookmarkImpact()
         }
-        .accessibilityAction(named: localized("contacts.row.banUniqueId")) {
-            isShowingBanContact = true
+        Button(localized("contacts.row.copyNickname")) {
+            TS3PlatformSupport.copyToPasteboard(contact.nickname)
         }
-        .accessibilityAction(named: localized("contacts.row.deleteContact")) {
+        Button(localized("contacts.row.copyUniqueId")) {
+            TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
+        }
+        Button(localized("contacts.row.copySummary")) {
+            TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
+        Button(localized("contacts.row.copyOfficialActions")) {
+            TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+        }
+        ForEach(TS3ContactStatus.allCases) { status in
+            Button(localized("contacts.row.setStatusFormat", localizedStatusTitle(status))) {
+                model.updateContact(contact, status: status, note: contact.note)
+            }
+            .disabled(contact.status == status)
+        }
+        Button(localized("contacts.row.deleteContact")) {
             model.deleteContact(contact)
         }
+    }
+
+    @ViewBuilder
+    private var contactContextMenuItems: some View {
+        if onlineUser != nil {
+            Button(localized("contacts.row.sendPrivateMessage")) {
+                onlineActionMode = .privateMessage
+            }
+            Button(localized("contacts.row.poke")) {
+                onlineActionMode = .poke
+            }
+        }
+        Button(localized("clientActions.sendOfflineMessage")) {
+            isShowingOfflineMessage = true
+        }
+        Button(localized("contacts.row.banUniqueId")) {
+            isShowingBanContact = true
+        }
+        Button(localized("contacts.row.copyNickname")) {
+            TS3PlatformSupport.copyToPasteboard(contact.nickname)
+        }
+        Button(localized("contacts.row.copyUniqueId")) {
+            TS3PlatformSupport.copyToPasteboard(contact.uniqueIdentifier)
+        }
+        Button(localized("contacts.row.copySummary")) {
+            TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
+        Button(localized("contacts.row.copyOfficialActions")) {
+            TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+        }
+        Button(localized("contacts.row.editContact")) {
+            isEditing = true
+        }
+        Button(localized("contacts.row.findDatabaseClient")) {
+            model.findDatabaseClient(for: contact)
+            isShowingClientDatabase = true
+        }
+        Button(localized("contacts.row.saveContactBookmark")) {
+            model.saveContactBookmark(for: contact)
+        }
+        .disabled(!canSaveContactBookmark)
+        Button(localized("contacts.row.copyContactBookmark")) {
+            copyContactBookmarkDraft()
+        }
+        Button(localized("contacts.row.copyContactBookmarkImpact")) {
+            copyContactBookmarkImpact()
+        }
+        Button(localized("contacts.row.deleteContact")) {
+            model.deleteContact(contact)
+        }
+    }
+
+    private var contactEditorSheet: some View {
+        ContactEditorSheet(
+            uniqueIdentifier: contact.uniqueIdentifier,
+            nickname: contact.nickname,
+            initialStatus: contact.status,
+            initialNote: contact.note,
+            submit: { uniqueIdentifier, nickname, status, note in
+                model.addContact(
+                    uniqueIdentifier: uniqueIdentifier,
+                    nickname: nickname.isEmpty ? contact.nickname : nickname,
+                    status: status,
+                    note: note
+                )
+            }
+        )
     }
 
     private var clipboardSummary: String {
@@ -8106,9 +8133,21 @@ struct ContactRow: View {
         TS3ContactRowOfficialActionAuditSummary(
             contact: contact,
             isOnline: onlineUser != nil,
-            canSaveBookmark: !model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            canSaveBookmark: canSaveContactBookmark,
             hasDatabaseRecord: model.databaseClients.contains { $0.uniqueIdentifier == contact.uniqueIdentifier }
         )
+    }
+
+    private var canSaveContactBookmark: Bool {
+        model.contactBookmarkDraftSummary(for: contact).canSave
+    }
+
+    private func copyContactBookmarkDraft() {
+        TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSummary(for: contact))
+    }
+
+    private func copyContactBookmarkImpact() {
+        TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSaveImpactSummary(for: contact).clipboardSummary)
     }
 }
 
@@ -17539,6 +17578,9 @@ struct ClientDatabaseSheet: View {
                         Button(localized("database.copyClientBookmarkDraft")) {
                             TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: selected))
                         }
+                        Button(localized("database.copyClientBookmarkImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSaveImpactSummary(for: selected).clipboardSummary)
+                        }
                         if model.hasOnlineClientActions(for: selected) {
                             Button(localized("groups.members.row.pokeOnlineClient")) {
                                 onlineActionMode = .poke
@@ -18757,6 +18799,9 @@ struct DatabaseClientRow: View {
         .accessibilityAction(named: localized("database.copyClientBookmarkDraft")) {
             TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: record))
         }
+        .accessibilityAction(named: localized("database.copyClientBookmarkImpact")) {
+            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSaveImpactSummary(for: record).clipboardSummary)
+        }
         .accessibilityAction(named: localized("groups.members.row.banUniqueId")) {
             if model.canBanDatabaseClient(record) {
                 databaseActionMode = .ban
@@ -18895,6 +18940,9 @@ struct DatabaseClientRow: View {
         .disabled(!model.databaseClientBookmarkDraftSummary(for: record).canSave)
         Button(localized("database.copyClientBookmarkDraft")) {
             TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: record))
+        }
+        Button(localized("database.copyClientBookmarkImpact")) {
+            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSaveImpactSummary(for: record).clipboardSummary)
         }
     }
 

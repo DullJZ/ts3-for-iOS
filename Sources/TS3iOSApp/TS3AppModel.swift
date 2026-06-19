@@ -3620,7 +3620,7 @@ struct TS3ContactRowOfficialActionAuditSummary {
     }
 
     var bookmarkActionCount: Int {
-        1 + (canSaveBookmark ? 1 : 0)
+        2 + (canSaveBookmark ? 1 : 0)
     }
 
     var totalActionCount: Int {
@@ -12963,6 +12963,69 @@ struct TS3DatabaseClientBookmarkDraftSummary {
     }
 }
 
+struct TS3BookmarkSaveImpactSummary {
+    let source: String
+    let targetName: String
+    let targetIdentifier: String
+    let bookmark: TS3BookmarkSummary?
+    let replacementCount: Int
+    let hasContactNote: Bool
+
+    var canSave: Bool {
+        bookmark != nil
+    }
+
+    var missingServer: Bool {
+        bookmark == nil
+    }
+
+    var hasDefaultChannel: Bool {
+        bookmark?.defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var hasServerPassword: Bool {
+        bookmark?.serverPassword.isEmpty == false
+    }
+
+    var hasChannelPassword: Bool {
+        bookmark?.defaultChannelPassword.isEmpty == false
+    }
+
+    var hasPrivilegeKey: Bool {
+        bookmark?.privilegeKey.isEmpty == false
+    }
+
+    var credentialCount: Int {
+        [hasServerPassword, hasChannelPassword, hasPrivilegeKey].filter { $0 }.count
+    }
+
+    var willReplaceExisting: Bool {
+        replacementCount > 0
+    }
+
+    var needsAttention: Bool {
+        !canSave || willReplaceExisting || credentialCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "source=\(source)",
+            "target=\(targetName)",
+            "identifier=\(targetIdentifier)",
+            "canSave=\(canSave ? "true" : "false")",
+            "missingServer=\(missingServer ? "true" : "false")",
+            "replacements=\(replacementCount)",
+            "contactNote=\(hasContactNote ? "true" : "false")",
+            "defaultChannel=\(hasDefaultChannel ? "true" : "false")",
+            "credentials=\(credentialCount)",
+            "serverPassword=\(hasServerPassword ? "true" : "false")",
+            "channelPassword=\(hasChannelPassword ? "true" : "false")",
+            "privilegeKey=\(hasPrivilegeKey ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3ConnectionFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -17028,6 +17091,18 @@ final class TS3AppModel: ObservableObject {
         TS3ContactBookmarkDraftSummary(contact: contact, bookmark: contactBookmark(for: contact))
     }
 
+    func contactBookmarkSaveImpactSummary(for contact: TS3ContactEntry) -> TS3BookmarkSaveImpactSummary {
+        let bookmark = contactBookmark(for: contact)
+        return TS3BookmarkSaveImpactSummary(
+            source: "contact",
+            targetName: contact.nickname,
+            targetIdentifier: contact.uniqueIdentifier,
+            bookmark: bookmark,
+            replacementCount: bookmark.map { contactBookmarkReplacementCount(for: contact, bookmark: $0) } ?? 0,
+            hasContactNote: !contact.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        )
+    }
+
     func databaseClientBookmarkSummary(for record: TS3DatabaseClientSummary) -> String {
         databaseClientBookmarkDraftSummary(for: record).clipboardSummary
     }
@@ -17041,16 +17116,24 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    func databaseClientBookmarkSaveImpactSummary(for record: TS3DatabaseClientSummary) -> TS3BookmarkSaveImpactSummary {
+        let bookmark = databaseClientBookmark(for: record)
+        return TS3BookmarkSaveImpactSummary(
+            source: "databaseClient",
+            targetName: record.nickname,
+            targetIdentifier: "\(record.id)",
+            bookmark: bookmark,
+            replacementCount: bookmark.map { databaseClientBookmarkReplacementCount(for: record, bookmark: $0) } ?? 0,
+            hasContactNote: contactNote(for: record)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        )
+    }
+
     func saveDatabaseClientBookmark(for record: TS3DatabaseClientSummary) {
         guard let bookmark = databaseClientBookmark(for: record) else {
             lastError = "Connect to or enter a server before saving a database-client bookmark."
             return
         }
-        bookmarks.removeAll {
-            $0.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
-                && $0.port == bookmark.port
-                && $0.note.contains("clientDb=\(record.id)")
-        }
+        removeDatabaseClientBookmarks(for: record, matching: bookmark)
         bookmarks.insert(bookmark, at: 0)
         saveBookmarks()
         lastError = nil
@@ -17061,11 +17144,7 @@ final class TS3AppModel: ObservableObject {
             lastError = "Connect to or enter a server before saving a contact bookmark."
             return
         }
-        bookmarks.removeAll {
-            $0.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
-                && $0.port == bookmark.port
-                && $0.note.contains("contactUid=\(contact.uniqueIdentifier)")
-        }
+        removeContactBookmarks(for: contact, matching: bookmark)
         bookmarks.insert(bookmark, at: 0)
         saveBookmarks()
         lastError = nil
@@ -17095,6 +17174,42 @@ final class TS3AppModel: ObservableObject {
             defaultChannelPassword: defaultChannelPassword,
             privilegeKey: privilegeKey
         )
+    }
+
+    private func contactBookmarkReplacementCount(for contact: TS3ContactEntry, bookmark: TS3BookmarkSummary) -> Int {
+        bookmarks.filter { isContactBookmark($0, for: contact, matching: bookmark) }.count
+    }
+
+    private func databaseClientBookmarkReplacementCount(for record: TS3DatabaseClientSummary, bookmark: TS3BookmarkSummary) -> Int {
+        bookmarks.filter { isDatabaseClientBookmark($0, for: record, matching: bookmark) }.count
+    }
+
+    private func removeContactBookmarks(for contact: TS3ContactEntry, matching bookmark: TS3BookmarkSummary) {
+        bookmarks.removeAll { isContactBookmark($0, for: contact, matching: bookmark) }
+    }
+
+    private func removeDatabaseClientBookmarks(for record: TS3DatabaseClientSummary, matching bookmark: TS3BookmarkSummary) {
+        bookmarks.removeAll { isDatabaseClientBookmark($0, for: record, matching: bookmark) }
+    }
+
+    private func isContactBookmark(
+        _ existing: TS3BookmarkSummary,
+        for contact: TS3ContactEntry,
+        matching bookmark: TS3BookmarkSummary
+    ) -> Bool {
+        existing.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
+            && existing.port == bookmark.port
+            && existing.note.contains("contactUid=\(contact.uniqueIdentifier)")
+    }
+
+    private func isDatabaseClientBookmark(
+        _ existing: TS3BookmarkSummary,
+        for record: TS3DatabaseClientSummary,
+        matching bookmark: TS3BookmarkSummary
+    ) -> Bool {
+        existing.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
+            && existing.port == bookmark.port
+            && existing.note.contains("clientDb=\(record.id)")
     }
 
     private func databaseClientBookmark(for record: TS3DatabaseClientSummary) -> TS3BookmarkSummary? {
