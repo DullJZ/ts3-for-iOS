@@ -1744,6 +1744,7 @@
 "database.actionSummaryContactFormat" = "联系人：%@";
 "database.actionSummaryMessagingFormat" = "消息：%d";
 "database.actionSummaryAdminFormat" = "管理：%d";
+"database.actionSummaryBookmarkFormat" = "书签：%d";
 "database.actionSummaryHasNote" = "已保存联系人备注";
 "database.actionSummaryNeedsUid" = "需要唯一 ID 才能使用更多操作";
 "database.copyActionSummary" = "复制操作摘要";
@@ -1763,6 +1764,7 @@
 "database.officialAction.messaging" = "消息";
 "database.officialAction.administration" = "管理";
 "database.officialAction.onlineContext" = "在线上下文";
+"database.officialAction.bookmark" = "书签";
 "database.actionRequirement.uniqueIdentifier" = "唯一 ID";
 "database.actionRequirement.onlineClient" = "在线客户端";
 "database.actionRequirement.offlineMessage" = "离线消息";

@@ -6324,6 +6324,7 @@ struct TS3DatabaseClientActionSummary {
     let contactStatus: TS3ContactStatus
     let hasContactNote: Bool
     let serverGroupCount: Int
+    var canSaveBookmark: Bool = false
 
     var hasUniqueIdentifier: Bool {
         record.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -6349,12 +6350,16 @@ struct TS3DatabaseClientActionSummary {
         isOnline ? 3 : 1
     }
 
+    var bookmarkActionCount: Int {
+        2 + (canSaveBookmark ? 1 : 0)
+    }
+
     var availableActionCount: Int {
-        identityActionCount + contactActionCount + messagingActionCount + adminActionCount
+        identityActionCount + contactActionCount + messagingActionCount + adminActionCount + bookmarkActionCount
     }
 
     var needsAttention: Bool {
-        !hasUniqueIdentifier || (!isOnline && !canSendOfflineMessage)
+        !hasUniqueIdentifier || (!isOnline && !canSendOfflineMessage) || !canSaveBookmark
     }
 
     var clipboardSummary: String {
@@ -6367,9 +6372,11 @@ struct TS3DatabaseClientActionSummary {
             "messaging=\(messagingActionCount)",
             "admin=\(adminActionCount)",
             "online=\(onlineActionCount)",
+            "bookmark=\(bookmarkActionCount)",
             "status=\(contactStatus.rawValue)",
             "note=\(hasContactNote ? "true" : "false")",
             "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "bookmarkSave=\(canSaveBookmark ? "true" : "false")",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")
     }
@@ -6381,6 +6388,7 @@ enum TS3DatabaseClientOfficialActionArea: String, CaseIterable, Codable {
     case messaging
     case administration
     case onlineContext
+    case bookmark
 }
 
 struct TS3DatabaseClientOfficialActionAuditSummary {
@@ -6392,7 +6400,8 @@ struct TS3DatabaseClientOfficialActionAuditSummary {
             .contactManagement: actionSummary.contactActionCount,
             .messaging: actionSummary.messagingActionCount,
             .administration: actionSummary.adminActionCount,
-            .onlineContext: actionSummary.onlineActionCount
+            .onlineContext: actionSummary.onlineActionCount,
+            .bookmark: actionSummary.bookmarkActionCount
         ]
     }
 
@@ -6429,6 +6438,7 @@ struct TS3DatabaseClientOfficialActionAuditSummary {
             "online=\(actionSummary.isOnline ? "true" : "false")",
             "offlineMessage=\(actionSummary.canSendOfflineMessage ? "true" : "false")",
             "canBan=\(actionSummary.canBan ? "true" : "false")",
+            "bookmark=\(actionSummary.canSaveBookmark ? "true" : "false")",
             "areas=\(areaText.isEmpty ? "none" : areaText)",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")

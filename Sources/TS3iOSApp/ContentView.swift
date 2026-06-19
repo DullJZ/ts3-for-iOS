@@ -17977,7 +17977,8 @@ struct ClientDatabaseSheet: View {
             canBan: model.canBanDatabaseClient(record),
             contactStatus: model.contactStatus(for: record),
             hasContactNote: model.contactNote(for: record) != nil,
-            serverGroupCount: model.serverGroups.count
+            serverGroupCount: model.serverGroups.count,
+            canSaveBookmark: model.databaseClientBookmarkDraftSummary(for: record).canSave
         )
     }
 
@@ -17994,7 +17995,8 @@ struct ClientDatabaseSheet: View {
             localized("database.actionSummaryIdentityFormat", summary.identityActionCount),
             localized("database.actionSummaryContactFormat", localizedContactStatusTitle(summary.contactStatus)),
             localized("database.actionSummaryMessagingFormat", summary.messagingActionCount),
-            localized("database.actionSummaryAdminFormat", summary.adminActionCount)
+            localized("database.actionSummaryAdminFormat", summary.adminActionCount),
+            localized("database.actionSummaryBookmarkFormat", summary.bookmarkActionCount)
         ]
         if summary.hasContactNote {
             parts.append(localized("database.actionSummaryHasNote"))
@@ -18045,6 +18047,8 @@ struct ClientDatabaseSheet: View {
             return localized("database.officialAction.administration")
         case .onlineContext:
             return localized("database.officialAction.onlineContext")
+        case .bookmark:
+            return localized("database.officialAction.bookmark")
         }
     }
 

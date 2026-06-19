@@ -115,7 +115,8 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
             canBan: true,
             contactStatus: .friend,
             hasContactNote: true,
-            serverGroupCount: 3
+            serverGroupCount: 3,
+            canSaveBookmark: true
         )
 
         XCTAssertTrue(summary.hasUniqueIdentifier)
@@ -124,11 +125,12 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         XCTAssertEqual(summary.messagingActionCount, 3)
         XCTAssertEqual(summary.adminActionCount, 8)
         XCTAssertEqual(summary.onlineActionCount, 3)
-        XCTAssertEqual(summary.availableActionCount, 21)
+        XCTAssertEqual(summary.bookmarkActionCount, 3)
+        XCTAssertEqual(summary.availableActionCount, 24)
         XCTAssertFalse(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "db=7 | nickname=Beta | actions=21 | identity=5 | contact=5 | messaging=3 | admin=8 | online=3 | status=friend | note=true | uid=true | needsAttention=false"
+            "db=7 | nickname=Beta | actions=24 | identity=5 | contact=5 | messaging=3 | admin=8 | online=3 | bookmark=3 | status=friend | note=true | uid=true | bookmarkSave=true | needsAttention=false"
         )
     }
 
@@ -160,11 +162,12 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         XCTAssertEqual(summary.messagingActionCount, 0)
         XCTAssertEqual(summary.adminActionCount, 4)
         XCTAssertEqual(summary.onlineActionCount, 1)
-        XCTAssertEqual(summary.availableActionCount, 7)
+        XCTAssertEqual(summary.bookmarkActionCount, 2)
+        XCTAssertEqual(summary.availableActionCount, 9)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "db=6 | nickname=Alpha | actions=7 | identity=3 | contact=0 | messaging=0 | admin=4 | online=1 | status=neutral | note=false | uid=false | needsAttention=true"
+            "db=6 | nickname=Alpha | actions=9 | identity=3 | contact=0 | messaging=0 | admin=4 | online=1 | bookmark=2 | status=neutral | note=false | uid=false | bookmarkSave=false | needsAttention=true"
         )
     }
 
@@ -186,17 +189,18 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
             canBan: true,
             contactStatus: .friend,
             hasContactNote: true,
-            serverGroupCount: 3
+            serverGroupCount: 3,
+            canSaveBookmark: true
         )
         let audit = TS3DatabaseClientOfficialActionAuditSummary(actionSummary: actionSummary)
 
-        XCTAssertEqual(audit.totalActionCount, 24)
-        XCTAssertEqual(audit.availableAreaCount, 5)
+        XCTAssertEqual(audit.totalActionCount, 27)
+        XCTAssertEqual(audit.availableAreaCount, 6)
         XCTAssertEqual(audit.blockedAreaCount, 0)
         XCTAssertFalse(audit.needsAttention)
         XCTAssertEqual(
             audit.clipboardSummary,
-            "db=7 | nickname=Beta | officialActions=24 | availableOfficialAreas=5 | blockedOfficialAreas=0 | uid=true | online=true | offlineMessage=true | canBan=true | areas=identityLookup:5,contactManagement:5,messaging:3,administration:8,onlineContext:3 | needsAttention=false"
+            "db=7 | nickname=Beta | officialActions=27 | availableOfficialAreas=6 | blockedOfficialAreas=0 | uid=true | online=true | offlineMessage=true | canBan=true | bookmark=true | areas=identityLookup:5,contactManagement:5,messaging:3,administration:8,onlineContext:3,bookmark:3 | needsAttention=false"
         )
     }
 
@@ -222,13 +226,13 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         )
         let audit = TS3DatabaseClientOfficialActionAuditSummary(actionSummary: actionSummary)
 
-        XCTAssertEqual(audit.totalActionCount, 8)
-        XCTAssertEqual(audit.availableAreaCount, 3)
+        XCTAssertEqual(audit.totalActionCount, 10)
+        XCTAssertEqual(audit.availableAreaCount, 4)
         XCTAssertEqual(audit.blockedAreaCount, 2)
         XCTAssertTrue(audit.needsAttention)
         XCTAssertEqual(
             audit.clipboardSummary,
-            "db=6 | nickname=Alpha | officialActions=8 | availableOfficialAreas=3 | blockedOfficialAreas=2 | uid=false | online=false | offlineMessage=false | canBan=false | areas=identityLookup:3,administration:4,onlineContext:1 | needsAttention=true"
+            "db=6 | nickname=Alpha | officialActions=10 | availableOfficialAreas=4 | blockedOfficialAreas=2 | uid=false | online=false | offlineMessage=false | canBan=false | bookmark=false | areas=identityLookup:3,administration:4,onlineContext:1,bookmark:2 | needsAttention=true"
         )
     }
 
@@ -250,7 +254,8 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
             canBan: true,
             contactStatus: .friend,
             hasContactNote: true,
-            serverGroupCount: 3
+            serverGroupCount: 3,
+            canSaveBookmark: true
         )
         let readiness = TS3DatabaseClientActionReadinessSummary(actionSummary: actionSummary)
 

@@ -1744,6 +1744,7 @@
 "database.actionSummaryContactFormat" = "Contact: %@";
 "database.actionSummaryMessagingFormat" = "Messaging: %d";
 "database.actionSummaryAdminFormat" = "Admin: %d";
+"database.actionSummaryBookmarkFormat" = "Bookmarks: %d";
 "database.actionSummaryHasNote" = "Contact note saved";
 "database.actionSummaryNeedsUid" = "Unique ID required for more actions";
 "database.copyActionSummary" = "Copy Action Summary";
@@ -1763,6 +1764,7 @@
 "database.officialAction.messaging" = "Messaging";
 "database.officialAction.administration" = "Administration";
 "database.officialAction.onlineContext" = "Online Context";
+"database.officialAction.bookmark" = "Bookmarks";
 "database.actionRequirement.uniqueIdentifier" = "Unique ID";
 "database.actionRequirement.onlineClient" = "Online client";
 "database.actionRequirement.offlineMessage" = "Offline messaging";
