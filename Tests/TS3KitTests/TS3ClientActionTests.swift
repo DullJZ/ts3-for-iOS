@@ -119,6 +119,52 @@ final class TS3ClientActionTests: XCTestCase {
         )
     }
 
+    func testClientMoveReadinessSummaryCountsReadyUnprotectedMove() {
+        let summary = TS3ClientMoveReadinessSummary(
+            targetName: " Guest ",
+            targetClientId: 12,
+            currentChannelId: 5,
+            destinationChannel: makeChannel(id: 10, name: "Lobby", isPasswordProtected: false),
+            providedPassword: "",
+            hasSavedPassword: false,
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 6)
+        XCTAssertEqual(summary.totalRequirementCount, 6)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [TS3ClientMoveRequirement]())
+        XCTAssertTrue(summary.canSubmit)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targetName=true | clientId=12 | fromChannel=5 | toChannel=10 | toName=Lobby | readiness=6/6 | missingRequirements=0 | canSubmit=true | sameChannel=false | requiresPassword=false | providedPassword=false | savedPassword=false | requirements=connected:true,target:true,positiveClientId:true,destinationChannel:true,differentChannel:true,channelPassword:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testClientMoveReadinessSummaryFlagsMissingChannelPassword() {
+        let summary = TS3ClientMoveReadinessSummary(
+            targetName: "Guest",
+            targetClientId: 12,
+            currentChannelId: 5,
+            destinationChannel: makeChannel(id: 10, name: "Raid", isPasswordProtected: true),
+            providedPassword: " ",
+            hasSavedPassword: false,
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 5)
+        XCTAssertEqual(summary.totalRequirementCount, 6)
+        XCTAssertEqual(summary.missingRequirementCount, 1)
+        XCTAssertEqual(summary.missingRequirements, [TS3ClientMoveRequirement.channelPassword])
+        XCTAssertFalse(summary.canSubmit)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "targetName=true | clientId=12 | fromChannel=5 | toChannel=10 | toName=Raid | readiness=5/6 | missingRequirements=1 | canSubmit=false | sameChannel=false | requiresPassword=true | providedPassword=false | savedPassword=false | requirements=connected:true,target:true,positiveClientId:true,destinationChannel:true,differentChannel:true,channelPassword:false | missing=channelPassword | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testOnlineUserComplaintAndContactEntryPointsOpenTargetedSheets() {
         let model = TS3AppModel()
@@ -514,6 +560,17 @@ final class TS3ClientActionTests: XCTestCase {
             totalConnections: nil,
             idleTimeSeconds: nil,
             connectedSeconds: nil
+        )
+    }
+
+    private func makeChannel(id: Int, name: String, isPasswordProtected: Bool) -> TS3ChannelSummary {
+        TS3ChannelSummary(
+            id: id,
+            name: name,
+            isDefault: false,
+            isPasswordProtected: isPasswordProtected,
+            isPermanent: false,
+            isCurrent: false
         )
     }
 

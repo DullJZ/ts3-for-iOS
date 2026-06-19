@@ -5702,7 +5702,7 @@ struct ChannelMemberRow: View {
     @State private var isShowingPlaybackSettings = false
     @State private var isShowingPermissions = false
     @State private var isShowingDatabaseClient = false
-    @State private var passwordMoveChannel: TS3ChannelSummary?
+    @State private var moveTargetChannel: TS3ChannelSummary?
     @State private var movePassword = ""
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
@@ -5959,12 +5959,8 @@ struct ChannelMemberRow: View {
                 Menu(localized("clientActions.moveTo")) {
                     ForEach(model.channels) { channel in
                         Button(channel.name) {
-                            if channel.isPasswordProtected {
-                                movePassword = ""
-                                passwordMoveChannel = channel
-                            } else {
-                                model.moveUser(member, to: channel)
-                            }
+                            movePassword = ""
+                            moveTargetChannel = channel
                         }
                     }
                 }
@@ -6026,8 +6022,8 @@ struct ChannelMemberRow: View {
             ClientDatabaseSheet()
                 .environmentObject(model)
         }
-        .sheet(item: $passwordMoveChannel) { channel in
-            MoveUserPasswordSheet(user: member, channel: channel, password: $movePassword)
+        .sheet(item: $moveTargetChannel) { channel in
+            MoveUserSheet(user: member, channel: channel, password: $movePassword)
                 .environmentObject(model)
         }
     }
@@ -33510,7 +33506,7 @@ struct DefaultChannelPasswordSheet: View {
     }
 }
 
-struct MoveUserPasswordSheet: View {
+struct MoveUserSheet: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let user: TS3UserSummary
@@ -33518,34 +33514,78 @@ struct MoveUserPasswordSheet: View {
     @Binding var password: String
     @State private var rememberPassword = false
 
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text(channel.name)) {
-                    SecureField("channelActions.password", text: $password)
-                        .ts3PlainTextField()
-                    Toggle("channelActions.rememberPassword", isOn: $rememberPassword)
-                    if model.hasSavedChannelPassword(for: channel) {
-                        Button("channelActions.forgetSavedPassword") {
-                            model.forgetSavedChannelPassword(for: channel)
-                            rememberPassword = false
-                            password = ""
+                Section(header: Text(localized("clientActions.moveReview"))) {
+                    ServerInfoDetailRow(
+                        label: localized("clientActions.moveTargetClient"),
+                        value: user.nickname
+                    )
+                    ServerInfoDetailRow(
+                        label: localized("clientActions.moveFromChannel"),
+                        value: currentChannelName
+                    )
+                    ServerInfoDetailRow(
+                        label: localized("clientActions.moveToChannel"),
+                        value: channel.name
+                    )
+                    ServerInfoDetailRow(
+                        label: localized("clientActions.moveReadiness"),
+                        value: localized(
+                            "clientActions.moveReadinessFormat",
+                            moveReadinessSummary.satisfiedRequirementCount,
+                            moveReadinessSummary.totalRequirementCount,
+                            moveReadinessSummary.missingRequirementCount
+                        )
+                    )
+                    Text(moveReadinessText(moveReadinessSummary))
+                        .font(.caption)
+                        .foregroundColor(moveReadinessSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("clientActions.copyMoveReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(moveReadinessSummary.clipboardSummary)
+                    }
+                }
+                if channel.isPasswordProtected || model.hasSavedChannelPassword(for: channel) {
+                    Section(header: Text(localized("channelActions.channelPassword"))) {
+                        SecureField("channelActions.password", text: $password)
+                            .ts3PlainTextField()
+                        Toggle("channelActions.rememberPassword", isOn: $rememberPassword)
+                        if model.hasSavedChannelPassword(for: channel) {
+                            Button("channelActions.forgetSavedPassword") {
+                                model.forgetSavedChannelPassword(for: channel)
+                                rememberPassword = false
+                                password = ""
+                            }
                         }
                     }
                 }
                 Section {
                     Button("channelActions.moveUser") {
-                        model.moveUser(user, to: channel, password: password, rememberPassword: rememberPassword)
+                        model.moveUser(
+                            user,
+                            to: channel,
+                            password: movePasswordForSubmission,
+                            rememberPassword: rememberPassword
+                        )
                         presentationMode.wrappedValue.dismiss()
                     }
+                    .disabled(!moveReadinessSummary.canSubmit)
                 }
             }
-            .navigationTitle("channelActions.channelPassword")
+            .navigationTitle("clientActions.moveUser")
             .ts3InlineNavigationTitle()
             .onAppear {
                 if let savedPassword = model.savedChannelPassword(for: channel) {
                     password = savedPassword
                     rememberPassword = true
+                } else {
+                    rememberPassword = false
                 }
             }
             .toolbar {
@@ -33556,6 +33596,58 @@ struct MoveUserPasswordSheet: View {
                 }
             }
         }
+    }
+
+    private var currentChannelName: String {
+        model.channels.first { $0.id == user.channelId }?.name
+            ?? localized("clientActions.moveChannelIdFormat", user.channelId)
+    }
+
+    private var moveReadinessSummary: TS3ClientMoveReadinessSummary {
+        TS3ClientMoveReadinessSummary(
+            targetName: user.nickname,
+            targetClientId: user.id,
+            currentChannelId: user.channelId,
+            destinationChannel: channel,
+            providedPassword: password,
+            hasSavedPassword: model.hasSavedChannelPassword(for: channel),
+            isConnected: model.state == .connected
+        )
+    }
+
+    private var movePasswordForSubmission: String? {
+        guard channel.isPasswordProtected else { return "" }
+        let trimmed = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty && model.hasSavedChannelPassword(for: channel) {
+            return nil
+        }
+        return password
+    }
+
+    private func moveReadinessText(_ summary: TS3ClientMoveReadinessSummary) -> String {
+        var lines = [
+            summary.canSubmit
+                ? localized("clientActions.moveReadinessReady")
+                : localized(
+                    "clientActions.moveReadinessMissingFormat",
+                    summary.missingRequirements.map(title).joined(separator: ", ")
+                )
+        ]
+        if summary.isSameChannel {
+            lines.append(localized("clientActions.moveSameChannel"))
+        }
+        if summary.requiresPassword {
+            lines.append(
+                summary.hasChannelPassword
+                    ? localized("clientActions.movePasswordReady")
+                    : localized("clientActions.movePasswordRequired")
+            )
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func title(for requirement: TS3ClientMoveRequirement) -> String {
+        localized("clientActions.moveRequirement.\(requirement.rawValue)")
     }
 }
 

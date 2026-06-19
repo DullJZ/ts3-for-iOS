@@ -1983,6 +1983,123 @@ struct TS3ClientModerationReadinessSummary {
     }
 }
 
+enum TS3ClientMoveRequirement: String, CaseIterable, Codable {
+    case connected
+    case target
+    case positiveClientId
+    case destinationChannel
+    case differentChannel
+    case channelPassword
+}
+
+struct TS3ClientMoveReadinessSummary {
+    let targetName: String?
+    let targetClientId: Int?
+    let currentChannelId: Int?
+    let destinationChannel: TS3ChannelSummary?
+    let providedPassword: String
+    let hasSavedPassword: Bool
+    let isConnected: Bool
+
+    var hasTargetName: Bool {
+        Self.normalized(targetName) != nil
+    }
+
+    var hasTargetClientId: Bool {
+        (targetClientId ?? 0) > 0
+    }
+
+    var hasDestinationChannel: Bool {
+        (destinationChannel?.id ?? 0) > 0
+    }
+
+    var isSameChannel: Bool {
+        guard let currentChannelId, let destinationChannel else { return false }
+        return currentChannelId == destinationChannel.id
+    }
+
+    var requiresPassword: Bool {
+        destinationChannel?.isPasswordProtected == true
+    }
+
+    var hasProvidedPassword: Bool {
+        Self.normalized(providedPassword) != nil
+    }
+
+    var hasChannelPassword: Bool {
+        !requiresPassword || hasProvidedPassword || hasSavedPassword
+    }
+
+    var requirementStates: [TS3ClientMoveRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .target: hasTargetName || hasTargetClientId,
+            .positiveClientId: hasTargetClientId,
+            .destinationChannel: hasDestinationChannel,
+            .differentChannel: hasDestinationChannel && !isSameChannel,
+            .channelPassword: hasChannelPassword
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        TS3ClientMoveRequirement.allCases.filter { requirementStates[$0] == true }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3ClientMoveRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3ClientMoveRequirement] {
+        TS3ClientMoveRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected
+            && hasTargetClientId
+            && hasDestinationChannel
+            && !isSameChannel
+            && hasChannelPassword
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || requiresPassword || isSameChannel
+    }
+
+    var clipboardSummary: String {
+        let requirementSummary = TS3ClientMoveRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "targetName=\(hasTargetName ? "true" : "false")",
+            "clientId=\(targetClientId.map(String.init) ?? "none")",
+            "fromChannel=\(currentChannelId.map(String.init) ?? "none")",
+            "toChannel=\(destinationChannel?.id.description ?? "none")",
+            "toName=\(destinationChannel?.name ?? "none")",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "sameChannel=\(isSameChannel ? "true" : "false")",
+            "requiresPassword=\(requiresPassword ? "true" : "false")",
+            "providedPassword=\(hasProvidedPassword ? "true" : "false")",
+            "savedPassword=\(hasSavedPassword ? "true" : "false")",
+            "requirements=\(requirementSummary)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TS3ChatMessageSummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date
