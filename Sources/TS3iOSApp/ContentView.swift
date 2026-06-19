@@ -5829,6 +5829,9 @@ struct ChannelMemberRow: View {
                 Button(localized("clientActions.copyClientSummary")) {
                     TS3PlatformSupport.copyToPasteboard(memberClipboardSummary)
                 }
+                Button(localized("clientActions.copyOnlineActionAudit")) {
+                    TS3PlatformSupport.copyToPasteboard(onlineActionAuditSummary.clipboardSummary)
+                }
                 Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(member.nickname)
                 }
@@ -6053,6 +6056,18 @@ struct ChannelMemberRow: View {
     private var isPlaybackMuted: Bool {
         model.isPlaybackMuted(for: member)
     }
+
+    private var onlineActionAuditSummary: TS3OnlineClientActionAuditSummary {
+        TS3OnlineClientActionAuditSummary(
+            user: member,
+            isConnected: model.state == .connected,
+            availableServerGroupCount: availableServerGroups.count,
+            assignedServerGroupCount: assignedServerGroups.count,
+            channelGroupCount: model.channelGroups.count,
+            movableChannelCount: model.channels.filter { $0.id != member.channelId }.count,
+            currentChannelKnown: model.channels.contains { $0.id == member.channelId }
+        )
+    }
 }
 
 struct UserActionSheet: View {
@@ -6128,6 +6143,24 @@ struct UserActionSheet: View {
                             isExportingInfo = true
                         }
                         .disabled(infoSnapshot.isEmpty)
+                    }
+
+                    Section(header: Text(localized("clientActions.onlineActionAudit"))) {
+                        ServerInfoDetailRow(
+                            label: localized("clientActions.onlineActionAreas"),
+                            value: localized(
+                                "clientActions.onlineActionAuditFormat",
+                                onlineActionAuditSummary.availableAreaCount,
+                                onlineActionAuditSummary.totalAreaCount,
+                                onlineActionAuditSummary.blockedAreaCount
+                            )
+                        )
+                        Text(onlineActionAuditText(onlineActionAuditSummary))
+                            .font(.caption)
+                            .foregroundColor(onlineActionAuditSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("clientActions.copyOnlineActionAudit")) {
+                            TS3PlatformSupport.copyToPasteboard(onlineActionAuditSummary.clipboardSummary)
+                        }
                     }
 
                     UserInfoRows(user: currentUser)
@@ -6575,6 +6608,32 @@ struct UserActionSheet: View {
 
     private var currentUser: TS3UserSummary {
         model.clients.first(where: { $0.id == user.id }) ?? user
+    }
+
+    private var onlineActionAuditSummary: TS3OnlineClientActionAuditSummary {
+        TS3OnlineClientActionAuditSummary(
+            user: currentUser,
+            isConnected: model.state == .connected,
+            availableServerGroupCount: model.serverGroups.filter { !currentUser.serverGroups.contains($0.id) }.count,
+            assignedServerGroupCount: currentUser.serverGroups.count,
+            channelGroupCount: model.channelGroups.count,
+            movableChannelCount: model.channels.filter { $0.id != currentUser.channelId }.count,
+            currentChannelKnown: model.channels.contains { $0.id == currentUser.channelId }
+        )
+    }
+
+    private func onlineActionAuditText(_ summary: TS3OnlineClientActionAuditSummary) -> String {
+        if summary.blockedAreas.isEmpty {
+            return localized("clientActions.onlineActionAuditReady")
+        }
+        return localized(
+            "clientActions.onlineActionAuditBlockedFormat",
+            summary.blockedAreas.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for area: TS3OnlineClientActionArea) -> String {
+        localized("clientActions.onlineActionArea.\(area.rawValue)")
     }
 }
 

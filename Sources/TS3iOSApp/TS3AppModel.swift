@@ -2100,6 +2100,98 @@ struct TS3ClientMoveReadinessSummary {
     }
 }
 
+enum TS3OnlineClientActionArea: String, CaseIterable, Codable {
+    case identity
+    case contact
+    case messaging
+    case voiceControls
+    case moderation
+    case administration
+    case movement
+}
+
+struct TS3OnlineClientActionAuditSummary {
+    let user: TS3UserSummary
+    let isConnected: Bool
+    let availableServerGroupCount: Int
+    let assignedServerGroupCount: Int
+    let channelGroupCount: Int
+    let movableChannelCount: Int
+    let currentChannelKnown: Bool
+
+    var hasPositiveClientId: Bool {
+        user.id > 0
+    }
+
+    var hasUniqueIdentifier: Bool {
+        user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var hasDatabaseId: Bool {
+        (user.databaseId ?? 0) > 0
+    }
+
+    var areaStates: [TS3OnlineClientActionArea: Bool] {
+        [
+            .identity: isConnected && hasPositiveClientId,
+            .contact: isConnected && hasUniqueIdentifier,
+            .messaging: isConnected && hasPositiveClientId,
+            .voiceControls: isConnected && hasPositiveClientId,
+            .moderation: isConnected && hasPositiveClientId && !user.isCurrentUser,
+            .administration: isConnected && hasPositiveClientId,
+            .movement: isConnected && hasPositiveClientId && movableChannelCount > 0
+        ]
+    }
+
+    var availableAreaCount: Int {
+        TS3OnlineClientActionArea.allCases.filter { areaStates[$0] == true }.count
+    }
+
+    var totalAreaCount: Int {
+        TS3OnlineClientActionArea.allCases.count
+    }
+
+    var blockedAreaCount: Int {
+        max(0, totalAreaCount - availableAreaCount)
+    }
+
+    var blockedAreas: [TS3OnlineClientActionArea] {
+        TS3OnlineClientActionArea.allCases.filter { areaStates[$0] != true }
+    }
+
+    var needsAttention: Bool {
+        blockedAreaCount > 0
+            || !hasUniqueIdentifier
+            || !hasDatabaseId
+            || !currentChannelKnown
+    }
+
+    var clipboardSummary: String {
+        let areaSummary = TS3OnlineClientActionArea.allCases
+            .map { "\($0.rawValue):\(areaStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let blocked = blockedAreas.map(\.rawValue).joined(separator: ",")
+        return [
+            "clientId=\(user.id)",
+            "nickname=\(user.nickname)",
+            "connected=\(isConnected ? "true" : "false")",
+            "currentUser=\(user.isCurrentUser ? "true" : "false")",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "databaseId=\(hasDatabaseId ? "true" : "false")",
+            "currentChannel=\(currentChannelKnown ? "true" : "false")",
+            "movableChannels=\(movableChannelCount)",
+            "availableServerGroups=\(availableServerGroupCount)",
+            "assignedServerGroups=\(assignedServerGroupCount)",
+            "channelGroups=\(channelGroupCount)",
+            "areas=\(availableAreaCount)/\(totalAreaCount)",
+            "blockedAreas=\(blockedAreaCount)",
+            "areaStates=\(areaSummary)",
+            "blocked=\(blocked.isEmpty ? "none" : blocked)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3ChatMessageSummary: Identifiable, Codable {
     let id: UUID
     let timestamp: Date

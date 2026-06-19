@@ -165,6 +165,66 @@ final class TS3ClientActionTests: XCTestCase {
         )
     }
 
+    func testOnlineClientActionAuditSummaryCountsAvailableAreas() {
+        let user = makeUser(
+            id: 12,
+            databaseId: 44,
+            uniqueIdentifier: "user-uid",
+            nickname: "Guest",
+            channelId: 5,
+            serverGroups: [1, 2]
+        )
+        let summary = TS3OnlineClientActionAuditSummary(
+            user: user,
+            isConnected: true,
+            availableServerGroupCount: 3,
+            assignedServerGroupCount: 2,
+            channelGroupCount: 4,
+            movableChannelCount: 5,
+            currentChannelKnown: true
+        )
+
+        XCTAssertEqual(summary.availableAreaCount, 7)
+        XCTAssertEqual(summary.totalAreaCount, 7)
+        XCTAssertEqual(summary.blockedAreaCount, 0)
+        XCTAssertEqual(summary.blockedAreas, [TS3OnlineClientActionArea]())
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "clientId=12 | nickname=Guest | connected=true | currentUser=false | uid=true | databaseId=true | currentChannel=true | movableChannels=5 | availableServerGroups=3 | assignedServerGroups=2 | channelGroups=4 | areas=7/7 | blockedAreas=0 | areaStates=identity:true,contact:true,messaging:true,voiceControls:true,moderation:true,administration:true,movement:true | blocked=none | needsAttention=false"
+        )
+    }
+
+    func testOnlineClientActionAuditSummaryFlagsBlockedAreas() {
+        let user = makeUser(
+            id: 7,
+            databaseId: nil,
+            uniqueIdentifier: nil,
+            nickname: "Me",
+            isCurrentUser: true,
+            channelId: 99
+        )
+        let summary = TS3OnlineClientActionAuditSummary(
+            user: user,
+            isConnected: true,
+            availableServerGroupCount: 0,
+            assignedServerGroupCount: 0,
+            channelGroupCount: 0,
+            movableChannelCount: 0,
+            currentChannelKnown: false
+        )
+
+        XCTAssertEqual(summary.availableAreaCount, 4)
+        XCTAssertEqual(summary.totalAreaCount, 7)
+        XCTAssertEqual(summary.blockedAreaCount, 3)
+        XCTAssertEqual(summary.blockedAreas, [.contact, .moderation, .movement])
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "clientId=7 | nickname=Me | connected=true | currentUser=true | uid=false | databaseId=false | currentChannel=false | movableChannels=0 | availableServerGroups=0 | assignedServerGroups=0 | channelGroups=0 | areas=4/7 | blockedAreas=3 | areaStates=identity:true,contact:false,messaging:true,voiceControls:true,moderation:false,administration:true,movement:false | blocked=contact,moderation,movement | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testOnlineUserComplaintAndContactEntryPointsOpenTargetedSheets() {
         let model = TS3AppModel()
@@ -525,7 +585,8 @@ final class TS3ClientActionTests: XCTestCase {
         isCurrentUser: Bool = false,
         channelId: Int = 5,
         isRequestingTalkPower: Bool = false,
-        talkRequestMessage: String? = nil
+        talkRequestMessage: String? = nil,
+        serverGroups: [Int] = []
     ) -> TS3UserSummary {
         TS3UserSummary(
             id: id,
@@ -545,7 +606,7 @@ final class TS3ClientActionTests: XCTestCase {
             talkRequestMessage: talkRequestMessage,
             talkPower: nil,
             channelGroupId: nil,
-            serverGroups: [],
+            serverGroups: serverGroups,
             description: nil,
             avatarHash: nil,
             avatarURL: nil,
