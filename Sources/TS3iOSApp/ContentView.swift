@@ -29345,6 +29345,48 @@ struct WhisperSheet: View {
         )
     }
 
+    private var selectedTargetsActivationReadinessSummary: TS3WhisperActivationReadinessSummary {
+        TS3WhisperActivationReadinessSummary(
+            route: .list(
+                channelIds: selectedWhisperChannelIds.sorted(),
+                clientIds: selectedWhisperClientIds.sorted()
+            ),
+            routeDescription: selectedTargetsRouteDescription,
+            activationMode: model.whisperActivationMode,
+            isConnected: model.state == .connected,
+            isInputMuted: model.isInputMuted,
+            isActivationActive: model.isWhisperActivationActive
+        )
+    }
+
+    private var groupWhisperActivationReadinessSummary: TS3WhisperActivationReadinessSummary {
+        TS3WhisperActivationReadinessSummary(
+            route: .group(
+                type: groupWhisperType,
+                target: groupWhisperTarget,
+                targetId: selectedGroupWhisperTargetId
+            ),
+            routeDescription: groupWhisperRouteDescription,
+            activationMode: model.whisperActivationMode,
+            isConnected: model.state == .connected,
+            isInputMuted: model.isInputMuted,
+            isActivationActive: model.isWhisperActivationActive
+        )
+    }
+
+    private var selectedTargetsRouteDescription: String {
+        let channelCount = selectedWhisperChannelIds.count
+        let clientCount = selectedWhisperClientIds.count
+        if channelCount == 0 && clientCount == 0 {
+            return "Selected whisper targets: none"
+        }
+        return "Selected whisper targets: \(channelCount) channels, \(clientCount) users"
+    }
+
+    private var groupWhisperRouteDescription: String {
+        "\(groupWhisperTypeTitle(groupWhisperType)) / \(groupWhisperTargetTitle(groupWhisperTarget))"
+    }
+
     private var whisperRouteSnapshot: String {
         var rows = [
             localized("whisper.snapshot.routeFormat", model.whisperRouteDescription),
@@ -29481,21 +29523,7 @@ struct WhisperSheet: View {
                     Text(activationModeDetail(model.whisperActivationMode))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    ServerInfoDetailRow(
-                        label: localized("whisper.activationReadiness"),
-                        value: localized(
-                            "whisper.activationReadinessFormat",
-                            whisperActivationReadinessSummary.satisfiedRequirementCount,
-                            whisperActivationReadinessSummary.totalRequirementCount,
-                            whisperActivationReadinessSummary.missingRequirementCount
-                        )
-                    )
-                    Text(whisperActivationReadinessText(whisperActivationReadinessSummary))
-                        .font(.caption)
-                        .foregroundColor(whisperActivationReadinessSummary.needsAttention ? .orange : .secondary)
-                    Button(localized("whisper.copyActivationReadiness")) {
-                        TS3PlatformSupport.copyToPasteboard(whisperActivationReadinessSummary.clipboardSummary)
-                    }
+                    activationReadinessReview(whisperActivationReadinessSummary)
                     if model.whisperActivationMode == .tapToToggle {
                         Button(model.isWhisperActivationActive ? localized("whisper.stopTemporary") : localized("whisper.startTemporary")) {
                             model.toggleCurrentWhisperActivation()
@@ -29601,7 +29629,8 @@ struct WhisperSheet: View {
                             clientIds: selectedWhisperClientIds.sorted()
                         ))
                     }
-                    .disabled(model.state != .connected || (selectedWhisperChannelIds.isEmpty && selectedWhisperClientIds.isEmpty))
+                    .disabled(!selectedTargetsActivationReadinessSummary.canStart)
+                    activationReadinessReview(selectedTargetsActivationReadinessSummary)
                     Button(localized("whisper.selectCurrentRoute")) {
                         selectCurrentWhisperRoute()
                     }
@@ -29750,7 +29779,8 @@ struct WhisperSheet: View {
                             targetId: selectedGroupWhisperTargetId
                         ))
                     }
-                    .disabled(model.state != .connected || !canEnableGroupWhisper)
+                    .disabled(!groupWhisperActivationReadinessSummary.canStart)
+                    activationReadinessReview(groupWhisperActivationReadinessSummary)
                 }
 
                 if !model.channels.isEmpty {
@@ -30203,6 +30233,25 @@ struct WhisperSheet: View {
 
     private func title(for requirement: TS3WhisperActivationRequirement) -> String {
         localized("whisper.activationRequirement.\(requirement.rawValue)")
+    }
+
+    @ViewBuilder
+    private func activationReadinessReview(_ summary: TS3WhisperActivationReadinessSummary) -> some View {
+        ServerInfoDetailRow(
+            label: localized("whisper.activationReadiness"),
+            value: localized(
+                "whisper.activationReadinessFormat",
+                summary.satisfiedRequirementCount,
+                summary.totalRequirementCount,
+                summary.missingRequirementCount
+            )
+        )
+        Text(whisperActivationReadinessText(summary))
+            .font(.caption)
+            .foregroundColor(summary.needsAttention ? .orange : .secondary)
+        Button(localized("whisper.copyActivationReadiness")) {
+            TS3PlatformSupport.copyToPasteboard(summary.clipboardSummary)
+        }
     }
 
     private func presetFilterTitle(_ filter: WhisperPresetFilter) -> String {
