@@ -259,15 +259,15 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         )
         let readiness = TS3DatabaseClientActionReadinessSummary(actionSummary: actionSummary)
 
-        XCTAssertEqual(readiness.satisfiedRequirementCount, 5)
-        XCTAssertEqual(readiness.totalRequirementCount, 5)
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
         XCTAssertEqual(readiness.missingRequirementCount, 0)
         XCTAssertEqual(readiness.missingRequirements, [])
         XCTAssertEqual(readiness.blockedOfficialAreaCount, 0)
         XCTAssertFalse(readiness.needsAttention)
         XCTAssertEqual(
             readiness.clipboardSummary,
-            "db=7 | nickname=Beta | readiness=5/5 | missingRequirements=0 | blockedOfficialAreas=0 | requirements=uniqueIdentifier:true,onlineClient:true,offlineMessage:true,banPermission:true,serverGroups:true | missing=none | needsAttention=false"
+            "db=7 | nickname=Beta | readiness=6/6 | missingRequirements=0 | blockedOfficialAreas=0 | requirements=uniqueIdentifier:true,onlineClient:true,offlineMessage:true,banPermission:true,serverGroups:true,bookmarkSave:true | missing=none | needsAttention=false"
         )
     }
 
@@ -294,17 +294,17 @@ final class TS3DatabaseClientBackupTests: XCTestCase {
         let readiness = TS3DatabaseClientActionReadinessSummary(actionSummary: actionSummary)
 
         XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
-        XCTAssertEqual(readiness.totalRequirementCount, 5)
-        XCTAssertEqual(readiness.missingRequirementCount, 5)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 6)
         XCTAssertEqual(
             readiness.missingRequirements,
-            [.uniqueIdentifier, .onlineClient, .offlineMessage, .banPermission, .serverGroups]
+            [.uniqueIdentifier, .onlineClient, .offlineMessage, .banPermission, .serverGroups, .bookmarkSave]
         )
         XCTAssertEqual(readiness.blockedOfficialAreaCount, 2)
         XCTAssertTrue(readiness.needsAttention)
         XCTAssertEqual(
             readiness.clipboardSummary,
-            "db=6 | nickname=Alpha | readiness=0/5 | missingRequirements=5 | blockedOfficialAreas=2 | requirements=uniqueIdentifier:false,onlineClient:false,offlineMessage:false,banPermission:false,serverGroups:false | missing=uniqueIdentifier,onlineClient,offlineMessage,banPermission,serverGroups | needsAttention=true"
+            "db=6 | nickname=Alpha | readiness=0/6 | missingRequirements=6 | blockedOfficialAreas=2 | requirements=uniqueIdentifier:false,onlineClient:false,offlineMessage:false,banPermission:false,serverGroups:false,bookmarkSave:false | missing=uniqueIdentifier,onlineClient,offlineMessage,banPermission,serverGroups,bookmarkSave | needsAttention=true"
         )
     }
 

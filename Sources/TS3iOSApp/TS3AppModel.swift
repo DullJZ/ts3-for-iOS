@@ -6451,6 +6451,7 @@ enum TS3DatabaseClientActionRequirement: String, CaseIterable, Codable {
     case offlineMessage
     case banPermission
     case serverGroups
+    case bookmarkSave
 }
 
 struct TS3DatabaseClientActionReadinessSummary {
@@ -6462,7 +6463,8 @@ struct TS3DatabaseClientActionReadinessSummary {
             .onlineClient: actionSummary.isOnline,
             .offlineMessage: actionSummary.canSendOfflineMessage,
             .banPermission: actionSummary.canBan,
-            .serverGroups: actionSummary.hasUniqueIdentifier && actionSummary.serverGroupCount > 0
+            .serverGroups: actionSummary.hasUniqueIdentifier && actionSummary.serverGroupCount > 0,
+            .bookmarkSave: actionSummary.canSaveBookmark
         ]
     }
 

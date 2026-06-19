@@ -18064,6 +18064,8 @@ struct ClientDatabaseSheet: View {
             return localized("database.actionRequirement.banPermission")
         case .serverGroups:
             return localized("database.actionRequirement.serverGroups")
+        case .bookmarkSave:
+            return localized("database.actionRequirement.bookmarkSave")
         }
     }
 

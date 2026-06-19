@@ -1770,6 +1770,7 @@
 "database.actionRequirement.offlineMessage" = "Offline messaging";
 "database.actionRequirement.banPermission" = "Ban permission";
 "database.actionRequirement.serverGroups" = "Server groups";
+"database.actionRequirement.bookmarkSave" = "Current server bookmark";
 "database.saveClientBookmark" = "Save Client Bookmark";
 "database.copyClientBookmarkDraft" = "Copy Client Bookmark Draft";
 "database.copyClientBookmarkImpact" = "Copy Client Bookmark Impact";
