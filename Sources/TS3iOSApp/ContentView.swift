@@ -28858,6 +28858,9 @@ struct BanEntryRow: View {
             Button(localized("ban.row.useAsDraft")) {
                 useAsDraft()
             }
+            Button(localized("ban.row.copyDraftReuseReview")) {
+                TS3PlatformSupport.copyToPasteboard(draftReuseSummary.clipboardSummary)
+            }
             Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
@@ -28891,6 +28894,9 @@ struct BanEntryRow: View {
         .accessibilityAction(named: localized("ban.row.useAsDraft")) {
             useAsDraft()
         }
+        .accessibilityAction(named: localized("ban.row.copyDraftReuseReview")) {
+            TS3PlatformSupport.copyToPasteboard(draftReuseSummary.clipboardSummary)
+        }
         .accessibilityAction(named: localized("ban.row.deleteBan")) {
             if model.state == .connected {
                 isConfirmingDelete = true
@@ -28901,6 +28907,10 @@ struct BanEntryRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private var draftReuseSummary: TS3BanDraftReuseSummary {
+        TS3BanDraftReuseSummary(entry: entry)
     }
 
     private func banDeleteImpactText(_ summary: TS3BanDeleteImpactSummary) -> String {

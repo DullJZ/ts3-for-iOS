@@ -403,6 +403,59 @@ final class TS3BanBackupTests: XCTestCase {
         XCTAssertTrue(largeTemporaryDeletion.needsAttention)
     }
 
+    func testBanDraftReuseSummaryCountsReusableRuleDetails() {
+        let entry = makeBan(
+            id: 17,
+            ip: "192.0.2.10",
+            uniqueIdentifier: "uid-bad",
+            lastNickname: "Recent Guest",
+            durationSeconds: 3_600,
+            reason: "spam",
+            enforcements: 2
+        )
+
+        let summary = TS3BanDraftReuseSummary(entry: entry)
+
+        XCTAssertEqual(summary.targetFieldCount, 3)
+        XCTAssertTrue(summary.hasIP)
+        XCTAssertFalse(summary.hasName)
+        XCTAssertTrue(summary.hasUniqueIdentifier)
+        XCTAssertTrue(summary.hasLastNickname)
+        XCTAssertTrue(summary.hasReason)
+        XCTAssertFalse(summary.isPermanent)
+        XCTAssertTrue(summary.isTemporary)
+        XCTAssertTrue(summary.hasSingleLineReason)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertTrue(summary.canUseAsDraft)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "banId=17 | canUseAsDraft=true | targets=3 | ip=true | name=false | uid=true | lastNickname=true | duration=temporary | durationSeconds=3600 | reason=true | singleLineReason=true | enforcements=2 | validationIssues=0 | needsAttention=true"
+        )
+    }
+
+    func testBanDraftReuseSummaryFlagsMissingTargetAndMultilineReason() {
+        let entry = makeBan(
+            id: 18,
+            name: " ",
+            durationSeconds: nil,
+            reason: "first\nsecond"
+        )
+
+        let summary = TS3BanDraftReuseSummary(entry: entry)
+
+        XCTAssertEqual(summary.targetFieldCount, 0)
+        XCTAssertTrue(summary.isPermanent)
+        XCTAssertFalse(summary.hasSingleLineReason)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertFalse(summary.canUseAsDraft)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "banId=18 | canUseAsDraft=false | targets=0 | ip=false | name=false | uid=false | lastNickname=false | duration=permanent | durationSeconds=0 | reason=true | singleLineReason=false | enforcements=0 | validationIssues=2 | needsAttention=true"
+        )
+    }
+
     func testBanOfficialCoverageAuditSummaryCountsCoveredAreas() {
         let validationMessages = TS3BanDraftValidator.validationMessages(
             ip: "192.0.2.10",

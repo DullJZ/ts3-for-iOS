@@ -4071,6 +4071,84 @@ struct TS3BanDeleteImpactSummary {
     }
 }
 
+struct TS3BanDraftReuseSummary {
+    let entry: TS3BanEntrySummary
+
+    var targetFieldCount: Int {
+        [hasIP, hasName, hasUniqueIdentifier, hasLastNickname].filter { $0 }.count
+    }
+
+    var hasIP: Bool {
+        normalized(entry.ip) != nil
+    }
+
+    var hasName: Bool {
+        normalized(entry.name) != nil
+    }
+
+    var hasUniqueIdentifier: Bool {
+        normalized(entry.uniqueIdentifier) != nil
+    }
+
+    var hasLastNickname: Bool {
+        normalized(entry.lastNickname) != nil
+    }
+
+    var hasReason: Bool {
+        normalized(entry.reason) != nil
+    }
+
+    var isPermanent: Bool {
+        (entry.durationSeconds ?? 0) <= 0
+    }
+
+    var isTemporary: Bool {
+        !isPermanent
+    }
+
+    var hasSingleLineReason: Bool {
+        entry.reason?.rangeOfCharacter(from: .newlines) == nil
+    }
+
+    var validationIssueCount: Int {
+        (targetFieldCount == 0 ? 1 : 0) + (hasSingleLineReason ? 0 : 1)
+    }
+
+    var canUseAsDraft: Bool {
+        validationIssueCount == 0
+    }
+
+    var needsAttention: Bool {
+        !canUseAsDraft || isPermanent || !hasReason || (entry.enforcements ?? 0) > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "banId=\(entry.id)",
+            "canUseAsDraft=\(canUseAsDraft ? "true" : "false")",
+            "targets=\(targetFieldCount)",
+            "ip=\(hasIP ? "true" : "false")",
+            "name=\(hasName ? "true" : "false")",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "lastNickname=\(hasLastNickname ? "true" : "false")",
+            "duration=\(isPermanent ? "permanent" : "temporary")",
+            "durationSeconds=\(entry.durationSeconds.map(String.init) ?? "0")",
+            "reason=\(hasReason ? "true" : "false")",
+            "singleLineReason=\(hasSingleLineReason ? "true" : "false")",
+            "enforcements=\(entry.enforcements ?? 0)",
+            "validationIssues=\(validationIssueCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+}
+
 struct TS3BanDraftCoverageSummary {
     let hasIP: Bool
     let hasName: Bool

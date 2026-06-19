@@ -3010,6 +3010,7 @@
 "ban.row.deleteBan" = "删除封禁";
 "ban.row.deleteAlert.title" = "删除封禁？";
 "ban.row.useAsDraft" = "用作封禁草稿";
+"ban.row.copyDraftReuseReview" = "复制草稿复用审查";
 "ban.row.copyIP" = "复制 IP";
 "ban.row.copyReason" = "复制原因";
 "ban.filter.all" = "所有封禁";

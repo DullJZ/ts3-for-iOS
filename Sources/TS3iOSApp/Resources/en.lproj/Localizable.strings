@@ -3010,6 +3010,7 @@
 "ban.row.deleteBan" = "Delete Ban";
 "ban.row.deleteAlert.title" = "Delete Ban?";
 "ban.row.useAsDraft" = "Use as Ban Draft";
+"ban.row.copyDraftReuseReview" = "Copy Draft Reuse Review";
 "ban.row.copyIP" = "Copy IP";
 "ban.row.copyReason" = "Copy Reason";
 "ban.filter.all" = "All Bans";
