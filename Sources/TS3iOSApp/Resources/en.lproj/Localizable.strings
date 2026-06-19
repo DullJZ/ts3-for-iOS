@@ -2006,6 +2006,16 @@
 "whisper.activationMode.tapToToggle" = "Tap to Toggle";
 "whisper.activationMode.holdDetail" = "Hold the whisper control, or hold the configured start shortcut on Catalyst and release it to stop.";
 "whisper.activationMode.toggleDetail" = "Tap the whisper control or shortcut once to start, then tap again to stop.";
+"whisper.activationReadiness" = "Activation Readiness";
+"whisper.activationReadinessFormat" = "%d/%d ready, %d missing";
+"whisper.activationReadinessReady" = "Temporary whisper is ready to start.";
+"whisper.activationReadinessMissingFormat" = "Missing: %@";
+"whisper.copyActivationReadiness" = "Copy Activation Readiness";
+"whisper.activationRequirement.connected" = "Connected server";
+"whisper.activationRequirement.routeSelected" = "Whisper route";
+"whisper.activationRequirement.targetResolvable" = "Resolvable target";
+"whisper.activationRequirement.microphoneUnmuted" = "Microphone unmuted";
+"whisper.activationRequirement.inactive" = "No active temporary whisper";
 "whisper.start" = "Start Whisper";
 "whisper.stop" = "Stop Whisper";
 "whisper.startTemporary" = "Start Temporary Whisper";

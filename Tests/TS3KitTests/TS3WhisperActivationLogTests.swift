@@ -1,5 +1,6 @@
 import XCTest
 @testable import TS3iOSApp
+import TS3Kit
 
 final class TS3WhisperActivationLogTests: XCTestCase {
     func testWhisperPresetListSummaryDeduplicatesAndCountsVisiblePresets() throws {
@@ -129,6 +130,78 @@ final class TS3WhisperActivationLogTests: XCTestCase {
             summary.clipboardSummary,
             "officialAreas=1/7 | missingOfficialAreas=6 | officialActions=16 | routeActive=false | route=Voice to current channel | activationMode=Tap to Toggle | activationEvents=0 | visiblePresets=0 | selectedChannels=0 | selectedClients=0 | availableChannels=0 | availableClients=0 | serverGroups=0 | channelGroups=0 | filterPresets=false | needsAttention=true"
         )
+    }
+
+    func testWhisperActivationReadinessSummaryCountsReadyRoute() {
+        let summary = TS3WhisperActivationReadinessSummary(
+            route: .server,
+            routeDescription: "Whisper to server",
+            activationMode: .holdToWhisper,
+            isConnected: true,
+            isInputMuted: false,
+            isActivationActive: false
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 5)
+        XCTAssertEqual(summary.totalRequirementCount, 5)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [TS3WhisperActivationRequirement]())
+        XCTAssertTrue(summary.canStart)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=5/5 | missingRequirements=0 | canStart=true | routeSelected=true | targetResolvable=true | connected=true | inputMuted=false | activationActive=false | activationMode=holdToWhisper | route=Whisper to server | requirements=connected:true,routeSelected:true,targetResolvable:true,microphoneUnmuted:true,inactive:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testWhisperActivationReadinessSummaryFlagsMissingRouteMuteAndActiveState() {
+        let summary = TS3WhisperActivationReadinessSummary(
+            route: .none,
+            routeDescription: "Voice to current channel",
+            activationMode: .tapToToggle,
+            isConnected: false,
+            isInputMuted: true,
+            isActivationActive: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 0)
+        XCTAssertEqual(summary.totalRequirementCount, 5)
+        XCTAssertEqual(summary.missingRequirementCount, 5)
+        XCTAssertEqual(
+            summary.missingRequirements,
+            [.connected, .routeSelected, .targetResolvable, .microphoneUnmuted, .inactive]
+        )
+        XCTAssertFalse(summary.canStart)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=0/5 | missingRequirements=5 | canStart=false | routeSelected=false | targetResolvable=false | connected=false | inputMuted=true | activationActive=true | activationMode=tapToToggle | route=Voice to current channel | requirements=connected:false,routeSelected:false,targetResolvable:false,microphoneUnmuted:false,inactive:false | missing=connected,routeSelected,targetResolvable,microphoneUnmuted,inactive | needsAttention=true"
+        )
+    }
+
+    func testWhisperActivationReadinessSummaryRequiresGroupTargetId() {
+        let invalidGroup = TS3WhisperActivationReadinessSummary(
+            route: .group(type: .serverGroup, target: .currentChannel, targetId: 0),
+            routeDescription: "Whisper to server group",
+            activationMode: .holdToWhisper,
+            isConnected: true,
+            isInputMuted: false,
+            isActivationActive: false
+        )
+        let commanderGroup = TS3WhisperActivationReadinessSummary(
+            route: .group(type: .channelCommander, target: .currentChannel, targetId: 0),
+            routeDescription: "Whisper to channel commanders",
+            activationMode: .holdToWhisper,
+            isConnected: true,
+            isInputMuted: false,
+            isActivationActive: false
+        )
+
+        XCTAssertFalse(invalidGroup.hasResolvableTarget)
+        XCTAssertFalse(invalidGroup.canStart)
+        XCTAssertEqual(invalidGroup.missingRequirements, [.targetResolvable])
+        XCTAssertTrue(commanderGroup.hasResolvableTarget)
+        XCTAssertTrue(commanderGroup.canStart)
     }
 
     func testWhisperPresetDeleteImpactSummaryCountsVisibleDeletionRisk() throws {

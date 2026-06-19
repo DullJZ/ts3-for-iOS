@@ -29334,6 +29334,17 @@ struct WhisperSheet: View {
         )
     }
 
+    private var whisperActivationReadinessSummary: TS3WhisperActivationReadinessSummary {
+        TS3WhisperActivationReadinessSummary(
+            route: model.whisperRoute,
+            routeDescription: model.whisperRouteDescription,
+            activationMode: model.whisperActivationMode,
+            isConnected: model.state == .connected,
+            isInputMuted: model.isInputMuted,
+            isActivationActive: model.isWhisperActivationActive
+        )
+    }
+
     private var whisperRouteSnapshot: String {
         var rows = [
             localized("whisper.snapshot.routeFormat", model.whisperRouteDescription),
@@ -29470,16 +29481,31 @@ struct WhisperSheet: View {
                     Text(activationModeDetail(model.whisperActivationMode))
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    ServerInfoDetailRow(
+                        label: localized("whisper.activationReadiness"),
+                        value: localized(
+                            "whisper.activationReadinessFormat",
+                            whisperActivationReadinessSummary.satisfiedRequirementCount,
+                            whisperActivationReadinessSummary.totalRequirementCount,
+                            whisperActivationReadinessSummary.missingRequirementCount
+                        )
+                    )
+                    Text(whisperActivationReadinessText(whisperActivationReadinessSummary))
+                        .font(.caption)
+                        .foregroundColor(whisperActivationReadinessSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("whisper.copyActivationReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(whisperActivationReadinessSummary.clipboardSummary)
+                    }
                     if model.whisperActivationMode == .tapToToggle {
                         Button(model.isWhisperActivationActive ? localized("whisper.stopTemporary") : localized("whisper.startTemporary")) {
                             model.toggleCurrentWhisperActivation()
                         }
                         .ts3KeyboardShortcut("toggle-whisper-activation", in: model)
-                        .disabled(model.state != .connected || model.whisperRoute == .none)
+                        .disabled(model.isWhisperActivationActive ? false : !whisperActivationReadinessSummary.canStart)
                     } else {
                         WhisperHoldButton()
                             .environmentObject(model)
-                            .disabled(model.state != .connected || model.whisperRoute == .none)
+                            .disabled(!whisperActivationReadinessSummary.canStart)
                     }
                     HStack(spacing: 12) {
                         Button(localized("whisper.startTemporary")) {
@@ -29487,7 +29513,7 @@ struct WhisperSheet: View {
                         }
                         .buttonStyle(.borderless)
                         .ts3KeyboardShortcut("start-whisper-activation", in: model)
-                        .disabled(model.state != .connected || model.whisperRoute == .none || model.isWhisperActivationActive)
+                        .disabled(!whisperActivationReadinessSummary.canStart)
                         Button(localized("whisper.stopTemporary")) {
                             model.endWhisperActivation()
                         }
@@ -30163,6 +30189,20 @@ struct WhisperSheet: View {
             localized("whisper.officialAuditActivationEventsFormat", summary.activationLogCount),
             localized("whisper.officialAuditAttentionFormat", summary.needsAttention ? 1 : 0)
         ].joined(separator: " · ")
+    }
+
+    private func whisperActivationReadinessText(_ summary: TS3WhisperActivationReadinessSummary) -> String {
+        if summary.canStart {
+            return localized("whisper.activationReadinessReady")
+        }
+        return localized(
+            "whisper.activationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3WhisperActivationRequirement) -> String {
+        localized("whisper.activationRequirement.\(requirement.rawValue)")
     }
 
     private func presetFilterTitle(_ filter: WhisperPresetFilter) -> String {

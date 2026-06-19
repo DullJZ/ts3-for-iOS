@@ -2006,6 +2006,16 @@
 "whisper.activationMode.tapToToggle" = "点击切换";
 "whisper.activationMode.holdDetail" = "按住密语控件，或在 Catalyst 上按住已配置的开始快捷键，松开后停止。";
 "whisper.activationMode.toggleDetail" = "点击密语控件或快捷键一次开始，再次点击停止。";
+"whisper.activationReadiness" = "激活就绪度";
+"whisper.activationReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"whisper.activationReadinessReady" = "临时密语已可开始。";
+"whisper.activationReadinessMissingFormat" = "缺失：%@";
+"whisper.copyActivationReadiness" = "复制激活就绪度";
+"whisper.activationRequirement.connected" = "已连接服务器";
+"whisper.activationRequirement.routeSelected" = "密语路由";
+"whisper.activationRequirement.targetResolvable" = "可解析目标";
+"whisper.activationRequirement.microphoneUnmuted" = "麦克风未静音";
+"whisper.activationRequirement.inactive" = "没有正在激活的临时密语";
 "whisper.start" = "开始密语";
 "whisper.stop" = "停止密语";
 "whisper.startTemporary" = "开始临时密语";

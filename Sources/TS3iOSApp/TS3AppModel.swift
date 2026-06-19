@@ -14666,6 +14666,107 @@ struct TS3WhisperOfficialCoverageAuditSummary {
     }
 }
 
+enum TS3WhisperActivationRequirement: String, CaseIterable, Codable {
+    case connected
+    case routeSelected
+    case targetResolvable
+    case microphoneUnmuted
+    case inactive
+}
+
+struct TS3WhisperActivationReadinessSummary {
+    let route: TS3WhisperRoute
+    let routeDescription: String
+    let activationMode: TS3WhisperActivationMode
+    let isConnected: Bool
+    let isInputMuted: Bool
+    let isActivationActive: Bool
+
+    var hasRoute: Bool {
+        route != .none
+    }
+
+    var hasResolvableTarget: Bool {
+        switch route {
+        case .none:
+            return false
+        case .server:
+            return true
+        case .channel(let channelId), .client(let channelId):
+            return channelId > 0
+        case .list(let channelIds, let clientIds):
+            return channelIds.contains { $0 > 0 } || clientIds.contains { $0 > 0 }
+        case .group(let type, _, let targetId):
+            switch type {
+            case .serverGroup, .channelGroup:
+                return targetId > 0
+            case .channelCommander, .allClients:
+                return true
+            }
+        }
+    }
+
+    var requirementStates: [TS3WhisperActivationRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .routeSelected: hasRoute,
+            .targetResolvable: hasResolvableTarget,
+            .microphoneUnmuted: !isInputMuted,
+            .inactive: !isActivationActive
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        TS3WhisperActivationRequirement.allCases.filter { requirementStates[$0] == true }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3WhisperActivationRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3WhisperActivationRequirement] {
+        TS3WhisperActivationRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canStart: Bool {
+        isConnected
+            && hasRoute
+            && hasResolvableTarget
+            && !isInputMuted
+            && !isActivationActive
+    }
+
+    var needsAttention: Bool {
+        !canStart
+    }
+
+    var clipboardSummary: String {
+        let requirementSummary = TS3WhisperActivationRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canStart=\(canStart ? "true" : "false")",
+            "routeSelected=\(hasRoute ? "true" : "false")",
+            "targetResolvable=\(hasResolvableTarget ? "true" : "false")",
+            "connected=\(isConnected ? "true" : "false")",
+            "inputMuted=\(isInputMuted ? "true" : "false")",
+            "activationActive=\(isActivationActive ? "true" : "false")",
+            "activationMode=\(activationMode.rawValue)",
+            "route=\(routeDescription)",
+            "requirements=\(requirementSummary)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3WhisperFilterPreset: Identifiable, Codable {
     let id: UUID
     var name: String
