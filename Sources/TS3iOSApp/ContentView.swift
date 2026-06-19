@@ -18860,6 +18860,21 @@ struct ServerSettingsEditorSheet: View {
                         TS3PlatformSupport.copyToPasteboard(settingsReviewSummaryClipboard)
                     }
                     .disabled(!settingsReviewSummary.needsAttention)
+                    ServerInfoDetailRow(
+                        label: localized("serverSettings.saveReadinessSummary"),
+                        value: localized(
+                            "serverSettings.saveReadinessSummaryFormat",
+                            settingsSaveReadinessSummary.satisfiedRequirementCount,
+                            settingsSaveReadinessSummary.totalRequirementCount,
+                            settingsSaveReadinessSummary.missingRequirementCount
+                        )
+                    )
+                    Text(settingsSaveReadinessSummaryText)
+                        .font(.caption)
+                        .foregroundColor(settingsSaveReadinessSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverSettings.copySaveReadinessSummary")) {
+                        TS3PlatformSupport.copyToPasteboard(settingsSaveReadinessSummaryClipboard)
+                    }
 
                     if draftChangeRows.isEmpty {
                         Text(localized("serverSettings.noDraftChanges"))
@@ -19472,6 +19487,32 @@ struct ServerSettingsEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var settingsSaveReadinessSummary: TS3ServerSettingsSaveReadinessSummary {
+        TS3ServerSettingsSaveReadinessSummary(
+            impactSummary: settingsImpactSummary,
+            officialImpactSummary: settingsOfficialImpactSummary,
+            reviewSummary: settingsReviewSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
+    private var settingsSaveReadinessSummaryText: String {
+        settingsSaveReadinessSummaryText(for: settingsSaveReadinessSummary)
+    }
+
+    private var settingsSaveReadinessSummaryClipboard: String {
+        let summary = settingsSaveReadinessSummary
+        let lines = [
+            localized("serverSettings.saveReadinessSummary"),
+            summary.clipboardSummary,
+            settingsSaveReadinessSummaryText(for: summary)
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private func draftChangeRows(for draft: ServerSettingsDraft) -> [String] {
         generalChangeRows(for: draft)
             + hostBrandingChangeRows(for: draft)
@@ -19721,6 +19762,27 @@ struct ServerSettingsEditorSheet: View {
         return parts.joined(separator: " · ")
     }
 
+    private func settingsSaveReadinessSummaryText(for summary: TS3ServerSettingsSaveReadinessSummary) -> String {
+        var parts = [
+            summary.canSave
+                ? localized("serverSettings.saveReadinessReady")
+                : localized("serverSettings.saveReadinessBlocked")
+        ]
+        if !summary.missingRequirements.isEmpty {
+            let missing = summary.missingRequirements
+                .map { title(for: $0) }
+                .joined(separator: ", ")
+            parts.append(localized("serverSettings.saveReadinessMissingFormat", missing))
+        }
+        if summary.reviewSummary.sensitiveChangeCount > 0 {
+            parts.append(localized("serverSettings.saveReadinessSensitiveFormat", summary.reviewSummary.sensitiveChangeCount))
+        }
+        if summary.impactSummary.totalChangeCount == 0 {
+            parts.append(localized("serverSettings.saveReadinessNoChanges"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
     private func title(for area: TS3ServerSettingsImpactArea) -> String {
         switch area {
         case .general:
@@ -19750,6 +19812,21 @@ struct ServerSettingsEditorSheet: View {
             return localized("serverSettings.officialImpact.moderationSafety")
         case .loggingAudit:
             return localized("serverSettings.officialImpact.loggingAudit")
+        }
+    }
+
+    private func title(for requirement: TS3ServerSettingsSaveRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("serverSettings.saveRequirement.connected")
+        case .changedDraft:
+            return localized("serverSettings.saveRequirement.changedDraft")
+        case .validationClean:
+            return localized("serverSettings.saveRequirement.validationClean")
+        case .officialImpactAudit:
+            return localized("serverSettings.saveRequirement.officialImpactAudit")
+        case .sensitiveReview:
+            return localized("serverSettings.saveRequirement.sensitiveReview")
         }
     }
 

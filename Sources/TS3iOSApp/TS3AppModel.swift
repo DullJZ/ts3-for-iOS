@@ -1518,6 +1518,85 @@ struct TS3ServerSettingsOfficialImpactSummary {
     }
 }
 
+enum TS3ServerSettingsSaveRequirement: String, CaseIterable, Codable {
+    case connected
+    case changedDraft
+    case validationClean
+    case officialImpactAudit
+    case sensitiveReview
+}
+
+struct TS3ServerSettingsSaveReadinessSummary {
+    let impactSummary: TS3ServerSettingsImpactSummary
+    let officialImpactSummary: TS3ServerSettingsOfficialImpactSummary
+    let reviewSummary: TS3ServerSettingsReviewSummary
+    let isConnected: Bool
+
+    var validationIssueCount: Int {
+        max(
+            impactSummary.validationIssueCount,
+            officialImpactSummary.validationIssueCount,
+            reviewSummary.validationIssueCount
+        )
+    }
+
+    var requirementStates: [TS3ServerSettingsSaveRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .changedDraft: impactSummary.totalChangeCount > 0,
+            .validationClean: validationIssueCount == 0,
+            .officialImpactAudit: impactSummary.totalChangeCount == 0 || officialImpactSummary.affectedAreaCount > 0,
+            .sensitiveReview: reviewSummary.sensitiveChangeCount == officialImpactSummary.sensitiveChangeCount
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3ServerSettingsSaveRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3ServerSettingsSaveRequirement] {
+        TS3ServerSettingsSaveRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSave: Bool {
+        isConnected && validationIssueCount == 0
+    }
+
+    var needsAttention: Bool {
+        !canSave
+            || missingRequirementCount > 0
+            || reviewSummary.sensitiveChangeCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3ServerSettingsSaveRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "saveReadiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSave=\(canSave ? "true" : "false")",
+            "changes=\(impactSummary.totalChangeCount)",
+            "officialChanges=\(officialImpactSummary.totalChangeCount)",
+            "affectedOfficialAreas=\(officialImpactSummary.affectedAreaCount)",
+            "sensitiveChanges=\(reviewSummary.sensitiveChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 enum TS3PermissionDraftValidator {
     static func validationMessages(
         scope: TS3PermissionEditScope,

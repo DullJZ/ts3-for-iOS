@@ -380,6 +380,94 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsSaveReadinessSummaryCountsSatisfiedRequirements() {
+        let summary = TS3ServerSettingsSaveReadinessSummary(
+            impactSummary: TS3ServerSettingsImpactSummary(
+                areaChangeCounts: [.general: 2],
+                validationIssueCount: 0
+            ),
+            officialImpactSummary: TS3ServerSettingsOfficialImpactSummary(
+                areaChangeCounts: [.brandingVisibility: 1],
+                validationIssueCount: 0,
+                sensitiveChangeCount: 0
+            ),
+            reviewSummary: TS3ServerSettingsReviewSummary(
+                reviewItems: [],
+                validationIssueCount: 0
+            ),
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 5)
+        XCTAssertEqual(summary.totalRequirementCount, 5)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertTrue(summary.canSave)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "saveReadiness=5/5 | missingRequirements=0 | canSave=true | changes=2 | officialChanges=1 | affectedOfficialAreas=1 | sensitiveChanges=0 | validationIssues=0 | requirements=connected:true,changedDraft:true,validationClean:true,officialImpactAudit:true,sensitiveReview:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testServerSettingsSaveReadinessSummaryFlagsBlockedDraft() {
+        let summary = TS3ServerSettingsSaveReadinessSummary(
+            impactSummary: TS3ServerSettingsImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: 2
+            ),
+            officialImpactSummary: TS3ServerSettingsOfficialImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: 2,
+                sensitiveChangeCount: 0
+            ),
+            reviewSummary: TS3ServerSettingsReviewSummary(
+                reviewItems: [],
+                validationIssueCount: 2
+            ),
+            isConnected: false
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 2)
+        XCTAssertEqual(summary.missingRequirementCount, 3)
+        XCTAssertEqual(summary.missingRequirements, [.connected, .changedDraft, .validationClean])
+        XCTAssertFalse(summary.canSave)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "saveReadiness=2/5 | missingRequirements=3 | canSave=false | changes=0 | officialChanges=0 | affectedOfficialAreas=0 | sensitiveChanges=0 | validationIssues=2 | requirements=connected:false,changedDraft:false,validationClean:false,officialImpactAudit:true,sensitiveReview:true | missing=connected,changedDraft,validationClean | needsAttention=true"
+        )
+    }
+
+    func testServerSettingsSaveReadinessSummaryFlagsMissingOfficialImpactAudit() {
+        let summary = TS3ServerSettingsSaveReadinessSummary(
+            impactSummary: TS3ServerSettingsImpactSummary(
+                areaChangeCounts: [.general: 1],
+                validationIssueCount: 0
+            ),
+            officialImpactSummary: TS3ServerSettingsOfficialImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: 0,
+                sensitiveChangeCount: 0
+            ),
+            reviewSummary: TS3ServerSettingsReviewSummary(
+                reviewItems: [],
+                validationIssueCount: 0
+            ),
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 4)
+        XCTAssertEqual(summary.missingRequirementCount, 1)
+        XCTAssertEqual(summary.missingRequirements, [.officialImpactAudit])
+        XCTAssertTrue(summary.canSave)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "saveReadiness=4/5 | missingRequirements=1 | canSave=true | changes=1 | officialChanges=0 | affectedOfficialAreas=0 | sensitiveChanges=0 | validationIssues=0 | requirements=connected:true,changedDraft:true,validationClean:true,officialImpactAudit:false,sensitiveReview:true | missing=officialImpactAudit | needsAttention=true"
+        )
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",
