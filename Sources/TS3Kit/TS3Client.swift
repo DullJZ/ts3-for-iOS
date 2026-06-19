@@ -2809,6 +2809,7 @@ extension TS3Client {
             int64Value(name).map { Date(timeIntervalSince1970: TimeInterval($0)) }
         }
         return TS3ServerInfo(
+            serverId: intValue("virtualserver_id"),
             uniqueIdentifier: command.get("virtualserver_unique_identifier")?.value,
             name: name,
             platform: command.get("virtualserver_platform")?.value,

@@ -13210,6 +13210,7 @@ struct TS3IdentityProfileImportPreview {
 }
 
 struct TS3ServerInfoSummary {
+    var serverId: Int?
     var name: String
     var uniqueIdentifier: String?
     var platform: String?
@@ -13286,6 +13287,7 @@ struct TS3ServerInfoSummary {
     var minIOSVersion: Int?
 
     static let empty = TS3ServerInfoSummary(
+        serverId: nil,
         name: "",
         uniqueIdentifier: nil,
         platform: nil,
@@ -28782,6 +28784,7 @@ extension TS3AppModel: TS3ClientDelegate {
     nonisolated func ts3Client(_ client: TS3Client, didUpdateServerInfo info: TS3ServerInfo) {
         Task { @MainActor in
             self.serverInfo = TS3ServerInfoSummary(
+                serverId: info.serverId,
                 name: info.name,
                 uniqueIdentifier: info.uniqueIdentifier,
                 platform: info.platform,

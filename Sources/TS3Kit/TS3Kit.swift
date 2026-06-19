@@ -58,6 +58,8 @@ public enum TS3AudioTransmitMode: String, CaseIterable, Identifiable {
 }
 
 public struct TS3ServerInfo {
+    /// The virtual server id reported by the connected server.
+    public let serverId: Int?
     public let uniqueIdentifier: String?
     public let name: String
     public let platform: String?
@@ -189,6 +191,7 @@ public struct TS3ServerInfo {
 
     /// Creates a virtual server information snapshot.
     public init(
+        serverId: Int? = nil,
         uniqueIdentifier: String?,
         name: String,
         platform: String?,
@@ -263,6 +266,7 @@ public struct TS3ServerInfo {
         minAndroidVersion: Int? = nil,
         minIOSVersion: Int? = nil
     ) {
+        self.serverId = serverId
         self.uniqueIdentifier = uniqueIdentifier
         self.name = name
         self.platform = platform

@@ -1143,6 +1143,7 @@
 "serverInfo.name" = "Name";
 "serverInfo.phoneticName" = "Phonetic Name";
 "serverInfo.status" = "Status";
+"serverInfo.serverId" = "Server ID";
 "serverInfo.uniqueId" = "Unique ID";
 "serverInfo.machineId" = "Machine ID";
 "serverInfo.port" = "Port";

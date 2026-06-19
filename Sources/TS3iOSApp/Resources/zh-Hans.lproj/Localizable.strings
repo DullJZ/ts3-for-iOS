@@ -1143,6 +1143,7 @@
 "serverInfo.name" = "名称";
 "serverInfo.phoneticName" = "语音名称";
 "serverInfo.status" = "状态";
+"serverInfo.serverId" = "服务器 ID";
 "serverInfo.uniqueId" = "唯一 ID";
 "serverInfo.machineId" = "机器 ID";
 "serverInfo.port" = "端口";
