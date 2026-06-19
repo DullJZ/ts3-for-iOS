@@ -18970,11 +18970,12 @@ struct ServerSettingsEditorSheet: View {
     private struct ServerSettingsDraftImportConfirmation: Identifiable {
         let draft: ServerSettingsDraft
         let previewMessage: String
+        let importImpactSummary: TS3ServerSettingsDraftImportImpactSummary
         let validationMessages: [String]
         let id = UUID()
 
         var canImport: Bool {
-            validationMessages.isEmpty
+            importImpactSummary.canImport
         }
     }
 
@@ -19549,6 +19550,7 @@ struct ServerSettingsEditorSheet: View {
             .sheet(item: $pendingDraftImport) { confirmation in
                 ServerSettingsDraftImportSheet(
                     previewMessage: confirmation.previewMessage,
+                    importImpactSummary: confirmation.importImpactSummary,
                     canImport: confirmation.canImport,
                     importDraft: {
                         applyDraft(confirmation.draft)
@@ -19565,6 +19567,7 @@ struct ServerSettingsEditorSheet: View {
 
     private struct ServerSettingsDraftImportSheet: View {
         let previewMessage: String
+        let importImpactSummary: TS3ServerSettingsDraftImportImpactSummary
         let canImport: Bool
         let importDraft: () -> Void
         let cancel: () -> Void
@@ -19579,6 +19582,21 @@ struct ServerSettingsEditorSheet: View {
                             .foregroundColor(.secondary)
                         Button(localized("serverSettings.copySummary")) {
                             TS3PlatformSupport.copyToPasteboard(previewMessage)
+                        }
+                        ServerInfoDetailRow(
+                            label: localized("serverSettings.importImpact"),
+                            value: localized(
+                                "serverSettings.importImpactFormat",
+                                importImpactSummary.totalChangeCount,
+                                importImpactSummary.officialAreaCount,
+                                importImpactSummary.validationIssueCount
+                            )
+                        )
+                        Text(importImpactText)
+                            .font(.caption)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("serverSettings.copyImportImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
                         }
                     }
 
@@ -19604,6 +19622,19 @@ struct ServerSettingsEditorSheet: View {
                     }
                 }
             }
+        }
+
+        private var importImpactText: String {
+            var parts = [
+                localized("serverSettings.importImpactEditorAreasFormat", importImpactSummary.editorAreaCount),
+                localized("serverSettings.importImpactSensitiveFormat", importImpactSummary.sensitiveChangeCount)
+            ]
+            if importImpactSummary.canImport {
+                parts.append(localized("serverSettings.importImpactSaveRequired"))
+            } else {
+                parts.append(localized("serverSettings.importImpactBlocked"))
+            }
+            return parts.joined(separator: " · ")
         }
     }
 
@@ -20599,11 +20630,19 @@ struct ServerSettingsEditorSheet: View {
         do {
             let draft = try JSONDecoder().decode(ServerSettingsDraft.self, from: Data(contentsOf: url))
             let validationMessages = serverDraftValidationMessages(for: draft)
+            let impactSummary = settingsImpactSummary(for: draft)
+            let officialImpactSummary = settingsOfficialImpactSummary(for: draft)
+            let reviewSummary = settingsReviewSummary(for: draft)
             pendingDraftImport = ServerSettingsDraftImportConfirmation(
                 draft: draft,
                 previewMessage: settingsSnapshotMessage(
                     for: draft,
                     validationMessages: validationMessages
+                ),
+                importImpactSummary: TS3ServerSettingsDraftImportImpactSummary(
+                    impactSummary: impactSummary,
+                    officialImpactSummary: officialImpactSummary,
+                    reviewSummary: reviewSummary
                 ),
                 validationMessages: validationMessages
             )

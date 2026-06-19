@@ -468,6 +468,80 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsDraftImportImpactSummaryCountsOfficialAndSensitiveChanges() {
+        let impact = TS3ServerSettingsImpactSummary(
+            areaChangeCounts: [
+                .general: 2,
+                .limitsAndSecurity: 1,
+                .serverLogOptions: 1
+            ],
+            validationIssueCount: 0
+        )
+        let official = TS3ServerSettingsOfficialImpactSummary(
+            areaChangeCounts: [
+                .availability: 2,
+                .accessControl: 1,
+                .loggingAudit: 1
+            ],
+            validationIssueCount: 0,
+            sensitiveChangeCount: 2
+        )
+        let review = TS3ServerSettingsReviewSummary(
+            reviewItems: ["Server port: 9987 -> 9988", "Needed security level: 8 -> 12"],
+            validationIssueCount: 0
+        )
+
+        let summary = TS3ServerSettingsDraftImportImpactSummary(
+            impactSummary: impact,
+            officialImpactSummary: official,
+            reviewSummary: review
+        )
+
+        XCTAssertEqual(summary.totalChangeCount, 4)
+        XCTAssertEqual(summary.editorAreaCount, 3)
+        XCTAssertEqual(summary.officialAreaCount, 3)
+        XCTAssertEqual(summary.sensitiveChangeCount, 2)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertTrue(summary.canImport)
+        XCTAssertTrue(summary.appliesOnSave)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "changes=4 | editorAreas=3 | officialAreas=3 | sensitiveChanges=2 | validationIssues=0 | canImport=true | appliesOnSave=true | needsAttention=true"
+        )
+    }
+
+    func testServerSettingsDraftImportImpactSummaryBlocksInvalidDraft() {
+        let impact = TS3ServerSettingsImpactSummary(
+            areaChangeCounts: [:],
+            validationIssueCount: 1
+        )
+        let official = TS3ServerSettingsOfficialImpactSummary(
+            areaChangeCounts: [:],
+            validationIssueCount: 2,
+            sensitiveChangeCount: 0
+        )
+        let review = TS3ServerSettingsReviewSummary(
+            reviewItems: [],
+            validationIssueCount: 0
+        )
+
+        let summary = TS3ServerSettingsDraftImportImpactSummary(
+            impactSummary: impact,
+            officialImpactSummary: official,
+            reviewSummary: review
+        )
+
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertFalse(summary.canImport)
+        XCTAssertFalse(summary.appliesOnSave)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "changes=0 | editorAreas=0 | officialAreas=0 | sensitiveChanges=0 | validationIssues=2 | canImport=false | appliesOnSave=false | needsAttention=true"
+        )
+    }
+
     private func validationMessages(
         name: String = "Guild Voice",
         port: String = "9987",

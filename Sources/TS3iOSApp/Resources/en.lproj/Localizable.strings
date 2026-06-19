@@ -1332,6 +1332,13 @@
 "serverSettings.fileTransferLog" = "File Transfer Log";
 "serverSettings.preview" = "Preview";
 "serverSettings.copySummary" = "Copy Settings Summary";
+"serverSettings.importImpact" = "Import Impact";
+"serverSettings.importImpactFormat" = "%d changes, %d official areas, %d validation issues";
+"serverSettings.importImpactEditorAreasFormat" = "Editor areas: %d";
+"serverSettings.importImpactSensitiveFormat" = "Sensitive changes: %d";
+"serverSettings.importImpactSaveRequired" = "Server changes are applied only after Save";
+"serverSettings.importImpactBlocked" = "Fix validation before importing";
+"serverSettings.copyImportImpact" = "Copy Import Impact";
 "serverSettings.importBehavior" = "Import Behavior";
 "serverSettings.importBehavior.summary" = "Import fills the server settings editor with this draft when validation passes. It does not save changes to the server until Save is tapped.";
 "serverSettings.importSettings" = "Import Settings";

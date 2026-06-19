@@ -1749,6 +1749,61 @@ struct TS3ServerSettingsSaveReadinessSummary {
     }
 }
 
+struct TS3ServerSettingsDraftImportImpactSummary {
+    let impactSummary: TS3ServerSettingsImpactSummary
+    let officialImpactSummary: TS3ServerSettingsOfficialImpactSummary
+    let reviewSummary: TS3ServerSettingsReviewSummary
+
+    var totalChangeCount: Int {
+        impactSummary.totalChangeCount
+    }
+
+    var editorAreaCount: Int {
+        impactSummary.affectedAreaCount
+    }
+
+    var officialAreaCount: Int {
+        officialImpactSummary.affectedAreaCount
+    }
+
+    var sensitiveChangeCount: Int {
+        reviewSummary.sensitiveChangeCount
+    }
+
+    var validationIssueCount: Int {
+        max(
+            impactSummary.validationIssueCount,
+            officialImpactSummary.validationIssueCount,
+            reviewSummary.validationIssueCount
+        )
+    }
+
+    var canImport: Bool {
+        validationIssueCount == 0
+    }
+
+    var appliesOnSave: Bool {
+        totalChangeCount > 0
+    }
+
+    var needsAttention: Bool {
+        !canImport || officialAreaCount > 0 || sensitiveChangeCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "changes=\(totalChangeCount)",
+            "editorAreas=\(editorAreaCount)",
+            "officialAreas=\(officialAreaCount)",
+            "sensitiveChanges=\(sensitiveChangeCount)",
+            "validationIssues=\(validationIssueCount)",
+            "canImport=\(canImport ? "true" : "false")",
+            "appliesOnSave=\(appliesOnSave ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 enum TS3PermissionDraftValidator {
     static func validationMessages(
         scope: TS3PermissionEditScope,

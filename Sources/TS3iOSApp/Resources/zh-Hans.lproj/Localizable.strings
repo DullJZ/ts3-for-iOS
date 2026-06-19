@@ -1332,6 +1332,13 @@
 "serverSettings.fileTransferLog" = "文件传输日志";
 "serverSettings.preview" = "预览";
 "serverSettings.copySummary" = "复制设置摘要";
+"serverSettings.importImpact" = "导入影响";
+"serverSettings.importImpactFormat" = "%d 项变更，%d 个官方区域，%d 个校验问题";
+"serverSettings.importImpactEditorAreasFormat" = "编辑区域：%d";
+"serverSettings.importImpactSensitiveFormat" = "敏感变更：%d";
+"serverSettings.importImpactSaveRequired" = "只有点按保存后才会写入服务器";
+"serverSettings.importImpactBlocked" = "导入前需要修复校验问题";
+"serverSettings.copyImportImpact" = "复制导入影响";
 "serverSettings.importBehavior" = "导入行为";
 "serverSettings.importBehavior.summary" = "验证通过后，导入会用该草稿填充服务器设置编辑器。只有点按保存后才会把更改写入服务器。";
 "serverSettings.importSettings" = "导入设置";
