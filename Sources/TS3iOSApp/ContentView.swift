@@ -13075,6 +13075,21 @@ struct ServerLogsSheet: View {
                     Button(localized("serverLogs.copyWriteReview")) {
                         TS3PlatformSupport.copyToPasteboard(writeDraftSummary.clipboardSummary)
                     }
+                    ServerInfoDetailRow(
+                        label: localized("serverLogs.writeReadiness"),
+                        value: localized(
+                            "serverLogs.writeReadinessFormat",
+                            writeReadinessSummary.satisfiedRequirementCount,
+                            writeReadinessSummary.totalRequirementCount,
+                            writeReadinessSummary.missingRequirementCount
+                        )
+                    )
+                    Text(serverLogWriteReadinessText(writeReadinessSummary))
+                        .font(.caption)
+                        .foregroundColor(writeReadinessSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("serverLogs.copyWriteReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(writeReadinessSummary.clipboardSummary)
+                    }
                     ForEach(writeDraftSummary.validationMessages, id: \.self) { message in
                         Text(message)
                             .font(.caption)
@@ -13091,7 +13106,7 @@ struct ServerLogsSheet: View {
                         )
                         newLogMessage = ""
                     }
-                    .disabled(model.state != .connected || !writeDraftSummary.validationMessages.isEmpty || !canRunQuery)
+                    .disabled(!writeReadinessSummary.canSubmit)
                 }
 
                 Section(header: Text(localized("serverLogs.serverLog"))) {
@@ -13282,6 +13297,14 @@ struct ServerLogsSheet: View {
 
     private var writeDraftSummary: TS3ServerLogWriteDraftSummary {
         TS3ServerLogWriteDraftSummary(level: newLogLevel, message: newLogMessage)
+    }
+
+    private var writeReadinessSummary: TS3ServerLogWriteReadinessSummary {
+        TS3ServerLogWriteReadinessSummary(
+            draft: writeDraftSummary,
+            queryCoverageSummary: queryCoverageSummary,
+            isConnected: model.state == .connected
+        )
     }
 
     private func serverLogQueryCoverageText(_ summary: TS3ServerLogQueryCoverageSummary) -> String {
@@ -13552,6 +13575,20 @@ struct ServerLogsSheet: View {
             localized("serverLogs.writeReviewValidationFormat", summary.validationMessages.count),
             localized("serverLogs.writeReviewAttentionFormat", summary.needsAttention ? 1 : 0)
         ].joined(separator: " · ")
+    }
+
+    private func serverLogWriteReadinessText(_ summary: TS3ServerLogWriteReadinessSummary) -> String {
+        guard !summary.canSubmit else {
+            return localized("serverLogs.writeReadinessReady")
+        }
+        let missing = summary.missingRequirements
+            .map(serverLogWriteRequirementTitle)
+            .joined(separator: ", ")
+        return localized("serverLogs.writeReadinessMissingFormat", missing)
+    }
+
+    private func serverLogWriteRequirementTitle(_ requirement: TS3ServerLogWriteRequirement) -> String {
+        localized("serverLogs.writeRequirement.\(requirement.rawValue)")
     }
 
     private func serverLogOfficialAuditText(_ summary: TS3ServerLogOfficialCoverageAuditSummary) -> String {

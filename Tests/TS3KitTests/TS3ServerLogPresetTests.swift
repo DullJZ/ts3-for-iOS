@@ -38,6 +38,67 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertTrue(long.needsAttention)
     }
 
+    func testServerLogWriteReadinessSummaryAllowsValidConnectedDraft() {
+        let draft = TS3ServerLogWriteDraftSummary(level: .info, message: " Maintenance started ")
+        let query = TS3ServerLogQueryDraft(
+            limitText: "100",
+            beginPositionText: "0",
+            reverse: true,
+            instance: false,
+            levelFilter: "all",
+            channelFilter: "",
+            searchText: ""
+        )
+        let summary = TS3ServerLogWriteReadinessSummary(
+            draft: draft,
+            queryCoverageSummary: TS3ServerLogQueryCoverageSummary(draft: query),
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.totalRequirementCount, 6)
+        XCTAssertEqual(summary.satisfiedRequirementCount, 6)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertTrue(summary.canSubmit)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Write Server Log Entry | ready=true | requirements=6/6 | missing=0 | connected=true | queryValid=true | level=info | hasMessage=true | singleLine=true | messageLength=19 | draftValidationIssues=0 | queryValidationIssues=0"
+        )
+    }
+
+    func testServerLogWriteReadinessSummaryFlagsConnectionQueryAndMessageGaps() {
+        let draft = TS3ServerLogWriteDraftSummary(
+            level: .debug,
+            message: String(repeating: "x", count: 1_025) + "\nsecond"
+        )
+        let query = TS3ServerLogQueryDraft(
+            limitText: "0",
+            beginPositionText: "nope",
+            reverse: true,
+            instance: false,
+            levelFilter: "all",
+            channelFilter: "",
+            searchText: ""
+        )
+        let summary = TS3ServerLogWriteReadinessSummary(
+            draft: draft,
+            queryCoverageSummary: TS3ServerLogQueryCoverageSummary(draft: query),
+            isConnected: false
+        )
+
+        XCTAssertEqual(summary.totalRequirementCount, 6)
+        XCTAssertEqual(summary.satisfiedRequirements, [.message, .level])
+        XCTAssertEqual(summary.missingRequirements, [.connected, .queryValid, .singleLine, .length])
+        XCTAssertEqual(summary.missingRequirementCount, 4)
+        XCTAssertFalse(summary.canSubmit)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "operation=Write Server Log Entry | ready=false | requirements=2/6 | missing=4 | connected=false | queryValid=false | level=debug | hasMessage=true | singleLine=false | messageLength=1032 | draftValidationIssues=2 | queryValidationIssues=2"
+        )
+    }
+
     func testServerLogQueryDraftSummariesAndValidation() {
         let draft = TS3ServerLogQueryDraft(
             limitText: " 250 ",

@@ -12993,6 +12993,87 @@ struct TS3ServerLogWriteDraftSummary {
     }
 }
 
+enum TS3ServerLogWriteRequirement: String, CaseIterable, Codable {
+    case connected
+    case queryValid
+    case message
+    case singleLine
+    case length
+    case level
+}
+
+struct TS3ServerLogWriteReadinessSummary {
+    let draft: TS3ServerLogWriteDraftSummary
+    let queryCoverageSummary: TS3ServerLogQueryCoverageSummary
+    let isConnected: Bool
+
+    var totalRequirementCount: Int {
+        TS3ServerLogWriteRequirement.allCases.count
+    }
+
+    var satisfiedRequirements: [TS3ServerLogWriteRequirement] {
+        TS3ServerLogWriteRequirement.allCases.filter(isSatisfied)
+    }
+
+    var missingRequirements: [TS3ServerLogWriteRequirement] {
+        TS3ServerLogWriteRequirement.allCases.filter { !isSatisfied($0) }
+    }
+
+    var satisfiedRequirementCount: Int {
+        satisfiedRequirements.count
+    }
+
+    var missingRequirementCount: Int {
+        missingRequirements.count
+    }
+
+    var canSubmit: Bool {
+        missingRequirements.isEmpty
+    }
+
+    var needsAttention: Bool {
+        !canSubmit
+    }
+
+    var clipboardSummary: String {
+        [
+            "operation=Write Server Log Entry",
+            "ready=\(canSubmit ? "true" : "false")",
+            "requirements=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missing=\(missingRequirementCount)",
+            "connected=\(isConnected ? "true" : "false")",
+            "queryValid=\(queryCoverageSummary.validationIssueCount == 0 ? "true" : "false")",
+            "level=\(draft.level.rawValue)",
+            "hasMessage=\(draft.hasMessage ? "true" : "false")",
+            "singleLine=\(isSingleLine ? "true" : "false")",
+            "messageLength=\(draft.messageLength)",
+            "draftValidationIssues=\(draft.validationMessages.count)",
+            "queryValidationIssues=\(queryCoverageSummary.validationIssueCount)"
+        ].joined(separator: " | ")
+    }
+
+    func isSatisfied(_ requirement: TS3ServerLogWriteRequirement) -> Bool {
+        switch requirement {
+        case .connected:
+            return isConnected
+        case .queryValid:
+            return queryCoverageSummary.validationIssueCount == 0
+        case .message:
+            return draft.hasMessage
+        case .singleLine:
+            return isSingleLine
+        case .length:
+            return draft.messageLength <= 1_024
+        case .level:
+            return true
+        }
+    }
+
+    private var isSingleLine: Bool {
+        draft.trimmedMessage.rangeOfCharacter(from: .newlines) == nil
+    }
+}
+
 struct TS3ServerLogOfficialCoverageAuditSummary {
     let queryCoverageSummary: TS3ServerLogQueryCoverageSummary
     let visibleLogSummary: TS3ServerLogListSummary

@@ -2650,6 +2650,17 @@
 "serverLogs.writeReviewValidationFormat" = "Validation issues: %d";
 "serverLogs.writeReviewAttentionFormat" = "Needs attention: %d";
 "serverLogs.copyWriteReview" = "Copy Write Review";
+"serverLogs.writeReadiness" = "Write Readiness";
+"serverLogs.writeReadinessFormat" = "%d/%d requirements ready, %d missing";
+"serverLogs.writeReadinessReady" = "Ready to write the server log entry.";
+"serverLogs.writeReadinessMissingFormat" = "Missing: %@";
+"serverLogs.copyWriteReadiness" = "Copy Write Readiness";
+"serverLogs.writeRequirement.connected" = "Connected";
+"serverLogs.writeRequirement.queryValid" = "Valid log query";
+"serverLogs.writeRequirement.message" = "Message";
+"serverLogs.writeRequirement.singleLine" = "Single-line message";
+"serverLogs.writeRequirement.length" = "Message length";
+"serverLogs.writeRequirement.level" = "Log level";
 "serverLogs.writeServerLogEntry" = "Write Server Log Entry";
 "serverLogs.serverLog" = "Server Log";
 "serverLogs.noMatchingEntries" = "No matching log entries";

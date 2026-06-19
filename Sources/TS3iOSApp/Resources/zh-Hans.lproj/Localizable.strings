@@ -2650,6 +2650,17 @@
 "serverLogs.writeReviewValidationFormat" = "校验问题：%d";
 "serverLogs.writeReviewAttentionFormat" = "需要注意：%d";
 "serverLogs.copyWriteReview" = "复制写入审查";
+"serverLogs.writeReadiness" = "写入就绪";
+"serverLogs.writeReadinessFormat" = "%d/%d 个条件就绪，缺少 %d 个";
+"serverLogs.writeReadinessReady" = "已可写入服务器日志条目。";
+"serverLogs.writeReadinessMissingFormat" = "缺少：%@";
+"serverLogs.copyWriteReadiness" = "复制写入就绪";
+"serverLogs.writeRequirement.connected" = "已连接";
+"serverLogs.writeRequirement.queryValid" = "日志查询有效";
+"serverLogs.writeRequirement.message" = "消息";
+"serverLogs.writeRequirement.singleLine" = "单行消息";
+"serverLogs.writeRequirement.length" = "消息长度";
+"serverLogs.writeRequirement.level" = "日志级别";
 "serverLogs.writeServerLogEntry" = "写入服务器日志条目";
 "serverLogs.serverLog" = "服务器日志";
 "serverLogs.noMatchingEntries" = "没有匹配的日志条目";
