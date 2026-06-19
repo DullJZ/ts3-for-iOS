@@ -2930,6 +2930,96 @@ struct TS3ContactOfficialManagementAuditSummary {
     }
 }
 
+enum TS3ContactRowOfficialActionArea: String, CaseIterable, Codable {
+    case identity
+    case contactManagement
+    case messaging
+    case administration
+    case onlineContext
+    case bookmark
+}
+
+struct TS3ContactRowOfficialActionAuditSummary {
+    let contact: TS3ContactEntry
+    let isOnline: Bool
+    let canSaveBookmark: Bool
+    let hasDatabaseRecord: Bool
+
+    var identityActionCount: Int {
+        3
+    }
+
+    var contactManagementActionCount: Int {
+        TS3ContactStatus.allCases.count + 2
+    }
+
+    var messagingActionCount: Int {
+        1 + (isOnline ? 2 : 0)
+    }
+
+    var administrationActionCount: Int {
+        1 + (hasDatabaseRecord ? 1 : 0)
+    }
+
+    var onlineContextActionCount: Int {
+        isOnline ? 3 : 0
+    }
+
+    var bookmarkActionCount: Int {
+        1 + (canSaveBookmark ? 1 : 0)
+    }
+
+    var totalActionCount: Int {
+        areaActionCounts.values.reduce(0, +)
+    }
+
+    var availableAreaCount: Int {
+        areaActionCounts.values.filter { $0 > 0 }.count
+    }
+
+    var blockedAreaCount: Int {
+        TS3ContactRowOfficialActionArea.allCases.count - availableAreaCount
+    }
+
+    var needsAttention: Bool {
+        blockedAreaCount > 0 || !isOnline || !canSaveBookmark || !hasDatabaseRecord
+    }
+
+    var areaActionCounts: [TS3ContactRowOfficialActionArea: Int] {
+        [
+            .identity: identityActionCount,
+            .contactManagement: contactManagementActionCount,
+            .messaging: messagingActionCount,
+            .administration: administrationActionCount,
+            .onlineContext: onlineContextActionCount,
+            .bookmark: bookmarkActionCount
+        ]
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3ContactRowOfficialActionArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaActionCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "contact=\(contact.nickname)",
+            "uid=\(contact.uniqueIdentifier)",
+            "status=\(contact.status.rawValue)",
+            "officialActions=\(totalActionCount)",
+            "availableOfficialAreas=\(availableAreaCount)",
+            "blockedOfficialAreas=\(blockedAreaCount)",
+            "online=\(isOnline ? "true" : "false")",
+            "databaseRecord=\(hasDatabaseRecord ? "true" : "false")",
+            "bookmark=\(canSaveBookmark ? "true" : "false")",
+            "note=\(contact.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "false" : "true")",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3ContactImportPreview {
     let importedCount: Int
     let validCount: Int

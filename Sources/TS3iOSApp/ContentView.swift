@@ -7779,6 +7779,9 @@ struct ContactRow: View {
                 Button(localized("contacts.row.copySummary")) {
                     TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                 }
+                Button(localized("contacts.row.copyOfficialActions")) {
+                    TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+                }
                 ForEach(TS3ContactStatus.allCases) { status in
                     Button(localized("contacts.row.setStatusFormat", localizedStatusTitle(status))) {
                         model.updateContact(contact, status: status, note: contact.note)
@@ -7851,6 +7854,9 @@ struct ContactRow: View {
             Button(localized("contacts.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
+            Button(localized("contacts.row.copyOfficialActions")) {
+                TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+            }
             Button(localized("contacts.row.editContact")) {
                 isEditing = true
             }
@@ -7874,6 +7880,9 @@ struct ContactRow: View {
         .accessibilityValue(contact.accessibilityValue(onlineNickname: onlineUser?.nickname))
         .accessibilityAction(named: localized("contacts.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
+        }
+        .accessibilityAction(named: localized("contacts.row.copyOfficialActions")) {
+            TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
         }
         .accessibilityAction(named: localized("contacts.row.editContact")) {
             isEditing = true
@@ -7901,6 +7910,15 @@ struct ContactRow: View {
 
     private var clipboardSummary: String {
         contact.clipboardSummary(onlineNickname: onlineUser?.nickname)
+    }
+
+    private var officialActionAudit: TS3ContactRowOfficialActionAuditSummary {
+        TS3ContactRowOfficialActionAuditSummary(
+            contact: contact,
+            isOnline: onlineUser != nil,
+            canSaveBookmark: !model.serverHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            hasDatabaseRecord: model.databaseClients.contains { $0.uniqueIdentifier == contact.uniqueIdentifier }
+        )
     }
 }
 

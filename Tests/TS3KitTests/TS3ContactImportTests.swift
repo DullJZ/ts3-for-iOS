@@ -346,6 +346,66 @@ final class TS3ContactImportTests: XCTestCase {
         )
     }
 
+    func testContactRowOfficialActionAuditSummaryCountsOnlineDatabaseAndBookmarkActions() {
+        let contact = makeContact(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Contact",
+            status: .friend,
+            note: "trusted"
+        )
+
+        let summary = TS3ContactRowOfficialActionAuditSummary(
+            contact: contact,
+            isOnline: true,
+            canSaveBookmark: true,
+            hasDatabaseRecord: true
+        )
+
+        XCTAssertEqual(summary.identityActionCount, 3)
+        XCTAssertEqual(summary.contactManagementActionCount, 6)
+        XCTAssertEqual(summary.messagingActionCount, 3)
+        XCTAssertEqual(summary.administrationActionCount, 2)
+        XCTAssertEqual(summary.onlineContextActionCount, 3)
+        XCTAssertEqual(summary.bookmarkActionCount, 2)
+        XCTAssertEqual(summary.totalActionCount, 19)
+        XCTAssertEqual(summary.availableAreaCount, 6)
+        XCTAssertEqual(summary.blockedAreaCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "contact=Contact | uid=uid-contact | status=friend | officialActions=19 | availableOfficialAreas=6 | blockedOfficialAreas=0 | online=true | databaseRecord=true | bookmark=true | note=true | areas=identity:3,contactManagement:6,messaging:3,administration:2,onlineContext:3,bookmark:2 | needsAttention=false"
+        )
+    }
+
+    func testContactRowOfficialActionAuditSummaryFlagsMissingOnlineContextAndServerBookmark() {
+        let contact = makeContact(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Contact",
+            status: .blocked,
+            note: ""
+        )
+
+        let summary = TS3ContactRowOfficialActionAuditSummary(
+            contact: contact,
+            isOnline: false,
+            canSaveBookmark: false,
+            hasDatabaseRecord: false
+        )
+
+        XCTAssertEqual(summary.messagingActionCount, 1)
+        XCTAssertEqual(summary.administrationActionCount, 1)
+        XCTAssertEqual(summary.onlineContextActionCount, 0)
+        XCTAssertEqual(summary.bookmarkActionCount, 1)
+        XCTAssertEqual(summary.totalActionCount, 12)
+        XCTAssertEqual(summary.availableAreaCount, 5)
+        XCTAssertEqual(summary.blockedAreaCount, 1)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "contact=Contact | uid=uid-contact | status=blocked | officialActions=12 | availableOfficialAreas=5 | blockedOfficialAreas=1 | online=false | databaseRecord=false | bookmark=false | note=false | areas=identity:3,contactManagement:6,messaging:1,administration:1,bookmark:1 | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testAppendNoteDraftAppliesDeduplicatedVisibleContacts() {
         let model = TS3AppModel()

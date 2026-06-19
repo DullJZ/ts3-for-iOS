@@ -1495,6 +1495,7 @@
 "contacts.row.copyNickname" = "Copy Nickname";
 "contacts.row.copyUniqueId" = "Copy Unique ID";
 "contacts.row.copySummary" = "Copy Summary";
+"contacts.row.copyOfficialActions" = "Copy Official Actions";
 "contacts.row.setStatusFormat" = "Set %@";
 "contacts.row.deleteContact" = "Delete Contact";
 "clientActions.awayMessageFormat" = "Away: %@";
