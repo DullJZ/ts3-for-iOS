@@ -2830,6 +2830,12 @@
 "serverLogs.import.replacingPresetsFormat" = "替换预设：%d";
 "serverLogs.import.skippedPresetsFormat" = "跳过预设：%d";
 "serverLogs.import.copyBackupPreview" = "复制备份预览";
+"serverLogs.import.impact" = "导入影响";
+"serverLogs.import.presetImpactFormat" = "已选 %d 个，新建 %d 个，替换 %d 个";
+"serverLogs.import.presetImpactScopeFormat" = "实例：%d，服务器：%d";
+"serverLogs.import.presetImpactFiltersFormat" = "远端筛选：%d，本地筛选：%d";
+"serverLogs.import.presetImpactPagingFormat" = "分页：%d，跳过：%d";
+"serverLogs.import.copyPresetImpact" = "复制导入影响";
 "serverLogs.import.restore" = "恢复";
 "serverLogs.import.presetBehavior" = "导入会按名称合并所选服务器日志查询预设，未选择的预设保持不变。";
 "serverLogs.import.presetsTitle" = "导入日志预设";

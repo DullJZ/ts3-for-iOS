@@ -406,6 +406,8 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertEqual(preview.replacedPresetCount, 1)
         XCTAssertEqual(preview.skippedPresetCount, 1)
         XCTAssertEqual(Set(preview.candidates.map(\.id)), [existingId, newId])
+        XCTAssertTrue(preview.candidates.first { $0.id == existingId }?.isReplacing == true)
+        XCTAssertTrue(preview.candidates.first { $0.id == newId }?.isReplacing == false)
         let summariesById = Dictionary(uniqueKeysWithValues: preview.candidates.map { ($0.id, $0.summary) })
         XCTAssertEqual(summariesById[existingId], """
         Scope: Instance logs
@@ -421,6 +423,90 @@ final class TS3ServerLogPresetTests: XCTestCase {
         XCTAssertTrue(preview.containsPreset(id: newId))
         XCTAssertFalse(preview.containsPreset(id: invalidId))
         XCTAssertTrue(preview.clipboardSummary.contains("Skipped server log query presets: 1"))
+    }
+
+    @MainActor
+    func testServerLogQueryPresetImportImpactSummaryCountsSelectedPresets() throws {
+        let existingId = UUID()
+        let newId = UUID()
+        let skippedId = UUID()
+        let suffix = UUID().uuidString
+        let existingName = "Existing Log Query \(suffix)"
+        let model = TS3AppModel()
+        _ = try model.importServerLogQueryPresets(from: encodedServerLogQueryPresets([
+            makeServerLogQueryPreset(
+                id: existingId,
+                name: existingName,
+                limit: 100,
+                beginPosition: 0,
+                reverse: false,
+                instance: false,
+                levelFilter: "all",
+                channelFilter: "",
+                searchText: ""
+            )
+        ]))
+        let preview = try model.serverLogQueryPresetsImportPreview(from: encodedServerLogQueryPresets([
+            makeServerLogQueryPreset(
+                id: existingId,
+                name: existingName,
+                limit: 500,
+                beginPosition: 0,
+                reverse: false,
+                instance: true,
+                levelFilter: "warning",
+                channelFilter: "Server",
+                searchText: "auth"
+            ),
+            makeServerLogQueryPreset(
+                id: newId,
+                name: "Paged Error Query \(suffix)",
+                limit: 50,
+                beginPosition: 20,
+                reverse: true,
+                instance: false,
+                levelFilter: "error",
+                channelFilter: "",
+                searchText: ""
+            ),
+            makeServerLogQueryPreset(
+                id: skippedId,
+                name: "   ",
+                limit: 25,
+                beginPosition: 0,
+                reverse: false,
+                instance: false,
+                levelFilter: "info",
+                channelFilter: "",
+                searchText: ""
+            )
+        ]))
+
+        let summary = TS3ServerLogQueryPresetImportImpactSummary(
+            preview: preview,
+            selectedPresetIds: [existingId, newId]
+        )
+
+        XCTAssertEqual(summary.selectedPresetCount, 2)
+        XCTAssertEqual(summary.newPresetCount, 1)
+        XCTAssertEqual(summary.replacedPresetCount, 1)
+        XCTAssertEqual(summary.instanceScopeCount, 1)
+        XCTAssertEqual(summary.serverScopeCount, 1)
+        XCTAssertEqual(summary.paginatedPresetCount, 1)
+        XCTAssertEqual(summary.remoteFilteredPresetCount, 2)
+        XCTAssertEqual(summary.localFilteredPresetCount, 2)
+        XCTAssertEqual(summary.skippedPresetCount, 1)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=2 | new=1 | replacing=1 | instanceScope=1 | serverScope=1 | paginated=1 | remoteFiltered=2 | localFiltered=2 | skipped=1 | hasSelection=true | needsAttention=true"
+        )
+
+        let empty = TS3ServerLogQueryPresetImportImpactSummary(preview: preview, selectedPresetIds: [])
+        XCTAssertFalse(empty.hasSelection)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(empty.selectedPresetCount, 0)
     }
 
     @MainActor

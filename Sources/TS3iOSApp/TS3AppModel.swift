@@ -14275,7 +14275,41 @@ extension TS3ServerLogQueryPreset {
 struct TS3ServerLogQueryPresetImportPreview {
     struct Candidate: Identifiable, Equatable {
         let id: UUID
+        let name: String
         let summary: String
+        let isReplacing: Bool
+        let limit: Int
+        let beginPosition: Int
+        let reverse: Bool
+        let instance: Bool
+        let levelFilter: String
+        let channelFilter: String
+        let searchText: String
+
+        var hasPagination: Bool {
+            beginPosition > 0
+        }
+
+        var hasRemoteFilter: Bool {
+            instance || hasPagination || reverse || limit != 100
+        }
+
+        var hasLocalFilter: Bool {
+            normalizedLevelFilter != "all" || hasChannelFilter || hasSearchText
+        }
+
+        private var normalizedLevelFilter: String {
+            let level = levelFilter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return ["all", "info", "warning", "error", "debug"].contains(level) ? level : "all"
+        }
+
+        private var hasChannelFilter: Bool {
+            !channelFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        private var hasSearchText: Bool {
+            !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 
     let importedPresetCount: Int
@@ -14304,6 +14338,60 @@ struct TS3ServerLogQueryPresetImportPreview {
 
     func containsPreset(id: UUID) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3ServerLogQueryPresetImportImpactSummary {
+    let selectedPresetCount: Int
+    let newPresetCount: Int
+    let replacedPresetCount: Int
+    let instanceScopeCount: Int
+    let serverScopeCount: Int
+    let paginatedPresetCount: Int
+    let remoteFilteredPresetCount: Int
+    let localFilteredPresetCount: Int
+    let skippedPresetCount: Int
+
+    var hasSelection: Bool {
+        selectedPresetCount > 0
+    }
+
+    var needsAttention: Bool {
+        !hasSelection
+            || replacedPresetCount > 0
+            || skippedPresetCount > 0
+            || instanceScopeCount > 0
+            || paginatedPresetCount > 0
+            || remoteFilteredPresetCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedPresetCount)",
+            "new=\(newPresetCount)",
+            "replacing=\(replacedPresetCount)",
+            "instanceScope=\(instanceScopeCount)",
+            "serverScope=\(serverScopeCount)",
+            "paginated=\(paginatedPresetCount)",
+            "remoteFiltered=\(remoteFilteredPresetCount)",
+            "localFiltered=\(localFilteredPresetCount)",
+            "skipped=\(skippedPresetCount)",
+            "hasSelection=\(hasSelection ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3ServerLogQueryPresetImportPreview, selectedPresetIds: Set<UUID>) {
+        let selected = preview.candidates.filter { selectedPresetIds.contains($0.id) }
+        selectedPresetCount = selected.count
+        replacedPresetCount = selected.filter(\.isReplacing).count
+        newPresetCount = selectedPresetCount - replacedPresetCount
+        instanceScopeCount = selected.filter(\.instance).count
+        serverScopeCount = selectedPresetCount - instanceScopeCount
+        paginatedPresetCount = selected.filter(\.hasPagination).count
+        remoteFilteredPresetCount = selected.filter(\.hasRemoteFilter).count
+        localFilteredPresetCount = selected.filter(\.hasLocalFilter).count
+        skippedPresetCount = preview.skippedPresetCount
     }
 }
 
@@ -18975,7 +19063,16 @@ final class TS3AppModel: ObservableObject {
             candidates: usable.map { preset in
                 TS3ServerLogQueryPresetImportPreview.Candidate(
                     id: preset.id,
-                    summary: preset.clipboardSummary
+                    name: preset.name,
+                    summary: preset.clipboardSummary,
+                    isReplacing: existingNames.contains(preset.name.lowercased()),
+                    limit: preset.limit,
+                    beginPosition: preset.beginPosition,
+                    reverse: preset.reverse,
+                    instance: preset.instance,
+                    levelFilter: preset.levelFilter,
+                    channelFilter: preset.channelFilter,
+                    searchText: preset.searchText
                 )
             }
         )

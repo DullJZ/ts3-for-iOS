@@ -14026,8 +14026,16 @@ private struct ServerLogQueryPresetImportSheet: View {
         _selectedPresetIds = State(initialValue: Set(preview.candidates.map(\.id)))
     }
 
+    private var validSelectedPresetIds: Set<UUID> {
+        Set(selectedPresetIds.filter(preview.containsPreset))
+    }
+
+    private var importImpactSummary: TS3ServerLogQueryPresetImportImpactSummary {
+        TS3ServerLogQueryPresetImportImpactSummary(preview: preview, selectedPresetIds: validSelectedPresetIds)
+    }
+
     private var canImport: Bool {
-        preview.candidates.contains { selectedPresetIds.contains($0.id) }
+        importImpactSummary.hasSelection
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
@@ -14047,6 +14055,24 @@ private struct ServerLogQueryPresetImportSheet: View {
                     Button(localized("serverLogs.import.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
+                    if preview.hasPresets {
+                        ServerInfoDetailRow(
+                            label: localized("serverLogs.import.impact"),
+                            value: localized(
+                                "serverLogs.import.presetImpactFormat",
+                                importImpactSummary.selectedPresetCount,
+                                importImpactSummary.newPresetCount,
+                                importImpactSummary.replacedPresetCount
+                            )
+                        )
+                        Text(serverLogPresetImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("serverLogs.import.copyPresetImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
+                    }
                 }
 
                 Section(header: Text(localized("serverLogs.import.restore"))) {
@@ -14058,6 +14084,7 @@ private struct ServerLogQueryPresetImportSheet: View {
                         Button(localized("serverLogs.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
+                        .disabled(selectedPresetIds.isEmpty)
                     }
                     ForEach(preview.candidates) { candidate in
                         Toggle(
@@ -14097,13 +14124,25 @@ private struct ServerLogQueryPresetImportSheet: View {
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
                     Button(localized("serverLogs.import.action")) {
-                        importPresets(selectedPresetIds)
+                        importPresets(validSelectedPresetIds)
                         presentationMode.wrappedValue.dismiss()
                     }
                     .disabled(!canImport)
                 }
             }
         }
+    }
+
+    private func serverLogPresetImportImpactText(_ summary: TS3ServerLogQueryPresetImportImpactSummary) -> String {
+        [
+            localized("serverLogs.import.presetImpactScopeFormat", summary.instanceScopeCount, summary.serverScopeCount),
+            localized(
+                "serverLogs.import.presetImpactFiltersFormat",
+                summary.remoteFilteredPresetCount,
+                summary.localFilteredPresetCount
+            ),
+            localized("serverLogs.import.presetImpactPagingFormat", summary.paginatedPresetCount, summary.skippedPresetCount)
+        ].joined(separator: " | ")
     }
 }
 

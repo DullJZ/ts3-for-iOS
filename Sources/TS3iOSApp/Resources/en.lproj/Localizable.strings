@@ -2830,6 +2830,12 @@
 "serverLogs.import.replacingPresetsFormat" = "Replacing presets: %d";
 "serverLogs.import.skippedPresetsFormat" = "Skipped presets: %d";
 "serverLogs.import.copyBackupPreview" = "Copy Backup Preview";
+"serverLogs.import.impact" = "Import Impact";
+"serverLogs.import.presetImpactFormat" = "%d selected, %d new, %d replacing";
+"serverLogs.import.presetImpactScopeFormat" = "Instance: %d, server: %d";
+"serverLogs.import.presetImpactFiltersFormat" = "Remote-filtered: %d, local-filtered: %d";
+"serverLogs.import.presetImpactPagingFormat" = "Paged: %d, skipped: %d";
+"serverLogs.import.copyPresetImpact" = "Copy Import Impact";
 "serverLogs.import.restore" = "Restore";
 "serverLogs.import.presetBehavior" = "Importing merges the selected server log query presets by name and leaves unselected presets unchanged.";
 "serverLogs.import.presetsTitle" = "Import Log Presets";
