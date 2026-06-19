@@ -9714,6 +9714,9 @@ enum TS3TemporaryServerPasswordDraftValidator {
         if password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             messages.append("Temporary password is required before creating.")
         }
+        if containsNewline(password) {
+            messages.append("Temporary password must be a single line.")
+        }
         if (durationSeconds ?? 0) <= 0 {
             messages.append("Duration must be a positive number of seconds.")
         }

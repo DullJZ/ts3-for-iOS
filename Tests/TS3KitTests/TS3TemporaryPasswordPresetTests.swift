@@ -22,6 +22,19 @@ final class TS3TemporaryPasswordPresetTests: XCTestCase {
         )
     }
 
+    func testTemporaryPasswordDraftValidatorRejectsMultilinePassword() {
+        XCTAssertEqual(
+            TS3TemporaryServerPasswordDraftValidator.validationMessages(
+                password: "guest\npass",
+                durationSeconds: 3_600,
+                description: "Guest access",
+                targetChannelId: nil,
+                targetChannelPassword: ""
+            ),
+            ["Temporary password must be a single line."]
+        )
+    }
+
     func testTemporaryPasswordDraftValidatorBuildsAuditableCreationSummary() {
         let messages = TS3TemporaryServerPasswordDraftValidator.validationMessages(
             password: " guest-pass ",
