@@ -34152,6 +34152,19 @@ struct AudioSettingsSheet: View {
         )
     }
 
+    private var audioRouteSwitchReadinessSummary: TS3AudioRouteSwitchReadinessSummary {
+        TS3AudioRouteSwitchReadinessSummary(
+            inputRoute: model.audioInputRoute,
+            outputRoute: model.audioOutputRoute,
+            inputDeviceCount: model.audioInputDevices.count,
+            routeAvailabilityNoteCount: model.audioRouteAvailabilityNotes.count,
+            prefersSpeakerOutput: model.prefersSpeakerOutput,
+            hasRouteRefresh: true,
+            hasSpeakerPreference: true,
+            hasDiagnosticsSnapshot: true
+        )
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -34292,6 +34305,22 @@ struct AudioSettingsSheet: View {
                     ServerInfoDetailRow(label: localized("audio.inputDevices"), value: String(model.audioInputDevices.count))
                     ServerInfoDetailRow(label: localized("audio.selectedInput"), value: selectedInputDeviceName)
                     ServerInfoDetailRow(label: localized("audio.routeAvailability"), value: audioRouteAvailabilityText)
+                    let routeReadiness = audioRouteSwitchReadinessSummary
+                    ServerInfoDetailRow(
+                        label: localized("audio.routeSwitchReadiness"),
+                        value: localized(
+                            "audio.routeSwitchReadinessFormat",
+                            routeReadiness.satisfiedRequirementCount,
+                            routeReadiness.totalRequirementCount,
+                            routeReadiness.missingRequirementCount
+                        )
+                    )
+                    Text(audioRouteSwitchReadinessText(routeReadiness))
+                        .font(.caption)
+                        .foregroundColor(routeReadiness.needsAttention ? .orange : .secondary)
+                    Button(localized("audio.copyRouteSwitchReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(routeReadiness.clipboardSummary)
+                    }
                     ServerInfoDetailRow(
                         label: localized("audio.voiceActivationOfficialAudit"),
                         value: localized(
@@ -34838,6 +34867,35 @@ struct AudioSettingsSheet: View {
             localized("audio.deviceProfileOfficialAuditPlaybackFormat", audioDeviceProfileOfficialAuditSummary.userPlaybackOverrideCount),
             localized("audio.deviceProfileOfficialAuditRouteNotesFormat", audioDeviceProfileOfficialAuditSummary.routeAvailabilityNoteCount)
         ].joined(separator: " · ")
+    }
+
+    private func audioRouteSwitchReadinessText(_ summary: TS3AudioRouteSwitchReadinessSummary) -> String {
+        if summary.missingRequirements.isEmpty {
+            return localized("audio.routeSwitchReadinessReady")
+        }
+        return localized(
+            "audio.routeSwitchReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3AudioRouteSwitchRequirement) -> String {
+        switch requirement {
+        case .inputRoute:
+            return localized("audio.routeRequirement.inputRoute")
+        case .outputRoute:
+            return localized("audio.routeRequirement.outputRoute")
+        case .inputDevice:
+            return localized("audio.routeRequirement.inputDevice")
+        case .routeRefresh:
+            return localized("audio.routeRequirement.routeRefresh")
+        case .speakerPreference:
+            return localized("audio.routeRequirement.speakerPreference")
+        case .diagnostics:
+            return localized("audio.routeRequirement.diagnostics")
+        case .noRouteLimitations:
+            return localized("audio.routeRequirement.noRouteLimitations")
+        }
     }
 
     private func localizedVoiceActivationRecommendation(_ recommendation: String) -> String {

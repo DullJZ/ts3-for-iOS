@@ -10320,6 +10320,80 @@ struct TS3AudioDeviceProfileOfficialCoverageAuditSummary {
     }
 }
 
+enum TS3AudioRouteSwitchRequirement: String, CaseIterable, Codable {
+    case inputRoute
+    case outputRoute
+    case inputDevice
+    case routeRefresh
+    case speakerPreference
+    case diagnostics
+    case noRouteLimitations
+}
+
+struct TS3AudioRouteSwitchReadinessSummary {
+    let inputRoute: String
+    let outputRoute: String
+    let inputDeviceCount: Int
+    let routeAvailabilityNoteCount: Int
+    let prefersSpeakerOutput: Bool
+    let hasRouteRefresh: Bool
+    let hasSpeakerPreference: Bool
+    let hasDiagnosticsSnapshot: Bool
+
+    var requirementStates: [TS3AudioRouteSwitchRequirement: Bool] {
+        [
+            .inputRoute: !inputRoute.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            .outputRoute: !outputRoute.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            .inputDevice: inputDeviceCount > 0,
+            .routeRefresh: hasRouteRefresh,
+            .speakerPreference: hasSpeakerPreference,
+            .diagnostics: hasDiagnosticsSnapshot,
+            .noRouteLimitations: routeAvailabilityNoteCount == 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3AudioRouteSwitchRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3AudioRouteSwitchRequirement] {
+        TS3AudioRouteSwitchRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var needsAttention: Bool {
+        missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let normalizedInputRoute = inputRoute.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedOutputRoute = outputRoute.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requirements = TS3AudioRouteSwitchRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "inputRoute=\(normalizedInputRoute.isEmpty ? "none" : normalizedInputRoute)",
+            "outputRoute=\(normalizedOutputRoute.isEmpty ? "none" : normalizedOutputRoute)",
+            "inputDevices=\(inputDeviceCount)",
+            "routeNotes=\(routeAvailabilityNoteCount)",
+            "prefersSpeaker=\(prefersSpeakerOutput ? "true" : "false")",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3KeyboardShortcutBinding: Identifiable, Codable {
     var actionId: String
     var group: String

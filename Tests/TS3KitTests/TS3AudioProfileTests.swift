@@ -230,6 +230,55 @@ final class TS3AudioProfileTests: XCTestCase {
         )
     }
 
+    func testAudioRouteSwitchReadinessSummaryCountsReadyRequirements() {
+        let summary = TS3AudioRouteSwitchReadinessSummary(
+            inputRoute: "Built-in Microphone",
+            outputRoute: "Speaker",
+            inputDeviceCount: 2,
+            routeAvailabilityNoteCount: 0,
+            prefersSpeakerOutput: true,
+            hasRouteRefresh: true,
+            hasSpeakerPreference: true,
+            hasDiagnosticsSnapshot: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 7)
+        XCTAssertEqual(summary.totalRequirementCount, 7)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=7/7 | missingRequirements=0 | inputRoute=Built-in Microphone | outputRoute=Speaker | inputDevices=2 | routeNotes=0 | prefersSpeaker=true | requirements=inputRoute:true,outputRoute:true,inputDevice:true,routeRefresh:true,speakerPreference:true,diagnostics:true,noRouteLimitations:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testAudioRouteSwitchReadinessSummaryFlagsMissingRouteAndLimitations() {
+        let summary = TS3AudioRouteSwitchReadinessSummary(
+            inputRoute: " ",
+            outputRoute: "",
+            inputDeviceCount: 0,
+            routeAvailabilityNoteCount: 2,
+            prefersSpeakerOutput: false,
+            hasRouteRefresh: true,
+            hasSpeakerPreference: false,
+            hasDiagnosticsSnapshot: false
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 1)
+        XCTAssertEqual(summary.totalRequirementCount, 7)
+        XCTAssertEqual(summary.missingRequirementCount, 6)
+        XCTAssertEqual(
+            summary.missingRequirements,
+            [.inputRoute, .outputRoute, .inputDevice, .speakerPreference, .diagnostics, .noRouteLimitations]
+        )
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=1/7 | missingRequirements=6 | inputRoute=none | outputRoute=none | inputDevices=0 | routeNotes=2 | prefersSpeaker=false | requirements=inputRoute:false,outputRoute:false,inputDevice:false,routeRefresh:true,speakerPreference:false,diagnostics:false,noRouteLimitations:false | missing=inputRoute,outputRoute,inputDevice,speakerPreference,diagnostics,noRouteLimitations | needsAttention=true"
+        )
+    }
+
     func testAudioProfileSummariesUseAuditableValues() {
         let profile = TS3AudioProfile(
             id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
