@@ -2640,8 +2640,112 @@ struct TS3PokeSendReadinessSummary {
     }
 }
 
+enum TS3PokeOfflineReplyRequirement: String, CaseIterable, Codable {
+    case sourcePoke
+    case connected
+    case recipient
+    case subject
+    case body
+    case singleLineSubject
+    case validationClean
+}
+
+struct TS3PokeOfflineReplyReadinessSummary {
+    let poke: TS3PokeSummary
+    let sendReadinessSummary: TS3OfflineMessageSendReadinessSummary
+
+    var hasReplyablePoke: Bool {
+        poke.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var requirementStates: [TS3PokeOfflineReplyRequirement: Bool] {
+        [
+            .sourcePoke: hasReplyablePoke,
+            .connected: sendReadinessSummary.requirementStates[.connected] == true,
+            .recipient: hasReplyablePoke && sendReadinessSummary.requirementStates[.recipient] == true,
+            .subject: sendReadinessSummary.requirementStates[.subject] == true,
+            .body: sendReadinessSummary.requirementStates[.body] == true,
+            .singleLineSubject: sendReadinessSummary.requirementStates[.singleLineSubject] == true,
+            .validationClean: sendReadinessSummary.requirementStates[.validationClean] == true
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3PokeOfflineReplyRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        missingRequirements.count
+    }
+
+    var missingRequirements: [TS3PokeOfflineReplyRequirement] {
+        TS3PokeOfflineReplyRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        hasReplyablePoke && sendReadinessSummary.canSubmit
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3PokeOfflineReplyRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "pokeDirection=\(poke.isOwnPoke ? "out" : "in")",
+            "sender=\(poke.senderName)",
+            "senderUid=\(hasReplyablePoke ? "true" : "false")",
+            "offlineReadiness=\(sendReadinessSummary.satisfiedRequirementCount)/\(sendReadinessSummary.totalRequirementCount)",
+            "contentFields=\(sendReadinessSummary.draftCoverageSummary.requiredContentFieldCount)/2",
+            "validationIssues=\(sendReadinessSummary.draftCoverageSummary.validationIssueCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        poke: TS3PokeSummary,
+        subject: String,
+        message: String,
+        isConnected: Bool
+    ) {
+        self.poke = poke
+        let validationMessages = TS3OfflineMessageDraftValidator.validationMessages(
+            recipientName: poke.senderName,
+            recipientUniqueIdentifier: poke.senderUniqueIdentifier,
+            subject: subject,
+            message: message
+        )
+        let coverage = TS3OfflineMessageDraftCoverageSummary(
+            recipientName: poke.senderName,
+            recipientUniqueIdentifier: poke.senderUniqueIdentifier,
+            subject: subject,
+            message: message,
+            allowsRecipientLookup: false,
+            validationMessages: validationMessages
+        )
+        self.sendReadinessSummary = TS3OfflineMessageSendReadinessSummary(
+            draftCoverageSummary: coverage,
+            isConnected: isConnected
+        )
+    }
+}
+
 struct TS3PokeOfficialCoverageAuditSummary {
     let draftCoverageSummary: TS3PokeDraftCoverageSummary?
+    let offlineReplyReadinessSummary: TS3PokeOfflineReplyReadinessSummary?
     let visiblePokeSummary: TS3PokeListSummary
     let clearImpactSummary: TS3PokeClearImpactSummary
     let hasLocalFilters: Bool
@@ -2653,7 +2757,7 @@ struct TS3PokeOfficialCoverageAuditSummary {
     let hasContactActions: Bool
 
     var officialAreaTotal: Int {
-        9
+        10
     }
 
     var coveredOfficialAreaCount: Int {
@@ -2666,7 +2770,8 @@ struct TS3PokeOfficialCoverageAuditSummary {
             hasArchiveCoverage,
             canSendPoke,
             hasPokeBackActions,
-            hasOfflineReplyActions || hasContactActions
+            hasOfflineReplyReadinessCoverage,
+            hasContactActions
         ].filter { $0 }.count
     }
 
@@ -2675,12 +2780,13 @@ struct TS3PokeOfficialCoverageAuditSummary {
     }
 
     var officialActionCount: Int {
-        18
+        20
     }
 
     var needsAttention: Bool {
         missingOfficialAreaCount > 0
             || draftCoverageSummary?.needsAttention == true
+            || offlineReplyReadinessSummary?.needsAttention == true
             || visiblePokeSummary.needsAttention
             || clearImpactSummary.needsAttention
             || !canSendPoke
@@ -2693,6 +2799,8 @@ struct TS3PokeOfficialCoverageAuditSummary {
             "officialActions=\(officialActionCount)",
             "draftTargets=\(draftCoverageSummary?.targetFieldCount ?? 0)",
             "customDraftMessage=\(draftCoverageSummary?.hasCustomMessage == true ? "true" : "false")",
+            "offlineReplyReadiness=\(offlineReplyReadinessSummary.map { "\($0.satisfiedRequirementCount)/\($0.totalRequirementCount)" } ?? "none")",
+            "offlineReplyMissing=\(offlineReplyReadinessSummary?.missingRequirementCount ?? 0)",
             "visiblePokes=\(visiblePokeSummary.totalCount)",
             "incoming=\(visiblePokeSummary.incomingCount)",
             "outgoing=\(visiblePokeSummary.outgoingCount)",
@@ -2705,6 +2813,7 @@ struct TS3PokeOfficialCoverageAuditSummary {
             "sendPoke=\(canSendPoke ? "true" : "false")",
             "pokeBack=\(hasPokeBackActions ? "true" : "false")",
             "offlineReply=\(hasOfflineReplyActions ? "true" : "false")",
+            "offlineReplyReadinessCoverage=\(hasOfflineReplyReadinessCoverage ? "true" : "false")",
             "contactActions=\(hasContactActions ? "true" : "false")",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")
@@ -2724,6 +2833,10 @@ struct TS3PokeOfficialCoverageAuditSummary {
 
     private var hasLocalFilterCoverage: Bool {
         hasLocalFilters || visiblePokeSummary.totalCount > 0
+    }
+
+    private var hasOfflineReplyReadinessCoverage: Bool {
+        hasOfflineReplyActions && offlineReplyReadinessSummary != nil
     }
 }
 

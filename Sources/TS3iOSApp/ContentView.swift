@@ -9962,9 +9962,24 @@ struct EventsSheet: View {
         TS3PokeClearImpactSummary(pokes: visiblePokeEvents)
     }
 
+    private var visiblePokeOfflineReplyReadinessSummary: TS3PokeOfflineReplyReadinessSummary? {
+        guard let poke = visiblePokeEvents.first(where: {
+            $0.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        }) else {
+            return nil
+        }
+        return TS3PokeOfflineReplyReadinessSummary(
+            poke: poke,
+            subject: NSLocalizedString("events.pokeReply.defaultSubject", comment: ""),
+            message: "",
+            isConnected: model.state == .connected
+        )
+    }
+
     private var visiblePokeOfficialAuditSummary: TS3PokeOfficialCoverageAuditSummary {
         TS3PokeOfficialCoverageAuditSummary(
             draftCoverageSummary: nil,
+            offlineReplyReadinessSummary: visiblePokeOfflineReplyReadinessSummary,
             visiblePokeSummary: visiblePokeSummary,
             clearImpactSummary: visiblePokeClearImpact,
             hasLocalFilters: hasLocalFilters,
@@ -10420,6 +10435,11 @@ struct EventsSheet: View {
             localized("events.pokeOfficialAuditActionsFormat", summary.officialActionCount),
             localized("events.pokeOfficialAuditVisibleFormat", summary.visiblePokeSummary.totalCount),
             localized("events.pokeOfficialAuditIncomingFormat", summary.visiblePokeSummary.incomingCount),
+            localized(
+                "events.pokeOfficialAuditOfflineReplyReadinessFormat",
+                summary.offlineReplyReadinessSummary?.satisfiedRequirementCount ?? 0,
+                summary.offlineReplyReadinessSummary?.totalRequirementCount ?? 0
+            ),
             localized("events.pokeOfficialAuditReplyFormat", summary.hasOfflineReplyActions ? localized("common.yes") : localized("common.no")),
             localized("events.pokeOfficialAuditSendFormat", summary.canSendPoke ? localized("common.yes") : localized("common.no"))
         ].joined(separator: " · ")
@@ -11004,6 +11024,21 @@ struct PokeOfflineReplySheet: View {
                     Button(localized("events.pokeReply.copySummary")) {
                         TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
                     }
+                    ServerInfoDetailRow(
+                        label: localized("events.pokeReply.readiness"),
+                        value: localized(
+                            "events.pokeReply.readinessFormat",
+                            offlineReplyReadinessSummary.satisfiedRequirementCount,
+                            offlineReplyReadinessSummary.totalRequirementCount,
+                            offlineReplyReadinessSummary.missingRequirementCount
+                        )
+                    )
+                    Text(offlineReplyReadinessText)
+                        .font(.caption)
+                        .foregroundColor(offlineReplyReadinessSummary.needsAttention ? .orange : .secondary)
+                    Button(localized("events.pokeReply.copyReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(offlineReplyReadinessSummary.clipboardSummary)
+                    }
                     ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
                         Text(message)
                             .font(.caption)
@@ -11032,7 +11067,7 @@ struct PokeOfflineReplySheet: View {
                         }
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(isSendDisabled)
+                    .disabled(!offlineReplyReadinessSummary.canSubmit)
                 }
             }
             .onAppear {
@@ -11072,10 +11107,6 @@ struct PokeOfflineReplySheet: View {
         )
     }
 
-    private var isSendDisabled: Bool {
-        !offlineMessageDraftValidationMessages.isEmpty
-    }
-
     private var offlineMessageDraftValidationMessages: [String] {
         TS3OfflineMessageDraftValidator.validationMessages(
             recipientName: poke.senderName,
@@ -11092,6 +11123,45 @@ struct PokeOfflineReplySheet: View {
             subject: subject,
             message: message
         )
+    }
+
+    private var offlineReplyReadinessSummary: TS3PokeOfflineReplyReadinessSummary {
+        TS3PokeOfflineReplyReadinessSummary(
+            poke: poke,
+            subject: subject,
+            message: message,
+            isConnected: model.state == .connected
+        )
+    }
+
+    private var offlineReplyReadinessText: String {
+        let summary = offlineReplyReadinessSummary
+        if summary.missingRequirements.isEmpty {
+            return localized("events.pokeReply.readinessReady")
+        }
+        return localized(
+            "events.pokeReply.readinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3PokeOfflineReplyRequirement) -> String {
+        switch requirement {
+        case .sourcePoke:
+            return localized("events.pokeReply.requirement.sourcePoke")
+        case .connected:
+            return localized("events.pokeReply.requirement.connected")
+        case .recipient:
+            return localized("events.pokeReply.requirement.recipient")
+        case .subject:
+            return localized("events.pokeReply.requirement.subject")
+        case .body:
+            return localized("events.pokeReply.requirement.body")
+        case .singleLineSubject:
+            return localized("events.pokeReply.requirement.singleLineSubject")
+        case .validationClean:
+            return localized("events.pokeReply.requirement.validationClean")
+        }
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

@@ -410,6 +410,7 @@
 "events.pokeOfficialAuditActionsFormat" = "%d official actions";
 "events.pokeOfficialAuditVisibleFormat" = "Visible pokes: %d";
 "events.pokeOfficialAuditIncomingFormat" = "Incoming: %d";
+"events.pokeOfficialAuditOfflineReplyReadinessFormat" = "Offline reply readiness: %d/%d";
 "events.pokeOfficialAuditReplyFormat" = "Reply actions: %@";
 "events.pokeOfficialAuditSendFormat" = "Send poke: %@";
 "events.copyPokeOfficialAudit" = "Copy Official Poke Audit";
@@ -426,6 +427,18 @@
 "events.pokeReply.subject" = "Subject";
 "events.pokeReply.message" = "Message";
 "events.pokeReply.copySummary" = "Copy Offline Reply Summary";
+"events.pokeReply.readiness" = "Offline Reply Readiness";
+"events.pokeReply.readinessFormat" = "%d/%d ready, %d missing";
+"events.pokeReply.readinessReady" = "Offline reply can be sent.";
+"events.pokeReply.readinessMissingFormat" = "Missing: %@";
+"events.pokeReply.copyReadiness" = "Copy Offline Reply Readiness";
+"events.pokeReply.requirement.sourcePoke" = "replyable poke";
+"events.pokeReply.requirement.connected" = "connection";
+"events.pokeReply.requirement.recipient" = "recipient";
+"events.pokeReply.requirement.subject" = "subject";
+"events.pokeReply.requirement.body" = "message body";
+"events.pokeReply.requirement.singleLineSubject" = "single-line subject";
+"events.pokeReply.requirement.validationClean" = "validation clean";
 "events.pokeReply.send" = "Send";
 "events.pokeReply.defaultSubject" = "Re: Poke";
 "events.noSavedFilterPresets" = "No saved event filter presets";

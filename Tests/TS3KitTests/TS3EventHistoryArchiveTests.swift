@@ -17,6 +17,18 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             "events.pokeReply.subject",
             "events.pokeReply.message",
             "events.pokeReply.copySummary",
+            "events.pokeReply.readiness",
+            "events.pokeReply.readinessFormat",
+            "events.pokeReply.readinessReady",
+            "events.pokeReply.readinessMissingFormat",
+            "events.pokeReply.copyReadiness",
+            "events.pokeReply.requirement.sourcePoke",
+            "events.pokeReply.requirement.connected",
+            "events.pokeReply.requirement.recipient",
+            "events.pokeReply.requirement.subject",
+            "events.pokeReply.requirement.body",
+            "events.pokeReply.requirement.singleLineSubject",
+            "events.pokeReply.requirement.validationClean",
             "events.pokeReply.send",
             "events.pokeReply.defaultSubject"
         ]
@@ -455,9 +467,16 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         ]
         let listSummary = TS3PokeListSummary(pokes: pokes)
         let clearImpact = TS3PokeClearImpactSummary(pokes: pokes)
+        let offlineReplyReadiness = TS3PokeOfflineReplyReadinessSummary(
+            poke: pokes[0],
+            subject: "Re: Poke",
+            message: "On it",
+            isConnected: true
+        )
 
         let summary = TS3PokeOfficialCoverageAuditSummary(
             draftCoverageSummary: draftSummary,
+            offlineReplyReadinessSummary: offlineReplyReadiness,
             visiblePokeSummary: listSummary,
             clearImpactSummary: clearImpact,
             hasLocalFilters: true,
@@ -469,14 +488,14 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             hasContactActions: true
         )
 
-        XCTAssertEqual(summary.officialAreaTotal, 9)
-        XCTAssertEqual(summary.coveredOfficialAreaCount, 9)
+        XCTAssertEqual(summary.officialAreaTotal, 10)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 10)
         XCTAssertEqual(summary.missingOfficialAreaCount, 0)
-        XCTAssertEqual(summary.officialActionCount, 18)
+        XCTAssertEqual(summary.officialActionCount, 20)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=18 | draftTargets=2 | customDraftMessage=true | visiblePokes=2 | incoming=1 | outgoing=1 | withUid=2 | customMessages=1 | clearVisible=2 | localFilters=true | filterPresets=true | archiveCoverage=true | sendPoke=true | pokeBack=true | offlineReply=true | contactActions=true | needsAttention=true"
+            "officialAreas=10/10 | missingOfficialAreas=0 | officialActions=20 | draftTargets=2 | customDraftMessage=true | offlineReplyReadiness=7/7 | offlineReplyMissing=0 | visiblePokes=2 | incoming=1 | outgoing=1 | withUid=2 | customMessages=1 | clearVisible=2 | localFilters=true | filterPresets=true | archiveCoverage=true | sendPoke=true | pokeBack=true | offlineReply=true | offlineReplyReadinessCoverage=true | contactActions=true | needsAttention=true"
         )
     }
 
@@ -486,6 +505,7 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
 
         let summary = TS3PokeOfficialCoverageAuditSummary(
             draftCoverageSummary: nil,
+            offlineReplyReadinessSummary: nil,
             visiblePokeSummary: emptyList,
             clearImpactSummary: emptyClearImpact,
             hasLocalFilters: false,
@@ -498,11 +518,72 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
         )
 
         XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
-        XCTAssertEqual(summary.missingOfficialAreaCount, 9)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 10)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=0/9 | missingOfficialAreas=9 | officialActions=18 | draftTargets=0 | customDraftMessage=false | visiblePokes=0 | incoming=0 | outgoing=0 | withUid=0 | customMessages=0 | clearVisible=0 | localFilters=false | filterPresets=false | archiveCoverage=false | sendPoke=false | pokeBack=false | offlineReply=false | contactActions=false | needsAttention=true"
+            "officialAreas=0/10 | missingOfficialAreas=10 | officialActions=20 | draftTargets=0 | customDraftMessage=false | offlineReplyReadiness=none | offlineReplyMissing=0 | visiblePokes=0 | incoming=0 | outgoing=0 | withUid=0 | customMessages=0 | clearVisible=0 | localFilters=false | filterPresets=false | archiveCoverage=false | sendPoke=false | pokeBack=false | offlineReply=false | offlineReplyReadinessCoverage=false | contactActions=false | needsAttention=true"
+        )
+    }
+
+    func testPokeOfflineReplyReadinessSummaryCountsReplyRequirements() {
+        let poke = TS3PokeSummary(
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            senderId: 12,
+            senderName: "Morgan",
+            senderUniqueIdentifier: "uid-morgan",
+            message: "Ping",
+            isOwnPoke: false
+        )
+
+        let summary = TS3PokeOfflineReplyReadinessSummary(
+            poke: poke,
+            subject: "Re: Poke",
+            message: "On my way",
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 7)
+        XCTAssertEqual(summary.totalRequirementCount, 7)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertTrue(summary.canSubmit)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=7/7 | missingRequirements=0 | canSubmit=true | pokeDirection=in | sender=Morgan | senderUid=true | offlineReadiness=6/6 | contentFields=2/2 | validationIssues=0 | requirements=sourcePoke:true,connected:true,recipient:true,subject:true,body:true,singleLineSubject:true,validationClean:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testPokeOfflineReplyReadinessSummaryFlagsMissingReplyPrerequisites() {
+        let poke = TS3PokeSummary(
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            senderId: 12,
+            senderName: "Morgan",
+            senderUniqueIdentifier: nil,
+            message: "Ping",
+            isOwnPoke: false
+        )
+
+        let summary = TS3PokeOfflineReplyReadinessSummary(
+            poke: poke,
+            subject: "Re:\nPoke",
+            message: " ",
+            isConnected: false
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 1)
+        XCTAssertEqual(summary.totalRequirementCount, 7)
+        XCTAssertEqual(summary.missingRequirementCount, 6)
+        XCTAssertEqual(
+            summary.missingRequirements,
+            [.sourcePoke, .connected, .recipient, .body, .singleLineSubject, .validationClean]
+        )
+        XCTAssertFalse(summary.canSubmit)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=1/7 | missingRequirements=6 | canSubmit=false | pokeDirection=in | sender=Morgan | senderUid=false | offlineReadiness=2/6 | contentFields=1/2 | validationIssues=3 | requirements=sourcePoke:false,connected:false,recipient:false,subject:true,body:false,singleLineSubject:false,validationClean:false | missing=sourcePoke,connected,recipient,body,singleLineSubject,validationClean | needsAttention=true"
         )
     }
 

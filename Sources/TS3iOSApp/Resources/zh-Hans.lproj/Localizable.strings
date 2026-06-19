@@ -410,6 +410,7 @@
 "events.pokeOfficialAuditActionsFormat" = "%d 个官方动作";
 "events.pokeOfficialAuditVisibleFormat" = "可见戳一戳：%d";
 "events.pokeOfficialAuditIncomingFormat" = "收到：%d";
+"events.pokeOfficialAuditOfflineReplyReadinessFormat" = "离线回复就绪度：%d/%d";
 "events.pokeOfficialAuditReplyFormat" = "回复动作：%@";
 "events.pokeOfficialAuditSendFormat" = "发送戳一戳：%@";
 "events.copyPokeOfficialAudit" = "复制官方戳一戳审计";
@@ -426,6 +427,18 @@
 "events.pokeReply.subject" = "主题";
 "events.pokeReply.message" = "消息";
 "events.pokeReply.copySummary" = "复制离线回复摘要";
+"events.pokeReply.readiness" = "离线回复就绪度";
+"events.pokeReply.readinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"events.pokeReply.readinessReady" = "离线回复可以发送。";
+"events.pokeReply.readinessMissingFormat" = "缺失：%@";
+"events.pokeReply.copyReadiness" = "复制离线回复就绪度";
+"events.pokeReply.requirement.sourcePoke" = "可回复的戳一戳";
+"events.pokeReply.requirement.connected" = "连接";
+"events.pokeReply.requirement.recipient" = "收件人";
+"events.pokeReply.requirement.subject" = "主题";
+"events.pokeReply.requirement.body" = "消息正文";
+"events.pokeReply.requirement.singleLineSubject" = "单行主题";
+"events.pokeReply.requirement.validationClean" = "校验通过";
 "events.pokeReply.send" = "发送";
 "events.pokeReply.defaultSubject" = "回复：戳一戳";
 "events.noSavedFilterPresets" = "没有已保存的事件筛选预设";
