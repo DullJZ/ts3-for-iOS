@@ -84,6 +84,298 @@ final class TS3KeyboardShortcutTests: XCTestCase {
         )
     }
 
+    func testKeyboardShortcutBulkEnableAllImpactCountsAffectedShortcutsAndRisks() {
+        let shortcuts = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W",
+                keys: "Command-Option-W",
+                isEnabled: false
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "start-whisper-activation",
+                group: "Voice",
+                action: "Start Temporary Whisper",
+                defaultKeys: "Command-Option-H",
+                keys: "Hyper-H",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T",
+                keys: "Command-Shift-T",
+                isEnabled: false
+            )
+        ]
+
+        let summary = TS3KeyboardShortcutBulkActionImpactSummary(
+            action: .enableAll,
+            shortcuts: shortcuts,
+            defaultShortcuts: shortcuts
+        )
+
+        XCTAssertEqual(summary.totalShortcutCount, 4)
+        XCTAssertEqual(summary.affectedShortcutCount, 2)
+        XCTAssertEqual(summary.enabledBeforeCount, 2)
+        XCTAssertEqual(summary.disabledBeforeCount, 2)
+        XCTAssertEqual(summary.enabledAfterCount, 4)
+        XCTAssertEqual(summary.disabledAfterCount, 0)
+        XCTAssertEqual(summary.invalidBeforeCount, 1)
+        XCTAssertEqual(summary.invalidAfterCount, 1)
+        XCTAssertEqual(summary.duplicateBeforeCount, 0)
+        XCTAssertEqual(summary.duplicateAfterCount, 2)
+        XCTAssertEqual(summary.catalystMenuAffectedCount, 2)
+        XCTAssertEqual(summary.whisperShortcutAffectedCount, 1)
+        XCTAssertTrue(summary.hasChanges)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "action=enableAll | shortcuts=4 | affected=2 | enabledBefore=2 | disabledBefore=2 | enabledAfter=4 | disabledAfter=0 | invalidBefore=1 | invalidAfter=1 | duplicateBefore=0 | duplicateAfter=2 | catalystAffected=2 | whisperAffected=1 | iOSGlobalHotkeys=unavailable | needsAttention=true"
+        )
+    }
+
+    func testKeyboardShortcutBulkDisableAllImpactClearsEnabledRisks() {
+        let shortcuts = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-events",
+                group: "Messaging",
+                action: "Open Events",
+                defaultKeys: "Command-Shift-E",
+                keys: "Command-Shift-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W",
+                keys: "Hyper-W",
+                isEnabled: true
+            )
+        ]
+
+        let summary = TS3KeyboardShortcutBulkActionImpactSummary(
+            action: .disableAll,
+            shortcuts: shortcuts,
+            defaultShortcuts: shortcuts
+        )
+
+        XCTAssertEqual(summary.totalShortcutCount, 3)
+        XCTAssertEqual(summary.affectedShortcutCount, 3)
+        XCTAssertEqual(summary.enabledBeforeCount, 3)
+        XCTAssertEqual(summary.disabledBeforeCount, 0)
+        XCTAssertEqual(summary.enabledAfterCount, 0)
+        XCTAssertEqual(summary.disabledAfterCount, 3)
+        XCTAssertEqual(summary.invalidBeforeCount, 1)
+        XCTAssertEqual(summary.invalidAfterCount, 0)
+        XCTAssertEqual(summary.duplicateBeforeCount, 2)
+        XCTAssertEqual(summary.duplicateAfterCount, 0)
+        XCTAssertEqual(summary.catalystMenuAffectedCount, 3)
+        XCTAssertEqual(summary.whisperShortcutAffectedCount, 1)
+        XCTAssertTrue(summary.hasChanges)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "action=disableAll | shortcuts=3 | affected=3 | enabledBefore=3 | disabledBefore=0 | enabledAfter=0 | disabledAfter=3 | invalidBefore=1 | invalidAfter=0 | duplicateBefore=2 | duplicateAfter=0 | catalystAffected=3 | whisperAffected=1 | iOSGlobalHotkeys=unavailable | needsAttention=false"
+        )
+    }
+
+    func testKeyboardShortcutBulkResetAllImpactRestoresDefaultKeysAndEnabledState() {
+        let defaults = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T"
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-events",
+                group: "Messaging",
+                action: "Open Events",
+                defaultKeys: "Command-Shift-E"
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W"
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T"
+            )
+        ]
+        let current = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T",
+                keys: "Command-Option-T",
+                isEnabled: false
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-events",
+                group: "Messaging",
+                action: "Open Events",
+                defaultKeys: "Command-Shift-E",
+                keys: "Command-Shift-E",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W",
+                keys: "Hyper-W",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T",
+                keys: "Command-Shift-E",
+                isEnabled: true
+            )
+        ]
+
+        let summary = TS3KeyboardShortcutBulkActionImpactSummary(
+            action: .resetAll,
+            shortcuts: current,
+            defaultShortcuts: defaults
+        )
+
+        XCTAssertEqual(summary.totalShortcutCount, 4)
+        XCTAssertEqual(summary.affectedShortcutCount, 3)
+        XCTAssertEqual(summary.enabledBeforeCount, 3)
+        XCTAssertEqual(summary.disabledBeforeCount, 1)
+        XCTAssertEqual(summary.enabledAfterCount, 4)
+        XCTAssertEqual(summary.disabledAfterCount, 0)
+        XCTAssertEqual(summary.invalidBeforeCount, 1)
+        XCTAssertEqual(summary.invalidAfterCount, 0)
+        XCTAssertEqual(summary.duplicateBeforeCount, 2)
+        XCTAssertEqual(summary.duplicateAfterCount, 0)
+        XCTAssertEqual(summary.catalystMenuAffectedCount, 3)
+        XCTAssertEqual(summary.whisperShortcutAffectedCount, 1)
+        XCTAssertTrue(summary.hasChanges)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "action=resetAll | shortcuts=4 | affected=3 | enabledBefore=3 | disabledBefore=1 | enabledAfter=4 | disabledAfter=0 | invalidBefore=1 | invalidAfter=0 | duplicateBefore=2 | duplicateAfter=0 | catalystAffected=3 | whisperAffected=1 | iOSGlobalHotkeys=unavailable | needsAttention=false"
+        )
+    }
+
+    func testKeyboardShortcutBulkResetDisabledImpactLeavesEnabledCustomShortcutsAlone() {
+        let defaults = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T"
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W"
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T"
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "start-whisper-activation",
+                group: "Voice",
+                action: "Start Temporary Whisper",
+                defaultKeys: "Command-Option-H"
+            )
+        ]
+        let current = [
+            TS3KeyboardShortcutBinding(
+                actionId: "open-chat",
+                group: "Messaging",
+                action: "Open Chat",
+                defaultKeys: "Command-Shift-T",
+                keys: "Command-Option-T",
+                isEnabled: false
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "open-whisper",
+                group: "Messaging",
+                action: "Open Whisper",
+                defaultKeys: "Command-Shift-W",
+                keys: "Hyper-W",
+                isEnabled: false
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "toggle-talk",
+                group: "Voice",
+                action: "Talk / Stop Talking",
+                defaultKeys: "Command-T",
+                keys: "Command-Option-T",
+                isEnabled: true
+            ),
+            TS3KeyboardShortcutBinding(
+                actionId: "start-whisper-activation",
+                group: "Voice",
+                action: "Start Temporary Whisper",
+                defaultKeys: "Command-Option-H",
+                keys: "Hyper-H",
+                isEnabled: true
+            )
+        ]
+
+        let summary = TS3KeyboardShortcutBulkActionImpactSummary(
+            action: .resetDisabled,
+            shortcuts: current,
+            defaultShortcuts: defaults
+        )
+
+        XCTAssertEqual(summary.totalShortcutCount, 4)
+        XCTAssertEqual(summary.affectedShortcutCount, 2)
+        XCTAssertEqual(summary.enabledBeforeCount, 2)
+        XCTAssertEqual(summary.disabledBeforeCount, 2)
+        XCTAssertEqual(summary.enabledAfterCount, 4)
+        XCTAssertEqual(summary.disabledAfterCount, 0)
+        XCTAssertEqual(summary.invalidBeforeCount, 1)
+        XCTAssertEqual(summary.invalidAfterCount, 1)
+        XCTAssertEqual(summary.duplicateBeforeCount, 0)
+        XCTAssertEqual(summary.duplicateAfterCount, 0)
+        XCTAssertEqual(summary.catalystMenuAffectedCount, 2)
+        XCTAssertEqual(summary.whisperShortcutAffectedCount, 1)
+        XCTAssertTrue(summary.hasChanges)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "action=resetDisabled | shortcuts=4 | affected=2 | enabledBefore=2 | disabledBefore=2 | enabledAfter=4 | disabledAfter=0 | invalidBefore=1 | invalidAfter=1 | duplicateBefore=0 | duplicateAfter=0 | catalystAffected=2 | whisperAffected=1 | iOSGlobalHotkeys=unavailable | needsAttention=true"
+        )
+    }
+
     func testKeyboardShortcutOfficialCoverageAuditSummaryCountsCoveredAreas() {
         let capability = TS3KeyboardShortcutCapabilitySummary(shortcuts: [
             TS3KeyboardShortcutBinding(

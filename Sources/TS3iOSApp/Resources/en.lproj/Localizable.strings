@@ -260,6 +260,10 @@
 "shortcuts.resetAllAlert.title" = "Reset Keyboard Shortcuts?";
 "shortcuts.resetAllAlert.message" = "This restores all keyboard shortcuts to their default keys and enabled state.";
 "shortcuts.reset" = "Reset";
+"shortcuts.bulkImpactFormat" = "%d affected, %d enabled after, %d disabled after";
+"shortcuts.bulkImpactIssuesFormat" = "Issues before/after: %d/%d invalid, %d/%d duplicate";
+"shortcuts.bulkImpactPlatformFormat" = "Catalyst affected/whisper affected: %d/%d";
+"shortcuts.copyBulkImpact" = "Copy Bulk Action Impact";
 "shortcuts.duplicateFormat" = "Also assigned to %@.";
 "shortcuts.importPreview" = "Preview";
 "shortcuts.copyImportSummary" = "Copy Shortcut Import Summary";

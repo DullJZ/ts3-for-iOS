@@ -11335,6 +11335,139 @@ struct TS3KeyboardShortcutCapabilitySummary {
     ]
 }
 
+struct TS3KeyboardShortcutBulkActionImpactSummary {
+    enum Action: String {
+        case enableAll
+        case disableAll
+        case resetDisabled
+        case resetAll
+    }
+
+    let action: Action
+    let totalShortcutCount: Int
+    let affectedShortcutCount: Int
+    let enabledBeforeCount: Int
+    let disabledBeforeCount: Int
+    let enabledAfterCount: Int
+    let disabledAfterCount: Int
+    let invalidBeforeCount: Int
+    let invalidAfterCount: Int
+    let duplicateBeforeCount: Int
+    let duplicateAfterCount: Int
+    let catalystMenuAffectedCount: Int
+    let whisperShortcutAffectedCount: Int
+
+    var hasChanges: Bool {
+        affectedShortcutCount > 0
+    }
+
+    var needsAttention: Bool {
+        invalidAfterCount > 0 || duplicateAfterCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "action=\(action.rawValue)",
+            "shortcuts=\(totalShortcutCount)",
+            "affected=\(affectedShortcutCount)",
+            "enabledBefore=\(enabledBeforeCount)",
+            "disabledBefore=\(disabledBeforeCount)",
+            "enabledAfter=\(enabledAfterCount)",
+            "disabledAfter=\(disabledAfterCount)",
+            "invalidBefore=\(invalidBeforeCount)",
+            "invalidAfter=\(invalidAfterCount)",
+            "duplicateBefore=\(duplicateBeforeCount)",
+            "duplicateAfter=\(duplicateAfterCount)",
+            "catalystAffected=\(catalystMenuAffectedCount)",
+            "whisperAffected=\(whisperShortcutAffectedCount)",
+            "iOSGlobalHotkeys=unavailable",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        action: Action,
+        shortcuts: [TS3KeyboardShortcutBinding],
+        defaultShortcuts: [TS3KeyboardShortcutBinding] = [],
+        catalystMenuActionIds: Set<String> = TS3KeyboardShortcutCapabilitySummary.defaultCatalystMenuActionIds,
+        whisperActionIds: Set<String> = TS3KeyboardShortcutCapabilitySummary.defaultWhisperActionIds
+    ) {
+        self.action = action
+
+        let orderedDefaults = defaultShortcuts.isEmpty ? shortcuts : defaultShortcuts
+        let currentById = Dictionary(shortcuts.map { ($0.actionId, $0) }, uniquingKeysWith: { _, latest in latest })
+        let defaultById = Dictionary(orderedDefaults.map { ($0.actionId, $0) }, uniquingKeysWith: { _, latest in latest })
+        let currentShortcuts = orderedDefaults.map { currentById[$0.actionId] ?? $0 }
+        let resultingShortcuts = currentShortcuts.map { shortcut in
+            switch action {
+            case .enableAll:
+                return Self.shortcut(shortcut, isEnabled: true)
+            case .disableAll:
+                return Self.shortcut(shortcut, isEnabled: false)
+            case .resetDisabled:
+                guard !shortcut.isEnabled else { return shortcut }
+                return Self.defaultShortcut(for: shortcut, defaultById: defaultById)
+            case .resetAll:
+                return Self.defaultShortcut(for: shortcut, defaultById: defaultById)
+            }
+        }
+        let affectedActionIds = Set(zip(currentShortcuts, resultingShortcuts).compactMap { current, resulting in
+            current.keys != resulting.keys || current.isEnabled != resulting.isEnabled ? current.actionId : nil
+        })
+
+        totalShortcutCount = currentShortcuts.count
+        affectedShortcutCount = affectedActionIds.count
+        enabledBeforeCount = currentShortcuts.filter(\.isEnabled).count
+        disabledBeforeCount = currentShortcuts.filter { !$0.isEnabled }.count
+        enabledAfterCount = resultingShortcuts.filter(\.isEnabled).count
+        disabledAfterCount = resultingShortcuts.filter { !$0.isEnabled }.count
+        invalidBeforeCount = Self.invalidEnabledCount(in: currentShortcuts)
+        invalidAfterCount = Self.invalidEnabledCount(in: resultingShortcuts)
+        duplicateBeforeCount = Self.duplicateEnabledCount(in: currentShortcuts)
+        duplicateAfterCount = Self.duplicateEnabledCount(in: resultingShortcuts)
+        catalystMenuAffectedCount = affectedActionIds.filter { catalystMenuActionIds.contains($0) }.count
+        whisperShortcutAffectedCount = affectedActionIds.filter { whisperActionIds.contains($0) }.count
+    }
+
+    private static func shortcut(_ shortcut: TS3KeyboardShortcutBinding, isEnabled: Bool) -> TS3KeyboardShortcutBinding {
+        TS3KeyboardShortcutBinding(
+            actionId: shortcut.actionId,
+            group: shortcut.group,
+            action: shortcut.action,
+            defaultKeys: shortcut.defaultKeys,
+            keys: shortcut.keys,
+            isEnabled: isEnabled
+        )
+    }
+
+    private static func defaultShortcut(
+        for shortcut: TS3KeyboardShortcutBinding,
+        defaultById: [String: TS3KeyboardShortcutBinding]
+    ) -> TS3KeyboardShortcutBinding {
+        defaultById[shortcut.actionId] ?? TS3KeyboardShortcutBinding(
+            actionId: shortcut.actionId,
+            group: shortcut.group,
+            action: shortcut.action,
+            defaultKeys: shortcut.defaultKeys,
+            keys: shortcut.defaultKeys,
+            isEnabled: true
+        )
+    }
+
+    private static func invalidEnabledCount(in shortcuts: [TS3KeyboardShortcutBinding]) -> Int {
+        shortcuts.filter { $0.isEnabled && !TS3AppModel.isValidKeyboardShortcutKeys($0.keys) }.count
+    }
+
+    private static func duplicateEnabledCount(in shortcuts: [TS3KeyboardShortcutBinding]) -> Int {
+        let groups = Dictionary(grouping: shortcuts.filter {
+            $0.isEnabled && TS3AppModel.isValidKeyboardShortcutKeys($0.keys)
+        }) { shortcut in
+            shortcut.keys.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        return groups.values.filter { $0.count > 1 }.reduce(0) { $0 + $1.count }
+    }
+}
+
 struct TS3KeyboardShortcutOfficialCoverageAuditSummary {
     let capabilitySummary: TS3KeyboardShortcutCapabilitySummary
     let hasEditableBindings: Bool
@@ -24182,6 +24315,16 @@ final class TS3AppModel: ObservableObject {
         }
         saveKeyboardShortcuts()
         lastError = nil
+    }
+
+    func keyboardShortcutBulkActionImpactSummary(
+        for action: TS3KeyboardShortcutBulkActionImpactSummary.Action
+    ) -> TS3KeyboardShortcutBulkActionImpactSummary {
+        TS3KeyboardShortcutBulkActionImpactSummary(
+            action: action,
+            shortcuts: keyboardShortcuts,
+            defaultShortcuts: Self.defaultKeyboardShortcuts
+        )
     }
 
     func keyboardShortcutsExportData() throws -> Data {

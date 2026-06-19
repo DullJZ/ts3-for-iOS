@@ -260,6 +260,10 @@
 "shortcuts.resetAllAlert.title" = "重置快捷键？";
 "shortcuts.resetAllAlert.message" = "这会把所有快捷键恢复为默认按键和启用状态。";
 "shortcuts.reset" = "重置";
+"shortcuts.bulkImpactFormat" = "影响 %d 项，之后启用 %d 项、停用 %d 项";
+"shortcuts.bulkImpactIssuesFormat" = "操作前/后问题：无效 %d/%d，重复 %d/%d";
+"shortcuts.bulkImpactPlatformFormat" = "影响 Catalyst 菜单/密语：%d/%d";
+"shortcuts.copyBulkImpact" = "复制批量操作影响";
 "shortcuts.duplicateFormat" = "也分配给 %@。";
 "shortcuts.importPreview" = "预览";
 "shortcuts.copyImportSummary" = "复制快捷键导入摘要";

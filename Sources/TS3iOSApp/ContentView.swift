@@ -451,6 +451,15 @@ struct KeyboardShortcutsSheet: View {
             case .resetAll: return "resetAll"
             }
         }
+
+        var bulkImpactAction: TS3KeyboardShortcutBulkActionImpactSummary.Action {
+            switch self {
+            case .enableAll: return .enableAll
+            case .disableAll: return .disableAll
+            case .resetDisabled: return .resetDisabled
+            case .resetAll: return .resetAll
+            }
+        }
     }
 
     private struct ShortcutImportConfirmation: Identifiable {
@@ -597,6 +606,20 @@ struct KeyboardShortcutsSheet: View {
                     Button("shortcuts.resetAll") {
                         confirmation = .resetAll
                     }
+                    Menu("shortcuts.copyBulkImpact") {
+                        Button("shortcuts.enableAll") {
+                            copyShortcutBulkActionImpact(.enableAll)
+                        }
+                        Button("shortcuts.disableAll") {
+                            copyShortcutBulkActionImpact(.disableAll)
+                        }
+                        Button("shortcuts.resetDisabled") {
+                            copyShortcutBulkActionImpact(.resetDisabled)
+                        }
+                        Button("shortcuts.resetAll") {
+                            copyShortcutBulkActionImpact(.resetAll)
+                        }
+                    }
                 }
             }
             .navigationTitle("shortcuts.title")
@@ -657,11 +680,12 @@ struct KeyboardShortcutsSheet: View {
                 }
             }
             .alert(item: $confirmation) { confirmation in
+                let impact = shortcutBulkActionImpactSummary(for: confirmation.bulkImpactAction)
                 switch confirmation {
                 case .enableAll:
                     return Alert(
                         title: Text("shortcuts.enableAllAlert.title"),
-                        message: Text("shortcuts.enableAllAlert.message"),
+                        message: Text(shortcutBulkActionAlertMessage("shortcuts.enableAllAlert.message", impact: impact)),
                         primaryButton: .default(Text("shortcuts.enable")) {
                             model.setAllKeyboardShortcutsEnabled(true)
                         },
@@ -670,7 +694,7 @@ struct KeyboardShortcutsSheet: View {
                 case .disableAll:
                     return Alert(
                         title: Text("shortcuts.disableAllAlert.title"),
-                        message: Text("shortcuts.disableAllAlert.message"),
+                        message: Text(shortcutBulkActionAlertMessage("shortcuts.disableAllAlert.message", impact: impact)),
                         primaryButton: .destructive(Text("shortcuts.disable")) {
                             model.setAllKeyboardShortcutsEnabled(false)
                         },
@@ -679,7 +703,7 @@ struct KeyboardShortcutsSheet: View {
                 case .resetDisabled:
                     return Alert(
                         title: Text("shortcuts.resetDisabledAlert.title"),
-                        message: Text("shortcuts.resetDisabledAlert.message"),
+                        message: Text(shortcutBulkActionAlertMessage("shortcuts.resetDisabledAlert.message", impact: impact)),
                         primaryButton: .destructive(Text("shortcuts.reset")) {
                             model.resetDisabledKeyboardShortcuts()
                         },
@@ -688,7 +712,7 @@ struct KeyboardShortcutsSheet: View {
                 case .resetAll:
                     return Alert(
                         title: Text("shortcuts.resetAllAlert.title"),
-                        message: Text("shortcuts.resetAllAlert.message"),
+                        message: Text(shortcutBulkActionAlertMessage("shortcuts.resetAllAlert.message", impact: impact)),
                         primaryButton: .destructive(Text("shortcuts.reset")) {
                             model.resetKeyboardShortcuts()
                         },
@@ -742,6 +766,49 @@ struct KeyboardShortcutsSheet: View {
             String(format: NSLocalizedString("shortcuts.officialAuditWhisperFormat", comment: ""), summary.capabilitySummary.whisperShortcutCount),
             String(format: NSLocalizedString("shortcuts.officialAuditIssuesFormat", comment: ""), summary.capabilitySummary.invalidEnabledCount, summary.capabilitySummary.duplicateEnabledCount)
         ].joined(separator: " · ")
+    }
+
+    private func shortcutBulkActionImpactSummary(
+        for action: TS3KeyboardShortcutBulkActionImpactSummary.Action
+    ) -> TS3KeyboardShortcutBulkActionImpactSummary {
+        model.keyboardShortcutBulkActionImpactSummary(for: action)
+    }
+
+    private func shortcutBulkActionImpactText(_ summary: TS3KeyboardShortcutBulkActionImpactSummary) -> String {
+        [
+            String(
+                format: NSLocalizedString("shortcuts.bulkImpactFormat", comment: ""),
+                summary.affectedShortcutCount,
+                summary.enabledAfterCount,
+                summary.disabledAfterCount
+            ),
+            String(
+                format: NSLocalizedString("shortcuts.bulkImpactIssuesFormat", comment: ""),
+                summary.invalidBeforeCount,
+                summary.invalidAfterCount,
+                summary.duplicateBeforeCount,
+                summary.duplicateAfterCount
+            ),
+            String(
+                format: NSLocalizedString("shortcuts.bulkImpactPlatformFormat", comment: ""),
+                summary.catalystMenuAffectedCount,
+                summary.whisperShortcutAffectedCount
+            )
+        ].joined(separator: " · ")
+    }
+
+    private func shortcutBulkActionAlertMessage(
+        _ baseMessageKey: String,
+        impact summary: TS3KeyboardShortcutBulkActionImpactSummary
+    ) -> String {
+        [
+            NSLocalizedString(baseMessageKey, comment: ""),
+            shortcutBulkActionImpactText(summary)
+        ].joined(separator: "\n\n")
+    }
+
+    private func copyShortcutBulkActionImpact(_ action: TS3KeyboardShortcutBulkActionImpactSummary.Action) {
+        TS3PlatformSupport.copyToPasteboard(shortcutBulkActionImpactSummary(for: action).clipboardSummary)
     }
 
     private func shortcutKeysBinding(_ shortcut: TS3KeyboardShortcutBinding) -> Binding<String> {
