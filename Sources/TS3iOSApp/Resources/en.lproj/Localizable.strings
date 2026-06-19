@@ -3443,6 +3443,15 @@
 "permissions.restore.officialAuditInheritanceRiskFormat" = "Inheritance risks: %d";
 "permissions.restore.officialAuditAttentionFormat" = "Needs attention: %d";
 "permissions.restore.copyOfficialAudit" = "Copy Official Audit";
+"permissions.restore.readiness" = "Restore Readiness";
+"permissions.restore.readinessFormat" = "%d/%d ready, %d missing";
+"permissions.restore.readinessReady" = "Permission restore is ready to submit";
+"permissions.restore.readinessMissingFormat" = "Missing: %@";
+"permissions.restore.copyReadiness" = "Copy Restore Readiness";
+"permissions.restoreRequirement.connected" = "Connected server";
+"permissions.restoreRequirement.targetReviewed" = "Target reviewed";
+"permissions.restoreRequirement.restoreOptions" = "Restore options";
+"permissions.restoreRequirement.selectedEntries" = "Selected entries";
 "permissions.restore.copyPlan" = "Copy Restore Plan";
 "permissions.restore.exportPlan" = "Export Restore Plan";
 "permissions.restore.entryFlagsFormat" = "Value %d | Negated %@ | Skip %@";

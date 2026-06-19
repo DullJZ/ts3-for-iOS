@@ -10848,6 +10848,84 @@ struct TS3PermissionBackupOfficialRestoreAuditSummary {
     }
 }
 
+enum TS3PermissionBackupRestoreRequirement: String, CaseIterable, Codable {
+    case connected
+    case targetReviewed
+    case restoreOptions
+    case selectedEntries
+}
+
+struct TS3PermissionBackupRestoreReadinessSummary {
+    let plan: TS3PermissionBackupRestorePlan
+    let isConnected: Bool
+    let impact: TS3PermissionBackupRestoreImpactSummary
+
+    var requirementStates: [TS3PermissionBackupRestoreRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .targetReviewed: plan.targetMatchesCurrentSelection || plan.options.restoreWhenTargetCannotBeCompared,
+            .restoreOptions: hasUsableRestoreOptions,
+            .selectedEntries: impact.hasSelection
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3PermissionBackupRestoreRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3PermissionBackupRestoreRequirement] {
+        TS3PermissionBackupRestoreRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canSubmit: Bool {
+        isConnected && hasUsableRestoreOptions && impact.hasSelection && requirementStates[.targetReviewed] == true
+    }
+
+    var needsAttention: Bool {
+        !canSubmit || impact.needsAttention || missingRequirementCount > 0
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3PermissionBackupRestoreRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "scope=\(plan.scope.title)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canSubmit=\(canSubmit ? "true" : "false")",
+            "selected=\(impact.selectedEntryCount)",
+            "targetMatches=\(plan.targetMatchesCurrentSelection ? "true" : "false")",
+            "inheritanceRisks=\(impact.negatedEntryCount + impact.inheritanceStopEntryCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(plan: TS3PermissionBackupRestorePlan, isConnected: Bool) {
+        self.plan = plan
+        self.isConnected = isConnected
+        self.impact = TS3PermissionBackupRestoreImpactSummary(plan: plan)
+    }
+
+    private var hasUsableRestoreOptions: Bool {
+        if plan.targetMatchesCurrentSelection {
+            return plan.options.hasSelectedComparableEntries
+        }
+        return plan.options.restoreWhenTargetCannotBeCompared
+    }
+}
+
 private struct TS3AudioSettings: Codable {
     var playbackVolume: Double
     var inputGain: Double

@@ -549,6 +549,109 @@ final class TS3PermissionBackupTests: XCTestCase {
     }
 
     @MainActor
+    func testPermissionBackupRestoreReadinessAllowsMatchedSelection() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 6
+        target.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 25)
+        ]
+
+        let plan = try target.permissionBackupRestorePlan(from: backup, options: .all)
+        let readiness = TS3PermissionBackupRestoreReadinessSummary(plan: plan, isConnected: true)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 4)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "scope=Server Group | readiness=4/4 | missingRequirements=0 | canSubmit=true | selected=1 | targetMatches=true | inheritanceRisks=0 | requirements=connected:true,targetReviewed:true,restoreOptions:true,selectedEntries:true | missing=none | needsAttention=false"
+        )
+    }
+
+    @MainActor
+    func testPermissionBackupRestoreReadinessAllowsReviewedUncomparableTarget() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 7
+
+        let plan = try target.permissionBackupRestorePlan(from: backup, options: .all)
+        let readiness = TS3PermissionBackupRestoreReadinessSummary(plan: plan, isConnected: true)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 4)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "scope=Server Group | readiness=4/4 | missingRequirements=0 | canSubmit=true | selected=1 | targetMatches=false | inheritanceRisks=0 | requirements=connected:true,targetReviewed:true,restoreOptions:true,selectedEntries:true | missing=none | needsAttention=true"
+        )
+    }
+
+    @MainActor
+    func testPermissionBackupRestoreReadinessBlocksDisconnectedUnreviewedEmptyPlan() throws {
+        let source = TS3AppModel()
+        source.permissionEditScope = .serverGroup
+        source.selectedServerGroupPermissionId = 6
+        source.scopedPermissions = [
+            makePermission("i_channel_join_power", value: 50)
+        ]
+
+        let backup = try source.permissionBackupData()
+
+        let target = TS3AppModel()
+        target.permissionEditScope = .serverGroup
+        target.selectedServerGroupPermissionId = 7
+
+        let plan = try target.permissionBackupRestorePlan(
+            from: backup,
+            options: TS3PermissionBackupRestoreOptions(
+                changedExisting: true,
+                newPermissions: true,
+                restoreWhenTargetCannotBeCompared: false
+            )
+        )
+        let readiness = TS3PermissionBackupRestoreReadinessSummary(plan: plan, isConnected: false)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 4)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.connected, .targetReviewed, .restoreOptions, .selectedEntries]
+        )
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "scope=Server Group | readiness=0/4 | missingRequirements=4 | canSubmit=false | selected=0 | targetMatches=false | inheritanceRisks=0 | requirements=connected:false,targetReviewed:false,restoreOptions:false,selectedEntries:false | missing=connected,targetReviewed,restoreOptions,selectedEntries | needsAttention=true"
+        )
+    }
+
+    @MainActor
     func testPermissionBackupExportSanitizesBlankAndDuplicatePermissionNames() throws {
         let source = TS3AppModel()
         source.permissionEditScope = .serverGroup

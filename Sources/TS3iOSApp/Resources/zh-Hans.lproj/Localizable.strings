@@ -3443,6 +3443,15 @@
 "permissions.restore.officialAuditInheritanceRiskFormat" = "继承风险：%d";
 "permissions.restore.officialAuditAttentionFormat" = "需要注意：%d";
 "permissions.restore.copyOfficialAudit" = "复制官方审计";
+"permissions.restore.readiness" = "恢复就绪度";
+"permissions.restore.readinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"permissions.restore.readinessReady" = "权限恢复已可提交";
+"permissions.restore.readinessMissingFormat" = "缺失：%@";
+"permissions.restore.copyReadiness" = "复制恢复就绪度";
+"permissions.restoreRequirement.connected" = "已连接服务器";
+"permissions.restoreRequirement.targetReviewed" = "已复核目标";
+"permissions.restoreRequirement.restoreOptions" = "恢复选项";
+"permissions.restoreRequirement.selectedEntries" = "已选择条目";
 "permissions.restore.copyPlan" = "复制恢复计划";
 "permissions.restore.exportPlan" = "导出恢复计划";
 "permissions.restore.entryFlagsFormat" = "值 %d | 取反 %@ | 跳过 %@";

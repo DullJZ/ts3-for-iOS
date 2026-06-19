@@ -24110,11 +24110,13 @@ private struct PermissionBackupImportSheet: View {
         try? model.permissionBackupRestorePlan(from: confirmation.data, options: options)
     }
 
-    private var canRestore: Bool {
-        if confirmation.preview.targetMatchesCurrentSelection {
-            return options.hasSelectedComparableEntries && (plan?.permissionCount ?? 0) > 0
+    private var restoreReadiness: TS3PermissionBackupRestoreReadinessSummary? {
+        plan.map {
+            TS3PermissionBackupRestoreReadinessSummary(
+                plan: $0,
+                isConnected: model.state == .connected
+            )
         }
-        return options.restoreWhenTargetCannotBeCompared && (plan?.permissionCount ?? 0) > 0
     }
 
     var body: some View {
@@ -24130,6 +24132,10 @@ private struct PermissionBackupImportSheet: View {
                     if let plan {
                         let impact = TS3PermissionBackupRestoreImpactSummary(plan: plan)
                         let officialAudit = TS3PermissionBackupOfficialRestoreAuditSummary(plan: plan)
+                        let readiness = TS3PermissionBackupRestoreReadinessSummary(
+                            plan: plan,
+                            isConnected: model.state == .connected
+                        )
                         Text(localized("permissions.restore.selectedEntriesFormat", plan.permissionCount))
                             .font(.caption.weight(.semibold))
                         Text(localized(
@@ -24171,6 +24177,21 @@ private struct PermissionBackupImportSheet: View {
                             TS3PlatformSupport.copyToPasteboard(officialAudit.clipboardSummary)
                         }
                         .disabled(!impact.hasSelection)
+                        ServerInfoDetailRow(
+                            label: localized("permissions.restore.readiness"),
+                            value: localized(
+                                "permissions.restore.readinessFormat",
+                                readiness.satisfiedRequirementCount,
+                                readiness.totalRequirementCount,
+                                readiness.missingRequirementCount
+                            )
+                        )
+                        Text(permissionRestoreReadinessText(readiness))
+                            .font(.caption2)
+                            .foregroundColor(readiness.needsAttention ? .orange : .secondary)
+                        Button(localized("permissions.restore.copyReadiness")) {
+                            TS3PlatformSupport.copyToPasteboard(readiness.clipboardSummary)
+                        }
                         if !plan.entries.isEmpty {
                             Button(localized("permissions.restore.copyPlan")) {
                                 TS3PlatformSupport.copyToPasteboard(plan.auditSummary)
@@ -24252,7 +24273,7 @@ private struct PermissionBackupImportSheet: View {
                     Button(localized("permissions.restore.action")) {
                         restore(options)
                     }
-                    .disabled(!canRestore)
+                    .disabled(restoreReadiness?.canSubmit != true)
                 }
             }
         }
@@ -24298,6 +24319,29 @@ private struct PermissionBackupImportSheet: View {
             ),
             localized("permissions.restore.officialAuditAttentionFormat", audit.needsAttention ? 1 : 0)
         ].joined(separator: " | ")
+    }
+
+    private func permissionRestoreReadinessText(_ summary: TS3PermissionBackupRestoreReadinessSummary) -> String {
+        guard !summary.missingRequirements.isEmpty else {
+            return localized("permissions.restore.readinessReady")
+        }
+        let missing = summary.missingRequirements
+            .map(permissionRestoreRequirementTitle)
+            .joined(separator: ", ")
+        return localized("permissions.restore.readinessMissingFormat", missing)
+    }
+
+    private func permissionRestoreRequirementTitle(_ requirement: TS3PermissionBackupRestoreRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("permissions.restoreRequirement.connected")
+        case .targetReviewed:
+            return localized("permissions.restoreRequirement.targetReviewed")
+        case .restoreOptions:
+            return localized("permissions.restoreRequirement.restoreOptions")
+        case .selectedEntries:
+            return localized("permissions.restoreRequirement.selectedEntries")
+        }
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
