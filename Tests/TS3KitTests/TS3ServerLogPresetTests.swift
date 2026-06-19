@@ -662,6 +662,8 @@ final class TS3ServerLogPresetTests: XCTestCase {
             ]
         )
         XCTAssertEqual(preview.candidates.map(\.id), [3, 2])
+        XCTAssertTrue(preview.candidates.first { $0.id == 3 }?.hasRawLine == true)
+        XCTAssertTrue(preview.candidates.first { $0.id == 2 }?.hasRawLine == false)
         XCTAssertTrue(preview.containsEntry(id: 2))
         XCTAssertFalse(preview.containsEntry(id: 99))
         XCTAssertEqual(
@@ -675,6 +677,71 @@ final class TS3ServerLogPresetTests: XCTestCase {
             """
         )
         XCTAssertTrue(preview.hasEntries)
+    }
+
+    @MainActor
+    func testServerLogArchiveImportImpactSummaryCountsSelectedEntries() throws {
+        let model = TS3AppModel()
+        let archiveJSON = """
+        {
+          "entries": [
+            {
+              "id": 11,
+              "timestamp": 1700000000,
+              "level": " warning ",
+              "channel": " Server ",
+              "message": " Auth failed ",
+              "rawLine": " 2023 warning Server Auth failed "
+            },
+            {
+              "id": 10,
+              "level": "error",
+              "message": "Permission denied",
+              "rawLine": "Permission denied"
+            },
+            {
+              "id": 9,
+              "level": "info",
+              "channel": "Query",
+              "message": "Unselected info",
+              "rawLine": ""
+            },
+            {
+              "id": 0,
+              "message": "Invalid id",
+              "rawLine": "Invalid id"
+            }
+          ]
+        }
+        """
+
+        let preview = try model.serverLogArchivePreview(from: Data(archiveJSON.utf8))
+        let summary = TS3ServerLogArchiveImportImpactSummary(
+            preview: preview,
+            selectedEntryIds: [11, 10]
+        )
+
+        XCTAssertEqual(summary.selectedEntryCount, 2)
+        XCTAssertEqual(summary.withLevelCount, 2)
+        XCTAssertEqual(summary.withChannelCount, 1)
+        XCTAssertEqual(summary.timestampCount, 1)
+        XCTAssertEqual(summary.warningCount, 1)
+        XCTAssertEqual(summary.errorCount, 1)
+        XCTAssertEqual(summary.rawLineCount, 1)
+        XCTAssertEqual(summary.skippedEntryCount, 1)
+        XCTAssertTrue(summary.hasSelection)
+        XCTAssertTrue(summary.replacesCachedResults)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "selected=2 | withLevel=2 | withChannel=1 | withTimestamp=1 | warnings=1 | errors=1 | rawLines=1 | skipped=1 | replacesCachedResults=true | needsAttention=true"
+        )
+
+        let empty = TS3ServerLogArchiveImportImpactSummary(preview: preview, selectedEntryIds: [])
+        XCTAssertFalse(empty.hasSelection)
+        XCTAssertFalse(empty.replacesCachedResults)
+        XCTAssertTrue(empty.needsAttention)
+        XCTAssertEqual(empty.selectedEntryCount, 0)
     }
 
     func testServerLogSummaryCopyAndAccessibilityText() {

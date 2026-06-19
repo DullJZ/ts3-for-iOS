@@ -2820,6 +2820,11 @@
 "serverLogs.import.copyLogSummary" = "复制日志摘要";
 "serverLogs.import.selectAll" = "全选";
 "serverLogs.import.clear" = "清除";
+"serverLogs.import.archiveImpactFormat" = "已选 %d 条，警告 %d 条，错误 %d 条";
+"serverLogs.import.archiveImpactMetadataFormat" = "级别：%d，频道：%d，时间戳：%d";
+"serverLogs.import.archiveImpactRawFormat" = "原始行：%d，跳过：%d";
+"serverLogs.import.archiveImpactReplacesCache" = "会替换本地缓存结果";
+"serverLogs.import.copyArchiveImpact" = "复制导入影响";
 "serverLogs.import.behaviorTitle" = "导入行为";
 "serverLogs.import.archiveBehavior" = "导入会用所选条目替换本地缓存的服务器日志结果，以便离线查看；不会改变服务器端日志。";
 "serverLogs.import.archiveTitle" = "导入日志";

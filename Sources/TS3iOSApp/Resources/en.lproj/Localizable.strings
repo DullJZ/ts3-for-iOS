@@ -2820,6 +2820,11 @@
 "serverLogs.import.copyLogSummary" = "Copy Log Summary";
 "serverLogs.import.selectAll" = "Select All";
 "serverLogs.import.clear" = "Clear";
+"serverLogs.import.archiveImpactFormat" = "%d selected, %d warnings, %d errors";
+"serverLogs.import.archiveImpactMetadataFormat" = "Level: %d, channel: %d, timestamp: %d";
+"serverLogs.import.archiveImpactRawFormat" = "Raw lines: %d, skipped: %d";
+"serverLogs.import.archiveImpactReplacesCache" = "Replaces local cached results";
+"serverLogs.import.copyArchiveImpact" = "Copy Import Impact";
 "serverLogs.import.behaviorTitle" = "Import Behavior";
 "serverLogs.import.archiveBehavior" = "Import replaces the local cached server log results with the selected entries for offline review and does not change server-side logs.";
 "serverLogs.import.archiveTitle" = "Import Logs";

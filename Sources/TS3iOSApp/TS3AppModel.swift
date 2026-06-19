@@ -13812,6 +13812,43 @@ struct TS3ServerLogArchivePreview {
     struct Candidate: Identifiable, Equatable {
         let id: Int
         let summary: String
+        let level: String?
+        let channel: String?
+        let timestamp: Date?
+        let message: String
+        let rawLine: String
+
+        var hasLevel: Bool {
+            normalizedLevel != nil
+        }
+
+        var hasChannel: Bool {
+            channel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        }
+
+        var hasTimestamp: Bool {
+            timestamp != nil
+        }
+
+        var hasRawLine: Bool {
+            !rawLine.isEmpty && rawLine != message
+        }
+
+        var isWarning: Bool {
+            normalizedLevel == "warning"
+        }
+
+        var isError: Bool {
+            normalizedLevel == "error"
+        }
+
+        private var normalizedLevel: String? {
+            guard let level = level?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                  !level.isEmpty else {
+                return nil
+            }
+            return level
+        }
     }
 
     let entryCount: Int
@@ -13838,6 +13875,56 @@ struct TS3ServerLogArchivePreview {
 
     func containsEntry(id: Int) -> Bool {
         candidates.contains { $0.id == id }
+    }
+}
+
+struct TS3ServerLogArchiveImportImpactSummary {
+    let selectedEntryCount: Int
+    let withLevelCount: Int
+    let withChannelCount: Int
+    let timestampCount: Int
+    let warningCount: Int
+    let errorCount: Int
+    let rawLineCount: Int
+    let skippedEntryCount: Int
+
+    var hasSelection: Bool {
+        selectedEntryCount > 0
+    }
+
+    var replacesCachedResults: Bool {
+        hasSelection
+    }
+
+    var needsAttention: Bool {
+        !hasSelection || warningCount > 0 || errorCount > 0 || rawLineCount > 0 || skippedEntryCount > 0
+    }
+
+    var clipboardSummary: String {
+        [
+            "selected=\(selectedEntryCount)",
+            "withLevel=\(withLevelCount)",
+            "withChannel=\(withChannelCount)",
+            "withTimestamp=\(timestampCount)",
+            "warnings=\(warningCount)",
+            "errors=\(errorCount)",
+            "rawLines=\(rawLineCount)",
+            "skipped=\(skippedEntryCount)",
+            "replacesCachedResults=\(replacesCachedResults ? "true" : "false")",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(preview: TS3ServerLogArchivePreview, selectedEntryIds: Set<Int>) {
+        let selected = preview.candidates.filter { selectedEntryIds.contains($0.id) }
+        selectedEntryCount = selected.count
+        withLevelCount = selected.filter(\.hasLevel).count
+        withChannelCount = selected.filter(\.hasChannel).count
+        timestampCount = selected.filter(\.hasTimestamp).count
+        warningCount = selected.filter(\.isWarning).count
+        errorCount = selected.filter(\.isError).count
+        rawLineCount = selected.filter(\.hasRawLine).count
+        skippedEntryCount = preview.skippedEntryCount
     }
 }
 
@@ -18979,7 +19066,12 @@ final class TS3AppModel: ObservableObject {
             candidates: entries.map {
                 TS3ServerLogArchivePreview.Candidate(
                     id: $0.id,
-                    summary: $0.archiveSummary
+                    summary: $0.archiveSummary,
+                    level: $0.level,
+                    channel: $0.channel,
+                    timestamp: $0.timestamp,
+                    message: $0.message,
+                    rawLine: $0.rawLine
                 )
             },
             firstLevel: first?.level,

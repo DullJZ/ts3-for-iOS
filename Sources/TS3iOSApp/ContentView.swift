@@ -13916,6 +13916,10 @@ private struct ServerLogArchiveImportSheet: View {
         Set(selectedEntryIds.filter(preview.containsEntry))
     }
 
+    private var importImpactSummary: TS3ServerLogArchiveImportImpactSummary {
+        TS3ServerLogArchiveImportImpactSummary(preview: preview, selectedEntryIds: validSelectedEntryIds)
+    }
+
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
@@ -13941,6 +13945,22 @@ private struct ServerLogArchiveImportSheet: View {
                             }
                             .disabled(selectedEntryIds.isEmpty)
                         }
+                        ServerInfoDetailRow(
+                            label: localized("serverLogs.import.impact"),
+                            value: localized(
+                                "serverLogs.import.archiveImpactFormat",
+                                importImpactSummary.selectedEntryCount,
+                                importImpactSummary.warningCount,
+                                importImpactSummary.errorCount
+                            )
+                        )
+                        Text(serverLogArchiveImportImpactText(importImpactSummary))
+                            .font(.caption2)
+                            .foregroundColor(importImpactSummary.needsAttention ? .orange : .secondary)
+                        Button(localized("serverLogs.import.copyArchiveImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(importImpactSummary.clipboardSummary)
+                        }
+                        .disabled(!importImpactSummary.hasSelection)
                         ForEach(preview.levelSummaries, id: \.self) { summary in
                             Text(summary)
                                 .font(.caption2)
@@ -14004,6 +14024,22 @@ private struct ServerLogArchiveImportSheet: View {
                 }
             }
         }
+    }
+
+    private func serverLogArchiveImportImpactText(_ summary: TS3ServerLogArchiveImportImpactSummary) -> String {
+        var parts = [
+            localized(
+                "serverLogs.import.archiveImpactMetadataFormat",
+                summary.withLevelCount,
+                summary.withChannelCount,
+                summary.timestampCount
+            ),
+            localized("serverLogs.import.archiveImpactRawFormat", summary.rawLineCount, summary.skippedEntryCount)
+        ]
+        if summary.replacesCachedResults {
+            parts.append(localized("serverLogs.import.archiveImpactReplacesCache"))
+        }
+        return parts.joined(separator: " | ")
     }
 }
 
