@@ -2190,6 +2190,18 @@
 "audio.routeRequirement.speakerPreference" = "Speaker preference";
 "audio.routeRequirement.diagnostics" = "Diagnostics";
 "audio.routeRequirement.noRouteLimitations" = "No route limitations";
+"audio.voiceActivationReadiness" = "Voice Activation Readiness";
+"audio.voiceActivationReadinessFormat" = "%d/%d ready, %d missing";
+"audio.voiceActivationReadinessReady" = "Voice activation can transmit with the current input.";
+"audio.voiceActivationReadinessMissingFormat" = "Missing: %@";
+"audio.copyVoiceActivationReadiness" = "Copy Voice Activation Readiness";
+"audio.voiceActivationRequirement.connected" = "connection";
+"audio.voiceActivationRequirement.voiceActivationMode" = "voice activation mode";
+"audio.voiceActivationRequirement.microphonePromptResolved" = "microphone prompt resolved";
+"audio.voiceActivationRequirement.captureActive" = "microphone capture";
+"audio.voiceActivationRequirement.inputSignal" = "input signal";
+"audio.voiceActivationRequirement.thresholdConfigured" = "threshold configured";
+"audio.voiceActivationRequirement.currentInputOpensGate" = "current input opens gate";
 "audio.ping" = "Ping";
 "audio.packetLoss" = "Packet Loss";
 "audio.speechLoss" = "Speech Loss";
@@ -2243,6 +2255,7 @@
 "audio.voiceActivationOfficialAuditFormat" = "%d/%d areas covered, %d missing";
 "audio.voiceActivationOfficialAuditActionsFormat" = "%d official actions";
 "audio.voiceActivationOfficialAuditModeFormat" = "Mode: %@";
+"audio.voiceActivationOfficialAuditReadinessFormat" = "Readiness: %d/%d";
 "audio.voiceActivationOfficialAuditProfilesFormat" = "Saved profiles: %d";
 "audio.voiceActivationOfficialAuditGateFormat" = "Gate: %@";
 "audio.voiceActivationOfficialAuditAttentionFormat" = "Needs review: %@";
@@ -2259,6 +2272,7 @@
 "audio.snapshot.transmitModeFormat" = "Transmit Mode: %@";
 "audio.snapshot.voiceActivationFormat" = "Voice Activation: %@";
 "audio.snapshot.voiceActivationCalibrationFormat" = "Voice Activation Calibration: %@";
+"audio.snapshot.voiceActivationReadinessFormat" = "Voice Activation Readiness: %@";
 "audio.snapshot.inputLevelFormat" = "Input Level: %@";
 "audio.snapshot.inputGainFormat" = "Input Gain: %@";
 "audio.snapshot.playbackVolumeFormat" = "Playback Volume: %@";

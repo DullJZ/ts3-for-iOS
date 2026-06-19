@@ -10771,21 +10771,96 @@ struct TS3VoiceActivationCalibrationSummary: Equatable {
     }
 }
 
+enum TS3VoiceActivationTransmitRequirement: String, CaseIterable {
+    case connected
+    case voiceActivationMode
+    case microphonePromptResolved
+    case captureActive
+    case inputSignal
+    case thresholdConfigured
+    case currentInputOpensGate
+}
+
+struct TS3VoiceActivationTransmitReadinessSummary {
+    let isConnected: Bool
+    let transmitMode: TS3AudioTransmitMode
+    let hasPendingMicrophonePrompt: Bool
+    let isCaptureActive: Bool
+    let inputLevel: Double
+    let threshold: Double
+    let isGateOpen: Bool
+
+    var totalRequirementCount: Int {
+        TS3VoiceActivationTransmitRequirement.allCases.count
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var missingRequirementCount: Int {
+        missingRequirements.count
+    }
+
+    var missingRequirements: [TS3VoiceActivationTransmitRequirement] {
+        TS3VoiceActivationTransmitRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var needsAttention: Bool {
+        missingRequirementCount > 0
+    }
+
+    var requirementStates: [TS3VoiceActivationTransmitRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .voiceActivationMode: transmitMode == .voiceActivation,
+            .microphonePromptResolved: !hasPendingMicrophonePrompt,
+            .captureActive: isCaptureActive,
+            .inputSignal: inputLevel > 0.0005,
+            .thresholdConfigured: (0.001...0.5).contains(threshold),
+            .currentInputOpensGate: isGateOpen
+        ]
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3VoiceActivationTransmitRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "connected=\(isConnected ? "true" : "false")",
+            "mode=\(transmitMode.title)",
+            "captureActive=\(isCaptureActive ? "true" : "false")",
+            "input=\(TS3VoiceActivationCalibrationSummary.levelText(inputLevel))",
+            "threshold=\(TS3VoiceActivationCalibrationSummary.levelText(threshold))",
+            "gate=\(isGateOpen ? "open" : "closed")",
+            "pendingMicrophonePrompt=\(hasPendingMicrophonePrompt ? "true" : "false")",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3VoiceActivationOfficialCoverageAuditSummary {
     let transmitMode: TS3AudioTransmitMode
     let calibrationSummary: TS3VoiceActivationCalibrationSummary
+    let transmitReadinessSummary: TS3VoiceActivationTransmitReadinessSummary
     let savedProfileCount: Int
     let hasModeSelection: Bool
     let hasThresholdControl: Bool
     let hasLiveInputMeter: Bool
     let hasCalibrationAction: Bool
+    let hasTransmitReadinessSummary: Bool
     let hasPresetCoverage: Bool
     let hasProfilePersistence: Bool
     let hasDiagnosticsSnapshot: Bool
     let hasSharedIOSCatalystSurface: Bool
 
     var officialAreaTotal: Int {
-        8
+        9
     }
 
     var coveredOfficialAreaCount: Int {
@@ -10794,6 +10869,7 @@ struct TS3VoiceActivationOfficialCoverageAuditSummary {
             hasThresholdControl,
             hasLiveInputMeter,
             hasCalibrationAction,
+            hasTransmitReadinessSummary,
             hasPresetCoverage,
             hasProfilePersistence,
             hasDiagnosticsSnapshot,
@@ -10806,13 +10882,14 @@ struct TS3VoiceActivationOfficialCoverageAuditSummary {
     }
 
     var officialActionCount: Int {
-        12
+        14
     }
 
     var needsAttention: Bool {
         missingOfficialAreaCount > 0
             || calibrationSummary.inputLevel <= 0.0005
             || calibrationSummary.isNearThreshold
+            || transmitReadinessSummary.needsAttention
     }
 
     var clipboardSummary: String {
@@ -10825,11 +10902,14 @@ struct TS3VoiceActivationOfficialCoverageAuditSummary {
             "input=\(TS3VoiceActivationCalibrationSummary.levelText(calibrationSummary.inputLevel))",
             "gate=\(calibrationSummary.state)",
             "suggestedThreshold=\(TS3VoiceActivationCalibrationSummary.levelText(calibrationSummary.suggestedThreshold))",
+            "transmitReadiness=\(transmitReadinessSummary.satisfiedRequirementCount)/\(transmitReadinessSummary.totalRequirementCount)",
+            "transmitMissing=\(transmitReadinessSummary.missingRequirementCount)",
             "savedProfiles=\(savedProfileCount)",
             "modeSelection=\(hasModeSelection ? "true" : "false")",
             "thresholdControl=\(hasThresholdControl ? "true" : "false")",
             "liveMeter=\(hasLiveInputMeter ? "true" : "false")",
             "calibrationAction=\(hasCalibrationAction ? "true" : "false")",
+            "transmitReadinessSummary=\(hasTransmitReadinessSummary ? "true" : "false")",
             "presets=\(hasPresetCoverage ? "true" : "false")",
             "profilePersistence=\(hasProfilePersistence ? "true" : "false")",
             "diagnostics=\(hasDiagnosticsSnapshot ? "true" : "false")",
@@ -17380,6 +17460,18 @@ final class TS3AppModel: ObservableObject {
 
     var voiceActivationCalibrationSummary: TS3VoiceActivationCalibrationSummary {
         TS3VoiceActivationCalibrationSummary(
+            inputLevel: inputLevel,
+            threshold: voiceActivationThreshold,
+            isGateOpen: isVoiceActivationTriggered
+        )
+    }
+
+    var voiceActivationTransmitReadinessSummary: TS3VoiceActivationTransmitReadinessSummary {
+        TS3VoiceActivationTransmitReadinessSummary(
+            isConnected: state == .connected,
+            transmitMode: audioTransmitMode,
+            hasPendingMicrophonePrompt: microphonePermissionPrompt != nil,
+            isCaptureActive: isTalking,
             inputLevel: inputLevel,
             threshold: voiceActivationThreshold,
             isGateOpen: isVoiceActivationTriggered

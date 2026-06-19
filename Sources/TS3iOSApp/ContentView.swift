@@ -34805,11 +34805,13 @@ struct AudioSettingsSheet: View {
         TS3VoiceActivationOfficialCoverageAuditSummary(
             transmitMode: model.audioTransmitMode,
             calibrationSummary: model.voiceActivationCalibrationSummary,
+            transmitReadinessSummary: model.voiceActivationTransmitReadinessSummary,
             savedProfileCount: model.audioProfiles.count,
             hasModeSelection: true,
             hasThresholdControl: true,
             hasLiveInputMeter: true,
             hasCalibrationAction: true,
+            hasTransmitReadinessSummary: true,
             hasPresetCoverage: true,
             hasProfilePersistence: !model.audioProfiles.isEmpty,
             hasDiagnosticsSnapshot: true,
@@ -34982,6 +34984,22 @@ struct AudioSettingsSheet: View {
                     ServerInfoDetailRow(label: localized("audio.transmitMode"), value: transmitModeTitle(model.audioTransmitMode))
                     ServerInfoDetailRow(label: localized("audio.voiceActivation"), value: voiceActivationDiagnosticText)
                     ServerInfoDetailRow(label: localized("audio.voiceActivationCalibration"), value: voiceActivationCalibrationText)
+                    let voiceReadiness = model.voiceActivationTransmitReadinessSummary
+                    ServerInfoDetailRow(
+                        label: localized("audio.voiceActivationReadiness"),
+                        value: localized(
+                            "audio.voiceActivationReadinessFormat",
+                            voiceReadiness.satisfiedRequirementCount,
+                            voiceReadiness.totalRequirementCount,
+                            voiceReadiness.missingRequirementCount
+                        )
+                    )
+                    Text(voiceActivationTransmitReadinessText(voiceReadiness))
+                        .font(.caption)
+                        .foregroundColor(voiceReadiness.needsAttention ? .orange : .secondary)
+                    Button(localized("audio.copyVoiceActivationReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(voiceReadiness.clipboardSummary)
+                    }
                     ServerInfoDetailRow(label: localized("audio.inputLevel"), value: model.inputLevelText)
                     ServerInfoDetailRow(label: localized("audio.inputGain"), value: model.inputGainPercentText)
                     ServerInfoDetailRow(label: localized("audio.playbackVolume"), value: model.playbackVolumePercentText)
@@ -35496,6 +35514,7 @@ struct AudioSettingsSheet: View {
             localized("audio.snapshot.transmitModeFormat", transmitModeTitle(model.audioTransmitMode)),
             localized("audio.snapshot.voiceActivationFormat", voiceActivationDiagnosticText),
             localized("audio.snapshot.voiceActivationCalibrationFormat", voiceActivationCalibrationText),
+            localized("audio.snapshot.voiceActivationReadinessFormat", voiceActivationTransmitReadinessText(model.voiceActivationTransmitReadinessSummary)),
             localized("audio.snapshot.inputLevelFormat", model.inputLevelText),
             localized("audio.snapshot.inputGainFormat", model.inputGainPercentText),
             localized("audio.snapshot.playbackVolumeFormat", model.playbackVolumePercentText),
@@ -35536,6 +35555,11 @@ struct AudioSettingsSheet: View {
         [
             localized("audio.voiceActivationOfficialAuditActionsFormat", voiceActivationOfficialAuditSummary.officialActionCount),
             localized("audio.voiceActivationOfficialAuditModeFormat", transmitModeTitle(voiceActivationOfficialAuditSummary.transmitMode)),
+            localized(
+                "audio.voiceActivationOfficialAuditReadinessFormat",
+                voiceActivationOfficialAuditSummary.transmitReadinessSummary.satisfiedRequirementCount,
+                voiceActivationOfficialAuditSummary.transmitReadinessSummary.totalRequirementCount
+            ),
             localized("audio.voiceActivationOfficialAuditProfilesFormat", voiceActivationOfficialAuditSummary.savedProfileCount),
             localized("audio.voiceActivationOfficialAuditGateFormat", model.isVoiceActivationTriggered ? localized("audio.open") : localized("audio.closed")),
             localized("audio.voiceActivationOfficialAuditAttentionFormat", voiceActivationOfficialAuditSummary.needsAttention ? localized("common.yes") : localized("common.no"))
@@ -35560,6 +35584,35 @@ struct AudioSettingsSheet: View {
             "audio.routeSwitchReadinessMissingFormat",
             summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
         )
+    }
+
+    private func voiceActivationTransmitReadinessText(_ summary: TS3VoiceActivationTransmitReadinessSummary) -> String {
+        if summary.missingRequirements.isEmpty {
+            return localized("audio.voiceActivationReadinessReady")
+        }
+        return localized(
+            "audio.voiceActivationReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3VoiceActivationTransmitRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("audio.voiceActivationRequirement.connected")
+        case .voiceActivationMode:
+            return localized("audio.voiceActivationRequirement.voiceActivationMode")
+        case .microphonePromptResolved:
+            return localized("audio.voiceActivationRequirement.microphonePromptResolved")
+        case .captureActive:
+            return localized("audio.voiceActivationRequirement.captureActive")
+        case .inputSignal:
+            return localized("audio.voiceActivationRequirement.inputSignal")
+        case .thresholdConfigured:
+            return localized("audio.voiceActivationRequirement.thresholdConfigured")
+        case .currentInputOpensGate:
+            return localized("audio.voiceActivationRequirement.currentInputOpensGate")
+        }
     }
 
     private func title(for requirement: TS3AudioRouteSwitchRequirement) -> String {

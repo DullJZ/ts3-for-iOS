@@ -2190,6 +2190,18 @@
 "audio.routeRequirement.speakerPreference" = "扬声器偏好";
 "audio.routeRequirement.diagnostics" = "诊断";
 "audio.routeRequirement.noRouteLimitations" = "无路由限制";
+"audio.voiceActivationReadiness" = "语音激活就绪度";
+"audio.voiceActivationReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"audio.voiceActivationReadinessReady" = "语音激活可用当前输入发送。";
+"audio.voiceActivationReadinessMissingFormat" = "缺失：%@";
+"audio.copyVoiceActivationReadiness" = "复制语音激活就绪度";
+"audio.voiceActivationRequirement.connected" = "连接";
+"audio.voiceActivationRequirement.voiceActivationMode" = "语音激活模式";
+"audio.voiceActivationRequirement.microphonePromptResolved" = "麦克风提示已处理";
+"audio.voiceActivationRequirement.captureActive" = "麦克风采集";
+"audio.voiceActivationRequirement.inputSignal" = "输入信号";
+"audio.voiceActivationRequirement.thresholdConfigured" = "阈值已配置";
+"audio.voiceActivationRequirement.currentInputOpensGate" = "当前输入打开门限";
 "audio.ping" = "延迟";
 "audio.packetLoss" = "丢包";
 "audio.speechLoss" = "语音丢包";
@@ -2243,6 +2255,7 @@
 "audio.voiceActivationOfficialAuditFormat" = "已覆盖 %d/%d 个区域，缺少 %d 个";
 "audio.voiceActivationOfficialAuditActionsFormat" = "%d 个官方动作";
 "audio.voiceActivationOfficialAuditModeFormat" = "模式：%@";
+"audio.voiceActivationOfficialAuditReadinessFormat" = "就绪度：%d/%d";
 "audio.voiceActivationOfficialAuditProfilesFormat" = "已保存配置：%d";
 "audio.voiceActivationOfficialAuditGateFormat" = "门限：%@";
 "audio.voiceActivationOfficialAuditAttentionFormat" = "需要复核：%@";
@@ -2259,6 +2272,7 @@
 "audio.snapshot.transmitModeFormat" = "发言模式：%@";
 "audio.snapshot.voiceActivationFormat" = "语音激活：%@";
 "audio.snapshot.voiceActivationCalibrationFormat" = "语音激活校准：%@";
+"audio.snapshot.voiceActivationReadinessFormat" = "语音激活就绪度：%@";
 "audio.snapshot.inputLevelFormat" = "输入电平：%@";
 "audio.snapshot.inputGainFormat" = "输入增益：%@";
 "audio.snapshot.playbackVolumeFormat" = "播放音量：%@";

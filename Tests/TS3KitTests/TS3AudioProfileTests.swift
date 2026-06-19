@@ -56,8 +56,72 @@ final class TS3AudioProfileTests: XCTestCase {
         XCTAssertEqual(loudSummary.suggestedThreshold, 0.5, accuracy: 0.0001)
     }
 
+    func testVoiceActivationTransmitReadinessSummaryCountsReadyRequirements() {
+        let summary = TS3VoiceActivationTransmitReadinessSummary(
+            isConnected: true,
+            transmitMode: .voiceActivation,
+            hasPendingMicrophonePrompt: false,
+            isCaptureActive: true,
+            inputLevel: 0.060,
+            threshold: 0.030,
+            isGateOpen: true
+        )
+
+        XCTAssertEqual(summary.totalRequirementCount, 7)
+        XCTAssertEqual(summary.satisfiedRequirementCount, 7)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=7/7 | missingRequirements=0 | connected=true | mode=Voice Activation | captureActive=true | input=0.060 | threshold=0.030 | gate=open | pendingMicrophonePrompt=false | requirements=connected:true,voiceActivationMode:true,microphonePromptResolved:true,captureActive:true,inputSignal:true,thresholdConfigured:true,currentInputOpensGate:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testVoiceActivationTransmitReadinessSummaryFlagsMissingTransmitPrerequisites() {
+        let summary = TS3VoiceActivationTransmitReadinessSummary(
+            isConnected: false,
+            transmitMode: .pushToTalk,
+            hasPendingMicrophonePrompt: true,
+            isCaptureActive: false,
+            inputLevel: 0,
+            threshold: 0.8,
+            isGateOpen: false
+        )
+
+        XCTAssertEqual(summary.totalRequirementCount, 7)
+        XCTAssertEqual(summary.satisfiedRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirementCount, 7)
+        XCTAssertEqual(
+            summary.missingRequirements,
+            [
+                .connected,
+                .voiceActivationMode,
+                .microphonePromptResolved,
+                .captureActive,
+                .inputSignal,
+                .thresholdConfigured,
+                .currentInputOpensGate
+            ]
+        )
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "readiness=0/7 | missingRequirements=7 | connected=false | mode=Push To Talk | captureActive=false | input=0.000 | threshold=0.800 | gate=closed | pendingMicrophonePrompt=true | requirements=connected:false,voiceActivationMode:false,microphonePromptResolved:false,captureActive:false,inputSignal:false,thresholdConfigured:false,currentInputOpensGate:false | missing=connected,voiceActivationMode,microphonePromptResolved,captureActive,inputSignal,thresholdConfigured,currentInputOpensGate | needsAttention=true"
+        )
+    }
+
     func testVoiceActivationOfficialCoverageAuditSummaryCountsCoveredAreas() {
         let calibration = TS3VoiceActivationCalibrationSummary(
+            inputLevel: 0.050,
+            threshold: 0.030,
+            isGateOpen: true
+        )
+        let readiness = TS3VoiceActivationTransmitReadinessSummary(
+            isConnected: true,
+            transmitMode: .voiceActivation,
+            hasPendingMicrophonePrompt: false,
+            isCaptureActive: true,
             inputLevel: 0.050,
             threshold: 0.030,
             isGateOpen: true
@@ -66,25 +130,27 @@ final class TS3AudioProfileTests: XCTestCase {
         let summary = TS3VoiceActivationOfficialCoverageAuditSummary(
             transmitMode: .voiceActivation,
             calibrationSummary: calibration,
+            transmitReadinessSummary: readiness,
             savedProfileCount: 2,
             hasModeSelection: true,
             hasThresholdControl: true,
             hasLiveInputMeter: true,
             hasCalibrationAction: true,
+            hasTransmitReadinessSummary: true,
             hasPresetCoverage: true,
             hasProfilePersistence: true,
             hasDiagnosticsSnapshot: true,
             hasSharedIOSCatalystSurface: true
         )
 
-        XCTAssertEqual(summary.officialAreaTotal, 8)
-        XCTAssertEqual(summary.coveredOfficialAreaCount, 8)
+        XCTAssertEqual(summary.officialAreaTotal, 9)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 9)
         XCTAssertEqual(summary.missingOfficialAreaCount, 0)
-        XCTAssertEqual(summary.officialActionCount, 12)
+        XCTAssertEqual(summary.officialActionCount, 14)
         XCTAssertFalse(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=8/8 | missingOfficialAreas=0 | officialActions=12 | mode=Voice Activation | threshold=0.030 | input=0.050 | gate=open | suggestedThreshold=0.068 | savedProfiles=2 | modeSelection=true | thresholdControl=true | liveMeter=true | calibrationAction=true | presets=true | profilePersistence=true | diagnostics=true | iosCatalystSurface=true | needsAttention=false"
+            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=14 | mode=Voice Activation | threshold=0.030 | input=0.050 | gate=open | suggestedThreshold=0.068 | transmitReadiness=7/7 | transmitMissing=0 | savedProfiles=2 | modeSelection=true | thresholdControl=true | liveMeter=true | calibrationAction=true | transmitReadinessSummary=true | presets=true | profilePersistence=true | diagnostics=true | iosCatalystSurface=true | needsAttention=false"
         )
     }
 
@@ -94,15 +160,26 @@ final class TS3AudioProfileTests: XCTestCase {
             threshold: 0.030,
             isGateOpen: false
         )
+        let readiness = TS3VoiceActivationTransmitReadinessSummary(
+            isConnected: false,
+            transmitMode: .pushToTalk,
+            hasPendingMicrophonePrompt: false,
+            isCaptureActive: false,
+            inputLevel: 0,
+            threshold: 0.030,
+            isGateOpen: false
+        )
 
         let summary = TS3VoiceActivationOfficialCoverageAuditSummary(
             transmitMode: .pushToTalk,
             calibrationSummary: calibration,
+            transmitReadinessSummary: readiness,
             savedProfileCount: 0,
             hasModeSelection: true,
             hasThresholdControl: false,
             hasLiveInputMeter: false,
             hasCalibrationAction: false,
+            hasTransmitReadinessSummary: false,
             hasPresetCoverage: true,
             hasProfilePersistence: false,
             hasDiagnosticsSnapshot: true,
@@ -110,11 +187,11 @@ final class TS3AudioProfileTests: XCTestCase {
         )
 
         XCTAssertEqual(summary.coveredOfficialAreaCount, 4)
-        XCTAssertEqual(summary.missingOfficialAreaCount, 4)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 5)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=4/8 | missingOfficialAreas=4 | officialActions=12 | mode=Push To Talk | threshold=0.030 | input=0.000 | gate=closed | suggestedThreshold=0.001 | savedProfiles=0 | modeSelection=true | thresholdControl=false | liveMeter=false | calibrationAction=false | presets=true | profilePersistence=false | diagnostics=true | iosCatalystSurface=true | needsAttention=true"
+            "officialAreas=4/9 | missingOfficialAreas=5 | officialActions=14 | mode=Push To Talk | threshold=0.030 | input=0.000 | gate=closed | suggestedThreshold=0.001 | transmitReadiness=2/7 | transmitMissing=5 | savedProfiles=0 | modeSelection=true | thresholdControl=false | liveMeter=false | calibrationAction=false | transmitReadinessSummary=false | presets=true | profilePersistence=false | diagnostics=true | iosCatalystSurface=true | needsAttention=true"
         )
     }
 
