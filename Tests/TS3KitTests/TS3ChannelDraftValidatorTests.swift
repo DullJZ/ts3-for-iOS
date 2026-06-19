@@ -105,6 +105,60 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         XCTAssertEqual(TS3HostBannerMode.value(forDraft: "keep-aspect-ratio"), TS3HostBannerMode.keepAspect.rawValue)
     }
 
+    func testChannelDraftValidatorAcceptsAbsoluteBannerGraphicURLs() {
+        for bannerGraphicsURL in ["https://example.com/raid.png", "ts3server://voice.example.com?cid=7"] {
+            let messages = TS3ChannelDraftValidator.validationMessages(
+                name: "Raid Room",
+                neededTalkPower: "",
+                neededJoinPower: "",
+                neededSubscribePower: "",
+                neededModifyPower: "",
+                neededDeletePower: "",
+                neededDescriptionViewPower: "",
+                codecQuality: "",
+                codecLatencyFactor: "",
+                bannerGraphicsURL: bannerGraphicsURL,
+                order: "",
+                deleteDelaySeconds: "",
+                iconId: "",
+                maxClients: "",
+                maxClientsUnlimited: true,
+                maxFamilyClients: "",
+                maxFamilyClientsUnlimited: true,
+                maxFamilyClientsInherited: false
+            )
+
+            XCTAssertTrue(messages.isEmpty, bannerGraphicsURL)
+        }
+    }
+
+    func testChannelDraftValidatorRejectsInvalidBannerGraphicURLs() {
+        for bannerGraphicsURL in ["raid/banner.png", "https:///raid.png"] {
+            let messages = TS3ChannelDraftValidator.validationMessages(
+                name: "Raid Room",
+                neededTalkPower: "",
+                neededJoinPower: "",
+                neededSubscribePower: "",
+                neededModifyPower: "",
+                neededDeletePower: "",
+                neededDescriptionViewPower: "",
+                codecQuality: "",
+                codecLatencyFactor: "",
+                bannerGraphicsURL: bannerGraphicsURL,
+                order: "",
+                deleteDelaySeconds: "",
+                iconId: "",
+                maxClients: "",
+                maxClientsUnlimited: true,
+                maxFamilyClients: "",
+                maxFamilyClientsUnlimited: true,
+                maxFamilyClientsInherited: false
+            )
+
+            XCTAssertEqual(messages, ["Channel banner graphic URL must be a valid absolute URL or empty."])
+        }
+    }
+
     func testChannelCodecConfigurationSummaryClassifiesProfilesAndAttentionState() {
         let highQualityVoice = TS3ChannelCodecConfigurationSummary(
             codec: TS3ChannelCodec.opusVoice.rawValue,

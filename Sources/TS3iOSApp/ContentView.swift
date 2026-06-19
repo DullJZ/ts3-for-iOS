@@ -33296,20 +33296,7 @@ struct ChannelEditorSheet: View {
     }
 
     private var canSubmit: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && isOptionalInt(neededTalkPower)
-            && isOptionalInt(neededJoinPower)
-            && isOptionalInt(neededSubscribePower)
-            && isOptionalInt(neededModifyPower)
-            && isOptionalInt(neededDeletePower)
-            && isOptionalInt(neededDescriptionViewPower)
-            && isCodecQualityValid
-            && isCodecLatencyFactorValid
-            && isValidOrderSelection
-            && isOptionalInt(deleteDelaySeconds)
-            && isOptionalInt(iconId)
-            && (maxClientsUnlimited || isRequiredInt(maxClients))
-            && (maxFamilyClientsInherited || maxFamilyClientsUnlimited || isRequiredInt(maxFamilyClients))
+        draftValidationMessages(for: currentDraft).isEmpty
     }
 
     private func channelType(for channel: TS3ChannelSummary) -> TS3ChannelType {
@@ -33441,6 +33428,7 @@ struct ChannelEditorSheet: View {
             codec: draft.codec,
             codecQuality: draft.codecQuality,
             codecLatencyFactor: draft.codecLatencyFactor ?? "",
+            bannerGraphicsURL: draft.bannerGraphicsURL ?? "",
             bannerMode: draft.bannerMode ?? "",
             order: draft.order ?? "",
             deleteDelaySeconds: draft.deleteDelaySeconds,

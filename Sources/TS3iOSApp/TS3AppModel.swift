@@ -625,6 +625,7 @@ enum TS3ChannelDraftValidator {
         codec: String? = nil,
         codecQuality: String,
         codecLatencyFactor: String,
+        bannerGraphicsURL: String = "",
         bannerMode: String = "",
         order: String,
         deleteDelaySeconds: String,
@@ -674,6 +675,9 @@ enum TS3ChannelDraftValidator {
             !TS3ChannelCodecConstraints.isValidLatencyFactor(parsedOptionalInt(codecLatencyFactor)) {
             messages.append("Codec latency factor must be between \(TS3ChannelCodecConstraints.latencyFactorRange.lowerBound) and \(TS3ChannelCodecConstraints.latencyFactorRange.upperBound).")
         }
+        if !isOptionalURL(bannerGraphicsURL) {
+            messages.append("Channel banner graphic URL must be a valid absolute URL or empty.")
+        }
         if !isOptionalHostBannerMode(bannerMode) {
             messages.append("Banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric.")
         }
@@ -712,6 +716,19 @@ enum TS3ChannelDraftValidator {
     private static func isOptionalHostBannerMode(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty || TS3HostBannerMode.value(forDraft: trimmed) != nil
+    }
+
+    private static func isOptionalURL(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        guard let components = URLComponents(string: trimmed),
+              components.scheme?.isEmpty == false else {
+            return false
+        }
+        if ["http", "https"].contains(components.scheme?.lowercased() ?? "") {
+            return components.host?.isEmpty == false
+        }
+        return URL(string: trimmed) != nil
     }
 }
 
