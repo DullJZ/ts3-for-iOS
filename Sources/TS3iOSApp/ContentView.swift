@@ -31653,6 +31653,21 @@ struct ChannelEditorSheet: View {
                                 TS3PlatformSupport.copyToPasteboard(channelReviewSummaryClipboard)
                             }
                             .disabled(!channelReviewSummary.needsAttention)
+                            ServerInfoDetailRow(
+                                label: localized("channelEditor.saveReadinessSummary"),
+                                value: localized(
+                                    "channelEditor.saveReadinessSummaryFormat",
+                                    channelSaveReadinessSummary.satisfiedRequirementCount,
+                                    channelSaveReadinessSummary.totalRequirementCount,
+                                    channelSaveReadinessSummary.missingRequirementCount
+                                )
+                            )
+                            Text(channelSaveReadinessSummaryText)
+                                .font(.caption)
+                                .foregroundColor(channelSaveReadinessSummary.needsAttention ? .orange : .secondary)
+                            Button(localized("channelEditor.copySaveReadinessSummary")) {
+                                TS3PlatformSupport.copyToPasteboard(channelSaveReadinessSummaryClipboard)
+                            }
 
                             if draftChangeRows.isEmpty {
                                 Text(localized("channelEditor.noDraftChanges"))
@@ -32301,6 +32316,32 @@ struct ChannelEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var channelSaveReadinessSummary: TS3ChannelEditorSaveReadinessSummary {
+        TS3ChannelEditorSaveReadinessSummary(
+            impactSummary: channelImpactSummary,
+            officialImpactSummary: channelOfficialImpactSummary,
+            reviewSummary: channelReviewSummary,
+            isConnected: model.state == .connected
+        )
+    }
+
+    private var channelSaveReadinessSummaryText: String {
+        channelSaveReadinessSummaryText(for: channelSaveReadinessSummary)
+    }
+
+    private var channelSaveReadinessSummaryClipboard: String {
+        let summary = channelSaveReadinessSummary
+        let lines = [
+            localized("channelEditor.saveReadinessSummary"),
+            summary.clipboardSummary,
+            channelSaveReadinessSummaryText(for: summary)
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private var permissionGateSummary: TS3ChannelPermissionGateSummary {
         TS3ChannelPermissionGateSummary(
             neededTalkPower: parsedOptionalInt(neededTalkPower),
@@ -32607,6 +32648,30 @@ struct ChannelEditorSheet: View {
         return parts.joined(separator: " · ")
     }
 
+    private func channelSaveReadinessSummaryText(for summary: TS3ChannelEditorSaveReadinessSummary) -> String {
+        var parts = [
+            summary.canSave
+                ? localized("channelEditor.saveReadinessReady")
+                : localized("channelEditor.saveReadinessBlocked")
+        ]
+        if !summary.missingRequirements.isEmpty {
+            let missing = summary.missingRequirements
+                .map { title(for: $0) }
+                .joined(separator: ", ")
+            parts.append(localized("channelEditor.saveReadinessMissingFormat", missing))
+        }
+        if summary.reviewSummary.sensitiveChangeCount > 0 {
+            parts.append(localized("channelEditor.saveReadinessSensitiveFormat", summary.reviewSummary.sensitiveChangeCount))
+        }
+        if summary.codecWarningCount > 0 {
+            parts.append(localized("channelEditor.saveReadinessCodecWarningFormat", summary.codecWarningCount))
+        }
+        if summary.impactSummary.totalChangeCount == 0 {
+            parts.append(localized("channelEditor.saveReadinessNoChanges"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
     private func title(for area: TS3ChannelEditorImpactArea) -> String {
         switch area {
         case .channel:
@@ -32630,6 +32695,23 @@ struct ChannelEditorSheet: View {
             return localized("channelEditor.officialImpact.voiceCodec")
         case .capacityLimits:
             return localized("channelEditor.officialImpact.capacityLimits")
+        }
+    }
+
+    private func title(for requirement: TS3ChannelEditorSaveRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("channelEditor.saveRequirement.connected")
+        case .changedDraft:
+            return localized("channelEditor.saveRequirement.changedDraft")
+        case .validationClean:
+            return localized("channelEditor.saveRequirement.validationClean")
+        case .codecWarningsClear:
+            return localized("channelEditor.saveRequirement.codecWarningsClear")
+        case .officialImpactAudit:
+            return localized("channelEditor.saveRequirement.officialImpactAudit")
+        case .sensitiveReview:
+            return localized("channelEditor.saveRequirement.sensitiveReview")
         }
     }
 

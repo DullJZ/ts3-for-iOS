@@ -504,6 +504,103 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelEditorSaveReadinessSummaryCountsSatisfiedRequirements() {
+        let summary = TS3ChannelEditorSaveReadinessSummary(
+            impactSummary: TS3ChannelEditorImpactSummary(
+                areaChangeCounts: [.channel: 2],
+                validationIssueCount: 0,
+                codecWarningCount: 0
+            ),
+            officialImpactSummary: TS3ChannelEditorOfficialImpactSummary(
+                areaChangeCounts: [.structureVisibility: 1],
+                validationIssueCount: 0,
+                codecWarningCount: 0,
+                sensitiveChangeCount: 0
+            ),
+            reviewSummary: TS3ChannelEditorReviewSummary(
+                reviewItems: [],
+                validationIssueCount: 0,
+                codecWarningCount: 0
+            ),
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 6)
+        XCTAssertEqual(summary.totalRequirementCount, 6)
+        XCTAssertEqual(summary.missingRequirementCount, 0)
+        XCTAssertEqual(summary.missingRequirements, [])
+        XCTAssertTrue(summary.canSave)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "saveReadiness=6/6 | missingRequirements=0 | canSave=true | changes=2 | officialChanges=1 | affectedOfficialAreas=1 | sensitiveChanges=0 | validationIssues=0 | codecWarnings=0 | requirements=connected:true,changedDraft:true,validationClean:true,codecWarningsClear:true,officialImpactAudit:true,sensitiveReview:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testChannelEditorSaveReadinessSummaryFlagsBlockedDraft() {
+        let summary = TS3ChannelEditorSaveReadinessSummary(
+            impactSummary: TS3ChannelEditorImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: 2,
+                codecWarningCount: 1
+            ),
+            officialImpactSummary: TS3ChannelEditorOfficialImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: 2,
+                codecWarningCount: 1,
+                sensitiveChangeCount: 0
+            ),
+            reviewSummary: TS3ChannelEditorReviewSummary(
+                reviewItems: [],
+                validationIssueCount: 2,
+                codecWarningCount: 1
+            ),
+            isConnected: false
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 2)
+        XCTAssertEqual(summary.missingRequirementCount, 4)
+        XCTAssertEqual(summary.missingRequirements, [.connected, .changedDraft, .validationClean, .codecWarningsClear])
+        XCTAssertFalse(summary.canSave)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "saveReadiness=2/6 | missingRequirements=4 | canSave=false | changes=0 | officialChanges=0 | affectedOfficialAreas=0 | sensitiveChanges=0 | validationIssues=2 | codecWarnings=1 | requirements=connected:false,changedDraft:false,validationClean:false,codecWarningsClear:false,officialImpactAudit:true,sensitiveReview:true | missing=connected,changedDraft,validationClean,codecWarningsClear | needsAttention=true"
+        )
+    }
+
+    func testChannelEditorSaveReadinessSummaryFlagsMissingOfficialImpactAudit() {
+        let summary = TS3ChannelEditorSaveReadinessSummary(
+            impactSummary: TS3ChannelEditorImpactSummary(
+                areaChangeCounts: [.voice: 1],
+                validationIssueCount: 0,
+                codecWarningCount: 0
+            ),
+            officialImpactSummary: TS3ChannelEditorOfficialImpactSummary(
+                areaChangeCounts: [:],
+                validationIssueCount: 0,
+                codecWarningCount: 0,
+                sensitiveChangeCount: 0
+            ),
+            reviewSummary: TS3ChannelEditorReviewSummary(
+                reviewItems: [],
+                validationIssueCount: 0,
+                codecWarningCount: 0
+            ),
+            isConnected: true
+        )
+
+        XCTAssertEqual(summary.satisfiedRequirementCount, 5)
+        XCTAssertEqual(summary.missingRequirementCount, 1)
+        XCTAssertEqual(summary.missingRequirements, [.officialImpactAudit])
+        XCTAssertTrue(summary.canSave)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "saveReadiness=5/6 | missingRequirements=1 | canSave=true | changes=1 | officialChanges=0 | affectedOfficialAreas=0 | sensitiveChanges=0 | validationIssues=0 | codecWarnings=0 | requirements=connected:true,changedDraft:true,validationClean:true,codecWarningsClear:true,officialImpactAudit:false,sensitiveReview:true | missing=officialImpactAudit | needsAttention=true"
+        )
+    }
+
     func testChannelDraftValidatorRejectsInvalidTypeAndCodecAliases() {
         let messages = TS3ChannelDraftValidator.validationMessages(
             name: "Raid Room",
