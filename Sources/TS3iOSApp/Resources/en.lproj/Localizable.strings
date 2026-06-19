@@ -487,6 +487,17 @@
 "privilegeKeys.connectionImpact.source.generated" = "Generated";
 "privilegeKeys.connectionImpact.source.listed" = "Listed";
 "privilegeKeys.copyConnectionImpact" = "Copy Connection Impact";
+"privilegeKeys.useReadiness" = "Use Readiness";
+"privilegeKeys.useReadinessFormat" = "%d/%d ready, %d missing";
+"privilegeKeys.useReadinessReady" = "Privilege key is ready to use.";
+"privilegeKeys.useReadinessMissingFormat" = "Missing: %@";
+"privilegeKeys.copyUseReadiness" = "Copy Use Readiness";
+"privilegeKeys.useRequirement.connected" = "Connected server";
+"privilegeKeys.useRequirement.key" = "Usable key";
+"privilegeKeys.useRequirement.knownType" = "Known key type";
+"privilegeKeys.useRequirement.groupTarget" = "Group target";
+"privilegeKeys.useRequirement.channelScopeReviewed" = "Channel scope reviewed";
+"privilegeKeys.useRequirement.connectionTarget" = "Connection target";
 "privilegeKeys.copyFullInviteLinkWithKey" = "Copy Full Invite Link With Key";
 "privilegeKeys.saveAsConnectionKey" = "Save as Connection Privilege Key";
 "privilegeKeys.exportGeneratedKey" = "Export Generated Key";

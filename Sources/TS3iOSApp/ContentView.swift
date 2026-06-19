@@ -25246,6 +25246,7 @@ struct PrivilegeKeysSheet: View {
                 if let key = model.generatedPrivilegeKey {
                     Section(header: Text(localized("privilegeKeys.generatedKey"))) {
                         let impact = model.privilegeKeyConnectionImpactSummary(key: key, source: .generated)
+                        let useReadiness = privilegeKeyUseReadinessSummary(rawKey: key, key: nil, impact: impact)
                         Text(key)
                             .font(.system(.footnote, design: .monospaced))
                             .lineLimit(3)
@@ -25260,6 +25261,18 @@ struct PrivilegeKeysSheet: View {
                         Text(privilegeKeyConnectionImpactText(impact))
                             .font(.caption)
                             .foregroundColor(impact.needsAttention ? .orange : .secondary)
+                        ServerInfoDetailRow(
+                            label: localized("privilegeKeys.useReadiness"),
+                            value: localized(
+                                "privilegeKeys.useReadinessFormat",
+                                useReadiness.satisfiedRequirementCount,
+                                useReadiness.totalRequirementCount,
+                                useReadiness.missingRequirementCount
+                            )
+                        )
+                        Text(privilegeKeyUseReadinessText(useReadiness))
+                            .font(.caption)
+                            .foregroundColor(useReadiness.needsAttention ? .orange : .secondary)
                         Button(localized("privilegeKeys.useGeneratedKey")) {
                             model.usePrivilegeKey(key)
                         }
@@ -25272,6 +25285,9 @@ struct PrivilegeKeysSheet: View {
                         }
                         Button(localized("privilegeKeys.copyConnectionImpact")) {
                             TS3PlatformSupport.copyToPasteboard(impact.clipboardSummary)
+                        }
+                        Button(localized("privilegeKeys.copyUseReadiness")) {
+                            TS3PlatformSupport.copyToPasteboard(useReadiness.clipboardSummary)
                         }
                         Button(localized("privilegeKeys.copyFullInviteLinkWithKey")) {
                             model.copyCurrentFullInviteLink(privilegeKey: key)
@@ -25759,6 +25775,46 @@ struct PrivilegeKeysSheet: View {
             localized("privilegeKeys.connectionImpactDefaultChannelFormat", impact.defaultChannel.isEmpty ? localized("common.none") : impact.defaultChannel),
             localized("privilegeKeys.connectionImpactInviteFormat", impact.inviteLinkImpact)
         ].joined(separator: " | ")
+    }
+
+    private func privilegeKeyUseReadinessSummary(
+        rawKey: String,
+        key: TS3PrivilegeKeySummary?,
+        impact: TS3PrivilegeKeyConnectionImpactSummary
+    ) -> TS3PrivilegeKeyUseReadinessSummary {
+        TS3PrivilegeKeyUseReadinessSummary(
+            key: key,
+            rawKey: rawKey,
+            isConnected: model.state == .connected,
+            connectionImpactSummary: impact
+        )
+    }
+
+    private func privilegeKeyUseReadinessText(_ summary: TS3PrivilegeKeyUseReadinessSummary) -> String {
+        if summary.canUse && summary.missingRequirements.isEmpty {
+            return localized("privilegeKeys.useReadinessReady")
+        }
+        return localized(
+            "privilegeKeys.useReadinessMissingFormat",
+            summary.missingRequirements.map { title(for: $0) }.joined(separator: ", ")
+        )
+    }
+
+    private func title(for requirement: TS3PrivilegeKeyUseRequirement) -> String {
+        switch requirement {
+        case .connected:
+            return localized("privilegeKeys.useRequirement.connected")
+        case .key:
+            return localized("privilegeKeys.useRequirement.key")
+        case .knownType:
+            return localized("privilegeKeys.useRequirement.knownType")
+        case .groupTarget:
+            return localized("privilegeKeys.useRequirement.groupTarget")
+        case .channelScopeReviewed:
+            return localized("privilegeKeys.useRequirement.channelScopeReviewed")
+        case .connectionTarget:
+            return localized("privilegeKeys.useRequirement.connectionTarget")
+        }
     }
 
     private var normalizedSearchText: String {
@@ -26364,6 +26420,9 @@ struct PrivilegeKeyRow: View {
                     Button(localized("privilegeKeys.copyConnectionImpact")) {
                         TS3PlatformSupport.copyToPasteboard(connectionImpactSummary.clipboardSummary)
                     }
+                    Button(localized("privilegeKeys.copyUseReadiness")) {
+                        TS3PlatformSupport.copyToPasteboard(useReadinessSummary.clipboardSummary)
+                    }
                     Button(localized("privilegeKeys.deleteKey")) {
                         isConfirmingDelete = true
                     }
@@ -26409,6 +26468,9 @@ struct PrivilegeKeyRow: View {
             Button(localized("privilegeKeys.copyConnectionImpact")) {
                 TS3PlatformSupport.copyToPasteboard(connectionImpactSummary.clipboardSummary)
             }
+            Button(localized("privilegeKeys.copyUseReadiness")) {
+                TS3PlatformSupport.copyToPasteboard(useReadinessSummary.clipboardSummary)
+            }
             Button(localized("privilegeKeys.deleteKey")) {
                 isConfirmingDelete = true
             }
@@ -26427,6 +26489,9 @@ struct PrivilegeKeyRow: View {
         }
         .accessibilityAction(named: localized("privilegeKeys.copyConnectionImpact")) {
             TS3PlatformSupport.copyToPasteboard(connectionImpactSummary.clipboardSummary)
+        }
+        .accessibilityAction(named: localized("privilegeKeys.copyUseReadiness")) {
+            TS3PlatformSupport.copyToPasteboard(useReadinessSummary.clipboardSummary)
         }
         .accessibilityAction(named: localized("privilegeKeys.useKey")) {
             if model.state == .connected {
@@ -26461,6 +26526,15 @@ struct PrivilegeKeyRow: View {
 
     private var connectionImpactSummary: TS3PrivilegeKeyConnectionImpactSummary {
         model.privilegeKeyConnectionImpactSummary(key: key.key, source: .listed)
+    }
+
+    private var useReadinessSummary: TS3PrivilegeKeyUseReadinessSummary {
+        TS3PrivilegeKeyUseReadinessSummary(
+            key: key,
+            rawKey: key.key,
+            isConnected: model.state == .connected,
+            connectionImpactSummary: connectionImpactSummary
+        )
     }
 
     private static func dateText(_ date: Date) -> String {

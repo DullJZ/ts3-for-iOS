@@ -692,6 +692,92 @@ final class TS3PrivilegeKeyBackupTests: XCTestCase {
         )
     }
 
+    func testPrivilegeKeyUseReadinessSummaryCountsReadyListedKey() {
+        let snapshot = TS3ConnectionSnapshot(
+            host: "voice.example.test",
+            port: "9987",
+            nickname: "Avery",
+            serverPassword: "",
+            defaultChannel: "",
+            defaultChannelPassword: "",
+            privilegeKey: ""
+        )
+        let key = makeKey(
+            key: "listed-key",
+            type: .channelGroup,
+            groupId: 7,
+            channelId: 12,
+            description: "Invite",
+            customSet: nil
+        )
+        let impact = TS3PrivilegeKeyConnectionImpactSummary(
+            key: key.key,
+            source: .listed,
+            snapshot: snapshot
+        )
+
+        let readiness = TS3PrivilegeKeyUseReadinessSummary(
+            key: key,
+            rawKey: key.key,
+            isConnected: true,
+            connectionImpactSummary: impact
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertTrue(readiness.canUse)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "key=Configured | readiness=6/6 | missingRequirements=0 | canUse=true | source=listed | type=Channel Group | group=7 | channel=12 | connectionTarget=true | inviteLinkImpact=privilegeKey=Configured | requirements=connected:true,key:true,knownType:true,groupTarget:true,channelScopeReviewed:true,connectionTarget:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testPrivilegeKeyUseReadinessSummaryFlagsDisconnectedUnknownKeyWithoutServerTarget() {
+        let snapshot = TS3ConnectionSnapshot(
+            host: "",
+            port: "",
+            nickname: "",
+            serverPassword: "",
+            defaultChannel: "",
+            defaultChannelPassword: "",
+            privilegeKey: ""
+        )
+        let key = makeKey(
+            key: "unknown-key",
+            type: nil,
+            groupId: 0,
+            channelId: nil,
+            description: nil,
+            customSet: nil
+        )
+        let impact = TS3PrivilegeKeyConnectionImpactSummary(
+            key: key.key,
+            source: .listed,
+            snapshot: snapshot
+        )
+
+        let readiness = TS3PrivilegeKeyUseReadinessSummary(
+            key: key,
+            rawKey: key.key,
+            isConnected: false,
+            connectionImpactSummary: impact
+        )
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 2)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirements, [.connected, .knownType, .groupTarget, .connectionTarget])
+        XCTAssertFalse(readiness.canUse)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "key=Configured | readiness=2/6 | missingRequirements=4 | canUse=false | source=listed | type=Unknown | group=0 | channel=any | connectionTarget=false | inviteLinkImpact=unavailable | requirements=connected:false,key:true,knownType:false,groupTarget:false,channelScopeReviewed:true,connectionTarget:false | missing=connected,knownType,groupTarget,connectionTarget | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testSaveCurrentConnectionPrivilegeKeyTrimsAndIgnoresEmptyValues() {
         let model = TS3AppModel()

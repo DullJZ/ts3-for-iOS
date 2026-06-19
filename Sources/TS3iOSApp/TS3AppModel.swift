@@ -7408,6 +7408,95 @@ struct TS3PrivilegeKeyConnectionImpactSummary {
     }
 }
 
+enum TS3PrivilegeKeyUseRequirement: String, CaseIterable, Codable {
+    case connected
+    case key
+    case knownType
+    case groupTarget
+    case channelScopeReviewed
+    case connectionTarget
+}
+
+struct TS3PrivilegeKeyUseReadinessSummary {
+    let key: TS3PrivilegeKeySummary?
+    let rawKey: String
+    let isConnected: Bool
+    let connectionImpactSummary: TS3PrivilegeKeyConnectionImpactSummary
+
+    var requirementStates: [TS3PrivilegeKeyUseRequirement: Bool] {
+        [
+            .connected: isConnected,
+            .key: hasUsableKey,
+            .knownType: key?.type != nil || key == nil,
+            .groupTarget: (key?.groupId ?? 1) > 0,
+            .channelScopeReviewed: key?.type != .channelGroup || (key?.channelId ?? 0) >= 0,
+            .connectionTarget: connectionImpactSummary.hasServerTarget
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3PrivilegeKeyUseRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3PrivilegeKeyUseRequirement] {
+        TS3PrivilegeKeyUseRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var canUse: Bool {
+        isConnected && hasUsableKey
+    }
+
+    var needsAttention: Bool {
+        !canUse || missingRequirementCount > 0 || connectionImpactSummary.needsAttention
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3PrivilegeKeyUseRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "key=\(hasUsableKey ? "Configured" : "Missing")",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "canUse=\(canUse ? "true" : "false")",
+            "source=\(connectionImpactSummary.source.rawValue)",
+            "type=\(key?.type?.title ?? (key == nil ? "Generated" : "Unknown"))",
+            "group=\(key.map { String($0.groupId) } ?? "n/a")",
+            "channel=\(key?.channelId.map(String.init) ?? "any")",
+            "connectionTarget=\(connectionImpactSummary.hasServerTarget ? "true" : "false")",
+            "inviteLinkImpact=\(connectionImpactSummary.inviteLinkImpact)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        key: TS3PrivilegeKeySummary?,
+        rawKey: String,
+        isConnected: Bool,
+        connectionImpactSummary: TS3PrivilegeKeyConnectionImpactSummary
+    ) {
+        self.key = key
+        self.rawKey = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.isConnected = isConnected
+        self.connectionImpactSummary = connectionImpactSummary
+    }
+
+    private var hasUsableKey: Bool {
+        !rawKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
 struct TS3PrivilegeKeyOfficialCoverageAuditSummary {
     let draftCoverageSummary: TS3PrivilegeKeyDraftCoverageSummary
     let visibleKeySummary: TS3PrivilegeKeyListSummary

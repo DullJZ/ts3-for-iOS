@@ -487,6 +487,17 @@
 "privilegeKeys.connectionImpact.source.generated" = "已生成";
 "privilegeKeys.connectionImpact.source.listed" = "列表";
 "privilegeKeys.copyConnectionImpact" = "复制连接影响";
+"privilegeKeys.useReadiness" = "使用就绪度";
+"privilegeKeys.useReadinessFormat" = "%d/%d 已就绪，%d 个缺失";
+"privilegeKeys.useReadinessReady" = "权限密钥已可使用。";
+"privilegeKeys.useReadinessMissingFormat" = "缺失：%@";
+"privilegeKeys.copyUseReadiness" = "复制使用就绪度";
+"privilegeKeys.useRequirement.connected" = "已连接服务器";
+"privilegeKeys.useRequirement.key" = "可用密钥";
+"privilegeKeys.useRequirement.knownType" = "已知密钥类型";
+"privilegeKeys.useRequirement.groupTarget" = "组目标";
+"privilegeKeys.useRequirement.channelScopeReviewed" = "频道范围已审查";
+"privilegeKeys.useRequirement.connectionTarget" = "连接目标";
 "privilegeKeys.copyFullInviteLinkWithKey" = "复制带密钥的完整邀请链接";
 "privilegeKeys.saveAsConnectionKey" = "保存为连接权限密钥";
 "privilegeKeys.exportGeneratedKey" = "导出已生成密钥";
