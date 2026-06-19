@@ -8790,6 +8790,7 @@ enum TS3PermissionEditScope: String, CaseIterable, Identifiable {
 struct TS3PermissionEditDraft {
     let scope: TS3PermissionEditScope
     let target: String
+    var targetSelected = true
     let name: String
     let value: String
     let negated: Bool
@@ -8889,7 +8890,7 @@ struct TS3PermissionDraftCoverageSummary {
 
     init(draft: TS3PermissionEditDraft, validationMessages: [String]) {
         self.scope = draft.scope
-        self.hasTarget = !draft.target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        self.hasTarget = draft.targetSelected && !draft.target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         self.hasName = !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         self.hasNumericValue = draft.parsedValue != nil
         self.supportsNegated = Self.supportsNegated(scope: draft.scope)
@@ -18232,6 +18233,24 @@ final class TS3AppModel: ObservableObject {
             let channelName = channels.first(where: { $0.id == selection.channelId })?.name ?? "Channel \(selection.channelId)"
             let clientName = clients.first(where: { $0.id == selection.clientId })?.nickname ?? "Client \(selection.clientId)"
             return "\(clientName) (#\(selection.databaseId)) in \(channelName)"
+        }
+    }
+
+    func isPermissionEditTargetSelected(for scope: TS3PermissionEditScope? = nil) -> Bool {
+        let scope = scope ?? permissionEditScope
+        switch scope {
+        case .ownClient:
+            return ownClientDatabaseId != nil || clients.contains(where: { $0.isCurrentUser })
+        case .databaseClient:
+            return (selectedDatabaseClientPermissionId ?? selectedDatabaseClient?.id ?? 0) > 0
+        case .serverGroup:
+            return (selectedServerGroupPermissionId ?? serverGroups.first?.id ?? 0) > 0
+        case .channelGroup:
+            return (selectedChannelGroupPermissionId ?? channelGroups.first?.id ?? 0) > 0
+        case .channel:
+            return (selectedChannelPermissionId ?? currentChannel?.id ?? channels.first?.id ?? 0) > 0
+        case .channelClient:
+            return selectedChannelClientPermissionTarget() != nil
         }
     }
 

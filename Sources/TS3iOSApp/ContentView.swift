@@ -23222,6 +23222,7 @@ struct PermissionsSheet: View {
         TS3PermissionEditDraft(
             scope: model.permissionEditScope,
             target: model.permissionEditTargetSummary(),
+            targetSelected: model.isPermissionEditTargetSelected(),
             name: permissionName,
             value: permissionValue,
             negated: permissionNegated,
@@ -23594,7 +23595,7 @@ struct PermissionsSheet: View {
                     Button(localized("permissions.addOrUpdate")) {
                         model.addSelectedPermission(permissionDraft)
                     }
-                    .disabled(model.state != .connected || !permissionDraftValidationMessages.isEmpty)
+                    .disabled(!permissionEditReadinessSummary.canSubmit)
                 }
 
                 Section(header: Text(localized("permissions.directory"))) {

@@ -127,6 +127,36 @@ final class TS3PermissionDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testPermissionDraftCoverageRequiresActualTargetSelection() {
+        let draft = TS3PermissionEditDraft(
+            scope: .databaseClient,
+            target: "Database Client",
+            targetSelected: false,
+            name: "i_client_needed_kick_from_server_power",
+            value: "50",
+            negated: false,
+            skip: false
+        )
+        let coverage = TS3PermissionDraftCoverageSummary(
+            draft: draft,
+            validationMessages: draft.validationMessages
+        )
+        let readiness = TS3PermissionEditReadinessSummary(
+            audit: TS3PermissionOfficialEditAuditSummary(coverage: coverage),
+            isConnected: true
+        )
+
+        XCTAssertFalse(coverage.hasTarget)
+        XCTAssertEqual(coverage.requiredFieldCount, 2)
+        XCTAssertTrue(coverage.needsAttention)
+        XCTAssertEqual(readiness.missingRequirements, [.targetSelected])
+        XCTAssertFalse(readiness.canSubmit)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "scope=Database Client | readiness=5/6 | missingRequirements=1 | canSubmit=false | officialAreas=3/4 | requirements=connected:true,targetSelected:false,permissionName:true,numericValue:true,supportedFlags:true,validationClean:true | missing=targetSelected | needsAttention=true"
+        )
+    }
+
     func testPermissionOfficialEditAuditSummaryCoversOfficialEditAreas() {
         let draft = TS3PermissionEditDraft(
             scope: .serverGroup,
