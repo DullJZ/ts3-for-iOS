@@ -723,8 +723,12 @@ enum TS3ServerSettingsDraftValidator {
         maxClients: String,
         reservedSlots: String,
         hostMessageMode: String,
+        hostBannerURL: String,
+        hostBannerGraphicsURL: String,
         hostBannerMode: String,
         hostBannerGraphicsInterval: String,
+        hostButtonURL: String,
+        hostButtonGraphicsURL: String,
         iconId: String,
         downloadQuota: String,
         uploadQuota: String,
@@ -774,11 +778,23 @@ enum TS3ServerSettingsDraftValidator {
         if !isOptionalHostMessageMode(hostMessageMode) {
             messages.append("Host message mode must be none, log, modal, modal quit, or numeric.")
         }
+        if !isOptionalURL(hostBannerURL) {
+            messages.append("Banner link URL must be a valid absolute URL or empty.")
+        }
+        if !isOptionalURL(hostBannerGraphicsURL) {
+            messages.append("Banner image URL must be a valid absolute URL or empty.")
+        }
         if !isOptionalHostBannerMode(hostBannerMode) {
             messages.append("Host banner mode must be no adjustment, ignore aspect ratio, keep aspect ratio, or numeric.")
         }
         if !isOptionalInt(hostBannerGraphicsInterval) {
             messages.append("Banner refresh seconds must be numeric.")
+        }
+        if !isOptionalURL(hostButtonURL) {
+            messages.append("Button link URL must be a valid absolute URL or empty.")
+        }
+        if !isOptionalURL(hostButtonGraphicsURL) {
+            messages.append("Button image URL must be a valid absolute URL or empty.")
         }
         if !isOptionalInt(iconId) {
             messages.append("Icon ID must be numeric.")
@@ -899,6 +915,19 @@ enum TS3ServerSettingsDraftValidator {
     private static func isOptionalDouble(_ value: String) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty || Double(trimmed) != nil
+    }
+
+    private static func isOptionalURL(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        guard let components = URLComponents(string: trimmed),
+              components.scheme?.isEmpty == false else {
+            return false
+        }
+        if ["http", "https"].contains(components.scheme?.lowercased() ?? "") {
+            return components.host?.isEmpty == false
+        }
+        return URL(string: trimmed) != nil
     }
 
     private static func isOptionalHostMessageMode(_ value: String) -> Bool {

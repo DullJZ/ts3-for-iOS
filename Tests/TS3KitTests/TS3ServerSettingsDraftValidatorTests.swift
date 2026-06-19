@@ -95,6 +95,36 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerSettingsDraftValidatorAcceptsAbsoluteBrandingURLs() {
+        XCTAssertTrue(
+            validationMessages(
+                hostBannerURL: "https://example.com/banner",
+                hostBannerGraphicsURL: "https://example.com/banner.png",
+                hostButtonURL: "ts3server://voice.example.com?port=9987",
+                hostButtonGraphicsURL: "https://example.com/button.png"
+            ).isEmpty
+        )
+    }
+
+    func testServerSettingsDraftValidatorRejectsInvalidBrandingURLs() {
+        let messages = validationMessages(
+            hostBannerURL: "example.com/banner",
+            hostBannerGraphicsURL: "https:///banner.png",
+            hostButtonURL: "not a url",
+            hostButtonGraphicsURL: "button.png"
+        )
+
+        XCTAssertEqual(
+            messages,
+            [
+                "Banner link URL must be a valid absolute URL or empty.",
+                "Banner image URL must be a valid absolute URL or empty.",
+                "Button link URL must be a valid absolute URL or empty.",
+                "Button image URL must be a valid absolute URL or empty."
+            ]
+        )
+    }
+
     func testServerSettingsImpactSummaryCountsAreasAndValidationIssues() {
         let summary = TS3ServerSettingsImpactSummary(
             areaChangeCounts: [
@@ -549,8 +579,12 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         maxClients: String = "32",
         reservedSlots: String = "2",
         hostMessageMode: String = "0",
+        hostBannerURL: String = "",
+        hostBannerGraphicsURL: String = "",
         hostBannerMode: String = "",
         hostBannerGraphicsInterval: String = "",
+        hostButtonURL: String = "",
+        hostButtonGraphicsURL: String = "",
         iconId: String = "",
         downloadQuota: String = "",
         uploadQuota: String = "",
@@ -588,8 +622,12 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             maxClients: maxClients,
             reservedSlots: reservedSlots,
             hostMessageMode: hostMessageMode,
+            hostBannerURL: hostBannerURL,
+            hostBannerGraphicsURL: hostBannerGraphicsURL,
             hostBannerMode: hostBannerMode,
             hostBannerGraphicsInterval: hostBannerGraphicsInterval,
+            hostButtonURL: hostButtonURL,
+            hostButtonGraphicsURL: hostButtonGraphicsURL,
             iconId: iconId,
             downloadQuota: downloadQuota,
             uploadQuota: uploadQuota,
