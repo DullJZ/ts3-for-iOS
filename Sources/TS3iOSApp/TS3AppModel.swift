@@ -4767,6 +4767,79 @@ struct TS3ComplaintSummary: Identifiable, Codable {
     }
 }
 
+struct TS3ComplaintSourceActionSummary {
+    let complaint: TS3ComplaintSummary
+    let hasDatabaseRecord: Bool
+    let hasUniqueIdentifier: Bool
+    let isOnline: Bool
+    let contactStatus: TS3ContactStatus
+    let hasContactNote: Bool
+
+    var identityActionCount: Int {
+        2
+            + (hasSourceName ? 1 : 0)
+            + (hasUniqueIdentifier ? 1 : 0)
+    }
+
+    var contactActionCount: Int {
+        guard hasUniqueIdentifier else { return 0 }
+        return TS3ContactStatus.allCases.count + (hasContactNote ? 1 : 0)
+    }
+
+    var messagingActionCount: Int {
+        isOnline ? 2 : 0
+    }
+
+    var adminActionCount: Int {
+        1 + (hasDatabaseRecord ? 2 : 0)
+    }
+
+    var onlineActionCount: Int {
+        isOnline ? 1 : 0
+    }
+
+    var availableActionCount: Int {
+        identityActionCount
+            + contactActionCount
+            + messagingActionCount
+            + adminActionCount
+            + onlineActionCount
+    }
+
+    var needsAttention: Bool {
+        !hasSourceName || !hasDatabaseRecord || !hasUniqueIdentifier || !isOnline
+    }
+
+    var clipboardSummary: String {
+        [
+            "sourceDb=\(complaint.sourceClientDatabaseId)",
+            "sourceName=\(normalized(complaint.sourceName) ?? "none")",
+            "databaseRecord=\(hasDatabaseRecord ? "true" : "false")",
+            "uniqueIdentifier=\(hasUniqueIdentifier ? "true" : "false")",
+            "online=\(isOnline ? "true" : "false")",
+            "contactStatus=\(contactStatus.rawValue)",
+            "contactNote=\(hasContactNote ? "true" : "false")",
+            "identityActions=\(identityActionCount)",
+            "contactActions=\(contactActionCount)",
+            "messagingActions=\(messagingActionCount)",
+            "adminActions=\(adminActionCount)",
+            "onlineActions=\(onlineActionCount)",
+            "availableActions=\(availableActionCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var hasSourceName: Bool {
+        normalized(complaint.sourceName) != nil
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct TS3ComplaintListSummary {
     let complaints: [TS3ComplaintSummary]
 
@@ -14878,6 +14951,31 @@ final class TS3AppModel: ObservableObject {
         }
         return clients.compactMap(TS3DatabaseClientSummary.init(user:))
             .first { $0.id == entry.sourceClientDatabaseId }
+    }
+
+    func complaintSourceActionSummary(for entry: TS3ComplaintSummary) -> TS3ComplaintSourceActionSummary {
+        let loadedDatabaseRecord = databaseClients.first { $0.id == entry.sourceClientDatabaseId }
+        let onlineSource = clients.first { $0.databaseId == entry.sourceClientDatabaseId }
+        let resolvedRecord = loadedDatabaseRecord
+            ?? onlineSource.flatMap(TS3DatabaseClientSummary.init(user:))
+            ?? databaseClient(forComplaintSource: entry)
+        let isOnline = onlineSource != nil || resolvedRecord.flatMap { onlineUser(for: $0) } != nil
+        let uniqueIdentifier = resolvedRecord?.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sourceContactNote: String?
+        if let resolvedRecord {
+            sourceContactNote = contactNote(for: resolvedRecord)
+        } else {
+            sourceContactNote = nil
+        }
+
+        return TS3ComplaintSourceActionSummary(
+            complaint: entry,
+            hasDatabaseRecord: loadedDatabaseRecord != nil,
+            hasUniqueIdentifier: uniqueIdentifier?.isEmpty == false,
+            isOnline: isOnline,
+            contactStatus: resolvedRecord.map { contactStatus(for: $0) } ?? .neutral,
+            hasContactNote: sourceContactNote?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        )
     }
 
     func setComplaintSourceContactStatus(_ status: TS3ContactStatus, for entry: TS3ComplaintSummary) {

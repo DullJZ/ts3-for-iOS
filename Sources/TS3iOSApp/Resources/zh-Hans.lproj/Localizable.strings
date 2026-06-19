@@ -3173,6 +3173,7 @@
 "complaints.filterImport.title" = "导入投诉筛选";
 "complaints.row.deleteComplaint" = "删除投诉";
 "complaints.row.deleteAlert.title" = "删除投诉？";
+"complaints.row.copySourceActions" = "复制来源操作";
 "complaints.row.copySourceDb" = "复制来源 DB";
 "complaints.row.copySourceName" = "复制来源名称";
 "complaints.row.contactSource" = "联系来源";

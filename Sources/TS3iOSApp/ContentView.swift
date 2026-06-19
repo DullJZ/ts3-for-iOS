@@ -28706,6 +28706,9 @@ struct ComplaintEntryRow: View {
             Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
             }
+            Button(localized("complaints.row.copySourceActions")) {
+                TS3PlatformSupport.copyToPasteboard(sourceActionSummary.clipboardSummary)
+            }
             Button(localized("complaints.row.copySourceDb")) {
                 TS3PlatformSupport.copyToPasteboard("\(entry.sourceClientDatabaseId)")
             }
@@ -28745,11 +28748,18 @@ struct ComplaintEntryRow: View {
         .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(entry.clipboardSummary)
         }
+        .accessibilityAction(named: localized("complaints.row.copySourceActions")) {
+            TS3PlatformSupport.copyToPasteboard(sourceActionSummary.clipboardSummary)
+        }
         .accessibilityAction(named: localized("complaints.row.deleteComplaint")) {
             if model.state == .connected {
                 isConfirmingDelete = true
             }
         }
+    }
+
+    private var sourceActionSummary: TS3ComplaintSourceActionSummary {
+        model.complaintSourceActionSummary(for: entry)
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

@@ -206,6 +206,87 @@ final class TS3ComplaintArchiveTests: XCTestCase {
         XCTAssertEqual(complaint.accessibilityValue, "Source database ID 44. Target database ID 22")
     }
 
+    @MainActor
+    func testComplaintSourceActionSummaryCountsCompleteSourceContext() {
+        let model = TS3AppModel()
+        model.contacts = [
+            TS3ContactEntry(
+                uniqueIdentifier: "source-uid",
+                nickname: "Reporter",
+                status: .friend,
+                note: "Trusted reporter",
+                updatedAt: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        ]
+        let record = makeDatabaseClient(id: 44, uniqueIdentifier: "source-uid", nickname: "Reporter")
+        model.databaseClients = [record]
+        model.clients = [record.userSummary]
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 44,
+            sourceName: "Reporter",
+            message: "Abuse",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        let summary = model.complaintSourceActionSummary(for: complaint)
+
+        XCTAssertTrue(summary.hasDatabaseRecord)
+        XCTAssertTrue(summary.hasUniqueIdentifier)
+        XCTAssertTrue(summary.isOnline)
+        XCTAssertEqual(summary.contactStatus, .friend)
+        XCTAssertTrue(summary.hasContactNote)
+        XCTAssertEqual(summary.identityActionCount, 4)
+        XCTAssertEqual(summary.contactActionCount, 5)
+        XCTAssertEqual(summary.messagingActionCount, 2)
+        XCTAssertEqual(summary.adminActionCount, 3)
+        XCTAssertEqual(summary.onlineActionCount, 1)
+        XCTAssertEqual(summary.availableActionCount, 15)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sourceDb=44 | sourceName=Reporter | databaseRecord=true | uniqueIdentifier=true | online=true | contactStatus=friend | contactNote=true | identityActions=4 | contactActions=5 | messagingActions=2 | adminActions=3 | onlineActions=1 | availableActions=15 | needsAttention=false"
+        )
+    }
+
+    @MainActor
+    func testComplaintSourceActionSummaryFlagsLimitedSourceContext() {
+        let model = TS3AppModel()
+        model.contacts = []
+        model.databaseClients = []
+        model.clients = []
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 77,
+            sourceName: nil,
+            message: nil,
+            timestamp: nil
+        )
+
+        let summary = model.complaintSourceActionSummary(for: complaint)
+
+        XCTAssertFalse(summary.hasDatabaseRecord)
+        XCTAssertFalse(summary.hasUniqueIdentifier)
+        XCTAssertFalse(summary.isOnline)
+        XCTAssertEqual(summary.contactStatus, .neutral)
+        XCTAssertFalse(summary.hasContactNote)
+        XCTAssertEqual(summary.identityActionCount, 2)
+        XCTAssertEqual(summary.contactActionCount, 0)
+        XCTAssertEqual(summary.messagingActionCount, 0)
+        XCTAssertEqual(summary.adminActionCount, 1)
+        XCTAssertEqual(summary.onlineActionCount, 0)
+        XCTAssertEqual(summary.availableActionCount, 3)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sourceDb=77 | sourceName=none | databaseRecord=false | uniqueIdentifier=false | online=false | contactStatus=neutral | contactNote=false | identityActions=2 | contactActions=0 | messagingActions=0 | adminActions=1 | onlineActions=0 | availableActions=3 | needsAttention=true"
+        )
+    }
+
     func testComplaintListSummaryDeduplicatesAndCountsVisibleComplaints() {
         let named = TS3ComplaintSummary(
             id: "target-22-source-44",
@@ -762,6 +843,23 @@ final class TS3ComplaintArchiveTests: XCTestCase {
 
     private func encodedComplaintFilterPresets(_ presets: [TS3ComplaintFilterPreset]) throws -> Data {
         try JSONEncoder().encode(presets)
+    }
+
+    private func makeDatabaseClient(
+        id: Int,
+        uniqueIdentifier: String?,
+        nickname: String
+    ) -> TS3DatabaseClientSummary {
+        TS3DatabaseClientSummary(
+            id: id,
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
     }
 
     private func makeComplaintFilterPreset(

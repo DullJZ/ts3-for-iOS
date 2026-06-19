@@ -3173,6 +3173,7 @@
 "complaints.filterImport.title" = "Import Complaint Filters";
 "complaints.row.deleteComplaint" = "Delete Complaint";
 "complaints.row.deleteAlert.title" = "Delete Complaint?";
+"complaints.row.copySourceActions" = "Copy Source Actions";
 "complaints.row.copySourceDb" = "Copy Source DB";
 "complaints.row.copySourceName" = "Copy Source Name";
 "complaints.row.contactSource" = "Contact Source";
