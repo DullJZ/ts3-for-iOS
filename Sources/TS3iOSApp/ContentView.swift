@@ -3026,7 +3026,7 @@ struct ChannelListView: View {
                         ChannelRow(
                             channel: item.channel,
                             members: members(in: item.channel.id),
-                            hasChildChannels: item.hasChildren,
+                            childChannelCount: item.childChannelCount,
                             isCollapsed: model.isChannelCollapsed(item.channel.id),
                             toggleCollapsed: {
                                 model.setChannelCollapsed(
@@ -4334,9 +4334,10 @@ struct ChannelTreeItem: Identifiable {
 
     let channel: TS3ChannelSummary
     let depth: Int
-    let hasChildren: Bool
+    let childChannelCount: Int
 
     var id: Int { channel.id }
+    var hasChildren: Bool { childChannelCount > 0 }
 
     static func flatten(
         channels: [TS3ChannelSummary],
@@ -4424,7 +4425,7 @@ struct ChannelTreeItem: Identifiable {
         result.append(ChannelTreeItem(
             channel: channel,
             depth: depth,
-            hasChildren: !childChannels.isEmpty
+            childChannelCount: childChannels.count
         ))
         guard !collapsedChannelIds.contains(channel.id) else { return }
         appendChildren(
@@ -4729,7 +4730,7 @@ struct ChannelRow: View {
     @EnvironmentObject private var model: TS3AppModel
     let channel: TS3ChannelSummary
     let members: [TS3UserSummary]
-    var hasChildChannels = false
+    var childChannelCount = 0
     var isCollapsed = false
     var toggleCollapsed: (() -> Void)?
     @State private var joinPassword = ""
@@ -4750,6 +4751,10 @@ struct ChannelRow: View {
 
     private var channelPath: String {
         model.channelPath(for: channel)
+    }
+
+    private var hasChildChannels: Bool {
+        childChannelCount > 0
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
@@ -4930,8 +4935,14 @@ struct ChannelRow: View {
                     Button(localized("channelActions.deleteChannel")) {
                         isConfirmingDelete = true
                     }
+                    Button(localized("channelActions.copyDeleteImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(channelDeleteImpactSummary.clipboardSummary)
+                    }
                     Button(localized("channelActions.forceDeleteChannel")) {
                         isConfirmingForcedDelete = true
+                    }
+                    Button(localized("channelActions.copyForceDeleteImpact")) {
+                        TS3PlatformSupport.copyToPasteboard(forcedChannelDeleteImpactSummary.clipboardSummary)
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -4998,7 +5009,7 @@ struct ChannelRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("channelActions.deleteChannel")),
-                message: Text(channel.name),
+                message: Text(channelDeleteImpactText(channelDeleteImpactSummary)),
                 primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                     model.deleteChannel(channel, force: false)
                 },
@@ -5009,7 +5020,7 @@ struct ChannelRow: View {
             EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
                 Alert(
                     title: Text(localized("channelActions.forceDeleteChannel")),
-                    message: Text(channel.name),
+                    message: Text(channelDeleteImpactText(forcedChannelDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("channelActions.forceDelete"))) {
                         model.deleteChannel(channel, force: true)
                     },
@@ -5017,6 +5028,63 @@ struct ChannelRow: View {
                 )
             }
         )
+    }
+
+    private var channelDeleteImpactSummary: TS3ChannelDeleteImpactSummary {
+        TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: members.count,
+            childChannelCount: childChannelCount,
+            force: false
+        )
+    }
+
+    private var forcedChannelDeleteImpactSummary: TS3ChannelDeleteImpactSummary {
+        TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: members.count,
+            childChannelCount: childChannelCount,
+            force: true
+        )
+    }
+
+    private func channelDeleteImpactText(_ summary: TS3ChannelDeleteImpactSummary) -> String {
+        var lines = [
+            channel.name,
+            localized(
+                "channelActions.deleteImpactFormat",
+                summary.affectedChannelCount,
+                summary.reportedFamilyClientCount
+            )
+        ]
+        if summary.force {
+            lines.append(localized("channelActions.deleteImpactForce"))
+        }
+        if summary.childChannelCount > 0 {
+            lines.append(localized("channelActions.deleteImpactChildChannelsFormat", summary.childChannelCount))
+        }
+        if channel.isCurrent {
+            lines.append(localized("channelActions.deleteImpactCurrent"))
+        }
+        if channel.isDefault {
+            lines.append(localized("channelActions.deleteImpactDefault"))
+        }
+        if channel.isPermanent {
+            lines.append(localized("channelActions.deleteImpactPermanent"))
+        }
+        if channel.isPasswordProtected {
+            lines.append(localized("channelActions.deleteImpactPassword"))
+        }
+        if summary.hasFileRepository {
+            lines.append(localized("channelActions.deleteImpactFiles"))
+        }
+        if let deleteDelaySeconds = channel.deleteDelaySeconds {
+            lines.append(localized("channelActions.deleteImpactDelayFormat", deleteDelaySeconds))
+        }
+        if let neededDeletePower = channel.neededDeletePower {
+            lines.append(localized("channelActions.deleteImpactPermissionFormat", neededDeletePower))
+        }
+        return lines.joined(separator: "\n")
     }
 
     private var channelLimitText: String? {

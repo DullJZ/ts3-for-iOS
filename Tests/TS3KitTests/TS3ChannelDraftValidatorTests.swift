@@ -181,6 +181,96 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelDeleteImpactSummaryCountsRiskSignals() {
+        let channel = TS3ChannelSummary(
+            id: 12,
+            parentId: 1,
+            name: "Raid Room",
+            filePath: "files/raid",
+            isDefault: true,
+            isPasswordProtected: true,
+            isPermanent: true,
+            neededDeletePower: 40,
+            deleteDelaySeconds: 3600,
+            totalClients: 2,
+            totalClientsFamily: 5,
+            isCurrent: true
+        )
+
+        let summary = TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: 2,
+            childChannelCount: 3,
+            force: false
+        )
+
+        XCTAssertEqual(summary.affectedChannelCount, 4)
+        XCTAssertEqual(summary.reportedDirectClientCount, 2)
+        XCTAssertEqual(summary.reportedFamilyClientCount, 5)
+        XCTAssertTrue(summary.hasFileRepository)
+        XCTAssertTrue(summary.hasDeletePermissionGate)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "channelId=12 | name=Raid Room | force=false | childChannels=3 | directClients=2 | familyClients=5 | current=true | default=true | permanent=true | password=true | filePath=true | deleteDelay=3600 | neededDeletePower=40 | affectedChannels=4 | affectedClients=5 | needsAttention=true"
+        )
+    }
+
+    func testChannelDeleteImpactSummaryHandlesEmptyTemporaryChannel() {
+        let channel = TS3ChannelSummary(
+            id: 13,
+            name: "Temp",
+            isDefault: false,
+            isPasswordProtected: false,
+            isPermanent: false,
+            isSemiPermanent: false,
+            totalClients: 0,
+            totalClientsFamily: 0,
+            isCurrent: false
+        )
+
+        let summary = TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: 0,
+            childChannelCount: 0,
+            force: false
+        )
+
+        XCTAssertEqual(summary.affectedChannelCount, 1)
+        XCTAssertEqual(summary.reportedFamilyClientCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "channelId=13 | name=Temp | force=false | childChannels=0 | directClients=0 | familyClients=0 | current=false | default=false | permanent=false | password=false | filePath=false | deleteDelay=none | neededDeletePower=none | affectedChannels=1 | affectedClients=0 | needsAttention=false"
+        )
+    }
+
+    func testChannelDeleteImpactSummaryFlagsForceDeletion() {
+        let channel = TS3ChannelSummary(
+            id: 14,
+            name: "Stale",
+            isDefault: false,
+            isPasswordProtected: false,
+            isPermanent: false,
+            totalClients: 0,
+            totalClientsFamily: 0,
+            isCurrent: false
+        )
+
+        let summary = TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: 0,
+            childChannelCount: 0,
+            force: true
+        )
+
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "channelId=14 | name=Stale | force=true | childChannels=0 | directClients=0 | familyClients=0 | current=false | default=false | permanent=false | password=false | filePath=false | deleteDelay=none | neededDeletePower=none | affectedChannels=1 | affectedClients=0 | needsAttention=true"
+        )
+    }
+
     func testChannelPermissionGateSummaryTracksConfiguredInheritedAndHighestGates() {
         let summary = TS3ChannelPermissionGateSummary(
             neededTalkPower: 20,

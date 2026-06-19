@@ -551,6 +551,67 @@ struct TS3ChannelSummary: Identifiable {
     }
 }
 
+struct TS3ChannelDeleteImpactSummary {
+    let channel: TS3ChannelSummary
+    let memberCount: Int
+    let childChannelCount: Int
+    let force: Bool
+
+    var affectedChannelCount: Int {
+        1 + max(0, childChannelCount)
+    }
+
+    var reportedDirectClientCount: Int {
+        channel.totalClients ?? memberCount
+    }
+
+    var reportedFamilyClientCount: Int {
+        channel.totalClientsFamily ?? max(reportedDirectClientCount, memberCount)
+    }
+
+    var hasFileRepository: Bool {
+        channel.filePath?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var hasDeletePermissionGate: Bool {
+        channel.neededDeletePower != nil
+    }
+
+    var needsAttention: Bool {
+        force
+            || affectedChannelCount > 1
+            || reportedFamilyClientCount > 0
+            || channel.isCurrent
+            || channel.isDefault
+            || channel.isPermanent
+            || channel.isPasswordProtected
+            || hasFileRepository
+            || channel.deleteDelaySeconds != nil
+            || hasDeletePermissionGate
+    }
+
+    var clipboardSummary: String {
+        [
+            "channelId=\(channel.id)",
+            "name=\(channel.name)",
+            "force=\(force ? "true" : "false")",
+            "childChannels=\(childChannelCount)",
+            "directClients=\(reportedDirectClientCount)",
+            "familyClients=\(reportedFamilyClientCount)",
+            "current=\(channel.isCurrent ? "true" : "false")",
+            "default=\(channel.isDefault ? "true" : "false")",
+            "permanent=\(channel.isPermanent ? "true" : "false")",
+            "password=\(channel.isPasswordProtected ? "true" : "false")",
+            "filePath=\(hasFileRepository ? "true" : "false")",
+            "deleteDelay=\(channel.deleteDelaySeconds.map(String.init) ?? "none")",
+            "neededDeletePower=\(channel.neededDeletePower.map(String.init) ?? "none")",
+            "affectedChannels=\(affectedChannelCount)",
+            "affectedClients=\(reportedFamilyClientCount)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 enum TS3ChannelDraftValidator {
     static func validationMessages(
         name: String,
