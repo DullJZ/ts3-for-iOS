@@ -617,6 +617,57 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(client.connectedSeconds, 10)
     }
 
+    func testDatabaseClientParserKeepsOfficialListAndInfoFields() throws {
+        let command = try TS3MultiCommand.parse(
+            """
+            clientdblist cldbid=42 client_unique_identifier=uid\\/abc client_nickname=Taylor client_created=1700000000 client_lastconnected=1700001000 client_totalconnections=14 client_description=Ops\\slead client_lastip=203.0.113.5
+            """
+        ).simplifyOne()
+
+        let client = try XCTUnwrap(TS3Client.databaseClient(from: command))
+
+        XCTAssertEqual(client.id, 42)
+        XCTAssertEqual(client.uniqueIdentifier, "uid/abc")
+        XCTAssertEqual(client.nickname, "Taylor")
+        XCTAssertEqual(client.createdAt, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(client.lastConnectedAt, Date(timeIntervalSince1970: 1_700_001_000))
+        XCTAssertEqual(client.totalConnections, 14)
+        XCTAssertEqual(client.description, "Ops lead")
+        XCTAssertEqual(client.lastIP, "203.0.113.5")
+    }
+
+    func testDatabaseClientParserAcceptsLookupAliasesAndFallbackId() throws {
+        let command = try TS3MultiCommand.parse(
+            "clientdbinfo cluid=uid\\/fallback client_lastnickname=Recent\\sGuest"
+        ).simplifyOne()
+
+        let client = try XCTUnwrap(TS3Client.databaseClient(from: command, fallbackDatabaseId: 77))
+
+        XCTAssertEqual(client.id, 77)
+        XCTAssertEqual(client.uniqueIdentifier, "uid/fallback")
+        XCTAssertEqual(client.nickname, "Recent Guest")
+        XCTAssertNil(client.createdAt)
+        XCTAssertNil(client.lastConnectedAt)
+        XCTAssertNil(client.totalConnections)
+    }
+
+    func testClientLocationParserKeepsOnlineLookupNames() throws {
+        let byUID = try TS3MultiCommand.parse(
+            "clientgetids clid=12 name=Taylor"
+        ).simplifyOne()
+        let byFind = try TS3MultiCommand.parse(
+            "clientfind clid=13 client_nickname=Jordan"
+        ).simplifyOne()
+
+        let uidLocation = try XCTUnwrap(TS3Client.clientLocation(from: byUID))
+        let findLocation = try XCTUnwrap(TS3Client.clientLocation(from: byFind))
+
+        XCTAssertEqual(uidLocation.clientId, 12)
+        XCTAssertEqual(uidLocation.nickname, "Taylor")
+        XCTAssertEqual(findLocation.clientId, 13)
+        XCTAssertEqual(findLocation.nickname, "Jordan")
+    }
+
     func testServerInfoParserKeepsOfficialEditableAdministrationFields() throws {
         let command = try TS3MultiCommand.parse(
             """

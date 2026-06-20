@@ -2978,6 +2978,43 @@ extension TS3Client {
         )
     }
 
+    static func databaseClient(from command: TS3SingleCommand, fallbackDatabaseId: Int? = nil) -> TS3DatabaseClient? {
+        func intValue(_ name: String) -> Int? {
+            command.get(name)?.value.flatMap(Int.init)
+        }
+        func dateValue(_ name: String) -> Date? {
+            intValue(name).map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        }
+
+        guard let databaseId = intValue("cldbid") ?? intValue("client_database_id") ?? fallbackDatabaseId else {
+            return nil
+        }
+        let nickname = command.get("client_nickname")?.value
+            ?? command.get("name")?.value
+            ?? command.get("client_lastnickname")?.value
+            ?? "Client DB \(databaseId)"
+        return TS3DatabaseClient(
+            id: databaseId,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? command.get("cluid")?.value,
+            nickname: nickname,
+            createdAt: dateValue("client_created"),
+            lastConnectedAt: dateValue("client_lastconnected"),
+            totalConnections: intValue("client_totalconnections"),
+            description: command.get("client_description")?.value,
+            lastIP: command.get("client_lastip")?.value
+        )
+    }
+
+    static func clientLocation(from command: TS3SingleCommand) -> TS3ClientLocation? {
+        guard let clientId = command.get("clid")?.value.flatMap(Int.init) else {
+            return nil
+        }
+        return TS3ClientLocation(
+            clientId: clientId,
+            nickname: command.get("name")?.value ?? command.get("client_nickname")?.value
+        )
+    }
+
     static func permission(from command: TS3SingleCommand) -> TS3Permission? {
         guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
               let value = command.get("permvalue")?.value.flatMap(Int.init) else {
@@ -3615,33 +3652,11 @@ private extension TS3Client {
     }
 
     func databaseClient(from command: TS3SingleCommand, fallbackDatabaseId: Int? = nil) -> TS3DatabaseClient? {
-        guard let databaseId = intValue(command, "cldbid") ?? intValue(command, "client_database_id") ?? fallbackDatabaseId else {
-            return nil
-        }
-        let nickname = command.get("client_nickname")?.value
-            ?? command.get("name")?.value
-            ?? command.get("client_lastnickname")?.value
-            ?? "Client DB \(databaseId)"
-        return TS3DatabaseClient(
-            id: databaseId,
-            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? command.get("cluid")?.value,
-            nickname: nickname,
-            createdAt: dateValue(command, "client_created"),
-            lastConnectedAt: dateValue(command, "client_lastconnected"),
-            totalConnections: intValue(command, "client_totalconnections"),
-            description: command.get("client_description")?.value,
-            lastIP: command.get("client_lastip")?.value
-        )
+        Self.databaseClient(from: command, fallbackDatabaseId: fallbackDatabaseId)
     }
 
     func clientLocation(from command: TS3SingleCommand) -> TS3ClientLocation? {
-        guard let clientId = intValue(command, "clid") else {
-            return nil
-        }
-        return TS3ClientLocation(
-            clientId: clientId,
-            nickname: command.get("name")?.value ?? command.get("client_nickname")?.value
-        )
+        Self.clientLocation(from: command)
     }
 
     func serverInfo(from command: TS3SingleCommand) -> TS3ServerInfo? {
