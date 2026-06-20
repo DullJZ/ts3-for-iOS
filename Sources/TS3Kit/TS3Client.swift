@@ -1143,15 +1143,13 @@ public final class TS3Client {
     }
 
     public func usePrivilegeKey(_ key: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "privilegekeyuse", parameters: [
-            TS3CommandSingleParameter(name: "token", value: key)
-        ]))
+        _ = try await execute(Self.privilegeKeyUseCommand(key))
         try? await refreshGroups()
     }
 
     /// Returns the virtual server privilege keys visible to the current client.
     public func refreshPrivilegeKeys() async throws -> [TS3PrivilegeKeyEntry] {
-        let responses = try await execute(TS3SingleCommand(name: "privilegekeylist"))
+        let responses = try await execute(Self.privilegeKeyListCommand())
         return responses.compactMap { privilegeKeyEntry(from: $0) }
     }
 
@@ -1163,14 +1161,13 @@ public final class TS3Client {
         description: String? = nil,
         customSet: String? = nil
     ) async throws -> String {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "tokentype", value: String(type.rawValue)),
-            TS3CommandSingleParameter(name: "tokenid1", value: String(groupId)),
-            TS3CommandSingleParameter(name: "tokenid2", value: String(channelId ?? 0))
-        ]
-        appendParameter(&params, name: "tokendescription", value: description)
-        appendParameter(&params, name: "tokencustomset", value: customSet)
-        let responses = try await execute(TS3SingleCommand(name: "privilegekeyadd", parameters: params))
+        let responses = try await execute(Self.privilegeKeyAddCommand(
+            type: type,
+            groupId: groupId,
+            channelId: channelId,
+            description: description,
+            customSet: customSet
+        ))
         guard let key = responses.first?.get("token")?.value else {
             throw TS3Error.invalidCommand
         }
@@ -1179,9 +1176,7 @@ public final class TS3Client {
 
     /// Deletes a privilege key from the virtual server.
     public func deletePrivilegeKey(_ key: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "privilegekeydelete", parameters: [
-            TS3CommandSingleParameter(name: "token", value: key)
-        ]))
+        _ = try await execute(Self.privilegeKeyDeleteCommand(key))
     }
 
     public func identitySnapshot() async throws -> TS3IdentitySnapshot {
@@ -3299,6 +3294,43 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),
             TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
             TS3CommandSingleParameter(name: "permsid", value: permissionName)
+        ])
+    }
+
+    static func privilegeKeyListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "privilegekeylist")
+    }
+
+    static func privilegeKeyUseCommand(_ key: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "privilegekeyuse", parameters: [
+            TS3CommandSingleParameter(name: "token", value: key)
+        ])
+    }
+
+    static func privilegeKeyAddCommand(
+        type: TS3PrivilegeKeyType,
+        groupId: Int,
+        channelId: Int?,
+        description: String?,
+        customSet: String?
+    ) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "tokentype", value: String(type.rawValue)),
+            TS3CommandSingleParameter(name: "tokenid1", value: String(groupId)),
+            TS3CommandSingleParameter(name: "tokenid2", value: String(channelId ?? 0))
+        ]
+        if let description {
+            params.append(TS3CommandSingleParameter(name: "tokendescription", value: description))
+        }
+        if let customSet {
+            params.append(TS3CommandSingleParameter(name: "tokencustomset", value: customSet))
+        }
+        return TS3SingleCommand(name: "privilegekeyadd", parameters: params)
+    }
+
+    static func privilegeKeyDeleteCommand(_ key: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "privilegekeydelete", parameters: [
+            TS3CommandSingleParameter(name: "token", value: key)
         ])
     }
 

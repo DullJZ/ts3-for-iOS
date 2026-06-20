@@ -478,19 +478,33 @@ final class TS3CommandTests: XCTestCase {
         )
     }
 
-    func testPrivilegeKeyCreateCommandBuildsCustomSetAndDescription() {
-        let command = TS3SingleCommand(name: "privilegekeyadd", parameters: [
-            TS3CommandSingleParameter(name: "tokentype", value: "0"),
-            TS3CommandSingleParameter(name: "tokenid1", value: "6"),
-            TS3CommandSingleParameter(name: "tokenid2", value: "0"),
-            TS3CommandSingleParameter(name: "tokendescription", value: "One time admin"),
-            TS3CommandSingleParameter(name: "tokencustomset", value: "ident=ios")
-        ])
+    func testPrivilegeKeyCommandsBuildOfficialParameters() {
+        let list = TS3Client.privilegeKeyListCommand()
+        let use = TS3Client.privilegeKeyUseCommand("token / one | use")
+        let serverGroupKey = TS3Client.privilegeKeyAddCommand(
+            type: .serverGroup,
+            groupId: 6,
+            channelId: nil,
+            description: "One time admin",
+            customSet: "ident=ios"
+        )
+        let channelGroupKey = TS3Client.privilegeKeyAddCommand(
+            type: .channelGroup,
+            groupId: 5,
+            channelId: 12,
+            description: "",
+            customSet: nil
+        )
+        let delete = TS3Client.privilegeKeyDeleteCommand("token / old | delete")
 
+        XCTAssertEqual(list.build(), "privilegekeylist")
+        XCTAssertEqual(use.build(), "privilegekeyuse token=token\\s\\/\\sone\\s\\p\\suse")
         XCTAssertEqual(
-            command.build(),
+            serverGroupKey.build(),
             "privilegekeyadd tokentype=0 tokenid1=6 tokenid2=0 tokendescription=One\\stime\\sadmin tokencustomset=ident=ios"
         )
+        XCTAssertEqual(channelGroupKey.build(), "privilegekeyadd tokentype=1 tokenid1=5 tokenid2=12 tokendescription=")
+        XCTAssertEqual(delete.build(), "privilegekeydelete token=token\\s\\/\\sold\\s\\p\\sdelete")
     }
 
     func testBanAddCommandRequiresOfficialTargetFieldsAndEscapesReason() {
