@@ -721,7 +721,7 @@ public final class TS3Client {
 
     /// Returns temporary server passwords visible to the current client.
     public func refreshTemporaryServerPasswords() async throws -> [TS3TemporaryServerPassword] {
-        let responses = try await execute(TS3SingleCommand(name: "servertemppasswordlist"))
+        let responses = try await execute(Self.temporaryServerPasswordListCommand())
         return responses.compactMap { temporaryServerPassword(from: $0) }
     }
 
@@ -733,23 +733,18 @@ public final class TS3Client {
         targetChannelId: Int? = nil,
         targetChannelPassword: String? = nil
     ) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "pw", value: password),
-            TS3CommandSingleParameter(name: "duration", value: String(durationSeconds))
-        ]
-        appendParameter(&params, name: "desc", value: trimmedNonEmpty(description))
-        if let targetChannelId {
-            params.append(TS3CommandSingleParameter(name: "tcid", value: String(targetChannelId)))
-        }
-        appendParameter(&params, name: "tcpw", value: trimmedNonEmpty(targetChannelPassword))
-        _ = try await execute(TS3SingleCommand(name: "servertemppasswordadd", parameters: params))
+        _ = try await execute(Self.temporaryServerPasswordAddCommand(
+            password: password,
+            durationSeconds: durationSeconds,
+            description: description,
+            targetChannelId: targetChannelId,
+            targetChannelPassword: targetChannelPassword
+        ))
     }
 
     /// Deletes a temporary server password from this virtual server.
     public func deleteTemporaryServerPassword(_ password: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "servertemppassworddel", parameters: [
-            TS3CommandSingleParameter(name: "pw", value: password)
-        ]))
+        _ = try await execute(Self.temporaryServerPasswordDeleteCommand(password))
     }
 
     public func pokeClient(clientId targetClientId: Int, message: String) async throws {
@@ -3144,6 +3139,45 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),
             TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ])
+    }
+
+    static func temporaryServerPasswordListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "servertemppasswordlist")
+    }
+
+    static func temporaryServerPasswordAddCommand(
+        password: String,
+        durationSeconds: Int,
+        description: String?,
+        targetChannelId: Int?,
+        targetChannelPassword: String?
+    ) -> TS3SingleCommand {
+        func trimmedNonEmpty(_ value: String?) -> String? {
+            guard let value else { return nil }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "pw", value: password),
+            TS3CommandSingleParameter(name: "duration", value: String(durationSeconds))
+        ]
+        if let description = trimmedNonEmpty(description) {
+            params.append(TS3CommandSingleParameter(name: "desc", value: description))
+        }
+        if let targetChannelId {
+            params.append(TS3CommandSingleParameter(name: "tcid", value: String(targetChannelId)))
+        }
+        if let targetChannelPassword = trimmedNonEmpty(targetChannelPassword) {
+            params.append(TS3CommandSingleParameter(name: "tcpw", value: targetChannelPassword))
+        }
+        return TS3SingleCommand(name: "servertemppasswordadd", parameters: params)
+    }
+
+    static func temporaryServerPasswordDeleteCommand(_ password: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "servertemppassworddel", parameters: [
+            TS3CommandSingleParameter(name: "pw", value: password)
         ])
     }
 

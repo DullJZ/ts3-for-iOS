@@ -463,19 +463,31 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(channelSetClient.build(), "setclientchannelgroup cgid=5 cid=12 cldbid=42")
     }
 
-    func testTemporaryServerPasswordCommandEscapesDescriptionAndChannelPassword() {
-        let command = TS3SingleCommand(name: "servertemppasswordadd", parameters: [
-            TS3CommandSingleParameter(name: "pw", value: "guest pass"),
-            TS3CommandSingleParameter(name: "duration", value: "3600"),
-            TS3CommandSingleParameter(name: "desc", value: "Raid Room | Guests"),
-            TS3CommandSingleParameter(name: "tcid", value: "7"),
-            TS3CommandSingleParameter(name: "tcpw", value: "room pass")
-        ])
+    func testTemporaryServerPasswordCommandsBuildOfficialParameters() {
+        let list = TS3Client.temporaryServerPasswordListCommand()
+        let add = TS3Client.temporaryServerPasswordAddCommand(
+            password: "guest pass",
+            durationSeconds: 3600,
+            description: " Raid Room | Guests ",
+            targetChannelId: 7,
+            targetChannelPassword: " room pass "
+        )
+        let serverOnly = TS3Client.temporaryServerPasswordAddCommand(
+            password: "server pass",
+            durationSeconds: 0,
+            description: "   ",
+            targetChannelId: nil,
+            targetChannelPassword: nil
+        )
+        let delete = TS3Client.temporaryServerPasswordDeleteCommand("guest pass")
 
+        XCTAssertEqual(list.build(), "servertemppasswordlist")
         XCTAssertEqual(
-            command.build(),
+            add.build(),
             "servertemppasswordadd pw=guest\\spass duration=3600 desc=Raid\\sRoom\\s\\p\\sGuests tcid=7 tcpw=room\\spass"
         )
+        XCTAssertEqual(serverOnly.build(), "servertemppasswordadd pw=server\\spass duration=0")
+        XCTAssertEqual(delete.build(), "servertemppassworddel pw=guest\\spass")
     }
 
     func testPrivilegeKeyCommandsBuildOfficialParameters() {
