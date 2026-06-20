@@ -460,6 +460,41 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(info.bandwidthSentLastMinute, 1024)
     }
 
+    func testConnectionInfoParserKeepsOfficialConnectionQualityAndTrafficFields() throws {
+        let command = try TS3MultiCommand.parse(
+            """
+            serverrequestconnectioninfo connection_ping=42.5 connection_packetloss_total=0.0125 connection_packetloss_speech=0.01 connection_packetloss_keepalive=0.02 connection_packetloss_control=0.03 connection_bytes_received=1024 connection_bytes_sent=2048 connection_bytes_received_month=4096 connection_bytes_sent_month=8192 connection_bytes_received_total=16384 connection_bytes_sent_total=32768 connection_connected_time=125000 client_idle_time=5000
+            """
+        ).simplifyOne()
+
+        let info = try XCTUnwrap(TS3Client.connectionInfo(from: command))
+
+        XCTAssertEqual(info.ping, 42.5)
+        XCTAssertEqual(info.packetLossTotal, 0.0125)
+        XCTAssertEqual(info.packetLossSpeech, 0.01)
+        XCTAssertEqual(info.packetLossKeepalive, 0.02)
+        XCTAssertEqual(info.packetLossControl, 0.03)
+        XCTAssertEqual(info.bytesReceived, 1_024)
+        XCTAssertEqual(info.bytesSent, 2_048)
+        XCTAssertEqual(info.monthlyBytesReceived, 4_096)
+        XCTAssertEqual(info.monthlyBytesSent, 8_192)
+        XCTAssertEqual(info.totalBytesReceived, 16_384)
+        XCTAssertEqual(info.totalBytesSent, 32_768)
+        XCTAssertEqual(info.connectedSeconds, 125)
+        XCTAssertEqual(info.idleSeconds, 5)
+    }
+
+    func testConnectionInfoParserFallsBackToConnectionIdleTime() throws {
+        let command = try TS3MultiCommand.parse(
+            "serverrequestconnectioninfo connection_connected_time=90000 connection_idle_time=30000"
+        ).simplifyOne()
+
+        let info = try XCTUnwrap(TS3Client.connectionInfo(from: command))
+
+        XCTAssertEqual(info.connectedSeconds, 90)
+        XCTAssertEqual(info.idleSeconds, 30)
+    }
+
     func testServerInfoParserKeepsOfficialEditableAdministrationFields() throws {
         let command = try TS3MultiCommand.parse(
             """

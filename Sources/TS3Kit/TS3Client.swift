@@ -2886,6 +2886,33 @@ extension TS3Client {
         )
     }
 
+    static func connectionInfo(from command: TS3SingleCommand) -> TS3ConnectionInfo? {
+        func intValue(_ name: String) -> Int? {
+            command.get(name)?.value.flatMap(Int.init)
+        }
+        func int64Value(_ name: String) -> Int64? {
+            command.get(name)?.value.flatMap(Int64.init)
+        }
+        func doubleValue(_ name: String) -> Double? {
+            command.get(name)?.value.flatMap(Double.init)
+        }
+        return TS3ConnectionInfo(
+            ping: doubleValue("connection_ping"),
+            packetLossTotal: doubleValue("connection_packetloss_total"),
+            packetLossSpeech: doubleValue("connection_packetloss_speech"),
+            packetLossKeepalive: doubleValue("connection_packetloss_keepalive"),
+            packetLossControl: doubleValue("connection_packetloss_control"),
+            bytesReceived: int64Value("connection_bytes_received"),
+            bytesSent: int64Value("connection_bytes_sent"),
+            monthlyBytesReceived: int64Value("connection_bytes_received_month"),
+            monthlyBytesSent: int64Value("connection_bytes_sent_month"),
+            totalBytesReceived: int64Value("connection_bytes_received_total"),
+            totalBytesSent: int64Value("connection_bytes_sent_total"),
+            connectedSeconds: intValue("connection_connected_time").map { $0 / 1000 },
+            idleSeconds: (intValue("client_idle_time") ?? intValue("connection_idle_time")).map { $0 / 1000 }
+        )
+    }
+
     static func permission(from command: TS3SingleCommand) -> TS3Permission? {
         guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
               let value = command.get("permvalue")?.value.flatMap(Int.init) else {
@@ -3580,21 +3607,7 @@ private extension TS3Client {
     }
 
     func connectionInfo(from command: TS3SingleCommand) -> TS3ConnectionInfo? {
-        TS3ConnectionInfo(
-            ping: doubleValue(command, "connection_ping"),
-            packetLossTotal: doubleValue(command, "connection_packetloss_total"),
-            packetLossSpeech: doubleValue(command, "connection_packetloss_speech"),
-            packetLossKeepalive: doubleValue(command, "connection_packetloss_keepalive"),
-            packetLossControl: doubleValue(command, "connection_packetloss_control"),
-            bytesReceived: int64Value(command, "connection_bytes_received"),
-            bytesSent: int64Value(command, "connection_bytes_sent"),
-            monthlyBytesReceived: int64Value(command, "connection_bytes_received_month"),
-            monthlyBytesSent: int64Value(command, "connection_bytes_sent_month"),
-            totalBytesReceived: int64Value(command, "connection_bytes_received_total"),
-            totalBytesSent: int64Value(command, "connection_bytes_sent_total"),
-            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 },
-            idleSeconds: (intValue(command, "client_idle_time") ?? intValue(command, "connection_idle_time")).map { $0 / 1000 }
-        )
+        Self.connectionInfo(from: command)
     }
 
     func serverLogEntry(from command: TS3SingleCommand, index: Int) -> TS3ServerLogEntry? {
