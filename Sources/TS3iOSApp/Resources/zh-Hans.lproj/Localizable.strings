@@ -114,6 +114,10 @@
 "connect.cachedOfflineMessageCount" = "%d 条缓存的离线消息";
 "serverTools.title" = "服务器工具";
 "serverTools.server" = "服务器";
+"serverTools.serverView" = "服务器视图";
+"serverTools.administration" = "管理";
+"serverTools.clientDirectory" = "客户端目录";
+"serverTools.moderation" = "安全与处置";
 "serverTools.refreshChannelsAndClients" = "刷新频道和客户端";
 "serverTools.subscribeAllChannels" = "订阅所有频道";
 "serverTools.unsubscribeAllChannels" = "取消订阅所有频道";

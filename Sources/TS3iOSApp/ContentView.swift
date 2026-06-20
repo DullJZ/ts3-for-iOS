@@ -12563,6 +12563,10 @@ struct ServerToolsSheet: View {
     @State private var isImportingNotificationSettings = false
     @State private var isExportingNotificationSettings = false
     @State private var isConfirmingResetNotificationSettings = false
+    @State private var isShowingServerViewTools = true
+    @State private var isShowingAdministrationTools = false
+    @State private var isShowingDirectoryTools = false
+    @State private var isShowingModerationTools = false
     @State private var pendingNotificationSettingsImport: NotificationSettingsImportConfirmation?
     @State private var notificationSettingsDocument = TS3TextFileDocument()
 
@@ -12611,72 +12615,92 @@ struct ServerToolsSheet: View {
             Form {
                 Section(header: Text(localized("serverTools.server"))) {
                     ServerInfoRows()
-                    Button(localized("serverTools.refreshChannelsAndClients")) {
-                        model.refreshServerView()
-                    }
-                    .ts3KeyboardShortcut("refresh-server", in: model)
-                    Button(localized("serverTools.subscribeAllChannels")) {
-                        model.setAllChannelsSubscribed(true)
-                    }
-                    Button(localized("serverTools.unsubscribeAllChannels")) {
-                        model.setAllChannelsSubscribed(false)
-                    }
-                    Button(localized("serverTools.refreshServerInfo")) {
-                        model.refreshServerInfo()
-                    }
-                    Button(localized("serverTools.viewServerInformation")) {
-                        model.refreshServerInfo()
-                        isShowingServerInfo = true
-                    }
-                    Button(localized("serverTools.viewServerLogs")) {
-                        model.refreshServerLogs()
-                        isShowingServerLogs = true
-                    }
-                    .ts3KeyboardShortcut("view-server-logs", in: model)
-                    Button(localized("serverTools.editServerSettings")) {
-                        isShowingServerEditor = true
-                    }
-                    Button(localized("serverTools.refreshPermissionGroups")) {
-                        model.refreshGroups()
-                    }
-                    Button(localized("serverTools.managePermissionGroups")) {
-                        model.refreshGroups()
-                        isShowingGroupManagement = true
-                    }
-                    Button(localized("serverTools.viewPermissions")) {
-                        model.refreshPermissionList()
-                        model.refreshOwnClientPermissions()
-                        isShowingPermissions = true
-                    }
-                    Button(localized("serverTools.managePrivilegeKeys")) {
-                        model.refreshPrivilegeKeys()
-                        isShowingPrivilegeKeys = true
-                    }
-                    Button(localized("serverTools.manageTemporaryPasswords")) {
-                        model.refreshTemporaryServerPasswords()
-                        isShowingTemporaryPasswords = true
-                    }
-                    Button(localized("serverTools.browseClientDatabase")) {
-                        model.refreshClientDatabase()
-                        isShowingClientDatabase = true
-                    }
-                    Button(localized("serverTools.manageContacts")) {
-                        isShowingContacts = true
-                    }
-                    .ts3KeyboardShortcut("manage-contacts", in: model)
-                    Button(localized("serverTools.browseChannelFiles")) {
-                        model.openFileBrowser()
-                        isShowingFiles = true
-                    }
-                    Button(localized("serverTools.manageBans")) {
-                        model.refreshBanList()
-                        isShowingBanList = true
-                    }
-                    Button(localized("serverTools.manageComplaints")) {
-                        if let user = model.clients.first(where: { !$0.isCurrentUser }) {
-                            model.refreshComplaints(for: user)
+
+                    DisclosureGroup(isExpanded: $isShowingServerViewTools) {
+                        Button(localized("serverTools.refreshChannelsAndClients")) {
+                            model.refreshServerView()
                         }
-                        isShowingComplaints = true
+                        .ts3KeyboardShortcut("refresh-server", in: model)
+                        Button(localized("serverTools.subscribeAllChannels")) {
+                            model.setAllChannelsSubscribed(true)
+                        }
+                        Button(localized("serverTools.unsubscribeAllChannels")) {
+                            model.setAllChannelsSubscribed(false)
+                        }
+                        Button(localized("serverTools.refreshServerInfo")) {
+                            model.refreshServerInfo()
+                        }
+                        Button(localized("serverTools.viewServerInformation")) {
+                            model.refreshServerInfo()
+                            isShowingServerInfo = true
+                        }
+                    } label: {
+                        Label(localized("serverTools.serverView"), systemImage: "list.bullet.rectangle")
+                    }
+
+                    DisclosureGroup(isExpanded: $isShowingAdministrationTools) {
+                        Button(localized("serverTools.viewServerLogs")) {
+                            model.refreshServerLogs()
+                            isShowingServerLogs = true
+                        }
+                        .ts3KeyboardShortcut("view-server-logs", in: model)
+                        Button(localized("serverTools.editServerSettings")) {
+                            isShowingServerEditor = true
+                        }
+                        Button(localized("serverTools.refreshPermissionGroups")) {
+                            model.refreshGroups()
+                        }
+                        Button(localized("serverTools.managePermissionGroups")) {
+                            model.refreshGroups()
+                            isShowingGroupManagement = true
+                        }
+                        Button(localized("serverTools.viewPermissions")) {
+                            model.refreshPermissionList()
+                            model.refreshOwnClientPermissions()
+                            isShowingPermissions = true
+                        }
+                        Button(localized("serverTools.managePrivilegeKeys")) {
+                            model.refreshPrivilegeKeys()
+                            isShowingPrivilegeKeys = true
+                        }
+                        Button(localized("serverTools.manageTemporaryPasswords")) {
+                            model.refreshTemporaryServerPasswords()
+                            isShowingTemporaryPasswords = true
+                        }
+                        Button(localized("serverTools.browseChannelFiles")) {
+                            model.openFileBrowser()
+                            isShowingFiles = true
+                        }
+                    } label: {
+                        Label(localized("serverTools.administration"), systemImage: "slider.horizontal.3")
+                    }
+
+                    DisclosureGroup(isExpanded: $isShowingDirectoryTools) {
+                        Button(localized("serverTools.browseClientDatabase")) {
+                            model.refreshClientDatabase()
+                            isShowingClientDatabase = true
+                        }
+                        Button(localized("serverTools.manageContacts")) {
+                            isShowingContacts = true
+                        }
+                        .ts3KeyboardShortcut("manage-contacts", in: model)
+                    } label: {
+                        Label(localized("serverTools.clientDirectory"), systemImage: "person.text.rectangle")
+                    }
+
+                    DisclosureGroup(isExpanded: $isShowingModerationTools) {
+                        Button(localized("serverTools.manageBans")) {
+                            model.refreshBanList()
+                            isShowingBanList = true
+                        }
+                        Button(localized("serverTools.manageComplaints")) {
+                            if let user = model.clients.first(where: { !$0.isCurrentUser }) {
+                                model.refreshComplaints(for: user)
+                            }
+                            isShowingComplaints = true
+                        }
+                    } label: {
+                        Label(localized("serverTools.moderation"), systemImage: "shield")
                     }
                 }
 

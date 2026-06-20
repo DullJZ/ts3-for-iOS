@@ -114,6 +114,10 @@
 "connect.cachedOfflineMessageCount" = "%d cached offline messages";
 "serverTools.title" = "Server Tools";
 "serverTools.server" = "Server";
+"serverTools.serverView" = "Server View";
+"serverTools.administration" = "Administration";
+"serverTools.clientDirectory" = "Client Directory";
+"serverTools.moderation" = "Moderation";
 "serverTools.refreshChannelsAndClients" = "Refresh Channels and Clients";
 "serverTools.subscribeAllChannels" = "Subscribe All Channels";
 "serverTools.unsubscribeAllChannels" = "Unsubscribe All Channels";
