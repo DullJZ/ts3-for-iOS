@@ -707,11 +707,11 @@ public final class TS3Client {
     }
 
     public func refreshGroups() async throws {
-        let serverGroups = try await execute(TS3SingleCommand(name: "servergrouplist"))
+        let serverGroups = try await execute(Self.serverGroupListCommand())
         serverGroupCache = Dictionary(uniqueKeysWithValues: serverGroups.compactMap { command in
             serverGroup(from: command).map { ($0.id, $0) }
         })
-        let channelGroups = try await execute(TS3SingleCommand(name: "channelgrouplist"))
+        let channelGroups = try await execute(Self.channelGroupListCommand())
         channelGroupCache = Dictionary(uniqueKeysWithValues: channelGroups.compactMap { command in
             channelGroup(from: command).map { ($0.id, $0) }
         })
@@ -3146,6 +3146,10 @@ extension TS3Client {
         ])
     }
 
+    static func serverGroupListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "servergrouplist")
+    }
+
     static func serverGroupAddCommand(name: String, type: TS3PermissionGroupDatabaseType) -> TS3SingleCommand {
         TS3SingleCommand(name: "servergroupadd", parameters: [
             TS3CommandSingleParameter(name: "name", value: name),
@@ -3179,6 +3183,10 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "sgid", value: String(groupId)),
             TS3CommandSingleParameter(name: "force", value: force ? "1" : "0")
         ])
+    }
+
+    static func channelGroupListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "channelgrouplist")
     }
 
     static func channelGroupAddCommand(name: String, type: TS3PermissionGroupDatabaseType) -> TS3SingleCommand {

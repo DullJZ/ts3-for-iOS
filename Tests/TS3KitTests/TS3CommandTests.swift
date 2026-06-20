@@ -528,6 +528,7 @@ final class TS3CommandTests: XCTestCase {
     }
 
     func testGroupManagementCommandsBuildOfficialParameters() {
+        let serverList = TS3Client.serverGroupListCommand()
         let serverAdd = TS3Client.serverGroupAddCommand(name: "Moderators | East", type: .regular)
         let serverCopy = TS3Client.serverGroupCopyCommand(
             sourceGroupId: 6,
@@ -537,6 +538,7 @@ final class TS3CommandTests: XCTestCase {
         )
         let serverRename = TS3Client.serverGroupRenameCommand(groupId: 6, name: "Admins / Ops")
         let serverDelete = TS3Client.serverGroupDeleteCommand(groupId: 6, force: true)
+        let channelList = TS3Client.channelGroupListCommand()
         let channelAdd = TS3Client.channelGroupAddCommand(name: "Channel Template", type: .template)
         let channelCopy = TS3Client.channelGroupCopyCommand(
             sourceGroupId: 5,
@@ -547,10 +549,12 @@ final class TS3CommandTests: XCTestCase {
         let channelRename = TS3Client.channelGroupRenameCommand(groupId: 5, name: "Raid Leads")
         let channelDelete = TS3Client.channelGroupDeleteCommand(groupId: 5, force: false)
 
+        XCTAssertEqual(serverList.build(), "servergrouplist")
         XCTAssertEqual(serverAdd.build(), "servergroupadd name=Moderators\\s\\p\\sEast type=1")
         XCTAssertEqual(serverCopy.build(), "servergroupcopy ssgid=6 tsgid=0 name=Moderators\\s\\p\\sCopy type=2")
         XCTAssertEqual(serverRename.build(), "servergrouprename sgid=6 name=Admins\\s\\/\\sOps")
         XCTAssertEqual(serverDelete.build(), "servergroupdel sgid=6 force=1")
+        XCTAssertEqual(channelList.build(), "channelgrouplist")
         XCTAssertEqual(channelAdd.build(), "channelgroupadd name=Channel\\sTemplate type=0")
         XCTAssertEqual(channelCopy.build(), "channelgroupcopy scgid=5 tcgid=10 name=Channel\\sAdmin type=1")
         XCTAssertEqual(channelRename.build(), "channelgrouprename cgid=5 name=Raid\\sLeads")
