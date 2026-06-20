@@ -6023,6 +6023,12 @@ struct ChannelMemberRow: View {
                         }
                     }
                 }
+                if canMoveMemberToCurrentChannel {
+                    Button(localized("clientActions.moveToMyChannel")) {
+                        movePassword = ""
+                        moveTargetChannel = model.currentChannel
+                    }
+                }
                 Button(localized("clientActions.refreshDetails")) {
                     model.refreshUserDetails(member)
                 }
@@ -6202,6 +6208,11 @@ struct ChannelMemberRow: View {
     private var canJoinMemberChannel: Bool {
         guard !member.isCurrentUser, let memberChannel else { return false }
         return model.currentChannel?.id != memberChannel.id
+    }
+
+    private var canMoveMemberToCurrentChannel: Bool {
+        guard !member.isCurrentUser, let currentChannel = model.currentChannel else { return false }
+        return member.channelId != currentChannel.id
     }
 
     private var onlineActionAuditSummary: TS3OnlineClientActionAuditSummary {

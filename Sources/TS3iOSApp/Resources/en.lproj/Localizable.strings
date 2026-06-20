@@ -1650,6 +1650,7 @@
 "clientActions.removeTalkPower" = "Remove Talk Power";
 "clientActions.grantTalkPower" = "Grant Talk Power";
 "clientActions.denyTalkRequest" = "Deny Talk Request";
+"clientActions.moveToMyChannel" = "Move to My Channel";
 "clientActions.moveTo" = "Move To";
 "clientActions.moveUser" = "Move User";
 "clientActions.moveReview" = "Move Review";
