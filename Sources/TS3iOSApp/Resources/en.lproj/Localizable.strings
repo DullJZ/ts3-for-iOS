@@ -2067,6 +2067,15 @@
 "whisper.deleteAllPresets" = "Delete All Presets";
 "whisper.filterPresets" = "Filter Presets";
 "whisper.clearFilters" = "Clear Filters";
+"whisper.viewOptions" = "View Options";
+"whisper.viewSummary" = "Whisper view summary";
+"whisper.viewSummary.default" = "Default view";
+"whisper.viewSummary.searchFormat" = "Search: %@";
+"whisper.viewSummary.filterFormat" = "Filter: %@";
+"whisper.viewSummary.sortFormat" = "Sort: %@";
+"whisper.routeSnapshot" = "Route Snapshot";
+"whisper.selectedTargets.none" = "Selected whisper targets: none";
+"whisper.selectedTargets.format" = "Selected whisper targets: %d channels, %d users";
 "whisper.copyRouteSnapshot" = "Copy Route Snapshot";
 "whisper.exportRouteSnapshot" = "Export Route Snapshot";
 "whisper.currentRoute" = "Current Route";

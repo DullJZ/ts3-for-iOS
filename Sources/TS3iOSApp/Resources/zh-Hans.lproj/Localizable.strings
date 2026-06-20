@@ -2067,6 +2067,15 @@
 "whisper.deleteAllPresets" = "删除所有预设";
 "whisper.filterPresets" = "筛选预设";
 "whisper.clearFilters" = "清除筛选";
+"whisper.viewOptions" = "视图选项";
+"whisper.viewSummary" = "密语视图摘要";
+"whisper.viewSummary.default" = "默认视图";
+"whisper.viewSummary.searchFormat" = "搜索：%@";
+"whisper.viewSummary.filterFormat" = "筛选：%@";
+"whisper.viewSummary.sortFormat" = "排序：%@";
+"whisper.routeSnapshot" = "路由快照";
+"whisper.selectedTargets.none" = "所选密语目标：无";
+"whisper.selectedTargets.format" = "所选密语目标：%d 个频道，%d 个用户";
 "whisper.copyRouteSnapshot" = "复制路由快照";
 "whisper.exportRouteSnapshot" = "导出路由快照";
 "whisper.currentRoute" = "当前路由";

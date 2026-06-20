@@ -29944,13 +29944,31 @@ struct WhisperSheet: View {
         let channelCount = selectedWhisperChannelIds.count
         let clientCount = selectedWhisperClientIds.count
         if channelCount == 0 && clientCount == 0 {
-            return "Selected whisper targets: none"
+            return localized("whisper.selectedTargets.none")
         }
-        return "Selected whisper targets: \(channelCount) channels, \(clientCount) users"
+        return localized("whisper.selectedTargets.format", channelCount, clientCount)
     }
 
     private var groupWhisperRouteDescription: String {
         "\(groupWhisperTypeTitle(groupWhisperType)) / \(groupWhisperTargetTitle(groupWhisperTarget))"
+    }
+
+    private var whisperViewSummary: String {
+        guard hasLocalFilters else {
+            return localized("whisper.viewSummary.default")
+        }
+
+        var parts: [String] = []
+        if isSearching {
+            parts.append(localized("whisper.viewSummary.searchFormat", searchText))
+        }
+        if presetFilter != .all {
+            parts.append(localized("whisper.viewSummary.filterFormat", presetFilterTitle(presetFilter)))
+        }
+        if presetSort != .updated {
+            parts.append(localized("whisper.viewSummary.sortFormat", presetSortTitle(presetSort)))
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var whisperRouteSnapshot: String {
@@ -30000,78 +30018,93 @@ struct WhisperSheet: View {
                 Section(header: Text(localized("whisper.search"))) {
                     TextField(localized("whisper.searchTargets"), text: $searchText)
                         .ts3PlainTextField()
-                    Picker(localized("whisper.presetFilter"), selection: $presetFilter) {
-                        ForEach(WhisperPresetFilter.allCases) { filter in
-                            Text(presetFilterTitle(filter)).tag(filter)
-                        }
-                    }
-                    Picker(localized("whisper.presetSort"), selection: $presetSort) {
-                        ForEach(WhisperPresetSort.allCases) { sort in
-                            Text(presetSortTitle(sort)).tag(sort)
-                        }
-                    }
                     Menu {
-                        TextField(localized("whisper.presetName"), text: $filterPresetName)
-                        Button(localized("whisper.saveCurrentFilters")) {
-                            model.saveWhisperFilterPreset(
-                                name: filterPresetName,
-                                presetFilter: presetFilter.rawValue,
-                                presetSort: presetSort.rawValue,
-                                searchText: searchText
-                            )
-                            filterPresetName = ""
-                        }
-                        .disabled(filterPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        if model.whisperFilterPresets.isEmpty {
-                            Text(localized("whisper.noSavedFilterPresets"))
-                        } else {
-                            ForEach(model.whisperFilterPresets) { preset in
-                                Menu {
-                                    Button(localized("whisper.applyPreset")) {
-                                        applyFilterPreset(preset)
-                                    }
-                                    Button(localized("whisper.useName")) {
-                                        filterPresetName = preset.name
-                                    }
-                                    Button(localized("whisper.deletePreset")) {
-                                        model.deleteWhisperFilterPreset(preset)
-                                    }
-                                } label: {
-                                    VStack(alignment: .leading) {
-                                        Text(preset.name)
-                                        Text(filterPresetSummary(preset))
-                                    }
+                        Section(header: Text(localized("whisper.presetFilter"))) {
+                            Picker(localized("whisper.presetFilter"), selection: $presetFilter) {
+                                ForEach(WhisperPresetFilter.allCases) { filter in
+                                    Text(presetFilterTitle(filter)).tag(filter)
                                 }
                             }
                         }
-                        Divider()
-                        Button(localized("whisper.exportPresets")) {
-                            exportFilterPresets()
+                        Section(header: Text(localized("whisper.presetSort"))) {
+                            Picker(localized("whisper.presetSort"), selection: $presetSort) {
+                                ForEach(WhisperPresetSort.allCases) { sort in
+                                    Text(presetSortTitle(sort)).tag(sort)
+                                }
+                            }
                         }
-                        .disabled(model.whisperFilterPresets.isEmpty)
-                        Button(localized("whisper.importPresets")) {
-                            isImportingFilterPresets = true
+                        Section(header: Text(localized("whisper.filterPresets"))) {
+                            TextField(localized("whisper.presetName"), text: $filterPresetName)
+                            Button(localized("whisper.saveCurrentFilters")) {
+                                model.saveWhisperFilterPreset(
+                                    name: filterPresetName,
+                                    presetFilter: presetFilter.rawValue,
+                                    presetSort: presetSort.rawValue,
+                                    searchText: searchText
+                                )
+                                filterPresetName = ""
+                            }
+                            .disabled(filterPresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            if model.whisperFilterPresets.isEmpty {
+                                Text(localized("whisper.noSavedFilterPresets"))
+                            } else {
+                                ForEach(model.whisperFilterPresets) { preset in
+                                    Menu {
+                                        Button(localized("whisper.applyPreset")) {
+                                            applyFilterPreset(preset)
+                                        }
+                                        Button(localized("whisper.useName")) {
+                                            filterPresetName = preset.name
+                                        }
+                                        Button(localized("whisper.deletePreset")) {
+                                            model.deleteWhisperFilterPreset(preset)
+                                        }
+                                    } label: {
+                                        VStack(alignment: .leading) {
+                                            Text(preset.name)
+                                            Text(filterPresetSummary(preset))
+                                        }
+                                    }
+                                }
+                            }
+                            Divider()
+                            Button(localized("whisper.exportPresets")) {
+                                exportFilterPresets()
+                            }
+                            .disabled(model.whisperFilterPresets.isEmpty)
+                            Button(localized("whisper.importPresets")) {
+                                isImportingFilterPresets = true
+                            }
+                            Button(localized("whisper.deleteAllPresets")) {
+                                confirmation = .deleteAllFilterPresets
+                            }
+                            .disabled(model.whisperFilterPresets.isEmpty)
                         }
-                        Button(localized("whisper.deleteAllPresets")) {
-                            confirmation = .deleteAllFilterPresets
+                        if hasLocalFilters {
+                            Section {
+                                Button(localized("whisper.clearFilters")) {
+                                    resetWhisperViewOptions()
+                                }
+                            }
                         }
-                        .disabled(model.whisperFilterPresets.isEmpty)
                     } label: {
-                        Label(localized("whisper.filterPresets"), systemImage: "line.3.horizontal.decrease.circle")
+                        Label(localized("whisper.viewOptions"), systemImage: "slider.horizontal.3")
                     }
-                    if hasLocalFilters {
-                        Button(localized("whisper.clearFilters")) {
-                            searchText = ""
-                            presetFilter = .all
-                            presetSort = .updated
+                    Text(whisperViewSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .accessibilityLabel(Text(localized("whisper.viewSummary")))
+                        .accessibilityValue(Text(whisperViewSummary))
+                    Menu {
+                        Button(localized("whisper.copyRouteSnapshot")) {
+                            TS3PlatformSupport.copyToPasteboard(whisperRouteSnapshot)
                         }
-                    }
-                    Button(localized("whisper.copyRouteSnapshot")) {
-                        TS3PlatformSupport.copyToPasteboard(whisperRouteSnapshot)
-                    }
-                    Button(localized("whisper.exportRouteSnapshot")) {
-                        routeDocument = TS3TextFileDocument(data: Data(whisperRouteSnapshot.utf8))
-                        isExportingRoute = true
+                        Button(localized("whisper.exportRouteSnapshot")) {
+                            routeDocument = TS3TextFileDocument(data: Data(whisperRouteSnapshot.utf8))
+                            isExportingRoute = true
+                        }
+                    } label: {
+                        Label(localized("whisper.routeSnapshot"), systemImage: "doc.text")
                     }
                 }
 
@@ -30562,6 +30595,12 @@ struct WhisperSheet: View {
         presetSort = WhisperPresetSort(rawValue: preset.presetSort) ?? .updated
         searchText = preset.searchText
         filterPresetName = preset.name
+    }
+
+    private func resetWhisperViewOptions() {
+        searchText = ""
+        presetFilter = .all
+        presetSort = .updated
     }
 
     private func filterPresetSummary(_ preset: TS3WhisperFilterPreset) -> String {
