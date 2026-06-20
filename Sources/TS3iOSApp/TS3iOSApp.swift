@@ -126,6 +126,12 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("view-server-info", in: model)
                 .disabled(model.state != .connected)
 
+                Button("channels.talkRequests") {
+                    model.showTalkRequests()
+                }
+                .ts3KeyboardShortcut("open-talk-requests", in: model)
+                .disabled(model.state != .connected || !model.clients.contains { $0.isRequestingTalkPower })
+
                 Button("catalyst.editServerSettings") {
                     model.showServerSettings()
                 }

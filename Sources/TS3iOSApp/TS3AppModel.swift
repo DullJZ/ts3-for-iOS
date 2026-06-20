@@ -11950,6 +11950,7 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "open-offline-messages",
         "open-events",
         "open-whisper",
+        "open-talk-requests",
         "toggle-whisper-activation",
         "start-whisper-activation",
         "stop-whisper-activation",
@@ -15852,6 +15853,7 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "open-offline-messages", group: "Messaging", action: "Open Offline Messages", defaultKeys: "Command-Shift-I"),
         TS3KeyboardShortcutBinding(actionId: "open-events", group: "Messaging", action: "Open Events", defaultKeys: "Command-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "open-whisper", group: "Messaging", action: "Open Whisper", defaultKeys: "Command-Shift-W"),
+        TS3KeyboardShortcutBinding(actionId: "open-talk-requests", group: "Server", action: "Talk Requests", defaultKeys: "Command-Option-Shift-T"),
         TS3KeyboardShortcutBinding(actionId: "toggle-whisper-activation", group: "Voice", action: "Start / Stop Temporary Whisper", defaultKeys: "Command-Option-W"),
         TS3KeyboardShortcutBinding(actionId: "start-whisper-activation", group: "Voice", action: "Start Temporary Whisper", defaultKeys: "Command-Option-H"),
         TS3KeyboardShortcutBinding(actionId: "stop-whisper-activation", group: "Voice", action: "Stop Temporary Whisper", defaultKeys: "Command-Option-Shift-H"),
@@ -15886,6 +15888,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingOfflineMessages = false
     @Published var isShowingEvents = false
     @Published var isShowingWhisper = false
+    @Published var isShowingTalkRequests = false
     @Published var isShowingServerLogs = false
     @Published var isShowingServerInfo = false
     @Published var isShowingServerEditor = false
@@ -19523,6 +19526,10 @@ final class TS3AppModel: ObservableObject {
 
     func showWhisper() {
         isShowingWhisper = true
+    }
+
+    func showTalkRequests() {
+        isShowingTalkRequests = true
     }
 
     func showContacts() {

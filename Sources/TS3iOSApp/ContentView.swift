@@ -78,6 +78,10 @@ struct ContentView: View {
                 WhisperSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingTalkRequests) {
+                TalkRequestsSheet()
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingServerLogs) {
                 ServerLogsSheet()
                     .environmentObject(model)
