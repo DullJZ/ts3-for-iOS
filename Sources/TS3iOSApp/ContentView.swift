@@ -18820,6 +18820,24 @@ struct DatabaseClientRow: View {
     }
 
     var body: some View {
+        rowControl
+            .sheet(item: $databaseActionMode) { mode in
+                DatabaseClientActionSheet(mode: mode, record: record)
+                    .environmentObject(model)
+            }
+            .sheet(item: $onlineActionMode) { mode in
+                if let onlineUser {
+                    UserActionSheet(mode: mode, user: onlineUser)
+                        .environmentObject(model)
+                }
+            }
+            .sheet(isPresented: $isShowingComplaints) {
+                ComplaintListSheet()
+                    .environmentObject(model)
+            }
+    }
+
+    private var rowControl: some View {
         Button {
             model.loadDatabaseClientDetails(record)
         } label: {
@@ -18835,65 +18853,13 @@ struct DatabaseClientRow: View {
             onlineContextMenuItems
             serverGroupContextMenuItems
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(record.nickname)
-        .accessibilityValue(record.accessibilityValue)
-        .accessibilityAction(named: localized("clientActions.details")) {
-            model.loadDatabaseClientDetails(record)
-        }
-        .accessibilityAction(named: localized("groups.row.copySummary")) {
-            TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
-        }
-        .accessibilityAction(named: localized("groups.members.row.copyDatabaseId")) {
-            TS3PlatformSupport.copyToPasteboard("\(record.id)")
-        }
-        .accessibilityAction(named: localized("groups.members.row.editContactNote")) {
-            if record.uniqueIdentifier?.isEmpty == false {
-                databaseActionMode = .contactNote
-            }
-        }
-        .accessibilityAction(named: localized("groups.members.row.sendOfflineMessage")) {
-            if model.canSendOfflineMessage(to: record) {
-                databaseActionMode = .offlineMessage
-            }
-        }
-        .accessibilityAction(named: localized("groups.members.row.submitComplaint")) {
-            databaseActionMode = .complain
-        }
-        .accessibilityAction(named: localized("database.viewComplaints")) {
-            model.refreshComplaints(for: record)
-            isShowingComplaints = true
-        }
-        .accessibilityAction(named: localized("database.saveClientBookmark")) {
-            if model.databaseClientBookmarkDraftSummary(for: record).canSave {
-                model.saveDatabaseClientBookmark(for: record)
-            }
-        }
-        .accessibilityAction(named: localized("database.copyClientBookmarkDraft")) {
-            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: record))
-        }
-        .accessibilityAction(named: localized("database.copyClientBookmarkImpact")) {
-            TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSaveImpactSummary(for: record).clipboardSummary)
-        }
-        .accessibilityAction(named: localized("groups.members.row.banUniqueId")) {
-            if model.canBanDatabaseClient(record) {
-                databaseActionMode = .ban
-            }
-        }
-        .sheet(item: $databaseActionMode) { mode in
-            DatabaseClientActionSheet(mode: mode, record: record)
-                .environmentObject(model)
-        }
-        .sheet(item: $onlineActionMode) { mode in
-            if let onlineUser {
-                UserActionSheet(mode: mode, user: onlineUser)
-                    .environmentObject(model)
-            }
-        }
-        .sheet(isPresented: $isShowingComplaints) {
-            ComplaintListSheet()
-                .environmentObject(model)
-        }
+        .modifier(DatabaseClientRowAccessibilityModifier(
+            record: record,
+            databaseActionMode: $databaseActionMode,
+            isShowingComplaints: $isShowingComplaints,
+            copyOfficialActionAudit: copyDatabaseClientOfficialActionAudit,
+            copyActionReadiness: copyDatabaseClientActionReadiness
+        ))
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
@@ -18955,6 +18921,12 @@ struct DatabaseClientRow: View {
         }
         Button(localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
+        }
+        Button(localized("database.copyOfficialActionAudit")) {
+            copyDatabaseClientOfficialActionAudit()
+        }
+        Button(localized("database.copyActionReadiness")) {
+            copyDatabaseClientActionReadiness()
         }
         if let uniqueIdentifier = record.uniqueIdentifier, !uniqueIdentifier.isEmpty {
             Button(localized("contacts.row.copyUniqueId")) {
@@ -19053,6 +19025,104 @@ struct DatabaseClientRow: View {
                 }
             }
         }
+    }
+
+    private var databaseClientActionSummary: TS3DatabaseClientActionSummary {
+        TS3DatabaseClientActionSummary(
+            record: record,
+            isOnline: model.hasOnlineClientActions(for: record),
+            canSendOfflineMessage: model.canSendOfflineMessage(to: record),
+            canBan: model.canBanDatabaseClient(record),
+            contactStatus: contactStatus,
+            hasContactNote: model.contactNote(for: record) != nil,
+            serverGroupCount: model.serverGroups.count,
+            canSaveBookmark: model.databaseClientBookmarkDraftSummary(for: record).canSave
+        )
+    }
+
+    private var databaseClientOfficialActionAudit: TS3DatabaseClientOfficialActionAuditSummary {
+        TS3DatabaseClientOfficialActionAuditSummary(actionSummary: databaseClientActionSummary)
+    }
+
+    private var databaseClientActionReadiness: TS3DatabaseClientActionReadinessSummary {
+        TS3DatabaseClientActionReadinessSummary(actionSummary: databaseClientActionSummary)
+    }
+
+    private func copyDatabaseClientOfficialActionAudit() {
+        TS3PlatformSupport.copyToPasteboard(databaseClientOfficialActionAudit.clipboardSummary)
+    }
+
+    private func copyDatabaseClientActionReadiness() {
+        TS3PlatformSupport.copyToPasteboard(databaseClientActionReadiness.clipboardSummary)
+    }
+}
+
+private struct DatabaseClientRowAccessibilityModifier: ViewModifier {
+    @EnvironmentObject private var model: TS3AppModel
+    let record: TS3DatabaseClientSummary
+    @Binding var databaseActionMode: DatabaseClientActionMode?
+    @Binding var isShowingComplaints: Bool
+    let copyOfficialActionAudit: () -> Void
+    let copyActionReadiness: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(record.nickname)
+            .accessibilityValue(record.accessibilityValue)
+            .accessibilityAction(named: localized("clientActions.details")) {
+                model.loadDatabaseClientDetails(record)
+            }
+            .accessibilityAction(named: localized("groups.row.copySummary")) {
+                TS3PlatformSupport.copyToPasteboard(record.clipboardSummary)
+            }
+            .accessibilityAction(named: localized("database.copyOfficialActionAudit")) {
+                copyOfficialActionAudit()
+            }
+            .accessibilityAction(named: localized("database.copyActionReadiness")) {
+                copyActionReadiness()
+            }
+            .accessibilityAction(named: localized("groups.members.row.copyDatabaseId")) {
+                TS3PlatformSupport.copyToPasteboard("\(record.id)")
+            }
+            .accessibilityAction(named: localized("groups.members.row.editContactNote")) {
+                if record.uniqueIdentifier?.isEmpty == false {
+                    databaseActionMode = .contactNote
+                }
+            }
+            .accessibilityAction(named: localized("groups.members.row.sendOfflineMessage")) {
+                if model.canSendOfflineMessage(to: record) {
+                    databaseActionMode = .offlineMessage
+                }
+            }
+            .accessibilityAction(named: localized("groups.members.row.submitComplaint")) {
+                databaseActionMode = .complain
+            }
+            .accessibilityAction(named: localized("database.viewComplaints")) {
+                model.refreshComplaints(for: record)
+                isShowingComplaints = true
+            }
+            .accessibilityAction(named: localized("database.saveClientBookmark")) {
+                if model.databaseClientBookmarkDraftSummary(for: record).canSave {
+                    model.saveDatabaseClientBookmark(for: record)
+                }
+            }
+            .accessibilityAction(named: localized("database.copyClientBookmarkDraft")) {
+                TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSummary(for: record))
+            }
+            .accessibilityAction(named: localized("database.copyClientBookmarkImpact")) {
+                TS3PlatformSupport.copyToPasteboard(model.databaseClientBookmarkSaveImpactSummary(for: record).clipboardSummary)
+            }
+            .accessibilityAction(named: localized("groups.members.row.banUniqueId")) {
+                if model.canBanDatabaseClient(record) {
+                    databaseActionMode = .ban
+                }
+            }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
