@@ -62,6 +62,29 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(avatar.build(), "clientupdate client_flag_avatar=avatar\\/hash")
     }
 
+    func testClientActionCommandsBuildOfficialContextMenuFields() {
+        let hashedChannelPassword = TS3String.escape(TS3Crypto.hashPassword("room pass"))
+        let move = TS3Client.clientMoveCommand(clientId: 7, channelId: 12, password: "room pass")
+        let moveWithoutPassword = TS3Client.clientMoveCommand(clientId: 7, channelId: 12, password: "")
+        let kick = TS3Client.clientKickCommand(clientId: 7, reason: .server, message: "Too / loud | now")
+        let ban = TS3Client.clientBanCommand(clientId: 7, durationSeconds: 600, message: "spam | abuse")
+        let permanentBan = TS3Client.clientBanCommand(clientId: 7, durationSeconds: nil, message: nil)
+        let poke = TS3Client.clientPokeCommand(clientId: 7, message: "Ping / check | now")
+        let description = TS3Client.clientDescriptionEditCommand(clientId: 7, description: "Ops / Lead | notes")
+        let talker = TS3Client.clientTalkerEditCommand(clientId: 7, isTalker: true)
+        let notTalker = TS3Client.clientTalkerEditCommand(clientId: 7, isTalker: false)
+
+        XCTAssertEqual(move.build(), "clientmove clid=7 cid=12 cpw=\(hashedChannelPassword)")
+        XCTAssertEqual(moveWithoutPassword.build(), "clientmove clid=7 cid=12")
+        XCTAssertEqual(kick.build(), "clientkick clid=7 reasonid=5 reasonmsg=Too\\s\\/\\sloud\\s\\p\\snow")
+        XCTAssertEqual(ban.build(), "banclient clid=7 banreason=spam\\s\\p\\sabuse time=600")
+        XCTAssertEqual(permanentBan.build(), "banclient clid=7 banreason=")
+        XCTAssertEqual(poke.build(), "clientpoke clid=7 msg=Ping\\s\\/\\scheck\\s\\p\\snow")
+        XCTAssertEqual(description.build(), "clientedit clid=7 client_description=Ops\\s\\/\\sLead\\s\\p\\snotes")
+        XCTAssertEqual(talker.build(), "clientedit clid=7 client_is_talker=1")
+        XCTAssertEqual(notTalker.build(), "clientedit clid=7 client_is_talker=0")
+    }
+
     func testBanDeleteCommandUsesServerQueryName() {
         let command = TS3SingleCommand(name: "bandel", parameters: [
             TS3CommandSingleParameter(name: "banid", value: "42")

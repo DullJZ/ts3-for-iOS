@@ -185,15 +185,7 @@ public final class TS3Client {
     }
 
     public func joinChannel(channelId: Int, password: String?) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "clid", value: String(clientId)),
-            TS3CommandSingleParameter(name: "cid", value: String(channelId))
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-
-        let command = TS3SingleCommand(name: "clientmove", parameters: params)
+        let command = Self.clientMoveCommand(clientId: Int(clientId), channelId: channelId, password: password)
         _ = try await execute(command)
         currentChannelId = channelId
         updateClientChannel(clientId: Int(clientId), channelId: channelId)
@@ -642,35 +634,21 @@ public final class TS3Client {
     }
 
     public func moveClient(clientId targetClientId: Int, to channelId: Int, password: String?) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
-            TS3CommandSingleParameter(name: "cid", value: String(channelId))
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        _ = try await execute(TS3SingleCommand(name: "clientmove", parameters: params))
+        _ = try await execute(Self.clientMoveCommand(clientId: targetClientId, channelId: channelId, password: password))
         updateClientChannel(clientId: targetClientId, channelId: channelId)
         publishClients()
     }
 
     public func kickClient(clientId targetClientId: Int, reason: TS3KickReason, message: String?) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientkick", parameters: [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
-            TS3CommandSingleParameter(name: "reasonid", value: String(reason.rawValue)),
-            TS3CommandSingleParameter(name: "reasonmsg", value: message ?? "")
-        ]))
+        _ = try await execute(Self.clientKickCommand(clientId: targetClientId, reason: reason, message: message))
     }
 
     public func banClient(clientId targetClientId: Int, durationSeconds: Int?, message: String?) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
-            TS3CommandSingleParameter(name: "banreason", value: message ?? "")
-        ]
-        if let durationSeconds {
-            params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
-        }
-        _ = try await execute(TS3SingleCommand(name: "banclient", parameters: params))
+        _ = try await execute(Self.clientBanCommand(
+            clientId: targetClientId,
+            durationSeconds: durationSeconds,
+            message: message
+        ))
     }
 
     /// Adds a manual ban rule by IP address, nickname pattern, client unique identifier, myTeamSpeak ID, or last nickname.
@@ -775,18 +753,12 @@ public final class TS3Client {
     }
 
     public func pokeClient(clientId targetClientId: Int, message: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientpoke", parameters: [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
-            TS3CommandSingleParameter(name: "msg", value: message)
-        ]))
+        _ = try await execute(Self.clientPokeCommand(clientId: targetClientId, message: message))
     }
 
     /// Updates a visible client description for the selected online client.
     public func editClientDescription(clientId targetClientId: Int, description: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientedit", parameters: [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
-            TS3CommandSingleParameter(name: "client_description", value: description)
-        ]))
+        _ = try await execute(Self.clientDescriptionEditCommand(clientId: targetClientId, description: description))
         if let existing = clientCache[UInt16(targetClientId)] {
             clientCache[UInt16(targetClientId)] = copyClient(existing, description: description)
             publishClients()
@@ -795,10 +767,7 @@ public final class TS3Client {
 
     /// Grants or removes talker status for an online client.
     public func setClientTalker(_ isTalker: Bool, clientId targetClientId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientedit", parameters: [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId)),
-            TS3CommandSingleParameter(name: "client_is_talker", value: isTalker ? "1" : "0")
-        ]))
+        _ = try await execute(Self.clientTalkerEditCommand(clientId: targetClientId, isTalker: isTalker))
         if let existing = clientCache[UInt16(targetClientId)] {
             clientCache[UInt16(targetClientId)] = copyClient(
                 existing,
@@ -3067,6 +3036,61 @@ extension TS3Client {
     static func clientAvatarFlagCommand(_ avatarFlag: String) -> TS3SingleCommand {
         clientUpdateCommand(parameters: [
             TS3CommandSingleParameter(name: "client_flag_avatar", value: avatarFlag)
+        ])
+    }
+
+    static func clientMoveCommand(clientId: Int, channelId: Int, password: String?) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clid", value: String(clientId)),
+            TS3CommandSingleParameter(name: "cid", value: String(channelId))
+        ]
+        if let password, !password.isEmpty {
+            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        }
+        return TS3SingleCommand(name: "clientmove", parameters: params)
+    }
+
+    static func clientKickCommand(clientId: Int, reason: TS3KickReason, message: String?) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientkick", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(clientId)),
+            TS3CommandSingleParameter(name: "reasonid", value: String(reason.rawValue)),
+            TS3CommandSingleParameter(name: "reasonmsg", value: message ?? "")
+        ])
+    }
+
+    static func clientBanCommand(clientId: Int, durationSeconds: Int?, message: String?) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "clid", value: String(clientId)),
+            TS3CommandSingleParameter(name: "banreason", value: message ?? "")
+        ]
+        if let durationSeconds {
+            params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
+        }
+        return TS3SingleCommand(name: "banclient", parameters: params)
+    }
+
+    static func clientPokeCommand(clientId: Int, message: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientpoke", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(clientId)),
+            TS3CommandSingleParameter(name: "msg", value: message)
+        ])
+    }
+
+    static func clientEditCommand(clientId: Int, parameters: [TS3CommandParameter]) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientedit", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(clientId))
+        ] + parameters)
+    }
+
+    static func clientDescriptionEditCommand(clientId: Int, description: String) -> TS3SingleCommand {
+        clientEditCommand(clientId: clientId, parameters: [
+            TS3CommandSingleParameter(name: "client_description", value: description)
+        ])
+    }
+
+    static func clientTalkerEditCommand(clientId: Int, isTalker: Bool) -> TS3SingleCommand {
+        clientEditCommand(clientId: clientId, parameters: [
+            TS3CommandSingleParameter(name: "client_is_talker", value: isTalker ? "1" : "0")
         ])
     }
 
