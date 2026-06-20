@@ -990,6 +990,63 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(command.build(), "logview lines=250 reverse=0 instance=1 begin_pos=500")
     }
 
+    func testFileManagementCommandsBuildOfficialParameters() {
+        let hashedChannelPassword = TS3String.escape(TS3Crypto.hashPassword("room pass"))
+        let list = TS3Client.fileListCommand(channelId: 12, path: "/maps/raid | west", password: "room pass")
+        let createDirectory = TS3Client.fileCreateDirectoryCommand(
+            channelId: 12,
+            path: "/maps/new folder",
+            password: nil
+        )
+        let delete = TS3Client.fileDeleteCommand(channelId: 12, path: "/maps/old file.dat", password: "")
+        let rename = TS3Client.fileRenameCommand(
+            channelId: 12,
+            oldPath: "/maps/old / name.dat",
+            newPath: "/maps/new | name.dat",
+            password: "room pass"
+        )
+
+        XCTAssertEqual(
+            list.build(),
+            "ftgetfilelist cid=12 path=\\/maps\\/raid\\s\\p\\swest cpw=\(hashedChannelPassword)"
+        )
+        XCTAssertEqual(createDirectory.build(), "ftcreatedir cid=12 dirname=\\/maps\\/new\\sfolder")
+        XCTAssertEqual(delete.build(), "ftdeletefile cid=12 name=\\/maps\\/old\\sfile.dat")
+        XCTAssertEqual(
+            rename.build(),
+            "ftrenamefile cid=12 oldname=\\/maps\\/old\\s\\/\\sname.dat newname=\\/maps\\/new\\s\\p\\sname.dat cpw=\(hashedChannelPassword)"
+        )
+    }
+
+    func testFileTransferInitCommandsBuildOfficialParameters() {
+        let hashedChannelPassword = TS3String.escape(TS3Crypto.hashPassword("room pass"))
+        let download = TS3Client.fileDownloadInitCommand(
+            channelId: 12,
+            path: "/maps/raid.dat",
+            clientTransferId: 9,
+            seekPosition: 1024,
+            password: "room pass"
+        )
+        let upload = TS3Client.fileUploadInitCommand(
+            channelId: 12,
+            path: "/maps/upload.dat",
+            clientTransferId: 10,
+            size: 4096,
+            overwrite: true,
+            resume: false,
+            password: ""
+        )
+
+        XCTAssertEqual(
+            download.build(),
+            "ftinitdownload clientftfid=9 name=\\/maps\\/raid.dat cid=12 seekpos=1024 cpw=\(hashedChannelPassword)"
+        )
+        XCTAssertEqual(
+            upload.build(),
+            "ftinitupload clientftfid=10 name=\\/maps\\/upload.dat cid=12 size=4096 overwrite=1 resume=0"
+        )
+    }
+
     func testListCommandsBuildOptionsForNamesAndPermissionIds() {
         let groupClients = TS3SingleCommand(name: "servergroupclientlist", parameters: [
             TS3CommandSingleParameter(name: "sgid", value: "6"),

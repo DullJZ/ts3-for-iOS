@@ -992,49 +992,25 @@ public final class TS3Client {
     }
 
     public func refreshFileList(channelId: Int, path: String, password: String? = nil) async throws -> [TS3FileEntry] {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "path", value: path)
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        let responses = try await execute(TS3SingleCommand(name: "ftgetfilelist", parameters: params))
+        let responses = try await execute(Self.fileListCommand(channelId: channelId, path: path, password: password))
         return responses.compactMap { fileEntry(from: $0, channelId: channelId, parentPath: path) }
     }
 
     public func createFileDirectory(channelId: Int, path: String, password: String? = nil) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "dirname", value: path)
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        _ = try await execute(TS3SingleCommand(name: "ftcreatedir", parameters: params))
+        _ = try await execute(Self.fileCreateDirectoryCommand(channelId: channelId, path: path, password: password))
     }
 
     public func deleteFile(channelId: Int, path: String, password: String? = nil) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "name", value: path)
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        _ = try await execute(TS3SingleCommand(name: "ftdeletefile", parameters: params))
+        _ = try await execute(Self.fileDeleteCommand(channelId: channelId, path: path, password: password))
     }
 
     public func renameFile(channelId: Int, oldPath: String, newPath: String, password: String? = nil) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "oldname", value: oldPath),
-            TS3CommandSingleParameter(name: "newname", value: newPath)
-        ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
-        }
-        _ = try await execute(TS3SingleCommand(name: "ftrenamefile", parameters: params))
+        _ = try await execute(Self.fileRenameCommand(
+            channelId: channelId,
+            oldPath: oldPath,
+            newPath: newPath,
+            password: password
+        ))
     }
 
     /// Initializes a channel file download and returns the socket transfer descriptor.
@@ -3455,6 +3431,51 @@ extension TS3Client {
         ])
     }
 
+    static func fileListCommand(channelId: Int, path: String, password: String?) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "path", value: path)
+        ]
+        if let passwordParameter = fileChannelPasswordParameter(password) {
+            params.append(passwordParameter)
+        }
+        return TS3SingleCommand(name: "ftgetfilelist", parameters: params)
+    }
+
+    static func fileCreateDirectoryCommand(channelId: Int, path: String, password: String?) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "dirname", value: path)
+        ]
+        if let passwordParameter = fileChannelPasswordParameter(password) {
+            params.append(passwordParameter)
+        }
+        return TS3SingleCommand(name: "ftcreatedir", parameters: params)
+    }
+
+    static func fileDeleteCommand(channelId: Int, path: String, password: String?) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "name", value: path)
+        ]
+        if let passwordParameter = fileChannelPasswordParameter(password) {
+            params.append(passwordParameter)
+        }
+        return TS3SingleCommand(name: "ftdeletefile", parameters: params)
+    }
+
+    static func fileRenameCommand(channelId: Int, oldPath: String, newPath: String, password: String?) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "oldname", value: oldPath),
+            TS3CommandSingleParameter(name: "newname", value: newPath)
+        ]
+        if let passwordParameter = fileChannelPasswordParameter(password) {
+            params.append(passwordParameter)
+        }
+        return TS3SingleCommand(name: "ftrenamefile", parameters: params)
+    }
+
     static func fileDownloadInitCommand(
         channelId: Int,
         path: String,
@@ -3468,8 +3489,8 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),
             TS3CommandSingleParameter(name: "seekpos", value: String(seekPosition))
         ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        if let passwordParameter = fileChannelPasswordParameter(password) {
+            params.append(passwordParameter)
         }
         return TS3SingleCommand(name: "ftinitdownload", parameters: params)
     }
@@ -3491,10 +3512,17 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "overwrite", value: overwrite ? "1" : "0"),
             TS3CommandSingleParameter(name: "resume", value: resume ? "1" : "0")
         ]
-        if let password, !password.isEmpty {
-            params.append(TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password)))
+        if let passwordParameter = fileChannelPasswordParameter(password) {
+            params.append(passwordParameter)
         }
         return TS3SingleCommand(name: "ftinitupload", parameters: params)
+    }
+
+    private static func fileChannelPasswordParameter(_ password: String?) -> TS3CommandSingleParameter? {
+        guard let password, !password.isEmpty else {
+            return nil
+        }
+        return TS3CommandSingleParameter(name: "cpw", value: TS3Crypto.hashPassword(password))
     }
 
     static func fileTransferParameters(
