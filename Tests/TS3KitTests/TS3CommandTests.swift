@@ -463,6 +463,24 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(channelSetClient.build(), "setclientchannelgroup cgid=5 cid=12 cldbid=42")
     }
 
+    func testComplaintCommandsBuildOfficialParameters() {
+        let add = TS3Client.complaintAddCommand(
+            targetClientDatabaseId: 42,
+            message: "spam / abuse | repeated"
+        )
+        let list = TS3Client.complaintListCommand(targetClientDatabaseId: 42)
+        let delete = TS3Client.complaintDeleteCommand(
+            targetClientDatabaseId: 42,
+            sourceClientDatabaseId: 77
+        )
+        let deleteAll = TS3Client.complaintDeleteAllCommand(targetClientDatabaseId: 42)
+
+        XCTAssertEqual(add.build(), "complainadd tcldbid=42 message=spam\\s\\/\\sabuse\\s\\p\\srepeated")
+        XCTAssertEqual(list.build(), "complainlist tcldbid=42")
+        XCTAssertEqual(delete.build(), "complaindel tcldbid=42 fcldbid=77")
+        XCTAssertEqual(deleteAll.build(), "complaindelall tcldbid=42")
+    }
+
     func testTemporaryServerPasswordCommandsBuildOfficialParameters() {
         let list = TS3Client.temporaryServerPasswordListCommand()
         let add = TS3Client.temporaryServerPasswordAddCommand(

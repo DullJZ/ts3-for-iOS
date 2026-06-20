@@ -693,30 +693,23 @@ public final class TS3Client {
     }
 
     public func addComplaint(clientDatabaseId: Int, message: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "complainadd", parameters: [
-            TS3CommandSingleParameter(name: "tcldbid", value: String(clientDatabaseId)),
-            TS3CommandSingleParameter(name: "message", value: message)
-        ]))
+        _ = try await execute(Self.complaintAddCommand(targetClientDatabaseId: clientDatabaseId, message: message))
     }
 
     public func refreshComplaints(clientDatabaseId: Int) async throws -> [TS3ComplaintEntry] {
-        let responses = try await execute(TS3SingleCommand(name: "complainlist", parameters: [
-            TS3CommandSingleParameter(name: "tcldbid", value: String(clientDatabaseId))
-        ]))
+        let responses = try await execute(Self.complaintListCommand(targetClientDatabaseId: clientDatabaseId))
         return responses.compactMap { complaintEntry(from: $0, fallbackTargetClientDatabaseId: clientDatabaseId) }
     }
 
     public func deleteComplaint(targetClientDatabaseId: Int, sourceClientDatabaseId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "complaindel", parameters: [
-            TS3CommandSingleParameter(name: "tcldbid", value: String(targetClientDatabaseId)),
-            TS3CommandSingleParameter(name: "fcldbid", value: String(sourceClientDatabaseId))
-        ]))
+        _ = try await execute(Self.complaintDeleteCommand(
+            targetClientDatabaseId: targetClientDatabaseId,
+            sourceClientDatabaseId: sourceClientDatabaseId
+        ))
     }
 
     public func deleteAllComplaints(clientDatabaseId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "complaindelall", parameters: [
-            TS3CommandSingleParameter(name: "tcldbid", value: String(clientDatabaseId))
-        ]))
+        _ = try await execute(Self.complaintDeleteAllCommand(targetClientDatabaseId: clientDatabaseId))
     }
 
     /// Returns temporary server passwords visible to the current client.
@@ -3139,6 +3132,35 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "cgid", value: String(groupId)),
             TS3CommandSingleParameter(name: "cid", value: String(channelId)),
             TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ])
+    }
+
+    static func complaintAddCommand(targetClientDatabaseId: Int, message: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "complainadd", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(targetClientDatabaseId)),
+            TS3CommandSingleParameter(name: "message", value: message)
+        ])
+    }
+
+    static func complaintListCommand(targetClientDatabaseId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "complainlist", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(targetClientDatabaseId))
+        ])
+    }
+
+    static func complaintDeleteCommand(
+        targetClientDatabaseId: Int,
+        sourceClientDatabaseId: Int
+    ) -> TS3SingleCommand {
+        TS3SingleCommand(name: "complaindel", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(targetClientDatabaseId)),
+            TS3CommandSingleParameter(name: "fcldbid", value: String(sourceClientDatabaseId))
+        ])
+    }
+
+    static func complaintDeleteAllCommand(targetClientDatabaseId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "complaindelall", parameters: [
+            TS3CommandSingleParameter(name: "tcldbid", value: String(targetClientDatabaseId))
         ])
     }
 
