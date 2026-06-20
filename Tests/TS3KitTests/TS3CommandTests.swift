@@ -93,33 +93,115 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(command.build(), "bandel banid=42")
     }
 
-    func testServerGroupPermissionCommandBuildsOfficialParameters() {
-        let command = TS3SingleCommand(name: "servergroupaddperm", parameters: [
-            TS3CommandSingleParameter(name: "sgid", value: "6"),
-            TS3CommandSingleParameter(name: "permsid", value: "i_client_kick_from_server_power"),
-            TS3CommandSingleParameter(name: "permvalue", value: "75"),
-            TS3CommandSingleParameter(name: "permnegated", value: "0"),
-            TS3CommandSingleParameter(name: "permskip", value: "1")
-        ])
-
+    func testPermissionListCommandsBuildOfficialScopeOptions() {
+        XCTAssertEqual(TS3Client.permissionListCommand().build(), "permissionlist")
         XCTAssertEqual(
-            command.build(),
-            "servergroupaddperm sgid=6 permsid=i_client_kick_from_server_power permvalue=75 permnegated=0 permskip=1"
+            TS3Client.clientPermissionListCommand(clientDatabaseId: 44).build(),
+            "clientpermlist cldbid=44 -permsid"
+        )
+        XCTAssertEqual(
+            TS3Client.serverGroupPermissionListCommand(groupId: 6).build(),
+            "servergrouppermlist sgid=6 -permsid"
+        )
+        XCTAssertEqual(
+            TS3Client.channelGroupPermissionListCommand(groupId: 5).build(),
+            "channelgrouppermlist cgid=5 -permsid"
+        )
+        XCTAssertEqual(
+            TS3Client.channelPermissionListCommand(channelId: 12).build(),
+            "channelpermlist cid=12 -permsid"
+        )
+        XCTAssertEqual(
+            TS3Client.channelClientPermissionListCommand(channelId: 12, clientDatabaseId: 44).build(),
+            "channelclientpermlist cid=12 cldbid=44 -permsid"
         )
     }
 
-    func testChannelClientPermissionCommandBuildsOfficialParameters() {
-        let command = TS3SingleCommand(name: "channelclientaddperm", parameters: [
-            TS3CommandSingleParameter(name: "cid", value: "12"),
-            TS3CommandSingleParameter(name: "cldbid", value: "44"),
-            TS3CommandSingleParameter(name: "permsid", value: "b_client_is_priority_speaker"),
-            TS3CommandSingleParameter(name: "permvalue", value: "1"),
-            TS3CommandSingleParameter(name: "permskip", value: "0")
-        ])
+    func testPermissionMutationCommandsBuildOfficialScopeFields() {
+        let clientAdd = TS3Client.clientPermissionAddCommand(
+            clientDatabaseId: 44,
+            permissionName: "i_client_kick_from_server_power",
+            value: 75,
+            skip: true
+        )
+        let clientDelete = TS3Client.clientPermissionDeleteCommand(
+            clientDatabaseId: 44,
+            permissionName: "i_client_kick_from_server_power"
+        )
+        let serverGroupAdd = TS3Client.serverGroupPermissionAddCommand(
+            groupId: 6,
+            permissionName: "i_client_kick_from_server_power",
+            value: 75,
+            negated: false,
+            skip: true
+        )
+        let serverGroupDelete = TS3Client.serverGroupPermissionDeleteCommand(
+            groupId: 6,
+            permissionName: "i_client_kick_from_server_power"
+        )
+        let channelGroupAdd = TS3Client.channelGroupPermissionAddCommand(
+            groupId: 5,
+            permissionName: "i_channel_join_power",
+            value: 50,
+            negated: true,
+            skip: false
+        )
+        let channelGroupDelete = TS3Client.channelGroupPermissionDeleteCommand(
+            groupId: 5,
+            permissionName: "i_channel_join_power"
+        )
+        let channelAdd = TS3Client.channelPermissionAddCommand(
+            channelId: 12,
+            permissionName: "i_channel_needed_join_power",
+            value: 30
+        )
+        let channelDelete = TS3Client.channelPermissionDeleteCommand(
+            channelId: 12,
+            permissionName: "i_channel_needed_join_power"
+        )
+        let channelClientAdd = TS3Client.channelClientPermissionAddCommand(
+            channelId: 12,
+            clientDatabaseId: 44,
+            permissionName: "b_client_is_priority_speaker",
+            value: 1,
+            skip: false
+        )
+        let channelClientDelete = TS3Client.channelClientPermissionDeleteCommand(
+            channelId: 12,
+            clientDatabaseId: 44,
+            permissionName: "b_client_is_priority_speaker"
+        )
 
         XCTAssertEqual(
-            command.build(),
+            clientAdd.build(),
+            "clientaddperm cldbid=44 permsid=i_client_kick_from_server_power permvalue=75 permskip=1"
+        )
+        XCTAssertEqual(clientDelete.build(), "clientdelperm cldbid=44 permsid=i_client_kick_from_server_power")
+        XCTAssertEqual(
+            serverGroupAdd.build(),
+            "servergroupaddperm sgid=6 permsid=i_client_kick_from_server_power permvalue=75 permnegated=0 permskip=1"
+        )
+        XCTAssertEqual(
+            serverGroupDelete.build(),
+            "servergroupdelperm sgid=6 permsid=i_client_kick_from_server_power"
+        )
+        XCTAssertEqual(
+            channelGroupAdd.build(),
+            "channelgroupaddperm cgid=5 permsid=i_channel_join_power permvalue=50 permnegated=1 permskip=0"
+        )
+        XCTAssertEqual(channelGroupDelete.build(), "channelgroupdelperm cgid=5 permsid=i_channel_join_power")
+        XCTAssertEqual(
+            channelAdd.build(),
+            "channeladdperm cid=12 permsid=i_channel_needed_join_power permvalue=30"
+        )
+        XCTAssertEqual(channelDelete.build(), "channeldelperm cid=12 permsid=i_channel_needed_join_power")
+        XCTAssertEqual(
+            channelClientAdd.build(),
             "channelclientaddperm cid=12 cldbid=44 permsid=b_client_is_priority_speaker permvalue=1 permskip=0"
+        )
+        XCTAssertEqual(
+            channelClientDelete.build(),
+            "channelclientdelperm cid=12 cldbid=44 permsid=b_client_is_priority_speaker"
         )
     }
 
