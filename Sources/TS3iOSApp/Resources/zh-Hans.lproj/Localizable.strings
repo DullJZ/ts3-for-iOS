@@ -1636,6 +1636,7 @@
 "clientActions.unmuteLocally" = "取消本地静音";
 "clientActions.adjustVolume" = "调整音量";
 "clientActions.resetVolume" = "重置音量";
+"clientActions.joinUserChannel" = "加入用户所在频道";
 "clientActions.refreshDetails" = "刷新详情";
 "clientActions.viewDatabaseClient" = "查看数据库客户端";
 "clientActions.editChannelClientPermissions" = "编辑频道客户端权限";

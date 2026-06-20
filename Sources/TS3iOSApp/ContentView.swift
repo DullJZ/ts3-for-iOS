@@ -5823,6 +5823,8 @@ struct ChannelMemberRow: View {
     @State private var isShowingPlaybackSettings = false
     @State private var isShowingPermissions = false
     @State private var isShowingDatabaseClient = false
+    @State private var joinTargetChannel: TS3ChannelSummary?
+    @State private var joinPassword = ""
     @State private var moveTargetChannel: TS3ChannelSummary?
     @State private var movePassword = ""
 
@@ -6010,6 +6012,17 @@ struct ChannelMemberRow: View {
                         .disabled(!playbackPreference.isMuted && playbackPreference.volume == 1)
                     }
                 }
+                if canJoinMemberChannel {
+                    Button(localized("clientActions.joinUserChannel")) {
+                        guard let channel = memberChannel else { return }
+                        joinPassword = ""
+                        if channel.isPasswordProtected {
+                            joinTargetChannel = channel
+                        } else {
+                            model.joinChannel(channel)
+                        }
+                    }
+                }
                 Button(localized("clientActions.refreshDetails")) {
                     model.refreshUserDetails(member)
                 }
@@ -6146,6 +6159,10 @@ struct ChannelMemberRow: View {
             ClientDatabaseSheet()
                 .environmentObject(model)
         }
+        .sheet(item: $joinTargetChannel) { channel in
+            JoinChannelPasswordSheet(channel: channel, password: $joinPassword)
+                .environmentObject(model)
+        }
         .sheet(item: $moveTargetChannel) { channel in
             MoveUserSheet(user: member, channel: channel, password: $movePassword)
                 .environmentObject(model)
@@ -6176,6 +6193,15 @@ struct ChannelMemberRow: View {
 
     private var isPlaybackMuted: Bool {
         model.isPlaybackMuted(for: member)
+    }
+
+    private var memberChannel: TS3ChannelSummary? {
+        model.channels.first { $0.id == member.channelId }
+    }
+
+    private var canJoinMemberChannel: Bool {
+        guard !member.isCurrentUser, let memberChannel else { return false }
+        return model.currentChannel?.id != memberChannel.id
     }
 
     private var onlineActionAuditSummary: TS3OnlineClientActionAuditSummary {

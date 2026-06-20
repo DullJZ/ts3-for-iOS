@@ -1636,6 +1636,7 @@
 "clientActions.unmuteLocally" = "Unmute Locally";
 "clientActions.adjustVolume" = "Adjust Volume";
 "clientActions.resetVolume" = "Reset Volume";
+"clientActions.joinUserChannel" = "Join User's Channel";
 "clientActions.refreshDetails" = "Refresh Details";
 "clientActions.viewDatabaseClient" = "View Database Client";
 "clientActions.editChannelClientPermissions" = "Edit Channel Client Permissions";
