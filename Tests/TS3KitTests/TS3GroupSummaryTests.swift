@@ -542,6 +542,105 @@ final class TS3GroupSummaryTests: XCTestCase {
         )
     }
 
+    func testGroupMemberOfficialActionAuditAndReadinessCountServerMemberActions() {
+        let group = TS3GroupSummary(id: 6, name: "Admins", type: .regular)
+        let client = TS3GroupClientSummary(client: TS3GroupClient(
+            clientDatabaseId: 42,
+            uniqueIdentifier: "client-uid",
+            nickname: "Taylor",
+            channelId: 9
+        ))
+        let audit = TS3GroupMemberOfficialActionAuditSummary(
+            group: group,
+            target: .server,
+            client: client,
+            isConnected: true,
+            isOnline: true,
+            canSendOfflineMessage: true,
+            canBan: true,
+            contactStatus: .friend,
+            hasContactNote: true,
+            availableChannelGroupCount: 0
+        )
+        let readiness = TS3GroupMemberActionReadinessSummary(audit: audit)
+
+        XCTAssertEqual(audit.identityActionCount, 6)
+        XCTAssertEqual(audit.contactActionCount, 5)
+        XCTAssertEqual(audit.messagingActionCount, 3)
+        XCTAssertEqual(audit.moderationActionCount, 1)
+        XCTAssertEqual(audit.onlineActionCount, 1)
+        XCTAssertEqual(audit.groupMembershipActionCount, 1)
+        XCTAssertEqual(audit.totalActionCount, 17)
+        XCTAssertEqual(audit.availableAreaCount, 6)
+        XCTAssertEqual(audit.blockedAreaCount, 0)
+        XCTAssertFalse(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "target=Server Groups | group=Admins (6) | clientDb=42 | nickname=Taylor | officialActions=17 | availableOfficialAreas=6 | blockedOfficialAreas=0 | uid=true | online=true | connected=true | offlineMessage=true | canBan=true | contactStatus=friend | note=true | membership=true | areas=identityLookup:6,contactManagement:5,messaging:3,moderation:1,onlineContext:1,groupMembership:1 | needsAttention=false"
+        )
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 6)
+        XCTAssertEqual(readiness.totalRequirementCount, 6)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertEqual(readiness.blockedOfficialAreaCount, 0)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "target=Server Groups | group=Admins (6) | clientDb=42 | nickname=Taylor | readiness=6/6 | missingRequirements=0 | blockedOfficialAreas=0 | requirements=uniqueIdentifier:true,connection:true,onlineClient:true,offlineMessage:true,banPermission:true,groupMembership:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testGroupMemberActionReadinessFlagsMissingChannelMemberContext() {
+        let group = TS3GroupSummary(id: 7, name: "Guests", type: .regular)
+        let client = TS3GroupClientSummary(client: TS3GroupClient(
+            clientDatabaseId: 43,
+            uniqueIdentifier: " ",
+            nickname: nil,
+            channelId: nil
+        ))
+        let audit = TS3GroupMemberOfficialActionAuditSummary(
+            group: group,
+            target: .channel,
+            client: client,
+            isConnected: false,
+            isOnline: false,
+            canSendOfflineMessage: false,
+            canBan: false,
+            contactStatus: .neutral,
+            hasContactNote: false,
+            availableChannelGroupCount: 0
+        )
+        let readiness = TS3GroupMemberActionReadinessSummary(audit: audit)
+
+        XCTAssertEqual(audit.identityActionCount, 5)
+        XCTAssertEqual(audit.contactActionCount, 0)
+        XCTAssertEqual(audit.messagingActionCount, 0)
+        XCTAssertEqual(audit.moderationActionCount, 0)
+        XCTAssertEqual(audit.onlineActionCount, 0)
+        XCTAssertEqual(audit.groupMembershipActionCount, 0)
+        XCTAssertEqual(audit.totalActionCount, 5)
+        XCTAssertEqual(audit.availableAreaCount, 1)
+        XCTAssertEqual(audit.blockedAreaCount, 5)
+        XCTAssertTrue(audit.needsAttention)
+        XCTAssertEqual(
+            audit.clipboardSummary,
+            "target=Channel Groups | group=Guests (7) | clientDb=43 | nickname=Client 43 | officialActions=5 | availableOfficialAreas=1 | blockedOfficialAreas=5 | uid=false | online=false | connected=false | offlineMessage=false | canBan=false | contactStatus=neutral | note=false | membership=false | areas=identityLookup:5 | needsAttention=true"
+        )
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 7)
+        XCTAssertEqual(readiness.missingRequirementCount, 7)
+        XCTAssertEqual(
+            readiness.missingRequirements,
+            [.uniqueIdentifier, .connection, .onlineClient, .offlineMessage, .banPermission, .channelContext, .groupMembership]
+        )
+        XCTAssertEqual(readiness.blockedOfficialAreaCount, 5)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "target=Channel Groups | group=Guests (7) | clientDb=43 | nickname=Client 43 | readiness=0/7 | missingRequirements=7 | blockedOfficialAreas=5 | requirements=uniqueIdentifier:false,connection:false,onlineClient:false,offlineMessage:false,banPermission:false,channelContext:false,groupMembership:false | missing=uniqueIdentifier,connection,onlineClient,offlineMessage,banPermission,channelContext,groupMembership | needsAttention=true"
+        )
+    }
+
     func testGroupOfficialManagementAuditSummaryTracksVisibleGroupCoverage() {
         let groupSummary = TS3GroupListSummary(
             groups: [

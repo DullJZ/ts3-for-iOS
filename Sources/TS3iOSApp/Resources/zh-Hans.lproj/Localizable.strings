@@ -3062,6 +3062,8 @@
 "groups.members.row.submitComplaint" = "提交投诉";
 "groups.members.row.banUniqueId" = "封禁唯一 ID";
 "groups.members.row.pokeOnlineClient" = "戳一下在线客户端";
+"groups.members.row.copyOfficialActionAudit" = "复制官方动作审计";
+"groups.members.row.copyActionReadiness" = "复制动作就绪度";
 "groups.members.row.loadDatabaseDetails" = "加载数据库详情";
 "groups.members.row.removeFromGroup" = "从组中移除";
 "groups.members.row.setChannelGroup" = "设置频道组";

@@ -16694,6 +16694,12 @@ struct GroupClientRow: View {
                 Button(localized("groups.row.copySummary")) {
                     TS3PlatformSupport.copyToPasteboard(clipboardSummary)
                 }
+                Button(localized("groups.members.row.copyOfficialActionAudit")) {
+                    copyGroupMemberOfficialActionAudit()
+                }
+                Button(localized("groups.members.row.copyActionReadiness")) {
+                    copyGroupMemberActionReadiness()
+                }
                 Button(localized("groups.members.row.copyDatabaseId")) {
                     TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
                 }
@@ -16801,6 +16807,12 @@ struct GroupClientRow: View {
             Button(localized("groups.row.copySummary")) {
                 TS3PlatformSupport.copyToPasteboard(clipboardSummary)
             }
+            Button(localized("groups.members.row.copyOfficialActionAudit")) {
+                copyGroupMemberOfficialActionAudit()
+            }
+            Button(localized("groups.members.row.copyActionReadiness")) {
+                copyGroupMemberActionReadiness()
+            }
             Button(localized("groups.members.row.copyDatabaseId")) {
                 TS3PlatformSupport.copyToPasteboard("\(client.clientDatabaseId)")
             }
@@ -16875,6 +16887,12 @@ struct GroupClientRow: View {
         .accessibilityAction(named: localized("groups.row.copySummary")) {
             TS3PlatformSupport.copyToPasteboard(clipboardSummary)
         }
+        .accessibilityAction(named: localized("groups.members.row.copyOfficialActionAudit")) {
+            copyGroupMemberOfficialActionAudit()
+        }
+        .accessibilityAction(named: localized("groups.members.row.copyActionReadiness")) {
+            copyGroupMemberActionReadiness()
+        }
         .accessibilityAction(named: localized("groups.members.row.memberInfo")) {
             isShowingInfo = true
         }
@@ -16895,6 +16913,30 @@ struct GroupClientRow: View {
         model.onlineUser(for: databaseRecord)
     }
 
+    private var availableChannelGroupSwitchCount: Int {
+        guard target == .channel else { return 0 }
+        return model.channelGroups.filter { $0.id != group.id }.count
+    }
+
+    private var groupMemberOfficialActionAudit: TS3GroupMemberOfficialActionAuditSummary {
+        TS3GroupMemberOfficialActionAuditSummary(
+            group: group,
+            target: target,
+            client: client,
+            isConnected: model.state == .connected,
+            isOnline: onlineUser != nil,
+            canSendOfflineMessage: model.canSendOfflineMessage(to: databaseRecord),
+            canBan: model.canBanDatabaseClient(databaseRecord),
+            contactStatus: model.contactStatus(for: databaseRecord),
+            hasContactNote: model.contactNote(for: databaseRecord) != nil,
+            availableChannelGroupCount: availableChannelGroupSwitchCount
+        )
+    }
+
+    private var groupMemberActionReadiness: TS3GroupMemberActionReadinessSummary {
+        TS3GroupMemberActionReadinessSummary(audit: groupMemberOfficialActionAudit)
+    }
+
     private var clipboardSummary: String {
         client.clipboardSummary(
             group: group,
@@ -16906,6 +16948,14 @@ struct GroupClientRow: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+
+    private func copyGroupMemberOfficialActionAudit() {
+        TS3PlatformSupport.copyToPasteboard(groupMemberOfficialActionAudit.clipboardSummary)
+    }
+
+    private func copyGroupMemberActionReadiness() {
+        TS3PlatformSupport.copyToPasteboard(groupMemberActionReadiness.clipboardSummary)
     }
 }
 

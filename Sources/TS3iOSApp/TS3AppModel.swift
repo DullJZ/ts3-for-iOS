@@ -7062,6 +7062,196 @@ struct TS3GroupClientListSummary {
     }
 }
 
+enum TS3GroupMemberOfficialActionArea: String, CaseIterable, Codable {
+    case identityLookup
+    case contactManagement
+    case messaging
+    case moderation
+    case onlineContext
+    case groupMembership
+}
+
+struct TS3GroupMemberOfficialActionAuditSummary {
+    let group: TS3GroupSummary
+    let target: TS3GroupManagementTarget
+    let client: TS3GroupClientSummary
+    let isConnected: Bool
+    let isOnline: Bool
+    let canSendOfflineMessage: Bool
+    let canBan: Bool
+    let contactStatus: TS3ContactStatus
+    let hasContactNote: Bool
+    let availableChannelGroupCount: Int
+
+    var hasUniqueIdentifier: Bool {
+        client.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var identityActionCount: Int {
+        5 + (hasUniqueIdentifier ? 1 : 0)
+    }
+
+    var contactActionCount: Int {
+        hasUniqueIdentifier ? 5 : 0
+    }
+
+    var messagingActionCount: Int {
+        guard hasUniqueIdentifier else { return 0 }
+        return 1 + (canSendOfflineMessage ? 1 : 0) + (isOnline ? 1 : 0)
+    }
+
+    var moderationActionCount: Int {
+        hasUniqueIdentifier && canBan ? 1 : 0
+    }
+
+    var onlineActionCount: Int {
+        hasUniqueIdentifier && isOnline ? 1 : 0
+    }
+
+    var groupMembershipActionCount: Int {
+        switch target {
+        case .server:
+            return isConnected ? 1 : 0
+        case .channel:
+            return canSetChannelGroup ? availableChannelGroupCount : 0
+        }
+    }
+
+    var areaActionCounts: [TS3GroupMemberOfficialActionArea: Int] {
+        [
+            .identityLookup: identityActionCount,
+            .contactManagement: contactActionCount,
+            .messaging: messagingActionCount,
+            .moderation: moderationActionCount,
+            .onlineContext: onlineActionCount,
+            .groupMembership: groupMembershipActionCount
+        ]
+    }
+
+    var totalActionCount: Int {
+        areaActionCounts.values.reduce(0, +)
+    }
+
+    var availableAreaCount: Int {
+        areaActionCounts.values.filter { $0 > 0 }.count
+    }
+
+    var blockedAreaCount: Int {
+        TS3GroupMemberOfficialActionArea.allCases.count - availableAreaCount
+    }
+
+    var needsAttention: Bool {
+        !hasUniqueIdentifier || blockedAreaCount > 0 || !isConnected || (target == .channel && client.channelId == nil)
+    }
+
+    var clipboardSummary: String {
+        let areaText = TS3GroupMemberOfficialActionArea.allCases
+            .compactMap { area -> String? in
+                guard let count = areaActionCounts[area], count > 0 else { return nil }
+                return "\(area.rawValue):\(count)"
+            }
+            .joined(separator: ",")
+        return [
+            "target=\(target.title)",
+            "group=\(group.name) (\(group.id))",
+            "clientDb=\(client.clientDatabaseId)",
+            "nickname=\(client.displayName)",
+            "officialActions=\(totalActionCount)",
+            "availableOfficialAreas=\(availableAreaCount)",
+            "blockedOfficialAreas=\(blockedAreaCount)",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "online=\(isOnline ? "true" : "false")",
+            "connected=\(isConnected ? "true" : "false")",
+            "offlineMessage=\(canSendOfflineMessage ? "true" : "false")",
+            "canBan=\(canBan ? "true" : "false")",
+            "contactStatus=\(contactStatus.rawValue)",
+            "note=\(hasContactNote ? "true" : "false")",
+            "membership=\(groupMembershipActionCount > 0 ? "true" : "false")",
+            "areas=\(areaText.isEmpty ? "none" : areaText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    private var canSetChannelGroup: Bool {
+        isConnected && client.channelId != nil && availableChannelGroupCount > 0
+    }
+}
+
+enum TS3GroupMemberActionRequirement: String, CaseIterable, Codable {
+    case uniqueIdentifier
+    case connection
+    case onlineClient
+    case offlineMessage
+    case banPermission
+    case channelContext
+    case groupMembership
+}
+
+struct TS3GroupMemberActionReadinessSummary {
+    let audit: TS3GroupMemberOfficialActionAuditSummary
+
+    var requirements: [TS3GroupMemberActionRequirement] {
+        audit.target == .channel
+            ? TS3GroupMemberActionRequirement.allCases
+            : TS3GroupMemberActionRequirement.allCases.filter { $0 != .channelContext }
+    }
+
+    var requirementStates: [TS3GroupMemberActionRequirement: Bool] {
+        [
+            .uniqueIdentifier: audit.hasUniqueIdentifier,
+            .connection: audit.isConnected,
+            .onlineClient: audit.hasUniqueIdentifier && audit.isOnline,
+            .offlineMessage: audit.hasUniqueIdentifier && audit.canSendOfflineMessage,
+            .banPermission: audit.hasUniqueIdentifier && audit.canBan,
+            .channelContext: audit.target != .channel || audit.client.channelId != nil,
+            .groupMembership: audit.groupMembershipActionCount > 0
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirements.filter { requirementStates[$0] == true }.count
+    }
+
+    var totalRequirementCount: Int {
+        requirements.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3GroupMemberActionRequirement] {
+        requirements.filter { requirementStates[$0] != true }
+    }
+
+    var blockedOfficialAreaCount: Int {
+        audit.blockedAreaCount
+    }
+
+    var needsAttention: Bool {
+        missingRequirementCount > 0 || blockedOfficialAreaCount > 0 || audit.needsAttention
+    }
+
+    var clipboardSummary: String {
+        let requirementText = requirements
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missingText = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "target=\(audit.target.title)",
+            "group=\(audit.group.name) (\(audit.group.id))",
+            "clientDb=\(audit.client.clientDatabaseId)",
+            "nickname=\(audit.client.displayName)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "blockedOfficialAreas=\(blockedOfficialAreaCount)",
+            "requirements=\(requirementText)",
+            "missing=\(missingText.isEmpty ? "none" : missingText)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 extension TS3GroupSummary {
     static func name(for id: Int, in groups: [TS3GroupSummary]) -> String {
         groups.first { $0.id == id }?.name ?? "Group \(id)"

@@ -3062,6 +3062,8 @@
 "groups.members.row.submitComplaint" = "Submit Complaint";
 "groups.members.row.banUniqueId" = "Ban Unique ID";
 "groups.members.row.pokeOnlineClient" = "Poke Online Client";
+"groups.members.row.copyOfficialActionAudit" = "Copy Official Action Audit";
+"groups.members.row.copyActionReadiness" = "Copy Action Readiness";
 "groups.members.row.loadDatabaseDetails" = "Load Database Details";
 "groups.members.row.removeFromGroup" = "Remove From Group";
 "groups.members.row.setChannelGroup" = "Set Channel Group";
