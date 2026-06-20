@@ -2825,16 +2825,16 @@ struct ChannelListView: View {
 
         var title: String {
             switch self {
-            case .all: return "All Channels"
-            case .current: return "Current Channel"
-            case .default: return "Default Channel"
-            case .passwordProtected: return "Password Protected"
-            case .unsubscribed: return "Unsubscribed"
-            case .populated: return "With Users"
-            case .empty: return "Empty"
-            case .mutedUsers: return "Muted Users"
-            case .awayUsers: return "Away Users"
-            case .talkRequests: return "Talk Requests"
+            case .all: return NSLocalizedString("channels.filter.all", comment: "")
+            case .current: return NSLocalizedString("channels.filter.current", comment: "")
+            case .default: return NSLocalizedString("channels.filter.default", comment: "")
+            case .passwordProtected: return NSLocalizedString("channels.filter.passwordProtected", comment: "")
+            case .unsubscribed: return NSLocalizedString("channels.filter.unsubscribed", comment: "")
+            case .populated: return NSLocalizedString("channels.filter.populated", comment: "")
+            case .empty: return NSLocalizedString("channels.filter.empty", comment: "")
+            case .mutedUsers: return NSLocalizedString("channels.filter.mutedUsers", comment: "")
+            case .awayUsers: return NSLocalizedString("channels.filter.awayUsers", comment: "")
+            case .talkRequests: return NSLocalizedString("channels.filter.talkRequests", comment: "")
             }
         }
 
@@ -2887,10 +2887,10 @@ struct ChannelListView: View {
 
         var title: String {
             switch self {
-            case .nickname: return "Nickname"
-            case .clientId: return "Client ID"
-            case .talkPower: return "Talk Power"
-            case .status: return "Status"
+            case .nickname: return NSLocalizedString("channels.memberSort.nickname", comment: "")
+            case .clientId: return NSLocalizedString("channels.memberSort.clientId", comment: "")
+            case .talkPower: return NSLocalizedString("channels.memberSort.talkPower", comment: "")
+            case .status: return NSLocalizedString("channels.memberSort.status", comment: "")
             }
         }
     }
@@ -2990,100 +2990,103 @@ struct ChannelListView: View {
                 .padding(.horizontal)
 
             HStack(spacing: 10) {
-                Picker("channels.filter", selection: $channelTreeFilter) {
-                    ForEach(ChannelTreeFilter.allCases) { filter in
-                        Text(filter.title).tag(filter)
-                    }
-                }
-                .pickerStyle(MenuPickerStyle())
-
-                Picker("channels.sort", selection: $channelTreeSortMode) {
-                    ForEach(ChannelTreeItem.SiblingSortMode.allCases) { sortMode in
-                        Text(sortMode.title).tag(sortMode)
-                    }
-                }
-                .pickerStyle(MenuPickerStyle())
-
-                Toggle("channels.ascending", isOn: $channelTreeSortAscending)
-
                 Menu {
-                    Picker("channels.sortMembers", selection: $channelMemberSortMode) {
-                        ForEach(ChannelMemberSortMode.allCases) { sortMode in
-                            Text(sortMode.title).tag(sortMode)
-                        }
-                    }
-                    Toggle("channels.memberAscending", isOn: $channelMemberSortAscending)
-                    Toggle("channels.currentUserFirst", isOn: $channelCurrentUserFirst)
-                } label: {
-                    Label("channels.members", systemImage: "person.2")
-                }
-
-                Menu {
-                    TextField("connect.presetName", text: $channelTreePresetName)
-                    Button("connect.saveCurrentFilters") {
-                        model.saveChannelTreeFilterPreset(
-                            name: channelTreePresetName,
-                            treeFilter: channelTreeFilter.rawValue,
-                            sortMode: channelTreeSortMode.rawValue,
-                            sortAscending: channelTreeSortAscending,
-                            memberSortMode: channelMemberSortMode.rawValue,
-                            memberSortAscending: channelMemberSortAscending,
-                            currentUserFirst: channelCurrentUserFirst,
-                            searchText: channelSearchText
-                        )
-                        channelTreePresetName = ""
-                    }
-                    .disabled(channelTreePresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    if model.channelTreeFilterPresets.isEmpty {
-                        Text("channels.noSavedTreePresets")
-                    } else {
-                        ForEach(model.channelTreeFilterPresets) { preset in
-                            Menu {
-                                Button("connect.applyPreset") {
-                                    applyChannelTreePreset(preset)
-                                }
-                                Button("connect.useName") {
-                                    channelTreePresetName = preset.name
-                                }
-                                Button("connect.deletePreset") {
-                                    model.deleteChannelTreeFilterPreset(preset)
-                                }
-                            } label: {
-                                VStack(alignment: .leading) {
-                                    Text(preset.name)
-                                    Text(channelTreePresetSummary(preset))
-                                }
+                    Section(header: Text("channels.filter")) {
+                        Picker("channels.filter", selection: $channelTreeFilter) {
+                            ForEach(ChannelTreeFilter.allCases) { filter in
+                                Text(filter.title).tag(filter)
                             }
                         }
                     }
-                    Divider()
-                    Button("connect.exportPresets") {
-                        exportChannelTreePresets()
+                    Section(header: Text("channels.sort")) {
+                        Picker("channels.sort", selection: $channelTreeSortMode) {
+                            ForEach(ChannelTreeItem.SiblingSortMode.allCases) { sortMode in
+                                Text(sortMode.title).tag(sortMode)
+                            }
+                        }
+                        Toggle("channels.ascending", isOn: $channelTreeSortAscending)
                     }
-                    .disabled(model.channelTreeFilterPresets.isEmpty)
-                    Button("connect.importPresets") {
-                        isImportingChannelTreePresets = true
+                    Section(header: Text("channels.members")) {
+                        Picker("channels.sortMembers", selection: $channelMemberSortMode) {
+                            ForEach(ChannelMemberSortMode.allCases) { sortMode in
+                                Text(sortMode.title).tag(sortMode)
+                            }
+                        }
+                        Toggle("channels.memberAscending", isOn: $channelMemberSortAscending)
+                        Toggle("channels.currentUserFirst", isOn: $channelCurrentUserFirst)
                     }
-                    Button("connect.deleteAllPresets") {
-                        confirmation = .deleteAllFilterPresets
+                    Section(header: Text("connect.filterPresets")) {
+                        TextField("connect.presetName", text: $channelTreePresetName)
+                        Button("connect.saveCurrentFilters") {
+                            model.saveChannelTreeFilterPreset(
+                                name: channelTreePresetName,
+                                treeFilter: channelTreeFilter.rawValue,
+                                sortMode: channelTreeSortMode.rawValue,
+                                sortAscending: channelTreeSortAscending,
+                                memberSortMode: channelMemberSortMode.rawValue,
+                                memberSortAscending: channelMemberSortAscending,
+                                currentUserFirst: channelCurrentUserFirst,
+                                searchText: channelSearchText
+                            )
+                            channelTreePresetName = ""
+                        }
+                        .disabled(channelTreePresetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if model.channelTreeFilterPresets.isEmpty {
+                            Text("channels.noSavedTreePresets")
+                        } else {
+                            ForEach(model.channelTreeFilterPresets) { preset in
+                                Menu {
+                                    Button("connect.applyPreset") {
+                                        applyChannelTreePreset(preset)
+                                    }
+                                    Button("connect.useName") {
+                                        channelTreePresetName = preset.name
+                                    }
+                                    Button("connect.deletePreset") {
+                                        model.deleteChannelTreeFilterPreset(preset)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(preset.name)
+                                        Text(channelTreePresetSummary(preset))
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("connect.exportPresets") {
+                            exportChannelTreePresets()
+                        }
+                        .disabled(model.channelTreeFilterPresets.isEmpty)
+                        Button("connect.importPresets") {
+                            isImportingChannelTreePresets = true
+                        }
+                        Button("connect.deleteAllPresets") {
+                            confirmation = .deleteAllFilterPresets
+                        }
+                        .disabled(model.channelTreeFilterPresets.isEmpty)
                     }
-                    .disabled(model.channelTreeFilterPresets.isEmpty)
+                    if hasChannelTreeOptions {
+                        Section {
+                            Button("connect.clear") {
+                                resetChannelTreeOptions()
+                            }
+                        }
+                    }
                 } label: {
-                    Label("connect.filterPresets", systemImage: "line.3.horizontal.decrease.circle")
+                    Label("channels.viewOptions", systemImage: "slider.horizontal.3")
                 }
+                .buttonStyle(TS3BorderedButtonStyle())
 
-                if hasChannelTreeOptions {
-                    Button("connect.clear") {
-                        channelTreeFilter = .all
-                        channelTreeSortMode = .serverOrder
-                        channelTreeSortAscending = true
-                        channelMemberSortMode = .nickname
-                        channelMemberSortAscending = true
-                        channelCurrentUserFirst = true
-                        channelSearchText = ""
-                    }
-                    .buttonStyle(TS3BorderedButtonStyle())
-                }
+                Text(channelTreeViewSummary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .accessibilityLabel(Text("channels.viewSummary"))
+                    .accessibilityValue(Text(channelTreeViewSummary))
+
+                Spacer(minLength: 0)
             }
             .padding(.horizontal)
 
@@ -3318,6 +3321,41 @@ struct ChannelListView: View {
             : NSLocalizedString("channels.channels", comment: "")
     }
 
+    private var channelTreeViewSummary: String {
+        guard hasChannelTreeOptions else {
+            return localized("channels.viewSummary.default")
+        }
+
+        var parts: [String] = []
+        if channelTreeFilter != .all {
+            parts.append(channelTreeFilter.title)
+        }
+        if isSearching {
+            parts.append(localized("channels.viewSummary.searchFormat", channelSearchText))
+        }
+        if channelTreeSortMode != .serverOrder || !channelTreeSortAscending {
+            parts.append(localized("channels.viewSummary.channelSortFormat", channelTreeSortMode.title))
+        }
+        if !channelTreeSortAscending {
+            parts.append(localized("channels.viewSummary.channelDescending"))
+        }
+        if channelMemberSortMode != .nickname || !channelMemberSortAscending || !channelCurrentUserFirst {
+            parts.append(localized("channels.viewSummary.memberSortFormat", channelMemberSortMode.title))
+        }
+        if !channelMemberSortAscending {
+            parts.append(localized("channels.viewSummary.memberDescending"))
+        }
+        if !channelCurrentUserFirst {
+            parts.append(localized("channels.viewSummary.noCurrentUserPin"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
     private var isSearching: Bool {
         !normalizedSearchText.isEmpty
     }
@@ -3443,23 +3481,39 @@ struct ChannelListView: View {
         channelTreePresetName = preset.name
     }
 
+    private func resetChannelTreeOptions() {
+        channelTreeFilter = .all
+        channelTreeSortMode = .serverOrder
+        channelTreeSortAscending = true
+        channelMemberSortMode = .nickname
+        channelMemberSortAscending = true
+        channelCurrentUserFirst = true
+        channelSearchText = ""
+    }
+
     private func channelTreePresetSummary(_ preset: TS3ChannelTreeFilterPreset) -> String {
         var parts = [
             (ChannelTreeFilter(rawValue: preset.treeFilter) ?? .all).title,
-            "Sort \((ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder).title)",
-            "Members \((ChannelMemberSortMode(rawValue: preset.memberSortMode) ?? .nickname).title)"
+            localized(
+                "channels.viewSummary.channelSortFormat",
+                (ChannelTreeItem.SiblingSortMode(rawValue: preset.sortMode) ?? .serverOrder).title
+            ),
+            localized(
+                "channels.viewSummary.memberSortFormat",
+                (ChannelMemberSortMode(rawValue: preset.memberSortMode) ?? .nickname).title
+            )
         ]
         if !preset.sortAscending {
-            parts.append("Channels Descending")
+            parts.append(localized("channels.viewSummary.channelDescending"))
         }
         if !preset.memberSortAscending {
-            parts.append("Members Descending")
+            parts.append(localized("channels.viewSummary.memberDescending"))
         }
         if !preset.currentUserFirst {
-            parts.append("No Current User Pin")
+            parts.append(localized("channels.viewSummary.noCurrentUserPin"))
         }
         if !preset.searchText.isEmpty {
-            parts.append("Search \(preset.searchText)")
+            parts.append(localized("channels.viewSummary.searchFormat", preset.searchText))
         }
         return parts.joined(separator: " · ")
     }
@@ -4392,9 +4446,9 @@ struct ChannelTreeItem: Identifiable {
 
         var title: String {
             switch self {
-            case .serverOrder: return "Server Order"
-            case .name: return "Name"
-            case .channelId: return "Channel ID"
+            case .serverOrder: return NSLocalizedString("channels.sort.serverOrder", comment: "")
+            case .name: return NSLocalizedString("channels.sort.name", comment: "")
+            case .channelId: return NSLocalizedString("channels.sort.channelId", comment: "")
             }
         }
     }
