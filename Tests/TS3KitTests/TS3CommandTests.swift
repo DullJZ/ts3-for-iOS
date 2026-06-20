@@ -333,22 +333,52 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertTrue(legacyMessages[1].contains("Voice encryption is disabled"))
     }
 
-    func testGroupCopyCommandsUseDistinctServerAndChannelParameterNames() {
-        let serverCommand = TS3SingleCommand(name: "servergroupcopy", parameters: [
-            TS3CommandSingleParameter(name: "ssgid", value: "6"),
-            TS3CommandSingleParameter(name: "tsgid", value: "0"),
-            TS3CommandSingleParameter(name: "name", value: "Moderators"),
-            TS3CommandSingleParameter(name: "type", value: "1")
-        ])
-        let channelCommand = TS3SingleCommand(name: "channelgroupcopy", parameters: [
-            TS3CommandSingleParameter(name: "scgid", value: "5"),
-            TS3CommandSingleParameter(name: "tcgid", value: "0"),
-            TS3CommandSingleParameter(name: "name", value: "Channel Admin"),
-            TS3CommandSingleParameter(name: "type", value: "1")
-        ])
+    func testGroupManagementCommandsBuildOfficialParameters() {
+        let serverAdd = TS3Client.serverGroupAddCommand(name: "Moderators | East", type: .regular)
+        let serverCopy = TS3Client.serverGroupCopyCommand(
+            sourceGroupId: 6,
+            targetGroupId: 0,
+            name: "Moderators | Copy",
+            type: .query
+        )
+        let serverRename = TS3Client.serverGroupRenameCommand(groupId: 6, name: "Admins / Ops")
+        let serverDelete = TS3Client.serverGroupDeleteCommand(groupId: 6, force: true)
+        let channelAdd = TS3Client.channelGroupAddCommand(name: "Channel Template", type: .template)
+        let channelCopy = TS3Client.channelGroupCopyCommand(
+            sourceGroupId: 5,
+            targetGroupId: 10,
+            name: "Channel Admin",
+            type: .regular
+        )
+        let channelRename = TS3Client.channelGroupRenameCommand(groupId: 5, name: "Raid Leads")
+        let channelDelete = TS3Client.channelGroupDeleteCommand(groupId: 5, force: false)
 
-        XCTAssertEqual(serverCommand.build(), "servergroupcopy ssgid=6 tsgid=0 name=Moderators type=1")
-        XCTAssertEqual(channelCommand.build(), "channelgroupcopy scgid=5 tcgid=0 name=Channel\\sAdmin type=1")
+        XCTAssertEqual(serverAdd.build(), "servergroupadd name=Moderators\\s\\p\\sEast type=1")
+        XCTAssertEqual(serverCopy.build(), "servergroupcopy ssgid=6 tsgid=0 name=Moderators\\s\\p\\sCopy type=2")
+        XCTAssertEqual(serverRename.build(), "servergrouprename sgid=6 name=Admins\\s\\/\\sOps")
+        XCTAssertEqual(serverDelete.build(), "servergroupdel sgid=6 force=1")
+        XCTAssertEqual(channelAdd.build(), "channelgroupadd name=Channel\\sTemplate type=0")
+        XCTAssertEqual(channelCopy.build(), "channelgroupcopy scgid=5 tcgid=10 name=Channel\\sAdmin type=1")
+        XCTAssertEqual(channelRename.build(), "channelgrouprename cgid=5 name=Raid\\sLeads")
+        XCTAssertEqual(channelDelete.build(), "channelgroupdel cgid=5 force=0")
+    }
+
+    func testGroupMemberCommandsBuildOfficialParameters() {
+        let serverList = TS3Client.serverGroupClientListCommand(groupId: 6)
+        let channelList = TS3Client.channelGroupClientListCommand(groupId: 5)
+        let serverAddClient = TS3Client.serverGroupAddClientCommand(groupId: 6, clientDatabaseId: 42)
+        let serverDeleteClient = TS3Client.serverGroupDeleteClientCommand(groupId: 6, clientDatabaseId: 42)
+        let channelSetClient = TS3Client.setClientChannelGroupCommand(
+            groupId: 5,
+            channelId: 12,
+            clientDatabaseId: 42
+        )
+
+        XCTAssertEqual(serverList.build(), "servergroupclientlist sgid=6 -names")
+        XCTAssertEqual(channelList.build(), "channelgroupclientlist cgid=5 -names")
+        XCTAssertEqual(serverAddClient.build(), "servergroupaddclient sgid=6 cldbid=42")
+        XCTAssertEqual(serverDeleteClient.build(), "servergroupdelclient sgid=6 cldbid=42")
+        XCTAssertEqual(channelSetClient.build(), "setclientchannelgroup cgid=5 cid=12 cldbid=42")
     }
 
     func testTemporaryServerPasswordCommandEscapesDescriptionAndChannelPassword() {
