@@ -33,6 +33,35 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(multi.commands[1].get("reasonmsg")?.value, "hello world")
     }
 
+    func testClientUpdateCommandsBuildOfficialSelfStatusFields() {
+        let nickname = TS3Client.clientUpdateCommand(nickname: "Taylor / Ops | Lead")
+        let phonetic = TS3Client.clientUpdateCommand(phoneticNickname: "Tay | Lor")
+        let away = TS3Client.clientAwayCommand(isAway: true, message: "Out / lunch | later")
+        let back = TS3Client.clientAwayCommand(isAway: false, message: "ignored")
+        let inputMuted = TS3Client.clientInputMuteCommand(true)
+        let outputUnmuted = TS3Client.clientOutputMuteCommand(false)
+        let commander = TS3Client.clientChannelCommanderCommand(true)
+        let talkRequest = TS3Client.clientTalkRequestCommand(isRequesting: true, message: "Need / voice | now")
+        let cancelTalkRequest = TS3Client.clientTalkRequestCommand(isRequesting: false, message: "ignored")
+        let icon = TS3Client.clientIconCommand(iconId: 12345)
+        let avatar = TS3Client.clientAvatarFlagCommand("avatar/hash")
+
+        XCTAssertEqual(nickname.build(), "clientupdate client_nickname=Taylor\\s\\/\\sOps\\s\\p\\sLead")
+        XCTAssertEqual(phonetic.build(), "clientupdate client_nickname_phonetic=Tay\\s\\p\\sLor")
+        XCTAssertEqual(away.build(), "clientupdate client_away=1 client_away_message=Out\\s\\/\\slunch\\s\\p\\slater")
+        XCTAssertEqual(back.build(), "clientupdate client_away=0 client_away_message=")
+        XCTAssertEqual(inputMuted.build(), "clientupdate client_input_muted=1")
+        XCTAssertEqual(outputUnmuted.build(), "clientupdate client_output_muted=0")
+        XCTAssertEqual(commander.build(), "clientupdate client_is_channel_commander=1")
+        XCTAssertEqual(
+            talkRequest.build(),
+            "clientupdate client_talk_request=1 client_talk_request_msg=Need\\s\\/\\svoice\\s\\p\\snow"
+        )
+        XCTAssertEqual(cancelTalkRequest.build(), "clientupdate client_talk_request=0 client_talk_request_msg=")
+        XCTAssertEqual(icon.build(), "clientupdate client_icon_id=12345")
+        XCTAssertEqual(avatar.build(), "clientupdate client_flag_avatar=avatar\\/hash")
+    }
+
     func testBanDeleteCommandUsesServerQueryName() {
         let command = TS3SingleCommand(name: "bandel", parameters: [
             TS3CommandSingleParameter(name: "banid", value: "42")

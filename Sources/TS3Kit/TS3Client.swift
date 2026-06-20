@@ -400,9 +400,7 @@ public final class TS3Client {
     }
 
     public func updateNickname(_ nickname: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_nickname", value: nickname)
-        ]))
+        _ = try await execute(Self.clientUpdateCommand(nickname: nickname))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(existing, nickname: nickname)
             publishClients()
@@ -410,16 +408,11 @@ public final class TS3Client {
     }
 
     public func updatePhoneticNickname(_ phoneticNickname: String?) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_nickname_phonetic", value: phoneticNickname)
-        ]))
+        _ = try await execute(Self.clientUpdateCommand(phoneticNickname: phoneticNickname))
     }
 
     public func setAway(_ isAway: Bool, message: String?) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_away", value: isAway ? "1" : "0"),
-            TS3CommandSingleParameter(name: "client_away_message", value: isAway ? (message ?? "") : "")
-        ]))
+        _ = try await execute(Self.clientAwayCommand(isAway: isAway, message: message))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(existing, isAway: isAway, awayMessage: isAway ? message : nil)
             publishClients()
@@ -427,9 +420,7 @@ public final class TS3Client {
     }
 
     public func setInputMuted(_ isMuted: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_input_muted", value: isMuted ? "1" : "0")
-        ]))
+        _ = try await execute(Self.clientInputMuteCommand(isMuted))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(existing, isInputMuted: isMuted)
             publishClients()
@@ -437,9 +428,7 @@ public final class TS3Client {
     }
 
     public func setOutputMuted(_ isMuted: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_output_muted", value: isMuted ? "1" : "0")
-        ]))
+        _ = try await execute(Self.clientOutputMuteCommand(isMuted))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(existing, isOutputMuted: isMuted)
             publishClients()
@@ -448,9 +437,7 @@ public final class TS3Client {
 
     /// Marks or unmarks the current client as channel commander.
     public func setChannelCommander(_ isChannelCommander: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_is_channel_commander", value: isChannelCommander ? "1" : "0")
-        ]))
+        _ = try await execute(Self.clientChannelCommanderCommand(isChannelCommander))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(existing, isChannelCommander: isChannelCommander)
             publishClients()
@@ -459,11 +446,7 @@ public final class TS3Client {
 
     /// Requests or cancels talk power for the current client.
     public func setTalkRequest(_ isRequesting: Bool, message: String? = nil) async throws {
-        var params: [TS3CommandParameter] = [
-            TS3CommandSingleParameter(name: "client_talk_request", value: isRequesting ? "1" : "0")
-        ]
-        params.append(TS3CommandSingleParameter(name: "client_talk_request_msg", value: isRequesting ? (message ?? "") : ""))
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: params))
+        _ = try await execute(Self.clientTalkRequestCommand(isRequesting: isRequesting, message: message))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(
                 existing,
@@ -476,9 +459,7 @@ public final class TS3Client {
 
     /// Sets the current client's icon id.
     public func setClientIcon(iconId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_icon_id", value: String(iconId))
-        ]))
+        _ = try await execute(Self.clientIconCommand(iconId: iconId))
         if let existing = clientCache[clientId] {
             clientCache[clientId] = copyClient(existing, iconId: iconId)
             publishClients()
@@ -487,9 +468,7 @@ public final class TS3Client {
 
     /// Sets the current client's avatar refresh flag after uploading the avatar file.
     public func setClientAvatarFlag(_ avatarFlag: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientupdate", parameters: [
-            TS3CommandSingleParameter(name: "client_flag_avatar", value: avatarFlag)
-        ]))
+        _ = try await execute(Self.clientAvatarFlagCommand(avatarFlag))
     }
 
     public func createChannel(
@@ -3026,6 +3005,69 @@ extension TS3Client {
             isNegated: command.get("permnegated")?.value == "1",
             isSkipped: command.get("permskip")?.value == "1"
         )
+    }
+
+    static func clientUpdateCommand(parameters: [TS3CommandParameter]) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientupdate", parameters: parameters)
+    }
+
+    static func clientUpdateCommand(nickname: String) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_nickname", value: nickname)
+        ])
+    }
+
+    static func clientUpdateCommand(phoneticNickname: String?) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_nickname_phonetic", value: phoneticNickname)
+        ])
+    }
+
+    static func clientAwayCommand(isAway: Bool, message: String?) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_away", value: isAway ? "1" : "0"),
+            TS3CommandSingleParameter(name: "client_away_message", value: isAway ? (message ?? "") : "")
+        ])
+    }
+
+    static func clientInputMuteCommand(_ isMuted: Bool) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_input_muted", value: isMuted ? "1" : "0")
+        ])
+    }
+
+    static func clientOutputMuteCommand(_ isMuted: Bool) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_output_muted", value: isMuted ? "1" : "0")
+        ])
+    }
+
+    static func clientChannelCommanderCommand(_ isChannelCommander: Bool) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(
+                name: "client_is_channel_commander",
+                value: isChannelCommander ? "1" : "0"
+            )
+        ])
+    }
+
+    static func clientTalkRequestCommand(isRequesting: Bool, message: String?) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_talk_request", value: isRequesting ? "1" : "0"),
+            TS3CommandSingleParameter(name: "client_talk_request_msg", value: isRequesting ? (message ?? "") : "")
+        ])
+    }
+
+    static func clientIconCommand(iconId: Int) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_icon_id", value: String(iconId))
+        ])
+    }
+
+    static func clientAvatarFlagCommand(_ avatarFlag: String) -> TS3SingleCommand {
+        clientUpdateCommand(parameters: [
+            TS3CommandSingleParameter(name: "client_flag_avatar", value: avatarFlag)
+        ])
     }
 
     static func logViewCommand(
