@@ -1042,15 +1042,30 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(info.minIOSVersion, 15_200)
     }
 
-    func testLogViewCommandBuildsOfficialPaginationParameters() {
-        let command = TS3Client.logViewCommand(
+    func testServerStatusAndLogCommandsBuildOfficialParameters() throws {
+        let serverInfo = TS3Client.serverInfoCommand()
+        let connectionInfo = TS3Client.serverConnectionInfoCommand()
+        let logView = TS3Client.logViewCommand(
             limit: 250,
             reverse: false,
             instance: true,
             beginPosition: 500
         )
+        let logAdd = try TS3Client.logAddCommand(level: .warning, message: "  disk / quota | high  ")
 
-        XCTAssertEqual(command.build(), "logview lines=250 reverse=0 instance=1 begin_pos=500")
+        XCTAssertEqual(serverInfo.build(), "serverinfo")
+        XCTAssertEqual(connectionInfo.build(), "serverrequestconnectioninfo")
+        XCTAssertEqual(logView.build(), "logview lines=250 reverse=0 instance=1 begin_pos=500")
+        XCTAssertEqual(logAdd.build(), "logadd loglevel=2 logmsg=disk\\s\\/\\squota\\s\\p\\shigh")
+    }
+
+    func testLogAddCommandRequiresMessageText() {
+        XCTAssertThrowsError(try TS3Client.logAddCommand(level: .info, message: " \n\t ")) { error in
+            guard case TS3Error.invalidCommand = error else {
+                XCTFail("Expected invalidCommand, got \(error)")
+                return
+            }
+        }
     }
 
     func testFileManagementCommandsBuildOfficialParameters() {

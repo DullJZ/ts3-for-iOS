@@ -214,7 +214,7 @@ public final class TS3Client {
     }
 
     public func refreshServerInfo() async throws {
-        let responses = try await execute(TS3SingleCommand(name: "serverinfo"))
+        let responses = try await execute(Self.serverInfoCommand())
         for response in responses {
             if let info = serverInfo(from: response) {
                 serverInfo = info
@@ -225,7 +225,7 @@ public final class TS3Client {
 
     /// Requests quality and traffic counters for the current server connection.
     public func requestConnectionInfo() async throws -> TS3ConnectionInfo? {
-        let responses = try await execute(TS3SingleCommand(name: "serverrequestconnectioninfo"))
+        let responses = try await execute(Self.serverConnectionInfoCommand())
         return responses.compactMap { connectionInfo(from: $0) }.first
     }
 
@@ -255,14 +255,7 @@ public final class TS3Client {
 
     /// Writes a message to the virtual server log.
     public func addServerLogEntry(level: TS3LogLevel, message: String) async throws {
-        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedMessage.isEmpty else {
-            throw TS3Error.invalidCommand
-        }
-        _ = try await execute(TS3SingleCommand(name: "logadd", parameters: [
-            TS3CommandSingleParameter(name: "loglevel", value: String(level.serverQueryLogLevel)),
-            TS3CommandSingleParameter(name: "logmsg", value: trimmedMessage)
-        ]))
+        _ = try await execute(Self.logAddCommand(level: level, message: message))
     }
 
     public func refreshClientDetails(clientId targetClientId: Int) async throws -> TS3ServerClient? {
@@ -3494,6 +3487,14 @@ extension TS3Client {
         ])
     }
 
+    static func serverInfoCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "serverinfo")
+    }
+
+    static func serverConnectionInfoCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "serverrequestconnectioninfo")
+    }
+
     static func logViewCommand(
         limit: Int,
         reverse: Bool,
@@ -3505,6 +3506,17 @@ extension TS3Client {
             TS3CommandSingleParameter(name: "reverse", value: reverse ? "1" : "0"),
             TS3CommandSingleParameter(name: "instance", value: instance ? "1" : "0"),
             TS3CommandSingleParameter(name: "begin_pos", value: String(beginPosition))
+        ])
+    }
+
+    static func logAddCommand(level: TS3LogLevel, message: String) throws -> TS3SingleCommand {
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedMessage.isEmpty else {
+            throw TS3Error.invalidCommand
+        }
+        return TS3SingleCommand(name: "logadd", parameters: [
+            TS3CommandSingleParameter(name: "loglevel", value: String(level.serverQueryLogLevel)),
+            TS3CommandSingleParameter(name: "logmsg", value: trimmedMessage)
         ])
     }
 
