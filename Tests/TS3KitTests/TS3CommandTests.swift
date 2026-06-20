@@ -125,6 +125,27 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(databaseId.build(), "clientgetdbidfromuid cluid=uid\\/abc")
     }
 
+    func testConnectionAndNotifyRegistrationCommandsBuildOfficialParameters() {
+        let disconnect = TS3Client.clientDisconnectCommand(reason: "")
+        let disconnectWithReason = TS3Client.clientDisconnectCommand(reason: "Leaving / now | bye")
+        let channelRegister = TS3Client.serverNotifyRegisterCommand(event: "channel", channelId: 0)
+        let defaultRegistrations = TS3Client.connectedNotifyRegistrationCommands().map { $0.build() }
+
+        XCTAssertEqual(disconnect.build(), "clientdisconnect")
+        XCTAssertEqual(
+            disconnectWithReason.build(),
+            "clientdisconnect reasonid=8 reasonmsg=Leaving\\s\\/\\snow\\s\\p\\sbye"
+        )
+        XCTAssertEqual(channelRegister.build(), "servernotifyregister event=channel id=0")
+        XCTAssertEqual(defaultRegistrations, [
+            "servernotifyregister event=server",
+            "servernotifyregister event=channel id=0",
+            "servernotifyregister event=textserver",
+            "servernotifyregister event=textchannel",
+            "servernotifyregister event=textprivate"
+        ])
+    }
+
     func testClientActionCommandsBuildOfficialContextMenuFields() {
         let hashedChannelPassword = TS3String.escape(TS3Crypto.hashPassword("room pass"))
         let move = TS3Client.clientMoveCommand(clientId: 7, channelId: 12, password: "room pass")

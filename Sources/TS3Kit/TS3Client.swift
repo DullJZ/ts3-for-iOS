@@ -157,18 +157,7 @@ public final class TS3Client {
             pingQueue.removeAll()
             stopMicrophone()
 
-            let command: TS3SingleCommand
-            if reason.isEmpty {
-                command = TS3SingleCommand(name: "clientdisconnect")
-            } else {
-                command = TS3SingleCommand(
-                    name: "clientdisconnect",
-                    parameters: [
-                        TS3CommandSingleParameter(name: "reasonid", value: "8"),
-                        TS3CommandSingleParameter(name: "reasonmsg", value: reason)
-                    ]
-                )
-            }
+            let command = Self.clientDisconnectCommand(reason: reason)
 
             do {
                 try sendCommand(command)
@@ -1898,24 +1887,7 @@ private extension TS3Client {
     }
 
     func finishConnectedSetup() async {
-        let registrations = [
-            TS3SingleCommand(name: "servernotifyregister", parameters: [
-                TS3CommandSingleParameter(name: "event", value: "server")
-            ]),
-            TS3SingleCommand(name: "servernotifyregister", parameters: [
-                TS3CommandSingleParameter(name: "event", value: "channel"),
-                TS3CommandSingleParameter(name: "id", value: "0")
-            ]),
-            TS3SingleCommand(name: "servernotifyregister", parameters: [
-                TS3CommandSingleParameter(name: "event", value: "textserver")
-            ]),
-            TS3SingleCommand(name: "servernotifyregister", parameters: [
-                TS3CommandSingleParameter(name: "event", value: "textchannel")
-            ]),
-            TS3SingleCommand(name: "servernotifyregister", parameters: [
-                TS3CommandSingleParameter(name: "event", value: "textprivate")
-            ])
-        ]
+        let registrations = Self.connectedNotifyRegistrationCommands()
 
         for command in registrations {
             do {
@@ -2863,6 +2835,36 @@ extension TS3Client {
         TS3SingleCommand(name: "clientgetdbidfromuid", parameters: [
             TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
         ])
+    }
+
+    static func clientDisconnectCommand(reason: String) -> TS3SingleCommand {
+        guard !reason.isEmpty else {
+            return TS3SingleCommand(name: "clientdisconnect")
+        }
+        return TS3SingleCommand(name: "clientdisconnect", parameters: [
+            TS3CommandSingleParameter(name: "reasonid", value: "8"),
+            TS3CommandSingleParameter(name: "reasonmsg", value: reason)
+        ])
+    }
+
+    static func serverNotifyRegisterCommand(event: String, channelId: Int? = nil) -> TS3SingleCommand {
+        var params: [TS3CommandParameter] = [
+            TS3CommandSingleParameter(name: "event", value: event)
+        ]
+        if let channelId {
+            params.append(TS3CommandSingleParameter(name: "id", value: String(channelId)))
+        }
+        return TS3SingleCommand(name: "servernotifyregister", parameters: params)
+    }
+
+    static func connectedNotifyRegistrationCommands() -> [TS3SingleCommand] {
+        [
+            serverNotifyRegisterCommand(event: "server"),
+            serverNotifyRegisterCommand(event: "channel", channelId: 0),
+            serverNotifyRegisterCommand(event: "textserver"),
+            serverNotifyRegisterCommand(event: "textchannel"),
+            serverNotifyRegisterCommand(event: "textprivate")
+        ]
     }
 
     static func channelListCommand() -> TS3SingleCommand {
