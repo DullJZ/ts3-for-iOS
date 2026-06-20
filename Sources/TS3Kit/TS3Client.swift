@@ -2913,6 +2913,71 @@ extension TS3Client {
         )
     }
 
+    static func detailedClientInfo(
+        from command: TS3SingleCommand,
+        fallbackClientId: Int,
+        currentClientId: UInt16 = 0,
+        existing: TS3ServerClient? = nil,
+        currentChannelId: Int? = nil
+    ) -> TS3ServerClient? {
+        func intValue(_ name: String) -> Int? {
+            command.get(name)?.value.flatMap(Int.init)
+        }
+        func boolValue(_ name: String) -> Bool {
+            command.get(name)?.value == "1"
+        }
+        func dateValue(_ name: String) -> Date? {
+            intValue(name).map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        }
+        func serverGroupIds() -> [Int] {
+            guard let groups = command.get("client_servergroups")?.value else {
+                return []
+            }
+            return groups.split(separator: ",").compactMap { Int($0) }
+        }
+        func targetChannelId() -> Int? {
+            intValue("ctid") ?? intValue("cid")
+        }
+
+        let clientId = intValue("clid") ?? fallbackClientId
+        guard let clientKey = UInt16(exactly: clientId) else {
+            return nil
+        }
+        let channelId = targetChannelId() ?? existing?.channelId ?? currentChannelId ?? 0
+        return TS3ServerClient(
+            id: clientId,
+            channelId: channelId,
+            databaseId: intValue("client_database_id") ?? intValue("client_dbid") ?? existing?.databaseId,
+            nickname: command.get("client_nickname")?.value ?? existing?.nickname ?? "Client \(clientId)",
+            isCurrentUser: clientKey == currentClientId,
+            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? existing?.uniqueIdentifier,
+            isInputMuted: command.has("client_input_muted") ? boolValue("client_input_muted") : existing?.isInputMuted ?? false,
+            isOutputMuted: command.has("client_output_muted") ? boolValue("client_output_muted") : existing?.isOutputMuted ?? false,
+            isAway: command.has("client_away") ? boolValue("client_away") : existing?.isAway ?? false,
+            awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
+            isChannelCommander: command.has("client_is_channel_commander") ? boolValue("client_is_channel_commander") : existing?.isChannelCommander ?? false,
+            isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue("client_is_priority_speaker") : existing?.isPrioritySpeaker ?? false,
+            isTalker: command.has("client_is_talker") ? boolValue("client_is_talker") : existing?.isTalker ?? false,
+            isRequestingTalkPower: command.has("client_talk_request") ? boolValue("client_talk_request") : existing?.isRequestingTalkPower ?? false,
+            talkRequestMessage: command.get("client_talk_request_msg")?.value ?? existing?.talkRequestMessage,
+            talkPower: intValue("client_talk_power") ?? existing?.talkPower,
+            channelGroupId: intValue("client_channel_group_id") ?? existing?.channelGroupId,
+            serverGroups: command.has("client_servergroups") ? serverGroupIds() : existing?.serverGroups ?? [],
+            description: command.get("client_description")?.value ?? existing?.description,
+            avatarHash: command.get("client_base64hashclientuid")?.value ?? existing?.avatarHash,
+            iconId: intValue("client_icon_id") ?? existing?.iconId,
+            version: command.get("client_version")?.value ?? existing?.version,
+            platform: command.get("client_platform")?.value ?? existing?.platform,
+            country: command.get("client_country")?.value ?? existing?.country,
+            ipAddress: command.get("connection_client_ip")?.value ?? existing?.ipAddress,
+            createdAt: dateValue("client_created") ?? existing?.createdAt,
+            lastConnectedAt: dateValue("client_lastconnected") ?? existing?.lastConnectedAt,
+            totalConnections: intValue("client_totalconnections") ?? existing?.totalConnections,
+            idleTimeSeconds: intValue("client_idle_time").map { $0 / 1000 } ?? existing?.idleTimeSeconds,
+            connectedSeconds: intValue("connection_connected_time").map { $0 / 1000 } ?? existing?.connectedSeconds
+        )
+    }
+
     static func permission(from command: TS3SingleCommand) -> TS3Permission? {
         guard let name = command.get("permsid")?.value ?? command.get("permname")?.value,
               let value = command.get("permvalue")?.value.flatMap(Int.init) else {
@@ -3383,7 +3448,7 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
             description: command.get("client_description")?.value,
-            avatarHash: command.get("client_base64HashClientUID")?.value,
+            avatarHash: command.get("client_base64hashclientuid")?.value,
             iconId: intValue(command, "client_icon_id"),
             version: command.get("client_version")?.value,
             platform: command.get("client_platform")?.value,
@@ -3423,7 +3488,7 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id"),
             serverGroups: serverGroupIds(from: command),
             description: command.get("client_description")?.value ?? existing?.description,
-            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash,
+            avatarHash: command.get("client_base64hashclientuid")?.value ?? existing?.avatarHash,
             iconId: intValue(command, "client_icon_id") ?? existing?.iconId,
             version: command.get("client_version")?.value ?? existing?.version,
             platform: command.get("client_platform")?.value ?? existing?.platform,
@@ -3464,7 +3529,7 @@ private extension TS3Client {
             channelGroupId: intValue(command, "client_channel_group_id") ?? existing.channelGroupId,
             serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing.serverGroups,
             description: command.get("client_description")?.value ?? existing.description,
-            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing.avatarHash,
+            avatarHash: command.get("client_base64hashclientuid")?.value ?? existing.avatarHash,
             iconId: intValue(command, "client_icon_id") ?? existing.iconId,
             version: command.get("client_version")?.value ?? existing.version,
             platform: command.get("client_platform")?.value ?? existing.platform,
@@ -3482,41 +3547,18 @@ private extension TS3Client {
 
     func mergeDetailedClientInfo(_ command: TS3SingleCommand, fallbackClientId: Int) -> TS3ServerClient? {
         let clid = intValue(command, "clid") ?? fallbackClientId
-        let key = UInt16(clid)
-        let existing = clientCache[key]
-        let channelId = targetChannelId(from: command) ?? existing?.channelId ?? currentChannelId ?? 0
-        let updated = TS3ServerClient(
-            id: clid,
-            channelId: channelId,
-            databaseId: intValue(command, "client_database_id") ?? intValue(command, "client_dbid") ?? existing?.databaseId,
-            nickname: command.get("client_nickname")?.value ?? existing?.nickname ?? "Client \(clid)",
-            isCurrentUser: key == clientId,
-            uniqueIdentifier: command.get("client_unique_identifier")?.value ?? existing?.uniqueIdentifier,
-            isInputMuted: command.has("client_input_muted") ? boolValue(command, "client_input_muted") : existing?.isInputMuted ?? false,
-            isOutputMuted: command.has("client_output_muted") ? boolValue(command, "client_output_muted") : existing?.isOutputMuted ?? false,
-            isAway: command.has("client_away") ? boolValue(command, "client_away") : existing?.isAway ?? false,
-            awayMessage: command.get("client_away_message")?.value ?? existing?.awayMessage,
-            isChannelCommander: command.has("client_is_channel_commander") ? boolValue(command, "client_is_channel_commander") : existing?.isChannelCommander ?? false,
-            isPrioritySpeaker: command.has("client_is_priority_speaker") ? boolValue(command, "client_is_priority_speaker") : existing?.isPrioritySpeaker ?? false,
-            isTalker: command.has("client_is_talker") ? boolValue(command, "client_is_talker") : existing?.isTalker ?? false,
-            isRequestingTalkPower: command.has("client_talk_request") ? boolValue(command, "client_talk_request") : existing?.isRequestingTalkPower ?? false,
-            talkRequestMessage: command.get("client_talk_request_msg")?.value ?? existing?.talkRequestMessage,
-            talkPower: intValue(command, "client_talk_power") ?? existing?.talkPower,
-            channelGroupId: intValue(command, "client_channel_group_id") ?? existing?.channelGroupId,
-            serverGroups: command.has("client_servergroups") ? serverGroupIds(from: command) : existing?.serverGroups ?? [],
-            description: command.get("client_description")?.value ?? existing?.description,
-            avatarHash: command.get("client_base64HashClientUID")?.value ?? existing?.avatarHash,
-            iconId: intValue(command, "client_icon_id") ?? existing?.iconId,
-            version: command.get("client_version")?.value ?? existing?.version,
-            platform: command.get("client_platform")?.value ?? existing?.platform,
-            country: command.get("client_country")?.value ?? existing?.country,
-            ipAddress: command.get("connection_client_ip")?.value ?? existing?.ipAddress,
-            createdAt: dateValue(command, "client_created") ?? existing?.createdAt,
-            lastConnectedAt: dateValue(command, "client_lastconnected") ?? existing?.lastConnectedAt,
-            totalConnections: intValue(command, "client_totalconnections") ?? existing?.totalConnections,
-            idleTimeSeconds: intValue(command, "client_idle_time").map { $0 / 1000 } ?? existing?.idleTimeSeconds,
-            connectedSeconds: intValue(command, "connection_connected_time").map { $0 / 1000 } ?? existing?.connectedSeconds
-        )
+        guard let key = UInt16(exactly: clid) else {
+            return nil
+        }
+        guard let updated = Self.detailedClientInfo(
+            from: command,
+            fallbackClientId: fallbackClientId,
+            currentClientId: clientId,
+            existing: clientCache[key],
+            currentChannelId: currentChannelId
+        ) else {
+            return nil
+        }
         clientCache[key] = updated
         return updated
     }

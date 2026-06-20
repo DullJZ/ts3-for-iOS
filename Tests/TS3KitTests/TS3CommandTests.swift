@@ -495,6 +495,128 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(info.idleSeconds, 30)
     }
 
+    func testClientInfoParserKeepsOfficialIdentityStatusAndConnectionFields() throws {
+        let command = try TS3MultiCommand.parse(
+            """
+            clientinfo clid=12 cid=5 client_database_id=42 client_nickname=Taylor client_unique_identifier=uid\\/abc client_input_muted=1 client_output_muted=0 client_away=1 client_away_message=Back\\slater client_is_channel_commander=1 client_is_priority_speaker=1 client_is_talker=0 client_talk_request=1 client_talk_request_msg=Need\\svoice client_talk_power=55 client_channel_group_id=8 client_servergroups=6,7,9 client_description=Ops\\slead client_base64HashClientUID=avatarhash client_icon_id=123 client_version=3.6.2\\sBuild\\s123 client_platform=iOS client_country=US connection_client_ip=203.0.113.5 client_created=1700000000 client_lastconnected=1700001000 client_totalconnections=14 client_idle_time=45000 connection_connected_time=125000
+            """
+        ).simplifyOne()
+
+        let client = try XCTUnwrap(TS3Client.detailedClientInfo(
+            from: command,
+            fallbackClientId: 99,
+            currentClientId: 12
+        ))
+
+        XCTAssertEqual(client.id, 12)
+        XCTAssertEqual(client.channelId, 5)
+        XCTAssertEqual(client.databaseId, 42)
+        XCTAssertEqual(client.nickname, "Taylor")
+        XCTAssertTrue(client.isCurrentUser)
+        XCTAssertEqual(client.uniqueIdentifier, "uid/abc")
+        XCTAssertTrue(client.isInputMuted)
+        XCTAssertFalse(client.isOutputMuted)
+        XCTAssertTrue(client.isAway)
+        XCTAssertEqual(client.awayMessage, "Back later")
+        XCTAssertTrue(client.isChannelCommander)
+        XCTAssertTrue(client.isPrioritySpeaker)
+        XCTAssertFalse(client.isTalker)
+        XCTAssertTrue(client.isRequestingTalkPower)
+        XCTAssertEqual(client.talkRequestMessage, "Need voice")
+        XCTAssertEqual(client.talkPower, 55)
+        XCTAssertEqual(client.channelGroupId, 8)
+        XCTAssertEqual(client.serverGroups, [6, 7, 9])
+        XCTAssertEqual(client.description, "Ops lead")
+        XCTAssertEqual(client.avatarHash, "avatarhash")
+        XCTAssertEqual(client.iconId, 123)
+        XCTAssertEqual(client.version, "3.6.2 Build 123")
+        XCTAssertEqual(client.platform, "iOS")
+        XCTAssertEqual(client.country, "US")
+        XCTAssertEqual(client.ipAddress, "203.0.113.5")
+        XCTAssertEqual(client.createdAt, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(client.lastConnectedAt, Date(timeIntervalSince1970: 1_700_001_000))
+        XCTAssertEqual(client.totalConnections, 14)
+        XCTAssertEqual(client.idleTimeSeconds, 45)
+        XCTAssertEqual(client.connectedSeconds, 125)
+    }
+
+    func testClientInfoParserPreservesExistingDetailsForPartialResponses() throws {
+        let existing = TS3ServerClient(
+            id: 33,
+            channelId: 9,
+            databaseId: 21,
+            nickname: "Existing",
+            isCurrentUser: false,
+            uniqueIdentifier: "uid-old",
+            isInputMuted: true,
+            isOutputMuted: true,
+            isAway: true,
+            awayMessage: "Away",
+            isChannelCommander: true,
+            isPrioritySpeaker: true,
+            isTalker: true,
+            isRequestingTalkPower: true,
+            talkRequestMessage: "Queued",
+            talkPower: 15,
+            channelGroupId: 2,
+            serverGroups: [6],
+            description: "Existing description",
+            avatarHash: "oldhash",
+            iconId: 5,
+            version: "3.5",
+            platform: "macOS",
+            country: "DE",
+            ipAddress: "198.51.100.3",
+            createdAt: Date(timeIntervalSince1970: 1_600_000_000),
+            lastConnectedAt: Date(timeIntervalSince1970: 1_600_001_000),
+            totalConnections: 3,
+            idleTimeSeconds: 9,
+            connectedSeconds: 10
+        )
+        let command = try TS3MultiCommand.parse(
+            "clientinfo client_nickname=Updated client_output_muted=0"
+        ).simplifyOne()
+
+        let client = try XCTUnwrap(TS3Client.detailedClientInfo(
+            from: command,
+            fallbackClientId: 33,
+            currentClientId: 1,
+            existing: existing,
+            currentChannelId: 7
+        ))
+
+        XCTAssertEqual(client.id, 33)
+        XCTAssertEqual(client.channelId, 9)
+        XCTAssertEqual(client.databaseId, 21)
+        XCTAssertEqual(client.nickname, "Updated")
+        XCTAssertFalse(client.isCurrentUser)
+        XCTAssertEqual(client.uniqueIdentifier, "uid-old")
+        XCTAssertTrue(client.isInputMuted)
+        XCTAssertFalse(client.isOutputMuted)
+        XCTAssertTrue(client.isAway)
+        XCTAssertEqual(client.awayMessage, "Away")
+        XCTAssertTrue(client.isChannelCommander)
+        XCTAssertTrue(client.isPrioritySpeaker)
+        XCTAssertTrue(client.isTalker)
+        XCTAssertTrue(client.isRequestingTalkPower)
+        XCTAssertEqual(client.talkRequestMessage, "Queued")
+        XCTAssertEqual(client.talkPower, 15)
+        XCTAssertEqual(client.channelGroupId, 2)
+        XCTAssertEqual(client.serverGroups, [6])
+        XCTAssertEqual(client.description, "Existing description")
+        XCTAssertEqual(client.avatarHash, "oldhash")
+        XCTAssertEqual(client.iconId, 5)
+        XCTAssertEqual(client.version, "3.5")
+        XCTAssertEqual(client.platform, "macOS")
+        XCTAssertEqual(client.country, "DE")
+        XCTAssertEqual(client.ipAddress, "198.51.100.3")
+        XCTAssertEqual(client.createdAt, Date(timeIntervalSince1970: 1_600_000_000))
+        XCTAssertEqual(client.lastConnectedAt, Date(timeIntervalSince1970: 1_600_001_000))
+        XCTAssertEqual(client.totalConnections, 3)
+        XCTAssertEqual(client.idleTimeSeconds, 9)
+        XCTAssertEqual(client.connectedSeconds, 10)
+    }
+
     func testServerInfoParserKeepsOfficialEditableAdministrationFields() throws {
         let command = try TS3MultiCommand.parse(
             """
