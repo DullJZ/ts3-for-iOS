@@ -12597,6 +12597,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingTemporaryPasswords = false
     @State private var isShowingGroupManagement = false
     @State private var isShowingContacts = false
+    @State private var isShowingTalkRequests = false
     @State private var isImportingNotificationSettings = false
     @State private var isExportingNotificationSettings = false
     @State private var isConfirmingResetNotificationSettings = false
@@ -12671,6 +12672,10 @@ struct ServerToolsSheet: View {
                             model.refreshServerInfo()
                             isShowingServerInfo = true
                         }
+                        Button(localized("channels.talkRequests")) {
+                            isShowingTalkRequests = true
+                        }
+                        .disabled(talkRequestUsers.isEmpty)
                     } label: {
                         Label(localized("serverTools.serverView"), systemImage: "list.bullet.rectangle")
                     }
@@ -12933,6 +12938,10 @@ struct ServerToolsSheet: View {
                 ServerLogsSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $isShowingTalkRequests) {
+                TalkRequestsSheet()
+                    .environmentObject(model)
+            }
             .fileImporter(
                 isPresented: $isImportingNotificationSettings,
                 allowedContentTypes: [.json, .data],
@@ -13034,6 +13043,10 @@ struct ServerToolsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+
+    private var talkRequestUsers: [TS3UserSummary] {
+        model.clients.filter { $0.isRequestingTalkPower }
     }
 }
 
