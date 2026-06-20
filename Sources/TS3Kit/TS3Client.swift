@@ -195,20 +195,8 @@ public final class TS3Client {
 
     public func refreshServerView() async throws {
         try await refreshServerInfo()
-        _ = try await execute(TS3SingleCommand(name: "channellist", parameters: [
-            TS3CommandOption(name: "topic"),
-            TS3CommandOption(name: "flags"),
-            TS3CommandOption(name: "voice"),
-            TS3CommandOption(name: "limits"),
-            TS3CommandOption(name: "icon")
-        ]))
-        _ = try await execute(TS3SingleCommand(name: "clientlist", parameters: [
-            TS3CommandOption(name: "uid"),
-            TS3CommandOption(name: "away"),
-            TS3CommandOption(name: "voice"),
-            TS3CommandOption(name: "groups"),
-            TS3CommandOption(name: "info")
-        ]))
+        _ = try await execute(Self.channelListCommand())
+        _ = try await execute(Self.clientListCommand())
         publishChannels()
         publishClients()
     }
@@ -568,35 +556,26 @@ public final class TS3Client {
     }
 
     public func deleteChannel(channelId: Int, force: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: "channeldelete", parameters: [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "force", value: force ? "1" : "0")
-        ]))
+        _ = try await execute(Self.channelDeleteCommand(channelId: channelId, force: force))
         channelCache.removeValue(forKey: channelId)
         publishChannels()
     }
 
     /// Moves a channel to a new parent and sort position.
     public func moveChannel(channelId: Int, parentId: Int?, order: Int?) async throws {
-        _ = try await execute(TS3SingleCommand(name: "channelmove", parameters: [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
-            TS3CommandSingleParameter(name: "cpid", value: String(parentId ?? 0)),
-            TS3CommandSingleParameter(name: "order", value: String(order ?? 0))
-        ]))
+        _ = try await execute(Self.channelMoveCommand(channelId: channelId, parentId: parentId, order: order))
         try? await refreshServerView()
     }
 
     /// Subscribes or unsubscribes the current client from updates for a single channel.
     public func setChannelSubscribed(channelId: Int, isSubscribed: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: isSubscribed ? "channelsubscribe" : "channelunsubscribe", parameters: [
-            TS3CommandSingleParameter(name: "cid", value: String(channelId))
-        ]))
+        _ = try await execute(Self.channelSubscriptionCommand(channelId: channelId, isSubscribed: isSubscribed))
         updateChannelSubscription(channelId: channelId, isSubscribed: isSubscribed)
     }
 
     /// Subscribes or unsubscribes the current client from updates for all channels.
     public func setAllChannelsSubscribed(_ isSubscribed: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: isSubscribed ? "channelsubscribeall" : "channelunsubscribeall"))
+        _ = try await execute(Self.allChannelsSubscriptionCommand(isSubscribed: isSubscribed))
         updateAllChannelSubscriptions(isSubscribed: isSubscribed)
     }
 
@@ -2884,6 +2863,51 @@ extension TS3Client {
         TS3SingleCommand(name: "clientgetdbidfromuid", parameters: [
             TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
         ])
+    }
+
+    static func channelListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "channellist", parameters: [
+            TS3CommandOption(name: "topic"),
+            TS3CommandOption(name: "flags"),
+            TS3CommandOption(name: "voice"),
+            TS3CommandOption(name: "limits"),
+            TS3CommandOption(name: "icon")
+        ])
+    }
+
+    static func clientListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientlist", parameters: [
+            TS3CommandOption(name: "uid"),
+            TS3CommandOption(name: "away"),
+            TS3CommandOption(name: "voice"),
+            TS3CommandOption(name: "groups"),
+            TS3CommandOption(name: "info")
+        ])
+    }
+
+    static func channelDeleteCommand(channelId: Int, force: Bool) -> TS3SingleCommand {
+        TS3SingleCommand(name: "channeldelete", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "force", value: force ? "1" : "0")
+        ])
+    }
+
+    static func channelMoveCommand(channelId: Int, parentId: Int?, order: Int?) -> TS3SingleCommand {
+        TS3SingleCommand(name: "channelmove", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId)),
+            TS3CommandSingleParameter(name: "cpid", value: String(parentId ?? 0)),
+            TS3CommandSingleParameter(name: "order", value: String(order ?? 0))
+        ])
+    }
+
+    static func channelSubscriptionCommand(channelId: Int, isSubscribed: Bool) -> TS3SingleCommand {
+        TS3SingleCommand(name: isSubscribed ? "channelsubscribe" : "channelunsubscribe", parameters: [
+            TS3CommandSingleParameter(name: "cid", value: String(channelId))
+        ])
+    }
+
+    static func allChannelsSubscriptionCommand(isSubscribed: Bool) -> TS3SingleCommand {
+        TS3SingleCommand(name: isSubscribed ? "channelsubscribeall" : "channelunsubscribeall")
     }
 
     static func permission(from command: TS3SingleCommand) -> TS3Permission? {

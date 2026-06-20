@@ -468,6 +468,30 @@ final class TS3CommandTests: XCTestCase {
         )
     }
 
+    func testChannelListAndMutationCommandsBuildOfficialParameters() {
+        let channelList = TS3Client.channelListCommand()
+        let clientList = TS3Client.clientListCommand()
+        let delete = TS3Client.channelDeleteCommand(channelId: 12, force: true)
+        let safeDelete = TS3Client.channelDeleteCommand(channelId: 13, force: false)
+        let move = TS3Client.channelMoveCommand(channelId: 12, parentId: 5, order: 3)
+        let rootMove = TS3Client.channelMoveCommand(channelId: 12, parentId: nil, order: nil)
+        let subscribe = TS3Client.channelSubscriptionCommand(channelId: 12, isSubscribed: true)
+        let unsubscribe = TS3Client.channelSubscriptionCommand(channelId: 12, isSubscribed: false)
+        let subscribeAll = TS3Client.allChannelsSubscriptionCommand(isSubscribed: true)
+        let unsubscribeAll = TS3Client.allChannelsSubscriptionCommand(isSubscribed: false)
+
+        XCTAssertEqual(channelList.build(), "channellist -topic -flags -voice -limits -icon")
+        XCTAssertEqual(clientList.build(), "clientlist -uid -away -voice -groups -info")
+        XCTAssertEqual(delete.build(), "channeldelete cid=12 force=1")
+        XCTAssertEqual(safeDelete.build(), "channeldelete cid=13 force=0")
+        XCTAssertEqual(move.build(), "channelmove cid=12 cpid=5 order=3")
+        XCTAssertEqual(rootMove.build(), "channelmove cid=12 cpid=0 order=0")
+        XCTAssertEqual(subscribe.build(), "channelsubscribe cid=12")
+        XCTAssertEqual(unsubscribe.build(), "channelunsubscribe cid=12")
+        XCTAssertEqual(subscribeAll.build(), "channelsubscribeall")
+        XCTAssertEqual(unsubscribeAll.build(), "channelunsubscribeall")
+    }
+
     func testChannelCodecConstraintsMatchEditableRanges() {
         XCTAssertTrue(TS3ChannelCodecConstraints.isValidQuality(nil))
         XCTAssertTrue(TS3ChannelCodecConstraints.isValidQuality(0))
