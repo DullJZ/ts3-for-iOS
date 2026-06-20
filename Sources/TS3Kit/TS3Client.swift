@@ -339,11 +339,7 @@ public final class TS3Client {
     }
 
     public func sendTextMessage(_ message: String, targetMode: TS3TextMessageTargetMode, targetId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "sendtextmessage", parameters: [
-            TS3CommandSingleParameter(name: "targetmode", value: String(targetMode.rawValue)),
-            TS3CommandSingleParameter(name: "target", value: String(targetId)),
-            TS3CommandSingleParameter(name: "msg", value: message)
-        ]))
+        _ = try await execute(Self.textMessageCommand(message: message, targetMode: targetMode, targetId: targetId))
         let local = TS3TextMessage(
             timestamp: Date(),
             targetMode: targetMode,
@@ -359,36 +355,29 @@ public final class TS3Client {
     }
 
     public func refreshOfflineMessages() async throws -> [TS3OfflineMessage] {
-        let responses = try await execute(TS3SingleCommand(name: "messagelist"))
+        let responses = try await execute(Self.offlineMessageListCommand())
         return responses.compactMap { offlineMessage(from: $0, detailedMessage: nil) }
     }
 
     public func offlineMessage(messageId: Int) async throws -> TS3OfflineMessage? {
-        let responses = try await execute(TS3SingleCommand(name: "messageget", parameters: [
-            TS3CommandSingleParameter(name: "msgid", value: String(messageId))
-        ]))
+        let responses = try await execute(Self.offlineMessageGetCommand(messageId: messageId))
         return responses.compactMap { offlineMessage(from: $0, detailedMessage: $0.get("message")?.value) }.first
     }
 
     public func sendOfflineMessage(toUniqueIdentifier uniqueIdentifier: String, subject: String, message: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "messageadd", parameters: [
-            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier),
-            TS3CommandSingleParameter(name: "subject", value: subject),
-            TS3CommandSingleParameter(name: "message", value: message)
-        ]))
+        _ = try await execute(Self.offlineMessageAddCommand(
+            uniqueIdentifier: uniqueIdentifier,
+            subject: subject,
+            message: message
+        ))
     }
 
     public func deleteOfflineMessage(messageId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "messagedel", parameters: [
-            TS3CommandSingleParameter(name: "msgid", value: String(messageId))
-        ]))
+        _ = try await execute(Self.offlineMessageDeleteCommand(messageId: messageId))
     }
 
     public func setOfflineMessageRead(messageId: Int, isRead: Bool) async throws {
-        _ = try await execute(TS3SingleCommand(name: "messageupdateflag", parameters: [
-            TS3CommandSingleParameter(name: "msgid", value: String(messageId)),
-            TS3CommandSingleParameter(name: "flag", value: isRead ? "1" : "0")
-        ]))
+        _ = try await execute(Self.offlineMessageReadFlagCommand(messageId: messageId, isRead: isRead))
     }
 
     public func updateNickname(_ nickname: String) async throws {
@@ -2936,6 +2925,53 @@ extension TS3Client {
     static func clientAvatarFlagCommand(_ avatarFlag: String) -> TS3SingleCommand {
         clientUpdateCommand(parameters: [
             TS3CommandSingleParameter(name: "client_flag_avatar", value: avatarFlag)
+        ])
+    }
+
+    static func textMessageCommand(
+        message: String,
+        targetMode: TS3TextMessageTargetMode,
+        targetId: Int
+    ) -> TS3SingleCommand {
+        TS3SingleCommand(name: "sendtextmessage", parameters: [
+            TS3CommandSingleParameter(name: "targetmode", value: String(targetMode.rawValue)),
+            TS3CommandSingleParameter(name: "target", value: String(targetId)),
+            TS3CommandSingleParameter(name: "msg", value: message)
+        ])
+    }
+
+    static func offlineMessageListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "messagelist")
+    }
+
+    static func offlineMessageGetCommand(messageId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "messageget", parameters: [
+            TS3CommandSingleParameter(name: "msgid", value: String(messageId))
+        ])
+    }
+
+    static func offlineMessageAddCommand(
+        uniqueIdentifier: String,
+        subject: String,
+        message: String
+    ) -> TS3SingleCommand {
+        TS3SingleCommand(name: "messageadd", parameters: [
+            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier),
+            TS3CommandSingleParameter(name: "subject", value: subject),
+            TS3CommandSingleParameter(name: "message", value: message)
+        ])
+    }
+
+    static func offlineMessageDeleteCommand(messageId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "messagedel", parameters: [
+            TS3CommandSingleParameter(name: "msgid", value: String(messageId))
+        ])
+    }
+
+    static func offlineMessageReadFlagCommand(messageId: Int, isRead: Bool) -> TS3SingleCommand {
+        TS3SingleCommand(name: "messageupdateflag", parameters: [
+            TS3CommandSingleParameter(name: "msgid", value: String(messageId)),
+            TS3CommandSingleParameter(name: "flag", value: isRead ? "1" : "0")
         ])
     }
 

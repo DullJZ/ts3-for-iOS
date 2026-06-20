@@ -62,6 +62,41 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(avatar.build(), "clientupdate client_flag_avatar=avatar\\/hash")
     }
 
+    func testMessageCommandsBuildOfficialParameters() {
+        let serverText = TS3Client.textMessageCommand(
+            message: "Hello / team | now",
+            targetMode: .server,
+            targetId: 0
+        )
+        let privateText = TS3Client.textMessageCommand(
+            message: "Private / ping | check",
+            targetMode: .client,
+            targetId: 7
+        )
+        let offlineList = TS3Client.offlineMessageListCommand()
+        let offlineGet = TS3Client.offlineMessageGetCommand(messageId: 42)
+        let offlineAdd = TS3Client.offlineMessageAddCommand(
+            uniqueIdentifier: "abc/def",
+            subject: "Subject / Pipe | Check",
+            message: "Body / Line | done"
+        )
+        let offlineDelete = TS3Client.offlineMessageDeleteCommand(messageId: 42)
+        let markRead = TS3Client.offlineMessageReadFlagCommand(messageId: 42, isRead: true)
+        let markUnread = TS3Client.offlineMessageReadFlagCommand(messageId: 42, isRead: false)
+
+        XCTAssertEqual(serverText.build(), "sendtextmessage targetmode=3 target=0 msg=Hello\\s\\/\\steam\\s\\p\\snow")
+        XCTAssertEqual(privateText.build(), "sendtextmessage targetmode=1 target=7 msg=Private\\s\\/\\sping\\s\\p\\scheck")
+        XCTAssertEqual(offlineList.build(), "messagelist")
+        XCTAssertEqual(offlineGet.build(), "messageget msgid=42")
+        XCTAssertEqual(
+            offlineAdd.build(),
+            "messageadd cluid=abc\\/def subject=Subject\\s\\/\\sPipe\\s\\p\\sCheck message=Body\\s\\/\\sLine\\s\\p\\sdone"
+        )
+        XCTAssertEqual(offlineDelete.build(), "messagedel msgid=42")
+        XCTAssertEqual(markRead.build(), "messageupdateflag msgid=42 flag=1")
+        XCTAssertEqual(markUnread.build(), "messageupdateflag msgid=42 flag=0")
+    }
+
     func testClientActionCommandsBuildOfficialContextMenuFields() {
         let hashedChannelPassword = TS3String.escape(TS3Crypto.hashPassword("room pass"))
         let move = TS3Client.clientMoveCommand(clientId: 7, channelId: 12, password: "room pass")
