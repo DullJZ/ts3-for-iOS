@@ -1220,8 +1220,8 @@ struct ConnectingView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ProgressView("Connecting to server...")
-            Button("Cancel") {
+            ProgressView("connect.connectingToServer")
+            Button("common.cancel") {
                 model.disconnect()
             }
             .buttonStyle(TS3BorderedButtonStyle())
@@ -2568,7 +2568,7 @@ struct ConnectionManagerSheet: View {
             ConnectView(allowsConnectionActions: false)
                 .toolbar {
                     ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                        Button("Done") {
+                        Button("common.done") {
                             presentationMode.wrappedValue.dismiss()
                         }
                     }
@@ -4366,7 +4366,7 @@ struct ServerIconView: View {
             }
         }
         .frame(width: 24, height: 24)
-        .accessibilityLabel("Server icon")
+        .accessibilityLabel(Text("common.serverIcon"))
     }
 
     private var platformImage: TS3PlatformImage? {
@@ -4590,7 +4590,7 @@ struct CurrentChannelCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Current Channel")
+            Text("channels.currentChannel")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -4614,13 +4614,13 @@ struct CurrentChannelCard: View {
                         Image(systemName: "pin")
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityLabel("Set current channel as default")
+                    .accessibilityLabel(Text("channels.setCurrentChannelAsDefault"))
                 }
             } else {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "questionmark.circle")
                         .foregroundColor(.secondary)
-                    Text("Current channel not available yet.")
+                    Text("channels.currentChannelUnavailable")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                     Spacer()
@@ -6867,14 +6867,14 @@ struct UserIconView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 14, height: 14)
-                .accessibilityLabel("Client icon")
+                .accessibilityLabel(Text("common.clientIcon"))
         } else if user.iconId != nil && user.iconId != 0 {
             Image(systemName: "seal")
                 .resizable()
                 .scaledToFit()
                 .foregroundColor(.secondary)
                 .frame(width: 14, height: 14)
-                .accessibilityLabel("Client icon")
+                .accessibilityLabel(Text("common.clientIcon"))
         }
     }
 
@@ -18533,13 +18533,13 @@ struct DatabaseClientLocationRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(displayName)
                         .font(.subheadline.weight(.semibold))
-                    Text("Client ID \(location.clientId)")
+                    Text(localized("database.clientIdFormat", location.clientId))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 if let channel {
-                    Button("Join") {
+                    Button(localized("database.joinChannel")) {
                         model.joinChannel(channel)
                     }
                     .buttonStyle(TS3BorderedButtonStyle())
@@ -18549,7 +18549,7 @@ struct DatabaseClientLocationRow: View {
             HStack(spacing: 6) {
                 Image(systemName: "location")
                     .foregroundColor(.secondary)
-                Text(channel?.name ?? "Online, channel not visible")
+                Text(channel?.name ?? localized("database.onlineChannelNotVisible"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -18569,6 +18569,11 @@ struct DatabaseClientLocationRow: View {
     private var displayName: String {
         user?.nickname ?? location.nickname ?? "Client \(location.clientId)"
     }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
 }
 
 struct DatabaseClientDescriptionSheet: View {
@@ -18587,26 +18592,31 @@ struct DatabaseClientDescriptionSheet: View {
         NavigationView {
             Form {
                 Section(header: Text(record.nickname)) {
-                    TextField("Description", text: $description)
+                    TextField(localized("database.description"), text: $description)
                         .ts3PlainTextField()
                 }
             }
-            .navigationTitle("Edit Description")
+            .navigationTitle(localized("database.editDescription"))
             .ts3InlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarLeadingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Save") {
+                    Button(localized("common.save")) {
                         submit(description)
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
         }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -18625,7 +18635,7 @@ struct DatabaseClientActionSheet: View {
             Form {
                 Section(header: Text(record.nickname)) {
                     if mode == .offlineMessage {
-                        TextField("Subject", text: $subject)
+                        TextField(localized("clientActions.subject"), text: $subject)
                             .ts3PlainTextField()
                     }
                     TextField(fieldTitle, text: $text)
@@ -18634,7 +18644,7 @@ struct DatabaseClientActionSheet: View {
                         Text(offlineMessageDraftSummary)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Button("Copy Offline Message Summary") {
+                        Button(localized("clientActions.copyOfflineMessageSummary")) {
                             TS3PlatformSupport.copyToPasteboard(offlineMessageDraftSummary)
                         }
                         ForEach(offlineMessageDraftValidationMessages, id: \.self) { message in
@@ -18644,13 +18654,13 @@ struct DatabaseClientActionSheet: View {
                         }
                     }
                     if mode == .ban {
-                        Picker("Duration", selection: $duration) {
+                        Picker(localized("ban.duration"), selection: $duration) {
                             ForEach(TS3BanDuration.allCases) { duration in
                                 Text(duration.title).tag(duration)
                             }
                         }
                         if duration == .custom {
-                            TextField("Minutes", text: $customBanMinutes)
+                            TextField(localized("ban.minutes"), text: $customBanMinutes)
                                 .ts3PlainTextField()
                                 .ts3NumericKeyboard()
                         }
@@ -18682,7 +18692,7 @@ struct DatabaseClientActionSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: TS3PlatformSupport.toolbarTrailingPlacement) {
-                    Button("Cancel") {
+                    Button(localized("common.cancel")) {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -18693,39 +18703,39 @@ struct DatabaseClientActionSheet: View {
     private var title: String {
         switch mode {
         case .offlineMessage:
-            return "Offline Message"
+            return localized("clientActions.offlineMessage")
         case .contactNote:
-            return "Contact Note"
+            return localized("clientActions.contactNote")
         case .complain:
-            return "Submit Complaint"
+            return localized("clientActions.submitComplaint")
         case .ban:
-            return "Ban Unique ID"
+            return localized("contacts.row.banUniqueId")
         }
     }
 
     private var fieldTitle: String {
         switch mode {
         case .offlineMessage:
-            return "Message"
+            return localized("clientActions.message")
         case .contactNote:
-            return "Note"
+            return localized("clientActions.note")
         case .complain:
-            return "Complaint"
+            return localized("complaints.complaint")
         case .ban:
-            return "Reason"
+            return localized("ban.reason")
         }
     }
 
     private var actionTitle: String {
         switch mode {
         case .offlineMessage:
-            return "Send"
+            return localized("clientActions.send")
         case .contactNote:
-            return "Save Note"
+            return localized("clientActions.saveNote")
         case .complain:
-            return "Submit Complaint"
+            return localized("clientActions.submitComplaint")
         case .ban:
-            return "Ban"
+            return localized("clientActions.ban")
         }
     }
 
@@ -18801,6 +18811,11 @@ struct DatabaseClientActionSheet: View {
             subject: subject,
             message: text
         )
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 }
 
@@ -25575,24 +25590,24 @@ private struct TemporaryServerPasswordFilterPresetImportSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preview")) {
-                    Text("Imported presets: \(preview.importedPresetCount)")
-                    Text("Usable presets: \(preview.usablePresetCount)")
-                    Text("New presets: \(preview.newPresetCount)")
-                    Text("Replacing presets: \(preview.replacedPresetCount)")
-                    Text("Skipped presets: \(preview.skippedPresetCount)")
-                    Button("Copy Backup Preview") {
+                Section(header: Text(localized("temporaryPasswords.import.preview"))) {
+                    Text(localized("temporaryPasswords.import.importedPresetsFormat", preview.importedPresetCount))
+                    Text(localized("temporaryPasswords.import.usablePresetsFormat", preview.usablePresetCount))
+                    Text(localized("temporaryPasswords.import.newPresetsFormat", preview.newPresetCount))
+                    Text(localized("temporaryPasswords.import.replacingPresetsFormat", preview.replacedPresetCount))
+                    Text(localized("temporaryPasswords.import.skippedPresetsFormat", preview.skippedPresetCount))
+                    Button(localized("temporaryPasswords.import.copyBackupPreview")) {
                         TS3PlatformSupport.copyToPasteboard(preview.clipboardSummary)
                     }
                 }
 
-                Section(header: Text("Restore")) {
+                Section(header: Text(localized("temporaryPasswords.import.restore"))) {
                     HStack {
-                        Button("Select All") {
+                        Button(localized("temporaryPasswords.import.selectAll")) {
                             selectedPresetIds = Set(preview.candidates.map(\.id))
                         }
                         Spacer()
-                        Button("Clear") {
+                        Button(localized("temporaryPasswords.import.clear")) {
                             selectedPresetIds.removeAll()
                         }
                     }

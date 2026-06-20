@@ -147,6 +147,7 @@
 "serverTools.privilegeKey" = "权限密钥";
 "serverTools.serverGroupFormat" = "服务器：%@";
 "serverTools.channelGroupFormat" = "频道：%@";
+"connect.connectingToServer" = "正在连接服务器...";
 "connect.recentConnection" = "最近连接";
 "connect.reconnect" = "重新连接";
 "connect.connectionDiagnostics" = "连接诊断";
@@ -201,6 +202,8 @@
 "connect.filterImport.action" = "导入";
 "common.cancel" = "取消";
 "common.done" = "完成";
+"common.serverIcon" = "服务器图标";
+"common.clientIcon" = "客户端图标";
 "common.delete" = "删除";
 "common.apply" = "应用";
 "common.connect" = "连接";
@@ -303,6 +306,9 @@
 "channels.events" = "事件";
 "channels.whisper" = "密语";
 "channels.whispering" = "密语中";
+"channels.currentChannel" = "当前频道";
+"channels.setCurrentChannelAsDefault" = "将当前频道设为默认";
+"channels.currentChannelUnavailable" = "当前频道暂不可用。";
 "channels.unreadMessages" = "未读消息";
 "channels.unreadEvents" = "未读事件";
 "channels.tools" = "工具";
@@ -1646,10 +1652,12 @@
 "clientActions.banUser" = "封禁用户";
 "clientActions.details" = "详情";
 "clientActions.message" = "消息";
+"clientActions.note" = "备注";
 "clientActions.pokeMessage" = "戳一戳消息";
 "clientActions.reason" = "原因";
 "clientActions.refresh" = "刷新";
 "clientActions.send" = "发送";
+"clientActions.saveNote" = "保存备注";
 "clientActions.submitComplaint" = "提交投诉";
 "clientActions.kick" = "踢出";
 "clientActions.onlineActionAudit" = "官方动作审计";
@@ -1816,6 +1824,10 @@
 "database.connections" = "连接次数";
 "database.lastIP" = "最后 IP";
 "database.description" = "描述";
+"database.editDescription" = "编辑描述";
+"database.clientIdFormat" = "客户端 ID %d";
+"database.joinChannel" = "加入";
+"database.onlineChannelNotVisible" = "在线，但频道不可见";
 "database.filter.allRecords" = "所有记录";
 "database.filter.withUniqueId" = "有唯一 ID";
 "database.filter.withoutUniqueId" = "无唯一 ID";

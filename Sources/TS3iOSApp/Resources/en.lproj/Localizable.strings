@@ -147,6 +147,7 @@
 "serverTools.privilegeKey" = "Privilege Key";
 "serverTools.serverGroupFormat" = "Server: %@";
 "serverTools.channelGroupFormat" = "Channel: %@";
+"connect.connectingToServer" = "Connecting to server...";
 "connect.recentConnection" = "Recent Connection";
 "connect.reconnect" = "Reconnect";
 "connect.connectionDiagnostics" = "Connection Diagnostics";
@@ -201,6 +202,8 @@
 "connect.filterImport.action" = "Import";
 "common.cancel" = "Cancel";
 "common.done" = "Done";
+"common.serverIcon" = "Server icon";
+"common.clientIcon" = "Client icon";
 "common.delete" = "Delete";
 "common.apply" = "Apply";
 "common.connect" = "Connect";
@@ -303,6 +306,9 @@
 "channels.events" = "Events";
 "channels.whisper" = "Whisper";
 "channels.whispering" = "Whispering";
+"channels.currentChannel" = "Current Channel";
+"channels.setCurrentChannelAsDefault" = "Set current channel as default";
+"channels.currentChannelUnavailable" = "Current channel not available yet.";
 "channels.unreadMessages" = "unread messages";
 "channels.unreadEvents" = "unread events";
 "channels.tools" = "Tools";
@@ -1646,10 +1652,12 @@
 "clientActions.banUser" = "Ban User";
 "clientActions.details" = "Details";
 "clientActions.message" = "Message";
+"clientActions.note" = "Note";
 "clientActions.pokeMessage" = "Poke Message";
 "clientActions.reason" = "Reason";
 "clientActions.refresh" = "Refresh";
 "clientActions.send" = "Send";
+"clientActions.saveNote" = "Save Note";
 "clientActions.submitComplaint" = "Submit Complaint";
 "clientActions.kick" = "Kick";
 "clientActions.onlineActionAudit" = "Official Action Audit";
@@ -1816,6 +1824,10 @@
 "database.connections" = "Connections";
 "database.lastIP" = "Last IP";
 "database.description" = "Description";
+"database.editDescription" = "Edit Description";
+"database.clientIdFormat" = "Client ID %d";
+"database.joinChannel" = "Join";
+"database.onlineChannelNotVisible" = "Online, channel not visible";
 "database.filter.allRecords" = "All Records";
 "database.filter.withUniqueId" = "With Unique ID";
 "database.filter.withoutUniqueId" = "Without Unique ID";
