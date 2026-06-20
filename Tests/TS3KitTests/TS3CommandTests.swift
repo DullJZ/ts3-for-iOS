@@ -97,6 +97,34 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(markUnread.build(), "messageupdateflag msgid=42 flag=0")
     }
 
+    func testClientDatabaseAndLookupCommandsBuildOfficialParameters() {
+        let info = TS3Client.clientInfoCommand(clientId: 7)
+        let list = TS3Client.clientDatabaseListCommand(start: 10, duration: 25)
+        let databaseInfo = TS3Client.clientDatabaseInfoCommand(clientDatabaseId: 42)
+        let databaseFind = TS3Client.clientDatabaseFindCommand(pattern: "Taylor / Ops | Lead")
+        let databaseEdit = TS3Client.clientDatabaseEditDescriptionCommand(
+            clientDatabaseId: 42,
+            description: "Trusted / raid | lead"
+        )
+        let databaseDelete = TS3Client.clientDatabaseDeleteCommand(clientDatabaseId: 42)
+        let clientFind = TS3Client.clientFindCommand(pattern: "Jordan / Guest | Away")
+        let getIds = TS3Client.clientGetIdsCommand(uniqueIdentifier: "uid/abc")
+        let databaseId = TS3Client.clientDatabaseIdFromUniqueIdentifierCommand(uniqueIdentifier: "uid/abc")
+
+        XCTAssertEqual(info.build(), "clientinfo clid=7")
+        XCTAssertEqual(list.build(), "clientdblist start=10 duration=25")
+        XCTAssertEqual(databaseInfo.build(), "clientdbinfo cldbid=42")
+        XCTAssertEqual(databaseFind.build(), "clientdbfind pattern=Taylor\\s\\/\\sOps\\s\\p\\sLead")
+        XCTAssertEqual(
+            databaseEdit.build(),
+            "clientdbedit cldbid=42 client_description=Trusted\\s\\/\\sraid\\s\\p\\slead"
+        )
+        XCTAssertEqual(databaseDelete.build(), "clientdbdelete cldbid=42")
+        XCTAssertEqual(clientFind.build(), "clientfind pattern=Jordan\\s\\/\\sGuest\\s\\p\\sAway")
+        XCTAssertEqual(getIds.build(), "clientgetids cluid=uid\\/abc")
+        XCTAssertEqual(databaseId.build(), "clientgetdbidfromuid cluid=uid\\/abc")
+    }
+
     func testClientActionCommandsBuildOfficialContextMenuFields() {
         let hashedChannelPassword = TS3String.escape(TS3Crypto.hashPassword("room pass"))
         let move = TS3Client.clientMoveCommand(clientId: 7, channelId: 12, password: "room pass")

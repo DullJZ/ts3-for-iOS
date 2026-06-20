@@ -266,9 +266,7 @@ public final class TS3Client {
     }
 
     public func refreshClientDetails(clientId targetClientId: Int) async throws -> TS3ServerClient? {
-        let responses = try await execute(TS3SingleCommand(name: "clientinfo", parameters: [
-            TS3CommandSingleParameter(name: "clid", value: String(targetClientId))
-        ]))
+        let responses = try await execute(Self.clientInfoCommand(clientId: targetClientId))
         var lastUpdated: TS3ServerClient?
         for response in responses {
             if let updated = mergeDetailedClientInfo(response, fallbackClientId: targetClientId) {
@@ -281,60 +279,47 @@ public final class TS3Client {
     }
 
     public func refreshClientDatabase(start: Int = 0, duration: Int = 100) async throws -> [TS3DatabaseClient] {
-        let responses = try await execute(TS3SingleCommand(name: "clientdblist", parameters: [
-            TS3CommandSingleParameter(name: "start", value: String(start)),
-            TS3CommandSingleParameter(name: "duration", value: String(duration))
-        ]))
+        let responses = try await execute(Self.clientDatabaseListCommand(start: start, duration: duration))
         return responses.compactMap { databaseClient(from: $0) }
     }
 
     public func databaseClientInfo(clientDatabaseId: Int) async throws -> TS3DatabaseClient? {
-        let responses = try await execute(TS3SingleCommand(name: "clientdbinfo", parameters: [
-            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
-        ]))
+        let responses = try await execute(Self.clientDatabaseInfoCommand(clientDatabaseId: clientDatabaseId))
         return responses.compactMap { databaseClient(from: $0, fallbackDatabaseId: clientDatabaseId) }.first
     }
 
     public func findDatabaseClients(pattern: String) async throws -> [TS3DatabaseClient] {
-        let responses = try await execute(TS3SingleCommand(name: "clientdbfind", parameters: [
-            TS3CommandSingleParameter(name: "pattern", value: pattern)
-        ]))
+        let responses = try await execute(Self.clientDatabaseFindCommand(pattern: pattern))
         return responses.compactMap { databaseClient(from: $0) }
     }
 
     /// Updates the stored description for a client database record.
     public func editDatabaseClientDescription(clientDatabaseId: Int, description: String) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientdbedit", parameters: [
-            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
-            TS3CommandSingleParameter(name: "client_description", value: description)
-        ]))
+        _ = try await execute(Self.clientDatabaseEditDescriptionCommand(
+            clientDatabaseId: clientDatabaseId,
+            description: description
+        ))
     }
 
     /// Deletes a client database record from the virtual server.
     public func deleteDatabaseClient(clientDatabaseId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "clientdbdelete", parameters: [
-            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
-        ]))
+        _ = try await execute(Self.clientDatabaseDeleteCommand(clientDatabaseId: clientDatabaseId))
     }
 
     public func onlineClientIds(forNamePattern pattern: String) async throws -> [TS3ClientLocation] {
-        let responses = try await execute(TS3SingleCommand(name: "clientfind", parameters: [
-            TS3CommandSingleParameter(name: "pattern", value: pattern)
-        ]))
+        let responses = try await execute(Self.clientFindCommand(pattern: pattern))
         return responses.compactMap { clientLocation(from: $0) }
     }
 
     public func onlineClientIds(forUniqueIdentifier uniqueIdentifier: String) async throws -> [TS3ClientLocation] {
-        let responses = try await execute(TS3SingleCommand(name: "clientgetids", parameters: [
-            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
-        ]))
+        let responses = try await execute(Self.clientGetIdsCommand(uniqueIdentifier: uniqueIdentifier))
         return responses.compactMap { clientLocation(from: $0) }
     }
 
     public func databaseId(forUniqueIdentifier uniqueIdentifier: String) async throws -> Int? {
-        let responses = try await execute(TS3SingleCommand(name: "clientgetdbidfromuid", parameters: [
-            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
-        ]))
+        let responses = try await execute(Self.clientDatabaseIdFromUniqueIdentifierCommand(
+            uniqueIdentifier: uniqueIdentifier
+        ))
         return responses.compactMap { intValue($0, "cldbid") }.first
     }
 
@@ -2850,6 +2835,62 @@ extension TS3Client {
             clientId: clientId,
             nickname: command.get("name")?.value ?? command.get("client_nickname")?.value
         )
+    }
+
+    static func clientInfoCommand(clientId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientinfo", parameters: [
+            TS3CommandSingleParameter(name: "clid", value: String(clientId))
+        ])
+    }
+
+    static func clientDatabaseListCommand(start: Int, duration: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientdblist", parameters: [
+            TS3CommandSingleParameter(name: "start", value: String(start)),
+            TS3CommandSingleParameter(name: "duration", value: String(duration))
+        ])
+    }
+
+    static func clientDatabaseInfoCommand(clientDatabaseId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientdbinfo", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ])
+    }
+
+    static func clientDatabaseFindCommand(pattern: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientdbfind", parameters: [
+            TS3CommandSingleParameter(name: "pattern", value: pattern)
+        ])
+    }
+
+    static func clientDatabaseEditDescriptionCommand(clientDatabaseId: Int, description: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientdbedit", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId)),
+            TS3CommandSingleParameter(name: "client_description", value: description)
+        ])
+    }
+
+    static func clientDatabaseDeleteCommand(clientDatabaseId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientdbdelete", parameters: [
+            TS3CommandSingleParameter(name: "cldbid", value: String(clientDatabaseId))
+        ])
+    }
+
+    static func clientFindCommand(pattern: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientfind", parameters: [
+            TS3CommandSingleParameter(name: "pattern", value: pattern)
+        ])
+    }
+
+    static func clientGetIdsCommand(uniqueIdentifier: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientgetids", parameters: [
+            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
+        ])
+    }
+
+    static func clientDatabaseIdFromUniqueIdentifierCommand(uniqueIdentifier: String) -> TS3SingleCommand {
+        TS3SingleCommand(name: "clientgetdbidfromuid", parameters: [
+            TS3CommandSingleParameter(name: "cluid", value: uniqueIdentifier)
+        ])
     }
 
     static func permission(from command: TS3SingleCommand) -> TS3Permission? {
