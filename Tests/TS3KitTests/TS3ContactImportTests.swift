@@ -406,6 +406,62 @@ final class TS3ContactImportTests: XCTestCase {
         )
     }
 
+    func testContactRowActionReadinessSummaryCountsRequirements() {
+        let contact = makeContact(
+            uniqueIdentifier: "uid-contact",
+            nickname: "Contact",
+            status: .friend,
+            note: "trusted"
+        )
+        let audit = TS3ContactRowOfficialActionAuditSummary(
+            contact: contact,
+            isOnline: true,
+            canSaveBookmark: true,
+            hasDatabaseRecord: true
+        )
+
+        let readiness = TS3ContactRowActionReadinessSummary(audit: audit)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 4)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 0)
+        XCTAssertEqual(readiness.missingRequirements, [])
+        XCTAssertEqual(readiness.blockedOfficialAreaCount, 0)
+        XCTAssertFalse(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "contact=Contact | uid=uid-contact | status=friend | readiness=4/4 | missingRequirements=0 | blockedOfficialAreas=0 | requirements=uniqueIdentifier:true,onlineClient:true,databaseRecord:true,bookmarkSave:true | missing=none | needsAttention=false"
+        )
+    }
+
+    func testContactRowActionReadinessSummaryFlagsMissingContext() {
+        let contact = makeContact(
+            uniqueIdentifier: " ",
+            nickname: "Contact",
+            status: .blocked,
+            note: ""
+        )
+        let audit = TS3ContactRowOfficialActionAuditSummary(
+            contact: contact,
+            isOnline: false,
+            canSaveBookmark: false,
+            hasDatabaseRecord: false
+        )
+
+        let readiness = TS3ContactRowActionReadinessSummary(audit: audit)
+
+        XCTAssertEqual(readiness.satisfiedRequirementCount, 0)
+        XCTAssertEqual(readiness.totalRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirementCount, 4)
+        XCTAssertEqual(readiness.missingRequirements, [.uniqueIdentifier, .onlineClient, .databaseRecord, .bookmarkSave])
+        XCTAssertEqual(readiness.blockedOfficialAreaCount, 1)
+        XCTAssertTrue(readiness.needsAttention)
+        XCTAssertEqual(
+            readiness.clipboardSummary,
+            "contact=Contact | uid=  | status=blocked | readiness=0/4 | missingRequirements=4 | blockedOfficialAreas=1 | requirements=uniqueIdentifier:false,onlineClient:false,databaseRecord:false,bookmarkSave:false | missing=uniqueIdentifier,onlineClient,databaseRecord,bookmarkSave | needsAttention=true"
+        )
+    }
+
     @MainActor
     func testContactBookmarkSaveImpactCountsReplacementAndCredentials() {
         let model = TS3AppModel()

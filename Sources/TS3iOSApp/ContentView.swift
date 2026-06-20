@@ -7931,6 +7931,9 @@ struct ContactRow: View {
             .accessibilityAction(named: localized("contacts.row.copyOfficialActions")) {
                 TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
             }
+            .accessibilityAction(named: localized("contacts.row.copyActionReadiness")) {
+                copyContactActionReadiness()
+            }
             .accessibilityAction(named: localized("contacts.row.editContact")) {
                 isEditing = true
             }
@@ -8047,6 +8050,9 @@ struct ContactRow: View {
         Button(localized("contacts.row.copyOfficialActions")) {
             TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
         }
+        Button(localized("contacts.row.copyActionReadiness")) {
+            copyContactActionReadiness()
+        }
         ForEach(TS3ContactStatus.allCases) { status in
             Button(localized("contacts.row.setStatusFormat", localizedStatusTitle(status))) {
                 model.updateContact(contact, status: status, note: contact.note)
@@ -8085,6 +8091,9 @@ struct ContactRow: View {
         }
         Button(localized("contacts.row.copyOfficialActions")) {
             TS3PlatformSupport.copyToPasteboard(officialActionAudit.clipboardSummary)
+        }
+        Button(localized("contacts.row.copyActionReadiness")) {
+            copyContactActionReadiness()
         }
         Button(localized("contacts.row.editContact")) {
             isEditing = true
@@ -8138,6 +8147,10 @@ struct ContactRow: View {
         )
     }
 
+    private var contactActionReadiness: TS3ContactRowActionReadinessSummary {
+        TS3ContactRowActionReadinessSummary(audit: officialActionAudit)
+    }
+
     private var canSaveContactBookmark: Bool {
         model.contactBookmarkDraftSummary(for: contact).canSave
     }
@@ -8148,6 +8161,10 @@ struct ContactRow: View {
 
     private func copyContactBookmarkImpact() {
         TS3PlatformSupport.copyToPasteboard(model.contactBookmarkSaveImpactSummary(for: contact).clipboardSummary)
+    }
+
+    private func copyContactActionReadiness() {
+        TS3PlatformSupport.copyToPasteboard(contactActionReadiness.clipboardSummary)
     }
 }
 

@@ -3674,6 +3674,68 @@ struct TS3ContactRowOfficialActionAuditSummary {
     }
 }
 
+enum TS3ContactRowActionRequirement: String, CaseIterable, Codable {
+    case uniqueIdentifier
+    case onlineClient
+    case databaseRecord
+    case bookmarkSave
+}
+
+struct TS3ContactRowActionReadinessSummary {
+    let audit: TS3ContactRowOfficialActionAuditSummary
+
+    var requirementStates: [TS3ContactRowActionRequirement: Bool] {
+        [
+            .uniqueIdentifier: !audit.contact.uniqueIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            .onlineClient: audit.isOnline,
+            .databaseRecord: audit.hasDatabaseRecord,
+            .bookmarkSave: audit.canSaveBookmark
+        ]
+    }
+
+    var satisfiedRequirementCount: Int {
+        requirementStates.values.filter { $0 }.count
+    }
+
+    var totalRequirementCount: Int {
+        TS3ContactRowActionRequirement.allCases.count
+    }
+
+    var missingRequirementCount: Int {
+        max(0, totalRequirementCount - satisfiedRequirementCount)
+    }
+
+    var missingRequirements: [TS3ContactRowActionRequirement] {
+        TS3ContactRowActionRequirement.allCases.filter { requirementStates[$0] != true }
+    }
+
+    var blockedOfficialAreaCount: Int {
+        audit.blockedAreaCount
+    }
+
+    var needsAttention: Bool {
+        missingRequirementCount > 0 || blockedOfficialAreaCount > 0 || audit.needsAttention
+    }
+
+    var clipboardSummary: String {
+        let requirements = TS3ContactRowActionRequirement.allCases
+            .map { "\($0.rawValue):\(requirementStates[$0] == true ? "true" : "false")" }
+            .joined(separator: ",")
+        let missing = missingRequirements.map(\.rawValue).joined(separator: ",")
+        return [
+            "contact=\(audit.contact.nickname)",
+            "uid=\(audit.contact.uniqueIdentifier)",
+            "status=\(audit.contact.status.rawValue)",
+            "readiness=\(satisfiedRequirementCount)/\(totalRequirementCount)",
+            "missingRequirements=\(missingRequirementCount)",
+            "blockedOfficialAreas=\(blockedOfficialAreaCount)",
+            "requirements=\(requirements)",
+            "missing=\(missing.isEmpty ? "none" : missing)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+}
+
 struct TS3ContactImportPreview {
     let importedCount: Int
     let validCount: Int

@@ -1573,6 +1573,7 @@
 "contacts.row.copyUniqueId" = "Copy Unique ID";
 "contacts.row.copySummary" = "Copy Summary";
 "contacts.row.copyOfficialActions" = "Copy Official Actions";
+"contacts.row.copyActionReadiness" = "Copy Action Readiness";
 "contacts.row.setStatusFormat" = "Set %@";
 "contacts.row.deleteContact" = "Delete Contact";
 "clientActions.awayMessageFormat" = "Away: %@";

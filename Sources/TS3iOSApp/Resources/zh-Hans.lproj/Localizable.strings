@@ -1573,6 +1573,7 @@
 "contacts.row.copyUniqueId" = "复制唯一 ID";
 "contacts.row.copySummary" = "复制摘要";
 "contacts.row.copyOfficialActions" = "复制官方动作";
+"contacts.row.copyActionReadiness" = "复制动作就绪度";
 "contacts.row.setStatusFormat" = "设为%@";
 "contacts.row.deleteContact" = "删除联系人";
 "clientActions.awayMessageFormat" = "离开：%@";
