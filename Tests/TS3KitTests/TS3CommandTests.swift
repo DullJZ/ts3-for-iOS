@@ -85,12 +85,37 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(notTalker.build(), "clientedit clid=7 client_is_talker=0")
     }
 
-    func testBanDeleteCommandUsesServerQueryName() {
-        let command = TS3SingleCommand(name: "bandel", parameters: [
-            TS3CommandSingleParameter(name: "banid", value: "42")
-        ])
+    func testBanListCommandsBuildOfficialParameters() throws {
+        let list = TS3Client.banListCommand()
+        let add = try TS3Client.banAddCommand(
+            ip: " 203.0.113.7 ",
+            name: "Bad / Name | Pattern",
+            uniqueIdentifier: "abc/def",
+            myTeamSpeakId: "myts id",
+            lastNickname: "Recent Guest",
+            durationSeconds: 600,
+            reason: "spam | abuse"
+        )
+        let trimmed = try TS3Client.banAddCommand(
+            ip: " ",
+            name: " Nick ",
+            uniqueIdentifier: nil,
+            myTeamSpeakId: "\n",
+            lastNickname: "",
+            durationSeconds: nil,
+            reason: " "
+        )
+        let delete = TS3Client.banDeleteCommand(banId: 42)
+        let deleteAll = TS3Client.banDeleteAllCommand()
 
-        XCTAssertEqual(command.build(), "bandel banid=42")
+        XCTAssertEqual(list.build(), "banlist")
+        XCTAssertEqual(
+            add.build(),
+            "banadd ip=203.0.113.7 name=Bad\\s\\/\\sName\\s\\p\\sPattern uid=abc\\/def mytsid=myts\\sid lastnickname=Recent\\sGuest banreason=spam\\s\\p\\sabuse time=600"
+        )
+        XCTAssertEqual(trimmed.build(), "banadd name=Nick")
+        XCTAssertEqual(delete.build(), "bandel banid=42")
+        XCTAssertEqual(deleteAll.build(), "bandelall")
     }
 
     func testPermissionListCommandsBuildOfficialScopeOptions() {
@@ -537,19 +562,21 @@ final class TS3CommandTests: XCTestCase {
         XCTAssertEqual(delete.build(), "privilegekeydelete token=token\\s\\/\\sold\\s\\p\\sdelete")
     }
 
-    func testBanAddCommandRequiresOfficialTargetFieldsAndEscapesReason() {
-        let command = TS3SingleCommand(name: "banadd", parameters: [
-            TS3CommandSingleParameter(name: "uid", value: "abc/def"),
-            TS3CommandSingleParameter(name: "mytsid", value: "myts id"),
-            TS3CommandSingleParameter(name: "lastnickname", value: "Recent Guest"),
-            TS3CommandSingleParameter(name: "banreason", value: "spam | abuse"),
-            TS3CommandSingleParameter(name: "time", value: "600")
-        ])
-
-        XCTAssertEqual(
-            command.build(),
-            "banadd uid=abc\\/def mytsid=myts\\sid lastnickname=Recent\\sGuest banreason=spam\\s\\p\\sabuse time=600"
-        )
+    func testBanAddCommandRequiresOfficialTargetField() {
+        XCTAssertThrowsError(try TS3Client.banAddCommand(
+            ip: " ",
+            name: "",
+            uniqueIdentifier: nil,
+            myTeamSpeakId: "\n",
+            lastNickname: "\t",
+            durationSeconds: 600,
+            reason: "spam | abuse"
+        )) { error in
+            guard case TS3Error.invalidCommand = error else {
+                XCTFail("Expected invalidCommand, got \(error)")
+                return
+            }
+        }
     }
 
     func testServerEditCommandBuildsOfficialVirtualServerParameters() {

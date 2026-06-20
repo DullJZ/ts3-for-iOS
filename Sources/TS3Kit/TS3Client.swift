@@ -661,35 +661,28 @@ public final class TS3Client {
         durationSeconds: Int? = nil,
         reason: String? = nil
     ) async throws {
-        var params: [TS3CommandParameter] = []
-        appendParameter(&params, name: "ip", value: trimmedNonEmpty(ip))
-        appendParameter(&params, name: "name", value: trimmedNonEmpty(name))
-        appendParameter(&params, name: "uid", value: trimmedNonEmpty(uniqueIdentifier))
-        appendParameter(&params, name: "mytsid", value: trimmedNonEmpty(myTeamSpeakId))
-        appendParameter(&params, name: "lastnickname", value: trimmedNonEmpty(lastNickname))
-        appendParameter(&params, name: "banreason", value: trimmedNonEmpty(reason))
-        if let durationSeconds {
-            params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
-        }
-        guard params.contains(where: { ["ip", "name", "uid", "mytsid", "lastnickname"].contains($0.name) }) else {
-            throw TS3Error.invalidCommand
-        }
-        _ = try await execute(TS3SingleCommand(name: "banadd", parameters: params))
+        _ = try await execute(Self.banAddCommand(
+            ip: ip,
+            name: name,
+            uniqueIdentifier: uniqueIdentifier,
+            myTeamSpeakId: myTeamSpeakId,
+            lastNickname: lastNickname,
+            durationSeconds: durationSeconds,
+            reason: reason
+        ))
     }
 
     public func refreshBanList() async throws -> [TS3BanEntry] {
-        let responses = try await execute(TS3SingleCommand(name: "banlist"))
+        let responses = try await execute(Self.banListCommand())
         return responses.compactMap { banEntry(from: $0) }
     }
 
     public func deleteBan(banId: Int) async throws {
-        _ = try await execute(TS3SingleCommand(name: "bandel", parameters: [
-            TS3CommandSingleParameter(name: "banid", value: String(banId))
-        ]))
+        _ = try await execute(Self.banDeleteCommand(banId: banId))
     }
 
     public func deleteAllBans() async throws {
-        _ = try await execute(TS3SingleCommand(name: "bandelall"))
+        _ = try await execute(Self.banDeleteAllCommand())
     }
 
     public func addComplaint(clientDatabaseId: Int, message: String) async throws {
@@ -2998,6 +2991,64 @@ extension TS3Client {
             params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
         }
         return TS3SingleCommand(name: "banclient", parameters: params)
+    }
+
+    static func banListCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "banlist")
+    }
+
+    static func banAddCommand(
+        ip: String? = nil,
+        name: String? = nil,
+        uniqueIdentifier: String? = nil,
+        myTeamSpeakId: String? = nil,
+        lastNickname: String? = nil,
+        durationSeconds: Int? = nil,
+        reason: String? = nil
+    ) throws -> TS3SingleCommand {
+        func trimmedNonEmpty(_ value: String?) -> String? {
+            guard let value else { return nil }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+
+        var params: [TS3CommandParameter] = []
+        if let ip = trimmedNonEmpty(ip) {
+            params.append(TS3CommandSingleParameter(name: "ip", value: ip))
+        }
+        if let name = trimmedNonEmpty(name) {
+            params.append(TS3CommandSingleParameter(name: "name", value: name))
+        }
+        if let uniqueIdentifier = trimmedNonEmpty(uniqueIdentifier) {
+            params.append(TS3CommandSingleParameter(name: "uid", value: uniqueIdentifier))
+        }
+        if let myTeamSpeakId = trimmedNonEmpty(myTeamSpeakId) {
+            params.append(TS3CommandSingleParameter(name: "mytsid", value: myTeamSpeakId))
+        }
+        if let lastNickname = trimmedNonEmpty(lastNickname) {
+            params.append(TS3CommandSingleParameter(name: "lastnickname", value: lastNickname))
+        }
+        if let reason = trimmedNonEmpty(reason) {
+            params.append(TS3CommandSingleParameter(name: "banreason", value: reason))
+        }
+        if let durationSeconds {
+            params.append(TS3CommandSingleParameter(name: "time", value: String(durationSeconds)))
+        }
+        let targetNames = Set(["ip", "name", "uid", "mytsid", "lastnickname"])
+        guard params.contains(where: { targetNames.contains($0.name) }) else {
+            throw TS3Error.invalidCommand
+        }
+        return TS3SingleCommand(name: "banadd", parameters: params)
+    }
+
+    static func banDeleteCommand(banId: Int) -> TS3SingleCommand {
+        TS3SingleCommand(name: "bandel", parameters: [
+            TS3CommandSingleParameter(name: "banid", value: String(banId))
+        ])
+    }
+
+    static func banDeleteAllCommand() -> TS3SingleCommand {
+        TS3SingleCommand(name: "bandelall")
     }
 
     static func clientPokeCommand(clientId: Int, message: String) -> TS3SingleCommand {
