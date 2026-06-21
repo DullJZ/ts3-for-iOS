@@ -11959,6 +11959,9 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "apply-nickname",
         "open-chat",
         "open-offline-messages",
+        "refresh-offline-messages",
+        "copy-offline-message-summary",
+        "copy-offline-message-cache",
         "open-events",
         "open-whisper",
         "open-talk-requests",
@@ -15889,6 +15892,9 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "apply-nickname", group: "Profile", action: "Apply Nickname", defaultKeys: "Command-Return"),
         TS3KeyboardShortcutBinding(actionId: "open-chat", group: "Messaging", action: "Open Chat", defaultKeys: "Command-Shift-T"),
         TS3KeyboardShortcutBinding(actionId: "open-offline-messages", group: "Messaging", action: "Open Offline Messages", defaultKeys: "Command-Shift-I"),
+        TS3KeyboardShortcutBinding(actionId: "refresh-offline-messages", group: "Messaging", action: "Refresh Offline Messages", defaultKeys: "Command-Control-Option-M"),
+        TS3KeyboardShortcutBinding(actionId: "copy-offline-message-summary", group: "Messaging", action: "Copy Cached Inbox Summary", defaultKeys: "Command-Control-Option-J"),
+        TS3KeyboardShortcutBinding(actionId: "copy-offline-message-cache", group: "Messaging", action: "Copy Cached Inbox Snapshot", defaultKeys: "Command-Control-Option-Shift-J"),
         TS3KeyboardShortcutBinding(actionId: "open-events", group: "Messaging", action: "Open Events", defaultKeys: "Command-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "open-whisper", group: "Messaging", action: "Open Whisper", defaultKeys: "Command-Shift-W"),
         TS3KeyboardShortcutBinding(actionId: "open-talk-requests", group: "Server", action: "Talk Requests", defaultKeys: "Command-Option-Shift-T"),
@@ -21537,6 +21543,64 @@ final class TS3AppModel: ObservableObject {
                 self.saveOfflineMessageHistory()
             }
         }
+    }
+
+    var cachedOfflineMessageSummary: TS3OfflineMessageListSummary {
+        TS3OfflineMessageListSummary(messages: offlineMessages)
+    }
+
+    func copyCachedOfflineMessageSummary() {
+        guard !offlineMessages.isEmpty else {
+            lastError = "No cached offline messages to copy."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(cachedOfflineMessageSummary.clipboardSummary)
+        lastError = nil
+    }
+
+    func copyCachedOfflineMessageSnapshot() {
+        guard !offlineMessages.isEmpty else {
+            lastError = "No cached offline messages to copy."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(Self.offlineMessageSnapshot(from: offlineMessages))
+        lastError = nil
+    }
+
+    static func offlineMessageSnapshot(from messages: [TS3OfflineMessageSummary]) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date?) -> String? {
+            guard let date else { return nil }
+            return formatter.string(from: date)
+        }
+
+        return messages.map { message in
+            var rows = [
+                localized("offline.snapshot.messageIdFormat", message.id),
+                localized("offline.snapshot.readFormat", message.isRead ? localized("offline.yes") : localized("offline.no")),
+                localized("offline.snapshot.senderFormat", message.senderName ?? message.senderUniqueIdentifier ?? localized("offline.unknownSender")),
+                localized("offline.snapshot.subjectFormat", message.subject)
+            ]
+            if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
+                rows.append(localized("offline.snapshot.senderUidFormat", senderUniqueIdentifier))
+            }
+            if let timestamp = dateText(message.timestamp) {
+                rows.append(localized("offline.snapshot.timestampFormat", timestamp))
+            }
+            if let body = message.message, !body.isEmpty {
+                rows.append(localized("offline.snapshot.messageFormat", body))
+            }
+            return rows.joined(separator: "\n")
+        }
+        .joined(separator: "\n\n")
+    }
+
+    private static func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
     }
 
     func openOfflineMessage(_ message: TS3OfflineMessageSummary) {

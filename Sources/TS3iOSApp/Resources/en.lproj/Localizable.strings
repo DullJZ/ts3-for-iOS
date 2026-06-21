@@ -1956,6 +1956,9 @@
 "offline.noMessages" = "No offline messages";
 "offline.noMatchingMessages" = "No matching messages";
 "offline.refresh" = "Refresh";
+"offline.refreshInbox" = "Refresh Offline Messages";
+"offline.copyCachedSummary" = "Copy Cached Inbox Summary";
+"offline.copyCachedSnapshot" = "Copy Cached Inbox Snapshot";
 "offline.copySnapshot" = "Copy Inbox Snapshot";
 "offline.exportSnapshot" = "Export Inbox Snapshot";
 "offline.exportArchive" = "Export Inbox Archive";

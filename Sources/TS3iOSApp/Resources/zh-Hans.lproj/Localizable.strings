@@ -1956,6 +1956,9 @@
 "offline.noMessages" = "没有离线消息";
 "offline.noMatchingMessages" = "没有匹配的消息";
 "offline.refresh" = "刷新";
+"offline.refreshInbox" = "刷新离线消息";
+"offline.copyCachedSummary" = "复制缓存收件箱摘要";
+"offline.copyCachedSnapshot" = "复制缓存收件箱快照";
 "offline.copySnapshot" = "复制收件箱快照";
 "offline.exportSnapshot" = "导出收件箱快照";
 "offline.exportArchive" = "导出收件箱归档";

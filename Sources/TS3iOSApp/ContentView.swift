@@ -11563,34 +11563,7 @@ struct OfflineMessagesSheet: View {
     }
 
     private var visibleInboxSnapshot: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-
-        func dateText(_ date: Date?) -> String? {
-            guard let date else { return nil }
-            return formatter.string(from: date)
-        }
-
-        return filteredMessages.map { message in
-            var rows = [
-                localized("offline.snapshot.messageIdFormat", message.id),
-                localized("offline.snapshot.readFormat", message.isRead ? localized("offline.yes") : localized("offline.no")),
-                localized("offline.snapshot.senderFormat", message.senderName ?? message.senderUniqueIdentifier ?? localized("offline.unknownSender")),
-                localized("offline.snapshot.subjectFormat", message.subject)
-            ]
-            if let senderUniqueIdentifier = message.senderUniqueIdentifier, !senderUniqueIdentifier.isEmpty {
-                rows.append(localized("offline.snapshot.senderUidFormat", senderUniqueIdentifier))
-            }
-            if let timestamp = dateText(message.timestamp) {
-                rows.append(localized("offline.snapshot.timestampFormat", timestamp))
-            }
-            if let body = message.message, !body.isEmpty {
-                rows.append(localized("offline.snapshot.messageFormat", body))
-            }
-            return rows.joined(separator: "\n")
-        }
-        .joined(separator: "\n\n")
+        TS3AppModel.offlineMessageSnapshot(from: filteredMessages)
     }
 
     private var visibleInboxSummary: TS3OfflineMessageListSummary {

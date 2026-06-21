@@ -100,6 +100,26 @@ struct TS3iOSApp: App {
                 }
                 .ts3KeyboardShortcut("open-offline-messages", in: model)
 
+                Button("offline.refreshInbox") {
+                    model.refreshOfflineMessages()
+                }
+                .ts3KeyboardShortcut("refresh-offline-messages", in: model)
+                .disabled(model.state != .connected)
+
+                Menu("common.copy") {
+                    Button("offline.copyCachedSummary") {
+                        model.copyCachedOfflineMessageSummary()
+                    }
+                    .ts3KeyboardShortcut("copy-offline-message-summary", in: model)
+                    .disabled(model.offlineMessages.isEmpty)
+
+                    Button("offline.copyCachedSnapshot") {
+                        model.copyCachedOfflineMessageSnapshot()
+                    }
+                    .ts3KeyboardShortcut("copy-offline-message-cache", in: model)
+                    .disabled(model.offlineMessages.isEmpty)
+                }
+
                 Button("catalyst.openEvents") {
                     model.showEvents()
                 }
