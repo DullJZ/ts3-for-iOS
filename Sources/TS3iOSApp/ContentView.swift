@@ -19545,6 +19545,14 @@ struct ServerSettingsEditorSheet: View {
         let hasChange: Bool
     }
 
+    private struct VersionLimitReviewRow: Hashable {
+        let role: TS3ServerVersionLimitRole
+        let label: String
+        let currentValue: String
+        let draftValue: String
+        let hasChange: Bool
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
@@ -19848,6 +19856,33 @@ struct ServerSettingsEditorSheet: View {
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingLimitSettings) {
+                        ServerInfoDetailRow(
+                            label: localized("serverSettings.versionLimitReview"),
+                            value: localized(
+                                "serverSettings.versionLimitReviewFormat",
+                                versionLimitReviewSummary.changedLimitCount,
+                                versionLimitReviewSummary.totalLimitCount,
+                                versionLimitReviewSummary.invalidDraftCount
+                            )
+                        )
+                        Text(versionLimitReviewText)
+                            .font(.caption)
+                            .foregroundColor(versionLimitReviewSummary.needsAttention ? .orange : .secondary)
+                        ForEach(versionLimitReviewRows, id: \.self) { row in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(row.label)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(localized("serverSettings.versionLimitReviewCurrentFormat", row.currentValue))
+                                    .font(.caption)
+                                Text(localized("serverSettings.versionLimitReviewDraftFormat", row.draftValue))
+                                    .font(.caption)
+                                    .foregroundColor(row.hasChange ? .orange : .secondary)
+                            }
+                        }
+                        Button(localized("serverSettings.copyVersionLimitReview")) {
+                            TS3PlatformSupport.copyToPasteboard(versionLimitReviewClipboard)
+                        }
                         TextField(localized("serverSettings.temporaryChannelDeleteDelayDefault"), text: $temporaryChannelDeleteDelayDefaultSeconds)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
@@ -20433,6 +20468,81 @@ struct ServerSettingsEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var versionLimitReviewSummary: TS3ServerVersionLimitDraftReviewSummary {
+        TS3ServerVersionLimitDraftReviewSummary(
+            currentNeededIdentitySecurityLevel: model.serverInfo.neededIdentitySecurityLevel,
+            draftNeededIdentitySecurityLevel: neededIdentitySecurityLevel,
+            currentMinimumClientVersion: model.serverInfo.minClientVersion,
+            draftMinimumClientVersion: minClientVersion,
+            currentMinimumAndroidVersion: model.serverInfo.minAndroidVersion,
+            draftMinimumAndroidVersion: minAndroidVersion,
+            currentMinimumIOSVersion: model.serverInfo.minIOSVersion,
+            draftMinimumIOSVersion: minIOSVersion
+        )
+    }
+
+    private var versionLimitReviewRows: [VersionLimitReviewRow] {
+        let summary = versionLimitReviewSummary
+        return [
+            versionLimitReviewRow(
+                for: .neededIdentitySecurityLevel,
+                draftText: neededIdentitySecurityLevel,
+                summary: summary
+            ),
+            versionLimitReviewRow(
+                for: .minimumClientVersion,
+                draftText: minClientVersion,
+                summary: summary
+            ),
+            versionLimitReviewRow(
+                for: .minimumAndroidVersion,
+                draftText: minAndroidVersion,
+                summary: summary
+            ),
+            versionLimitReviewRow(
+                for: .minimumIOSVersion,
+                draftText: minIOSVersion,
+                summary: summary
+            )
+        ]
+    }
+
+    private var versionLimitReviewText: String {
+        let summary = versionLimitReviewSummary
+        guard summary.needsAttention else { return localized("serverSettings.versionLimitReviewNoChanges") }
+        var parts: [String] = []
+        if summary.changedLimitCount > 0 {
+            parts.append(localized("serverSettings.versionLimitReviewChangedFormat", summary.changedLimitCount))
+        }
+        if summary.invalidDraftCount > 0 {
+            parts.append(localized("serverSettings.versionLimitReviewInvalidFormat", summary.invalidDraftCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private var versionLimitReviewClipboard: String {
+        let summary = versionLimitReviewSummary
+        let rows = versionLimitReviewRows
+            .map { row in
+                localized(
+                    "serverSettings.versionLimitReviewClipboardRowFormat",
+                    row.label,
+                    row.currentValue,
+                    row.draftValue
+                )
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.versionLimitReview"),
+            summary.clipboardSummary,
+            rows
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private var defaultGroupReviewSummary: TS3ServerDefaultGroupDraftReviewSummary {
         TS3ServerDefaultGroupDraftReviewSummary(
             currentServerGroupId: model.serverInfo.defaultServerGroupId,
@@ -20835,6 +20945,44 @@ struct ServerSettingsEditorSheet: View {
         case .channelAdmin:
             return localized("serverSettings.defaultChannelAdmin")
         }
+    }
+
+    private func title(for role: TS3ServerVersionLimitRole) -> String {
+        switch role {
+        case .neededIdentitySecurityLevel:
+            return localized("serverSettings.neededIdentitySecurityLevel")
+        case .minimumClientVersion:
+            return localized("serverSettings.minimumClientVersion")
+        case .minimumAndroidVersion:
+            return localized("serverSettings.minimumAndroidVersion")
+        case .minimumIOSVersion:
+            return localized("serverSettings.minimumIOSVersion")
+        }
+    }
+
+    private func versionLimitReviewRow(
+        for role: TS3ServerVersionLimitRole,
+        draftText: String,
+        summary: TS3ServerVersionLimitDraftReviewSummary
+    ) -> VersionLimitReviewRow {
+        let isInvalid = summary.invalidDraftRoles.contains(role)
+        let draftValue = isInvalid
+            ? localized(
+                "serverSettings.versionLimitReviewInvalidValueFormat",
+                normalizedDraftValue(draftText)
+            )
+            : versionLimitReviewValue(summary.draftValue(for: role))
+        return VersionLimitReviewRow(
+            role: role,
+            label: title(for: role),
+            currentValue: versionLimitReviewValue(summary.currentValue(for: role)),
+            draftValue: draftValue,
+            hasChange: summary.changedRoles.contains(role) || isInvalid
+        )
+    }
+
+    private func versionLimitReviewValue(_ value: Int?) -> String {
+        value.map(String.init) ?? localized("serverSettings.emptyValue")
     }
 
     private func defaultGroupReviewRow(

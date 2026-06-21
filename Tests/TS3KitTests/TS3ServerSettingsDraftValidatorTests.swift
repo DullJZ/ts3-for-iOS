@@ -448,6 +448,61 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerVersionLimitDraftReviewSummaryCountsChangedLimitsAndInvalidDrafts() {
+        let summary = TS3ServerVersionLimitDraftReviewSummary(
+            currentNeededIdentitySecurityLevel: 8,
+            draftNeededIdentitySecurityLevel: "12",
+            currentMinimumClientVersion: 170000,
+            draftMinimumClientVersion: "client",
+            currentMinimumAndroidVersion: nil,
+            draftMinimumAndroidVersion: "180000",
+            currentMinimumIOSVersion: 190000,
+            draftMinimumIOSVersion: "ios"
+        )
+
+        XCTAssertEqual(summary.totalLimitCount, 4)
+        XCTAssertEqual(summary.reviewedLimitCount, 2)
+        XCTAssertEqual(summary.invalidDraftCount, 2)
+        XCTAssertEqual(summary.invalidDraftRoles, [.minimumClientVersion, .minimumIOSVersion])
+        XCTAssertEqual(summary.changedRoles, [.neededIdentitySecurityLevel, .minimumAndroidVersion])
+        XCTAssertEqual(summary.changedLimitCount, 2)
+        XCTAssertEqual(summary.currentValue(for: .neededIdentitySecurityLevel), 8)
+        XCTAssertEqual(summary.draftValue(for: .neededIdentitySecurityLevel), 12)
+        XCTAssertEqual(summary.draftValue(for: .minimumClientVersion), 170000)
+        XCTAssertEqual(summary.draftValue(for: .minimumAndroidVersion), 180000)
+        XCTAssertEqual(summary.draftValue(for: .minimumIOSVersion), 190000)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "versionLimitChanges=2/4 | reviewedLimits=2/4 | invalidDrafts=2 | changed=neededIdentitySecurityLevel,minimumAndroidVersion | invalid=minimumClientVersion,minimumIOSVersion | needsAttention=true"
+        )
+    }
+
+    func testServerVersionLimitDraftReviewSummaryHandlesUnchangedDraft() {
+        let summary = TS3ServerVersionLimitDraftReviewSummary(
+            currentNeededIdentitySecurityLevel: 8,
+            draftNeededIdentitySecurityLevel: "",
+            currentMinimumClientVersion: 170000,
+            draftMinimumClientVersion: "170000",
+            currentMinimumAndroidVersion: nil,
+            draftMinimumAndroidVersion: " ",
+            currentMinimumIOSVersion: nil,
+            draftMinimumIOSVersion: nil
+        )
+
+        XCTAssertEqual(summary.reviewedLimitCount, 4)
+        XCTAssertEqual(summary.invalidDraftCount, 0)
+        XCTAssertTrue(summary.changedRoles.isEmpty)
+        XCTAssertEqual(summary.changedLimitCount, 0)
+        XCTAssertEqual(summary.draftValue(for: .neededIdentitySecurityLevel), 8)
+        XCTAssertNil(summary.draftValue(for: .minimumAndroidVersion))
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "versionLimitChanges=0/4 | reviewedLimits=4/4 | invalidDrafts=0 | changed=none | invalid=none | needsAttention=false"
+        )
+    }
+
     func testServerSettingsOfficialImpactSummaryCountsAreasAndSensitiveChanges() {
         let summary = TS3ServerSettingsOfficialImpactSummary(
             areaChangeCounts: [

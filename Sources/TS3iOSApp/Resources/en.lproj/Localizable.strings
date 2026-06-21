@@ -1396,6 +1396,16 @@
 "serverSettings.minimumClientVersion" = "Minimum Client Version";
 "serverSettings.minimumAndroidVersion" = "Minimum Android Version";
 "serverSettings.minimumIOSVersion" = "Minimum iOS Version";
+"serverSettings.versionLimitReview" = "Version Limit Review";
+"serverSettings.versionLimitReviewFormat" = "%d of %d changed, %d invalid";
+"serverSettings.versionLimitReviewNoChanges" = "Current version limits match the draft";
+"serverSettings.versionLimitReviewChangedFormat" = "%d version limit changes";
+"serverSettings.versionLimitReviewInvalidFormat" = "%d invalid version limits";
+"serverSettings.versionLimitReviewCurrentFormat" = "Current: %@";
+"serverSettings.versionLimitReviewDraftFormat" = "Draft: %@";
+"serverSettings.versionLimitReviewInvalidValueFormat" = "Invalid value: %@";
+"serverSettings.versionLimitReviewClipboardRowFormat" = "%@: current %@, draft %@";
+"serverSettings.copyVersionLimitReview" = "Copy Version Limit Review";
 "serverSettings.codecEncryption" = "Codec Encryption";
 "serverSettings.codecEncryptionMode" = "Codec Encryption Mode";
 "serverSettings.serverGroup" = "Server Group";

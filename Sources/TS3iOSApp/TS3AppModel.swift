@@ -1894,6 +1894,126 @@ struct TS3ServerDefaultGroupDraftReviewSummary {
     }
 }
 
+enum TS3ServerVersionLimitRole: String, CaseIterable, Codable {
+    case neededIdentitySecurityLevel
+    case minimumClientVersion
+    case minimumAndroidVersion
+    case minimumIOSVersion
+}
+
+struct TS3ServerVersionLimitDraftReviewSummary {
+    let currentNeededIdentitySecurityLevel: Int?
+    let currentMinimumClientVersion: Int?
+    let currentMinimumAndroidVersion: Int?
+    let currentMinimumIOSVersion: Int?
+    let draftNeededIdentitySecurityLevel: Int?
+    let draftMinimumClientVersion: Int?
+    let draftMinimumAndroidVersion: Int?
+    let draftMinimumIOSVersion: Int?
+    let invalidDraftRoles: [TS3ServerVersionLimitRole]
+
+    var totalLimitCount: Int {
+        TS3ServerVersionLimitRole.allCases.count
+    }
+
+    var reviewedLimitCount: Int {
+        max(0, totalLimitCount - invalidDraftRoles.count)
+    }
+
+    var invalidDraftCount: Int {
+        invalidDraftRoles.count
+    }
+
+    var changedRoles: [TS3ServerVersionLimitRole] {
+        TS3ServerVersionLimitRole.allCases.filter { currentValue(for: $0) != draftValue(for: $0) }
+    }
+
+    var changedLimitCount: Int {
+        changedRoles.count
+    }
+
+    var needsAttention: Bool {
+        changedLimitCount > 0 || invalidDraftCount > 0
+    }
+
+    var clipboardSummary: String {
+        let changed = changedRoles.map(\.rawValue).joined(separator: ",")
+        let invalid = invalidDraftRoles.map(\.rawValue).joined(separator: ",")
+        return [
+            "versionLimitChanges=\(changedLimitCount)/\(totalLimitCount)",
+            "reviewedLimits=\(reviewedLimitCount)/\(totalLimitCount)",
+            "invalidDrafts=\(invalidDraftCount)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "invalid=\(invalid.isEmpty ? "none" : invalid)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        currentNeededIdentitySecurityLevel: Int?,
+        draftNeededIdentitySecurityLevel: String?,
+        currentMinimumClientVersion: Int?,
+        draftMinimumClientVersion: String?,
+        currentMinimumAndroidVersion: Int?,
+        draftMinimumAndroidVersion: String?,
+        currentMinimumIOSVersion: Int?,
+        draftMinimumIOSVersion: String?
+    ) {
+        let identityDraft = Self.parsedDraftLimit(draftNeededIdentitySecurityLevel, current: currentNeededIdentitySecurityLevel)
+        let clientDraft = Self.parsedDraftLimit(draftMinimumClientVersion, current: currentMinimumClientVersion)
+        let androidDraft = Self.parsedDraftLimit(draftMinimumAndroidVersion, current: currentMinimumAndroidVersion)
+        let iosDraft = Self.parsedDraftLimit(draftMinimumIOSVersion, current: currentMinimumIOSVersion)
+
+        self.currentNeededIdentitySecurityLevel = currentNeededIdentitySecurityLevel
+        self.currentMinimumClientVersion = currentMinimumClientVersion
+        self.currentMinimumAndroidVersion = currentMinimumAndroidVersion
+        self.currentMinimumIOSVersion = currentMinimumIOSVersion
+        self.draftNeededIdentitySecurityLevel = identityDraft.effectiveValue
+        self.draftMinimumClientVersion = clientDraft.effectiveValue
+        self.draftMinimumAndroidVersion = androidDraft.effectiveValue
+        self.draftMinimumIOSVersion = iosDraft.effectiveValue
+        self.invalidDraftRoles = [
+            identityDraft.isInvalid ? .neededIdentitySecurityLevel : nil,
+            clientDraft.isInvalid ? .minimumClientVersion : nil,
+            androidDraft.isInvalid ? .minimumAndroidVersion : nil,
+            iosDraft.isInvalid ? .minimumIOSVersion : nil
+        ].compactMap { $0 }
+    }
+
+    func currentValue(for role: TS3ServerVersionLimitRole) -> Int? {
+        switch role {
+        case .neededIdentitySecurityLevel:
+            return currentNeededIdentitySecurityLevel
+        case .minimumClientVersion:
+            return currentMinimumClientVersion
+        case .minimumAndroidVersion:
+            return currentMinimumAndroidVersion
+        case .minimumIOSVersion:
+            return currentMinimumIOSVersion
+        }
+    }
+
+    func draftValue(for role: TS3ServerVersionLimitRole) -> Int? {
+        switch role {
+        case .neededIdentitySecurityLevel:
+            return draftNeededIdentitySecurityLevel
+        case .minimumClientVersion:
+            return draftMinimumClientVersion
+        case .minimumAndroidVersion:
+            return draftMinimumAndroidVersion
+        case .minimumIOSVersion:
+            return draftMinimumIOSVersion
+        }
+    }
+
+    private static func parsedDraftLimit(_ value: String?, current: Int?) -> (effectiveValue: Int?, isInvalid: Bool) {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return (current, false) }
+        guard let limit = Int(trimmed) else { return (current, true) }
+        return (limit, false)
+    }
+}
+
 enum TS3ServerSettingsOfficialImpactArea: String, CaseIterable, Codable {
     case availability
     case accessControl

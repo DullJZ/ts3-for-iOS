@@ -1396,6 +1396,16 @@
 "serverSettings.minimumClientVersion" = "最低客户端版本";
 "serverSettings.minimumAndroidVersion" = "最低 Android 版本";
 "serverSettings.minimumIOSVersion" = "最低 iOS 版本";
+"serverSettings.versionLimitReview" = "版本限制复核";
+"serverSettings.versionLimitReviewFormat" = "%d / %d 项变化，%d 项无效";
+"serverSettings.versionLimitReviewNoChanges" = "当前版本限制与草稿一致";
+"serverSettings.versionLimitReviewChangedFormat" = "%d 项版本限制变更";
+"serverSettings.versionLimitReviewInvalidFormat" = "%d 个无效版本限制";
+"serverSettings.versionLimitReviewCurrentFormat" = "当前：%@";
+"serverSettings.versionLimitReviewDraftFormat" = "草稿：%@";
+"serverSettings.versionLimitReviewInvalidValueFormat" = "无效值：%@";
+"serverSettings.versionLimitReviewClipboardRowFormat" = "%@：当前 %@，草稿 %@";
+"serverSettings.copyVersionLimitReview" = "复制版本限制复核";
 "serverSettings.codecEncryption" = "编解码加密";
 "serverSettings.codecEncryptionMode" = "编解码加密模式";
 "serverSettings.serverGroup" = "服务器组";
