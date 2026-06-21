@@ -98,6 +98,27 @@ struct ContentView: View {
                 ChannelEditorSheet(mode: .create(parent: model.currentChannel))
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingCurrentChannelInfo) {
+                if let channel = model.currentChannel {
+                    ChannelInformationSheet(
+                        channel: channel,
+                        memberCount: model.members(in: channel.id).count
+                    )
+                    .environmentObject(model)
+                }
+            }
+            .sheet(isPresented: $model.isShowingCurrentChannelMessage) {
+                if let channel = model.currentChannel {
+                    ChannelMessageSheet(channel: channel)
+                        .environmentObject(model)
+                }
+            }
+            .sheet(isPresented: $model.isShowingCurrentChannelEditor) {
+                if let channel = model.currentChannel {
+                    ChannelEditorSheet(mode: .edit(channel))
+                        .environmentObject(model)
+                }
+            }
             .sheet(isPresented: $model.isShowingGroupManagement) {
                 GroupManagementSheet()
                     .environmentObject(model)

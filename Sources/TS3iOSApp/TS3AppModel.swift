@@ -11961,6 +11961,9 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "copy-invite",
         "copy-full-invite",
         "create-channel",
+        "view-current-channel-info",
+        "message-current-channel",
+        "edit-current-channel",
         "subscribe-all-channels",
         "unsubscribe-all-channels",
         "view-server-logs",
@@ -15867,6 +15870,9 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "copy-invite", group: "Server", action: "Copy Invite Link", defaultKeys: "Command-Option-U"),
         TS3KeyboardShortcutBinding(actionId: "copy-full-invite", group: "Server", action: "Copy Full Invite Link", defaultKeys: "Command-Option-Shift-U"),
         TS3KeyboardShortcutBinding(actionId: "create-channel", group: "Server", action: "Create Channel", defaultKeys: "Command-Option-Shift-N"),
+        TS3KeyboardShortcutBinding(actionId: "view-current-channel-info", group: "Channels", action: "Current Channel Info", defaultKeys: "Command-Option-Shift-I"),
+        TS3KeyboardShortcutBinding(actionId: "message-current-channel", group: "Channels", action: "Message Current Channel", defaultKeys: "Command-Option-Shift-M"),
+        TS3KeyboardShortcutBinding(actionId: "edit-current-channel", group: "Channels", action: "Edit Current Channel", defaultKeys: "Command-Option-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
         TS3KeyboardShortcutBinding(actionId: "unsubscribe-all-channels", group: "Server", action: "Unsubscribe All Channels", defaultKeys: "Command-Option-Shift-X"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
@@ -15899,6 +15905,9 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingServerInfo = false
     @Published var isShowingServerEditor = false
     @Published var isShowingCreateChannel = false
+    @Published var isShowingCurrentChannelInfo = false
+    @Published var isShowingCurrentChannelMessage = false
+    @Published var isShowingCurrentChannelEditor = false
     @Published var isShowingGroupManagement = false
     @Published var isShowingSubscriptionPresets = false
     @Published var isShowingContacts = false
@@ -19507,6 +19516,21 @@ final class TS3AppModel: ObservableObject {
 
     func showCreateChannel() {
         isShowingCreateChannel = true
+    }
+
+    func showCurrentChannelInformation() {
+        guard currentChannel != nil else { return }
+        isShowingCurrentChannelInfo = true
+    }
+
+    func showCurrentChannelMessage() {
+        guard currentChannel != nil else { return }
+        isShowingCurrentChannelMessage = true
+    }
+
+    func showCurrentChannelEditor() {
+        guard currentChannel != nil else { return }
+        isShowingCurrentChannelEditor = true
     }
 
     func showTemporaryServerPasswords() {

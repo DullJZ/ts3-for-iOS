@@ -142,6 +142,24 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("create-channel", in: model)
                 .disabled(model.state != .connected)
 
+                Button("channelActions.channelInfo") {
+                    model.showCurrentChannelInformation()
+                }
+                .ts3KeyboardShortcut("view-current-channel-info", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.sendChannelMessage") {
+                    model.showCurrentChannelMessage()
+                }
+                .ts3KeyboardShortcut("message-current-channel", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.editChannel") {
+                    model.showCurrentChannelEditor()
+                }
+                .ts3KeyboardShortcut("edit-current-channel", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
                 Button("serverTools.subscribeAllChannels") {
                     model.setAllChannelsSubscribed(true)
                 }
