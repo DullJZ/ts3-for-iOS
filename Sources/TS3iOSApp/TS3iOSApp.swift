@@ -135,6 +135,38 @@ struct TS3iOSApp: App {
                 .disabled(model.state != .connected)
             }
 
+            CommandMenu("catalyst.menu.channels") {
+                Button("channels.newChannel") {
+                    model.showCreateChannel()
+                }
+                .ts3KeyboardShortcut("create-channel", in: model)
+                .disabled(model.state != .connected)
+
+                Button("serverTools.subscribeAllChannels") {
+                    model.setAllChannelsSubscribed(true)
+                }
+                .ts3KeyboardShortcut("subscribe-all-channels", in: model)
+                .disabled(model.state != .connected)
+
+                Button("serverTools.unsubscribeAllChannels") {
+                    model.setAllChannelsSubscribed(false)
+                }
+                .ts3KeyboardShortcut("unsubscribe-all-channels", in: model)
+                .disabled(model.state != .connected)
+
+                Button("channels.subscriptionPresets") {
+                    model.isShowingSubscriptionPresets = true
+                }
+                .ts3KeyboardShortcut("manage-subscription-presets", in: model)
+                .disabled(model.state != .connected)
+
+                Button("catalyst.browseChannelFiles") {
+                    model.showFileBrowser()
+                }
+                .ts3KeyboardShortcut("browse-files", in: model)
+                .disabled(model.state != .connected)
+            }
+
             CommandMenu("catalyst.menu.administration") {
                 Button("catalyst.viewServerLogs") {
                     model.showServerLogs()
@@ -160,12 +192,6 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("edit-server-settings", in: model)
                 .disabled(model.state != .connected)
 
-                Button("channels.newChannel") {
-                    model.showCreateChannel()
-                }
-                .ts3KeyboardShortcut("create-channel", in: model)
-                .disabled(model.state != .connected)
-
                 Button("catalyst.manageContacts") {
                     model.showContacts()
                 }
@@ -182,18 +208,6 @@ struct TS3iOSApp: App {
                     model.showBanList()
                 }
                 .ts3KeyboardShortcut("manage-bans", in: model)
-                .disabled(model.state != .connected)
-
-                Button("catalyst.browseChannelFiles") {
-                    model.showFileBrowser()
-                }
-                .ts3KeyboardShortcut("browse-files", in: model)
-                .disabled(model.state != .connected)
-
-                Button("channels.subscriptionPresets") {
-                    model.isShowingSubscriptionPresets = true
-                }
-                .ts3KeyboardShortcut("manage-subscription-presets", in: model)
                 .disabled(model.state != .connected)
 
                 Button("catalyst.viewPermissions") {

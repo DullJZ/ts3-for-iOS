@@ -11961,6 +11961,8 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "copy-invite",
         "copy-full-invite",
         "create-channel",
+        "subscribe-all-channels",
+        "unsubscribe-all-channels",
         "view-server-logs",
         "view-server-info",
         "edit-server-settings",
@@ -15865,6 +15867,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "copy-invite", group: "Server", action: "Copy Invite Link", defaultKeys: "Command-Option-U"),
         TS3KeyboardShortcutBinding(actionId: "copy-full-invite", group: "Server", action: "Copy Full Invite Link", defaultKeys: "Command-Option-Shift-U"),
         TS3KeyboardShortcutBinding(actionId: "create-channel", group: "Server", action: "Create Channel", defaultKeys: "Command-Option-Shift-N"),
+        TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
+        TS3KeyboardShortcutBinding(actionId: "unsubscribe-all-channels", group: "Server", action: "Unsubscribe All Channels", defaultKeys: "Command-Option-Shift-X"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
         TS3KeyboardShortcutBinding(actionId: "view-server-info", group: "Server", action: "View Server Information", defaultKeys: "Command-Option-I"),
         TS3KeyboardShortcutBinding(actionId: "edit-server-settings", group: "Server", action: "Edit Server Settings", defaultKeys: "Command-Option-S"),
@@ -17992,7 +17996,7 @@ final class TS3AppModel: ObservableObject {
         TS3PlatformAccessibilityCoverageAuditSummary(
             localizedSurfaceCount: 18,
             voiceOverRowActionSurfaceCount: 24,
-            catalystMenuGroupCount: 6,
+            catalystMenuGroupCount: 7,
             dynamicTypeResponsiveSurfaceCount: 9,
             denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary(
                 totalSurfaceCount: 14,

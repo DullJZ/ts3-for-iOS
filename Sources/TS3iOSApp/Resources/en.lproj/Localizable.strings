@@ -991,6 +991,7 @@
 "catalyst.menu.connection" = "Connection";
 "catalyst.menu.messaging" = "Messaging";
 "catalyst.menu.profile" = "Profile";
+"catalyst.menu.channels" = "Channels";
 "catalyst.menu.administration" = "Administration";
 "catalyst.menu.voice" = "Voice";
 "catalyst.showKeyboardShortcuts" = "Show Keyboard Shortcuts";

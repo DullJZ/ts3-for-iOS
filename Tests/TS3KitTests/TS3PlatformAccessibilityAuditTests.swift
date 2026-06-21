@@ -6,7 +6,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         let summary = TS3PlatformAccessibilityCoverageAuditSummary(
             localizedSurfaceCount: 18,
             voiceOverRowActionSurfaceCount: 24,
-            catalystMenuGroupCount: 6,
+            catalystMenuGroupCount: 7,
             dynamicTypeResponsiveSurfaceCount: 9,
             denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary(
                 totalSurfaceCount: 14,
@@ -51,7 +51,7 @@ final class TS3PlatformAccessibilityAuditTests: XCTestCase {
         XCTAssertEqual(summary.denseAdministrationDynamicTypeAuditSummary.responsiveSurfaceNames.count, 10)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=6 | dynamicTypeResponsiveSurfaces=9 | denseAdminDynamicTypeSurfaces=14 | denseAdminDynamicTypeResponsive=10 | denseAdminDynamicTypePending=4 | denseAdminCatalystSharedSurfaces=14 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
+            "officialAreas=9/9 | missingOfficialAreas=0 | officialActions=20 | localizedSurfaces=18 | voiceOverRowActionSurfaces=24 | catalystMenuGroups=7 | dynamicTypeResponsiveSurfaces=9 | denseAdminDynamicTypeSurfaces=14 | denseAdminDynamicTypeResponsive=10 | denseAdminDynamicTypePending=4 | denseAdminCatalystSharedSurfaces=14 | sharedSwiftUISheets=true | compactVoiceStatus=true | voiceOverGlobalVoiceState=true | voiceOverRowActions=true | localizedAdminSurfaces=true | catalystMenuCoverage=true | copyableAuditSummaries=true | diagnosticExport=true | dynamicTypeCoverage=true | denseAdministrationDynamicTypeAuditPending=true | needsAttention=true"
         )
     }
 

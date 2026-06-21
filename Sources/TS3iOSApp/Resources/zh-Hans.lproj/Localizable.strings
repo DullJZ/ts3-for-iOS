@@ -991,6 +991,7 @@
 "catalyst.menu.connection" = "连接";
 "catalyst.menu.messaging" = "消息";
 "catalyst.menu.profile" = "个人";
+"catalyst.menu.channels" = "频道";
 "catalyst.menu.administration" = "管理";
 "catalyst.menu.voice" = "语音";
 "catalyst.showKeyboardShortcuts" = "显示快捷键";
