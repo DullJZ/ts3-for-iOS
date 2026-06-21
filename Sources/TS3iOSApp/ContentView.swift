@@ -9761,6 +9761,18 @@ struct ChatMessageRow: View {
                     model.addContact(from: item)
                 }
             }
+            if let replyUser {
+                Button("chat.saveSenderBookmark") {
+                    model.saveOnlineClientBookmark(for: replyUser)
+                }
+                .disabled(!model.onlineClientBookmarkDraftSummary(for: replyUser).canSave)
+                Button("chat.copySenderBookmarkDraft") {
+                    TS3PlatformSupport.copyToPasteboard(model.onlineClientBookmarkSummary(for: replyUser))
+                }
+                Button("chat.copySenderBookmarkImpact") {
+                    TS3PlatformSupport.copyToPasteboard(model.onlineClientBookmarkSaveImpactSummary(for: replyUser).clipboardSummary)
+                }
+            }
             Button("chat.copyEntry") {
                 TS3PlatformSupport.copyToPasteboard(clipboardText)
             }
@@ -29653,6 +29665,18 @@ struct ComplaintEntryRow: View {
                     model.setComplaintSourceContactStatus(.neutral, for: entry)
                 }
             }
+            Menu(localized("complaints.row.sourceBookmark")) {
+                Button(localized("complaints.row.saveSourceBookmark")) {
+                    model.saveComplaintSourceBookmark(for: entry)
+                }
+                .disabled(!sourceBookmarkDraftSummary.canSave)
+                Button(localized("complaints.row.copySourceBookmarkDraft")) {
+                    TS3PlatformSupport.copyToPasteboard(model.complaintSourceBookmarkSummary(for: entry))
+                }
+                Button(localized("complaints.row.copySourceBookmarkImpact")) {
+                    TS3PlatformSupport.copyToPasteboard(model.complaintSourceBookmarkSaveImpactSummary(for: entry).clipboardSummary)
+                }
+            }
             Button(localized("complaints.row.deleteComplaint")) {
                 isConfirmingDelete = true
             }
@@ -29668,6 +29692,17 @@ struct ComplaintEntryRow: View {
         .accessibilityAction(named: localized("complaints.row.copySourceActions")) {
             TS3PlatformSupport.copyToPasteboard(sourceActionSummary.clipboardSummary)
         }
+        .accessibilityAction(named: localized("complaints.row.saveSourceBookmark")) {
+            if sourceBookmarkDraftSummary.canSave {
+                model.saveComplaintSourceBookmark(for: entry)
+            }
+        }
+        .accessibilityAction(named: localized("complaints.row.copySourceBookmarkDraft")) {
+            TS3PlatformSupport.copyToPasteboard(model.complaintSourceBookmarkSummary(for: entry))
+        }
+        .accessibilityAction(named: localized("complaints.row.copySourceBookmarkImpact")) {
+            TS3PlatformSupport.copyToPasteboard(model.complaintSourceBookmarkSaveImpactSummary(for: entry).clipboardSummary)
+        }
         .accessibilityAction(named: localized("complaints.row.deleteComplaint")) {
             if model.state == .connected {
                 isConfirmingDelete = true
@@ -29677,6 +29712,10 @@ struct ComplaintEntryRow: View {
 
     private var sourceActionSummary: TS3ComplaintSourceActionSummary {
         model.complaintSourceActionSummary(for: entry)
+    }
+
+    private var sourceBookmarkDraftSummary: TS3ComplaintSourceBookmarkDraftSummary {
+        model.complaintSourceBookmarkDraftSummary(for: entry)
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {

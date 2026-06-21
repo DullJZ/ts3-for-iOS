@@ -1174,6 +1174,9 @@
 "chat.copyMessage" = "复制消息";
 "chat.copySender" = "复制发送者";
 "chat.addSenderToContacts" = "将发送者添加到联系人";
+"chat.saveSenderBookmark" = "保存发送者书签";
+"chat.copySenderBookmarkDraft" = "复制发送者书签草稿";
+"chat.copySenderBookmarkImpact" = "复制发送者书签影响";
 "chat.copyEntry" = "复制条目";
 "chat.retention" = "保留";
 "chat.messageLimit" = "消息上限";
@@ -3414,6 +3417,10 @@
 "complaints.row.copySourceDb" = "复制来源 DB";
 "complaints.row.copySourceName" = "复制来源名称";
 "complaints.row.contactSource" = "联系来源";
+"complaints.row.sourceBookmark" = "来源书签";
+"complaints.row.saveSourceBookmark" = "保存来源书签";
+"complaints.row.copySourceBookmarkDraft" = "复制来源书签草稿";
+"complaints.row.copySourceBookmarkImpact" = "复制来源书签影响";
 "complaints.row.accessibilityLabelFormat" = "来自 %@ 的投诉";
 "permissions.title" = "权限";
 "permissions.target" = "权限目标";

@@ -1174,6 +1174,9 @@
 "chat.copyMessage" = "Copy Message";
 "chat.copySender" = "Copy Sender";
 "chat.addSenderToContacts" = "Add Sender to Contacts";
+"chat.saveSenderBookmark" = "Save Sender Bookmark";
+"chat.copySenderBookmarkDraft" = "Copy Sender Bookmark Draft";
+"chat.copySenderBookmarkImpact" = "Copy Sender Bookmark Impact";
 "chat.copyEntry" = "Copy Entry";
 "chat.retention" = "Retention";
 "chat.messageLimit" = "Message Limit";
@@ -3414,6 +3417,10 @@
 "complaints.row.copySourceDb" = "Copy Source DB";
 "complaints.row.copySourceName" = "Copy Source Name";
 "complaints.row.contactSource" = "Contact Source";
+"complaints.row.sourceBookmark" = "Source Bookmark";
+"complaints.row.saveSourceBookmark" = "Save Source Bookmark";
+"complaints.row.copySourceBookmarkDraft" = "Copy Source Bookmark Draft";
+"complaints.row.copySourceBookmarkImpact" = "Copy Source Bookmark Impact";
 "complaints.row.accessibilityLabelFormat" = "Complaint from %@";
 "permissions.title" = "Permissions";
 "permissions.target" = "Permission Target";

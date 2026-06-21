@@ -266,6 +266,119 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         XCTAssertEqual(model.onlineClientBookmarkSaveImpactSummary(for: user).replacementCount, 1)
     }
 
+    @MainActor
+    func testSavingComplaintSourceBookmarkCarriesSourceAuditNote() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = ""
+        model.nickname = "Avery"
+        model.defaultChannel = "Ops/Lobby"
+        let record = TS3DatabaseClientSummary(
+            id: 44,
+            uniqueIdentifier: "source-uid",
+            nickname: "Reporter Record",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        model.databaseClients = [record]
+        model.setContactStatus(.friend, for: record)
+        model.setContactNote("Trusted reporter", for: record)
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 44,
+            sourceName: "Reporter",
+            message: "Abuse",
+            timestamp: nil
+        )
+
+        model.saveComplaintSourceBookmark(for: complaint)
+
+        let bookmark = try XCTUnwrap(model.bookmarks.first)
+        XCTAssertEqual(bookmark.name, "Reporter @ voice.example.test")
+        XCTAssertEqual(bookmark.folder, "Complaint Sources")
+        XCTAssertEqual(bookmark.host, "voice.example.test")
+        XCTAssertEqual(bookmark.port, "9987")
+        XCTAssertEqual(bookmark.nickname, "Avery")
+        XCTAssertEqual(bookmark.defaultChannel, "Ops/Lobby")
+        XCTAssertEqual(
+            bookmark.note,
+            "source=complaintSource | sourceDb=44 | targetDb=22 | contactStatus=Friend | clientUid=source-uid | sourceName=Reporter | targetName=Target | contactNote=Trusted reporter"
+        )
+        XCTAssertEqual(
+            model.complaintSourceBookmarkSummary(for: complaint),
+            "sourceDb=44 | source=Reporter | databaseRecord=true | uid=true | status=Friend | canSave=true | contactNote=true | name=Reporter @ voice.example.test | folder=Complaint Sources | server=voice.example.test:9987 | nickname=Avery | note=source=complaintSource | sourceDb=44 | targetDb=22 | contactStatus=Friend | clientUid=source-uid | sourceName=Reporter | targetName=Target | contactNote=Trusted reporter | defaultChannel=Ops/Lobby | serverPassword=No | channelPassword=No | privilegeKey=No"
+        )
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testComplaintSourceBookmarkDraftSummaryReportsMissingServer() {
+        let model = TS3AppModel()
+        model.serverHost = " "
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: nil,
+            sourceClientDatabaseId: 77,
+            sourceName: nil,
+            message: nil,
+            timestamp: nil
+        )
+
+        let summary = model.complaintSourceBookmarkDraftSummary(for: complaint)
+
+        XCTAssertFalse(summary.canSave)
+        XCTAssertFalse(summary.hasDatabaseRecord)
+        XCTAssertFalse(summary.hasUniqueIdentifier)
+        XCTAssertFalse(summary.hasContactNote)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sourceDb=77 | source=Client DB 77 | databaseRecord=false | uid=false | status=Neutral | canSave=false | server=missing"
+        )
+    }
+
+    @MainActor
+    func testComplaintSourceBookmarkReplacementDoesNotRemoveDatabaseBookmark() {
+        let model = TS3AppModel()
+        model.bookmarks = []
+        model.serverHost = "voice.example.test"
+        model.serverPort = "9988"
+        let record = TS3DatabaseClientSummary(
+            id: 44,
+            uniqueIdentifier: "source-uid",
+            nickname: "Reporter",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+        let complaint = TS3ComplaintSummary(
+            id: "complaint",
+            targetClientDatabaseId: 22,
+            targetName: "Target",
+            sourceClientDatabaseId: 44,
+            sourceName: "Reporter",
+            message: nil,
+            timestamp: nil
+        )
+        model.databaseClients = [record]
+
+        model.saveDatabaseClientBookmark(for: record)
+        model.saveComplaintSourceBookmark(for: complaint)
+        model.saveComplaintSourceBookmark(for: complaint)
+
+        XCTAssertEqual(model.bookmarks.count, 2)
+        XCTAssertEqual(model.bookmarks.filter { $0.folder == "Database Clients" }.count, 1)
+        XCTAssertEqual(model.bookmarks.filter { $0.folder == "Complaint Sources" }.count, 1)
+        XCTAssertEqual(model.complaintSourceBookmarkSaveImpactSummary(for: complaint).replacementCount, 1)
+    }
+
     func testConnectionFilterPresetSummaryAndAccessibilityText() {
         let preset = makeConnectionFilterPreset(
             id: UUID(),
