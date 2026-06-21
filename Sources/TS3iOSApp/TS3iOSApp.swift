@@ -172,6 +172,26 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("move-current-channel", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
+                Button((model.currentChannel?.isSubscribed ?? false)
+                       ? NSLocalizedString("channelActions.unsubscribeChannel", comment: "")
+                       : NSLocalizedString("channelActions.subscribeChannel", comment: "")) {
+                    model.toggleCurrentChannelSubscription()
+                }
+                .ts3KeyboardShortcut("toggle-current-channel-subscription", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.setAsDefaultChannel") {
+                    model.setCurrentChannelAsDefault()
+                }
+                .ts3KeyboardShortcut("set-current-channel-default", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.whisperToChannel") {
+                    model.enableWhisperToCurrentChannel()
+                }
+                .ts3KeyboardShortcut("whisper-current-channel", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
                 Button("serverTools.subscribeAllChannels") {
                     model.setAllChannelsSubscribed(true)
                 }

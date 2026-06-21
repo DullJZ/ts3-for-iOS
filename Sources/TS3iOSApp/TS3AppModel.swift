@@ -11966,6 +11966,9 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "edit-current-channel",
         "edit-current-channel-permissions",
         "move-current-channel",
+        "toggle-current-channel-subscription",
+        "set-current-channel-default",
+        "whisper-current-channel",
         "subscribe-all-channels",
         "unsubscribe-all-channels",
         "view-server-logs",
@@ -15877,6 +15880,9 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "edit-current-channel", group: "Channels", action: "Edit Current Channel", defaultKeys: "Command-Option-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "edit-current-channel-permissions", group: "Channels", action: "Edit Current Channel Permissions", defaultKeys: "Command-Option-Shift-P"),
         TS3KeyboardShortcutBinding(actionId: "move-current-channel", group: "Channels", action: "Move Current Channel", defaultKeys: "Command-Option-Shift-V"),
+        TS3KeyboardShortcutBinding(actionId: "toggle-current-channel-subscription", group: "Channels", action: "Subscribe / Unsubscribe Current Channel", defaultKeys: "Command-Option-Shift-S"),
+        TS3KeyboardShortcutBinding(actionId: "set-current-channel-default", group: "Channels", action: "Set Current Channel as Default", defaultKeys: "Command-Option-Shift-B"),
+        TS3KeyboardShortcutBinding(actionId: "whisper-current-channel", group: "Channels", action: "Whisper to Current Channel", defaultKeys: "Command-Option-Shift-W"),
         TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
         TS3KeyboardShortcutBinding(actionId: "unsubscribe-all-channels", group: "Server", action: "Unsubscribe All Channels", defaultKeys: "Command-Option-Shift-X"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
@@ -15913,6 +15919,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingCurrentChannelMessage = false
     @Published var isShowingCurrentChannelEditor = false
     @Published var isShowingCurrentChannelMove = false
+    @Published var isShowingCurrentChannelDefaultPassword = false
     @Published var isShowingGroupManagement = false
     @Published var isShowingSubscriptionPresets = false
     @Published var isShowingContacts = false
@@ -19547,6 +19554,20 @@ final class TS3AppModel: ObservableObject {
     func showCurrentChannelMove() {
         guard currentChannel != nil else { return }
         isShowingCurrentChannelMove = true
+    }
+
+    func toggleCurrentChannelSubscription() {
+        guard let channel = currentChannel else { return }
+        setChannelSubscribed(channel, isSubscribed: !(channel.isSubscribed ?? false))
+    }
+
+    func setCurrentChannelAsDefault() {
+        guard let channel = currentChannel else { return }
+        if channel.isPasswordProtected {
+            isShowingCurrentChannelDefaultPassword = true
+        } else {
+            setDefaultChannel(channel)
+        }
     }
 
     func showTemporaryServerPasswords() {

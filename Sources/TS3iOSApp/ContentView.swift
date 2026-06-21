@@ -12,6 +12,7 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var currentChannelDefaultPassword = ""
 
     var body: some View {
         NavigationView {
@@ -123,6 +124,20 @@ struct ContentView: View {
                 if let channel = model.currentChannel {
                     MoveChannelSheet(channel: channel)
                         .environmentObject(model)
+                }
+            }
+            .sheet(
+                isPresented: $model.isShowingCurrentChannelDefaultPassword,
+                onDismiss: {
+                    currentChannelDefaultPassword = ""
+                }
+            ) {
+                if let channel = model.currentChannel {
+                    DefaultChannelPasswordSheet(
+                        channel: channel,
+                        password: $currentChannelDefaultPassword
+                    )
+                    .environmentObject(model)
                 }
             }
             .sheet(isPresented: $model.isShowingGroupManagement) {
