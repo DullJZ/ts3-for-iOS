@@ -1398,6 +1398,16 @@
 "serverSettings.defaultServerGroup" = "Default Server Group";
 "serverSettings.defaultChannelGroup" = "Default Channel Group";
 "serverSettings.defaultChannelAdmin" = "Default Channel Admin";
+"serverSettings.defaultGroupReview" = "Default Group Review";
+"serverSettings.defaultGroupReviewFormat" = "%d of %d changed, %d invalid";
+"serverSettings.defaultGroupReviewNoChanges" = "Current default groups match the draft";
+"serverSettings.defaultGroupReviewChangedFormat" = "%d default group changes";
+"serverSettings.defaultGroupReviewInvalidFormat" = "%d invalid default group IDs";
+"serverSettings.defaultGroupReviewCurrentFormat" = "Current: %@";
+"serverSettings.defaultGroupReviewDraftFormat" = "Draft: %@";
+"serverSettings.defaultGroupReviewInvalidValueFormat" = "Invalid ID: %@";
+"serverSettings.defaultGroupReviewClipboardRowFormat" = "%@: current %@, draft %@";
+"serverSettings.copyDefaultGroupReview" = "Copy Default Group Review";
 "serverSettings.autoBanComplaintCount" = "Auto-Ban Complaint Count";
 "serverSettings.autoBanSeconds" = "Auto-Ban Seconds";
 "serverSettings.complaintRemoveSeconds" = "Complaint Remove Seconds";

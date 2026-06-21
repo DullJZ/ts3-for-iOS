@@ -1712,6 +1712,113 @@ struct TS3ServerSettingsReviewSummary {
     }
 }
 
+enum TS3ServerDefaultGroupRole: String, CaseIterable, Codable {
+    case serverGroup
+    case channelGroup
+    case channelAdmin
+}
+
+struct TS3ServerDefaultGroupDraftReviewSummary {
+    let currentServerGroupId: Int?
+    let currentChannelGroupId: Int?
+    let currentChannelAdminGroupId: Int?
+    let draftServerGroupId: Int?
+    let draftChannelGroupId: Int?
+    let draftChannelAdminGroupId: Int?
+    let invalidDraftRoles: [TS3ServerDefaultGroupRole]
+
+    var totalGroupCount: Int {
+        TS3ServerDefaultGroupRole.allCases.count
+    }
+
+    var reviewedGroupCount: Int {
+        max(0, totalGroupCount - invalidDraftRoles.count)
+    }
+
+    var invalidDraftCount: Int {
+        invalidDraftRoles.count
+    }
+
+    var changedRoles: [TS3ServerDefaultGroupRole] {
+        TS3ServerDefaultGroupRole.allCases.filter { currentGroupId(for: $0) != draftGroupId(for: $0) }
+    }
+
+    var changedGroupCount: Int {
+        changedRoles.count
+    }
+
+    var needsAttention: Bool {
+        changedGroupCount > 0 || invalidDraftCount > 0
+    }
+
+    var clipboardSummary: String {
+        let changed = changedRoles.map(\.rawValue).joined(separator: ",")
+        let invalid = invalidDraftRoles.map(\.rawValue).joined(separator: ",")
+        return [
+            "defaultGroupChanges=\(changedGroupCount)/\(totalGroupCount)",
+            "reviewedGroups=\(reviewedGroupCount)/\(totalGroupCount)",
+            "invalidDrafts=\(invalidDraftCount)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "invalid=\(invalid.isEmpty ? "none" : invalid)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        currentServerGroupId: Int?,
+        draftServerGroupId: String?,
+        currentChannelGroupId: Int?,
+        draftChannelGroupId: String?,
+        currentChannelAdminGroupId: Int?,
+        draftChannelAdminGroupId: String?
+    ) {
+        let serverDraft = Self.parsedDraftGroupId(draftServerGroupId, current: currentServerGroupId)
+        let channelDraft = Self.parsedDraftGroupId(draftChannelGroupId, current: currentChannelGroupId)
+        let channelAdminDraft = Self.parsedDraftGroupId(draftChannelAdminGroupId, current: currentChannelAdminGroupId)
+
+        self.currentServerGroupId = currentServerGroupId
+        self.currentChannelGroupId = currentChannelGroupId
+        self.currentChannelAdminGroupId = currentChannelAdminGroupId
+        self.draftServerGroupId = serverDraft.effectiveValue
+        self.draftChannelGroupId = channelDraft.effectiveValue
+        self.draftChannelAdminGroupId = channelAdminDraft.effectiveValue
+        self.invalidDraftRoles = [
+            serverDraft.isInvalid ? .serverGroup : nil,
+            channelDraft.isInvalid ? .channelGroup : nil,
+            channelAdminDraft.isInvalid ? .channelAdmin : nil
+        ].compactMap { $0 }
+    }
+
+    func currentGroupId(for role: TS3ServerDefaultGroupRole) -> Int? {
+        switch role {
+        case .serverGroup:
+            return currentServerGroupId
+        case .channelGroup:
+            return currentChannelGroupId
+        case .channelAdmin:
+            return currentChannelAdminGroupId
+        }
+    }
+
+    func draftGroupId(for role: TS3ServerDefaultGroupRole) -> Int? {
+        switch role {
+        case .serverGroup:
+            return draftServerGroupId
+        case .channelGroup:
+            return draftChannelGroupId
+        case .channelAdmin:
+            return draftChannelAdminGroupId
+        }
+    }
+
+    private static func parsedDraftGroupId(_ value: String?, current: Int?) -> (effectiveValue: Int?, isInvalid: Bool) {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return (current, false) }
+        guard let groupId = Int(trimmed) else { return (current, true) }
+        return (groupId, false)
+    }
+}
+
 enum TS3ServerSettingsOfficialImpactArea: String, CaseIterable, Codable {
     case availability
     case accessControl

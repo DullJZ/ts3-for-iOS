@@ -377,6 +377,77 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerDefaultGroupDraftReviewSummaryCountsChangedGroups() {
+        let summary = TS3ServerDefaultGroupDraftReviewSummary(
+            currentServerGroupId: 6,
+            draftServerGroupId: "7",
+            currentChannelGroupId: 8,
+            draftChannelGroupId: "",
+            currentChannelAdminGroupId: 9,
+            draftChannelAdminGroupId: "9"
+        )
+
+        XCTAssertEqual(summary.totalGroupCount, 3)
+        XCTAssertEqual(summary.reviewedGroupCount, 3)
+        XCTAssertEqual(summary.invalidDraftCount, 0)
+        XCTAssertEqual(summary.changedRoles, [.serverGroup])
+        XCTAssertEqual(summary.changedGroupCount, 1)
+        XCTAssertEqual(summary.currentGroupId(for: .serverGroup), 6)
+        XCTAssertEqual(summary.draftGroupId(for: .serverGroup), 7)
+        XCTAssertEqual(summary.draftGroupId(for: .channelGroup), 8)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "defaultGroupChanges=1/3 | reviewedGroups=3/3 | invalidDrafts=0 | changed=serverGroup | invalid=none | needsAttention=true"
+        )
+    }
+
+    func testServerDefaultGroupDraftReviewSummaryFlagsInvalidIds() {
+        let summary = TS3ServerDefaultGroupDraftReviewSummary(
+            currentServerGroupId: 6,
+            draftServerGroupId: "server",
+            currentChannelGroupId: nil,
+            draftChannelGroupId: "8",
+            currentChannelAdminGroupId: 9,
+            draftChannelAdminGroupId: "admin"
+        )
+
+        XCTAssertEqual(summary.reviewedGroupCount, 1)
+        XCTAssertEqual(summary.invalidDraftRoles, [.serverGroup, .channelAdmin])
+        XCTAssertEqual(summary.invalidDraftCount, 2)
+        XCTAssertEqual(summary.changedRoles, [.channelGroup])
+        XCTAssertEqual(summary.changedGroupCount, 1)
+        XCTAssertEqual(summary.draftGroupId(for: .serverGroup), 6)
+        XCTAssertEqual(summary.draftGroupId(for: .channelGroup), 8)
+        XCTAssertEqual(summary.draftGroupId(for: .channelAdmin), 9)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "defaultGroupChanges=1/3 | reviewedGroups=1/3 | invalidDrafts=2 | changed=channelGroup | invalid=serverGroup,channelAdmin | needsAttention=true"
+        )
+    }
+
+    func testServerDefaultGroupDraftReviewSummaryHandlesUnchangedDraft() {
+        let summary = TS3ServerDefaultGroupDraftReviewSummary(
+            currentServerGroupId: 6,
+            draftServerGroupId: "  ",
+            currentChannelGroupId: 8,
+            draftChannelGroupId: "8",
+            currentChannelAdminGroupId: nil,
+            draftChannelAdminGroupId: nil
+        )
+
+        XCTAssertEqual(summary.reviewedGroupCount, 3)
+        XCTAssertEqual(summary.invalidDraftCount, 0)
+        XCTAssertTrue(summary.changedRoles.isEmpty)
+        XCTAssertEqual(summary.changedGroupCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "defaultGroupChanges=0/3 | reviewedGroups=3/3 | invalidDrafts=0 | changed=none | invalid=none | needsAttention=false"
+        )
+    }
+
     func testServerSettingsOfficialImpactSummaryCountsAreasAndSensitiveChanges() {
         let summary = TS3ServerSettingsOfficialImpactSummary(
             areaChangeCounts: [

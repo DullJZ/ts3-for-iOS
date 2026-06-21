@@ -1398,6 +1398,16 @@
 "serverSettings.defaultServerGroup" = "默认服务器组";
 "serverSettings.defaultChannelGroup" = "默认频道组";
 "serverSettings.defaultChannelAdmin" = "默认频道管理员组";
+"serverSettings.defaultGroupReview" = "默认组复核";
+"serverSettings.defaultGroupReviewFormat" = "%d / %d 项变化，%d 项无效";
+"serverSettings.defaultGroupReviewNoChanges" = "当前默认组与草稿一致";
+"serverSettings.defaultGroupReviewChangedFormat" = "%d 项默认组变更";
+"serverSettings.defaultGroupReviewInvalidFormat" = "%d 个无效默认组 ID";
+"serverSettings.defaultGroupReviewCurrentFormat" = "当前：%@";
+"serverSettings.defaultGroupReviewDraftFormat" = "草稿：%@";
+"serverSettings.defaultGroupReviewInvalidValueFormat" = "无效 ID：%@";
+"serverSettings.defaultGroupReviewClipboardRowFormat" = "%@：当前 %@，草稿 %@";
+"serverSettings.copyDefaultGroupReview" = "复制默认组复核";
 "serverSettings.autoBanComplaintCount" = "自动封禁投诉数";
 "serverSettings.autoBanSeconds" = "自动封禁秒数";
 "serverSettings.complaintRemoveSeconds" = "投诉移除秒数";

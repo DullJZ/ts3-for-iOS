@@ -19537,6 +19537,14 @@ struct ServerSettingsEditorSheet: View {
         var minIOSVersion: String?
     }
 
+    private struct DefaultGroupReviewRow: Hashable {
+        let role: TS3ServerDefaultGroupRole
+        let label: String
+        let currentValue: String
+        let draftValue: String
+        let hasChange: Bool
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
@@ -19889,6 +19897,33 @@ struct ServerSettingsEditorSheet: View {
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingGroupSettings) {
+                        ServerInfoDetailRow(
+                            label: localized("serverSettings.defaultGroupReview"),
+                            value: localized(
+                                "serverSettings.defaultGroupReviewFormat",
+                                defaultGroupReviewSummary.changedGroupCount,
+                                defaultGroupReviewSummary.totalGroupCount,
+                                defaultGroupReviewSummary.invalidDraftCount
+                            )
+                        )
+                        Text(defaultGroupReviewText)
+                            .font(.caption)
+                            .foregroundColor(defaultGroupReviewSummary.needsAttention ? .orange : .secondary)
+                        ForEach(defaultGroupReviewRows, id: \.self) { row in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(row.label)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(localized("serverSettings.defaultGroupReviewCurrentFormat", row.currentValue))
+                                    .font(.caption)
+                                Text(localized("serverSettings.defaultGroupReviewDraftFormat", row.draftValue))
+                                    .font(.caption)
+                                    .foregroundColor(row.hasChange ? .orange : .secondary)
+                            }
+                        }
+                        Button(localized("serverSettings.copyDefaultGroupReview")) {
+                            TS3PlatformSupport.copyToPasteboard(defaultGroupReviewClipboard)
+                        }
                         Picker(localized("serverSettings.serverGroup"), selection: $defaultServerGroupId) {
                             Text(localized("serverSettings.unchanged")).tag("")
                             ForEach(model.serverGroups) { group in
@@ -20398,6 +20433,77 @@ struct ServerSettingsEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var defaultGroupReviewSummary: TS3ServerDefaultGroupDraftReviewSummary {
+        TS3ServerDefaultGroupDraftReviewSummary(
+            currentServerGroupId: model.serverInfo.defaultServerGroupId,
+            draftServerGroupId: defaultServerGroupId,
+            currentChannelGroupId: model.serverInfo.defaultChannelGroupId,
+            draftChannelGroupId: defaultChannelGroupId,
+            currentChannelAdminGroupId: model.serverInfo.defaultChannelAdminGroupId,
+            draftChannelAdminGroupId: defaultChannelAdminGroupId
+        )
+    }
+
+    private var defaultGroupReviewRows: [DefaultGroupReviewRow] {
+        let summary = defaultGroupReviewSummary
+        return [
+            defaultGroupReviewRow(
+                for: .serverGroup,
+                draftText: defaultServerGroupId,
+                groups: model.serverGroups,
+                summary: summary
+            ),
+            defaultGroupReviewRow(
+                for: .channelGroup,
+                draftText: defaultChannelGroupId,
+                groups: model.channelGroups,
+                summary: summary
+            ),
+            defaultGroupReviewRow(
+                for: .channelAdmin,
+                draftText: defaultChannelAdminGroupId,
+                groups: model.channelGroups,
+                summary: summary
+            )
+        ]
+    }
+
+    private var defaultGroupReviewText: String {
+        let summary = defaultGroupReviewSummary
+        guard summary.needsAttention else { return localized("serverSettings.defaultGroupReviewNoChanges") }
+        var parts: [String] = []
+        if summary.changedGroupCount > 0 {
+            parts.append(localized("serverSettings.defaultGroupReviewChangedFormat", summary.changedGroupCount))
+        }
+        if summary.invalidDraftCount > 0 {
+            parts.append(localized("serverSettings.defaultGroupReviewInvalidFormat", summary.invalidDraftCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private var defaultGroupReviewClipboard: String {
+        let summary = defaultGroupReviewSummary
+        let rows = defaultGroupReviewRows
+            .map { row in
+                localized(
+                    "serverSettings.defaultGroupReviewClipboardRowFormat",
+                    row.label,
+                    row.currentValue,
+                    row.draftValue
+                )
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.defaultGroupReview"),
+            summary.clipboardSummary,
+            rows
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private func draftChangeRows(for draft: ServerSettingsDraft) -> [String] {
         generalChangeRows(for: draft)
             + hostBrandingChangeRows(for: draft)
@@ -20718,6 +20824,39 @@ struct ServerSettingsEditorSheet: View {
         case .sensitiveReview:
             return localized("serverSettings.saveRequirement.sensitiveReview")
         }
+    }
+
+    private func title(for role: TS3ServerDefaultGroupRole) -> String {
+        switch role {
+        case .serverGroup:
+            return localized("serverSettings.defaultServerGroup")
+        case .channelGroup:
+            return localized("serverSettings.defaultChannelGroup")
+        case .channelAdmin:
+            return localized("serverSettings.defaultChannelAdmin")
+        }
+    }
+
+    private func defaultGroupReviewRow(
+        for role: TS3ServerDefaultGroupRole,
+        draftText: String,
+        groups: [TS3GroupSummary],
+        summary: TS3ServerDefaultGroupDraftReviewSummary
+    ) -> DefaultGroupReviewRow {
+        let isInvalid = summary.invalidDraftRoles.contains(role)
+        let draftValue = isInvalid
+            ? localized(
+                "serverSettings.defaultGroupReviewInvalidValueFormat",
+                normalizedDraftValue(draftText)
+            )
+            : groupReviewTitle(summary.draftGroupId(for: role), groups: groups)
+        return DefaultGroupReviewRow(
+            role: role,
+            label: title(for: role),
+            currentValue: groupReviewTitle(summary.currentGroupId(for: role), groups: groups),
+            draftValue: draftValue,
+            hasChange: summary.changedRoles.contains(role) || isInvalid
+        )
     }
 
     private func generalChangeRows(for draft: ServerSettingsDraft) -> [String] {
@@ -21383,6 +21522,14 @@ struct ServerSettingsEditorSheet: View {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let groupId = Int(trimmed) else { return localized("serverSettings.unchanged") }
         return TS3GroupSummary.name(for: groupId, in: groups)
+    }
+
+    private func groupReviewTitle(_ groupId: Int?, groups: [TS3GroupSummary]) -> String {
+        guard let groupId else { return localized("serverSettings.emptyValue") }
+        guard let group = groups.first(where: { $0.id == groupId }) else {
+            return localized("serverSettings.groupFormat", String(groupId))
+        }
+        return groupPickerTitle(group)
     }
 
     private func shouldShowCustomGroup(_ value: String, in groups: [TS3GroupSummary]) -> Bool {
