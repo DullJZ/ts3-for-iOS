@@ -1354,6 +1354,7 @@
 "serverSettings.maxClients" = "Max Clients";
 "serverSettings.reservedSlots" = "Reserved Slots";
 "serverSettings.temporaryChannelDeleteDelayDefault" = "Temporary Channel Delete Delay Default";
+"serverSettings.askForPrivilegeKey" = "Request Privilege Key on Connect";
 "serverSettings.password" = "Password";
 "serverSettings.clearPassword" = "Clear Server Password";
 "serverSettings.newPassword" = "New Server Password";

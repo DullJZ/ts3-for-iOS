@@ -87,6 +87,8 @@ public struct TS3ServerInfo {
     public let machineId: String?
     /// Whether the virtual server should start automatically.
     public let isAutoStartEnabled: Bool?
+    /// Whether connecting clients should be prompted for a privilege key.
+    public let asksForPrivilegeKey: Bool?
     /// The codec encryption mode configured on the virtual server.
     public let codecEncryptionMode: Int?
     /// Whether the virtual server is published to the TeamSpeak web server list.
@@ -213,6 +215,7 @@ public struct TS3ServerInfo {
         status: String? = nil,
         machineId: String? = nil,
         isAutoStartEnabled: Bool? = nil,
+        asksForPrivilegeKey: Bool? = nil,
         codecEncryptionMode: Int? = nil,
         isWeblistEnabled: Bool? = nil,
         defaultServerGroupId: Int? = nil,
@@ -289,6 +292,7 @@ public struct TS3ServerInfo {
         self.status = status
         self.machineId = machineId
         self.isAutoStartEnabled = isAutoStartEnabled
+        self.asksForPrivilegeKey = asksForPrivilegeKey
         self.codecEncryptionMode = codecEncryptionMode
         self.isWeblistEnabled = isWeblistEnabled
         self.defaultServerGroupId = defaultServerGroupId
@@ -433,6 +437,7 @@ public struct TS3ServerEdit {
     public var port: Int?
     public var machineId: String?
     public var isAutoStartEnabled: Bool?
+    public var asksForPrivilegeKey: Bool?
     public var welcomeMessage: String?
     public var maxClients: Int?
     public var reservedSlots: Int?
@@ -484,6 +489,7 @@ public struct TS3ServerEdit {
         port: Int? = nil,
         machineId: String? = nil,
         isAutoStartEnabled: Bool? = nil,
+        asksForPrivilegeKey: Bool? = nil,
         welcomeMessage: String? = nil,
         maxClients: Int? = nil,
         reservedSlots: Int? = nil,
@@ -533,6 +539,7 @@ public struct TS3ServerEdit {
         self.port = port
         self.machineId = machineId
         self.isAutoStartEnabled = isAutoStartEnabled
+        self.asksForPrivilegeKey = asksForPrivilegeKey
         self.welcomeMessage = welcomeMessage
         self.maxClients = maxClients
         self.reservedSlots = reservedSlots

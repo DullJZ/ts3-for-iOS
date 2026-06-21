@@ -2595,6 +2595,7 @@ extension TS3Client {
             status: command.get("virtualserver_status")?.value,
             machineId: command.get("virtualserver_machine_id")?.value,
             isAutoStartEnabled: optionalBoolValue("virtualserver_autostart"),
+            asksForPrivilegeKey: optionalBoolValue("virtualserver_ask_for_privilegekey"),
             codecEncryptionMode: intValue("virtualserver_codec_encryption_mode"),
             isWeblistEnabled: optionalBoolValue("virtualserver_weblist_enabled"),
             defaultServerGroupId: intValue("virtualserver_default_server_group"),
@@ -3838,6 +3839,7 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_port", value: edit.port.map(String.init))
         appendParameter(&params, name: "virtualserver_machine_id", value: edit.machineId)
         appendParameter(&params, name: "virtualserver_autostart", value: edit.isAutoStartEnabled.map { $0 ? "1" : "0" })
+        appendParameter(&params, name: "virtualserver_ask_for_privilegekey", value: edit.asksForPrivilegeKey.map { $0 ? "1" : "0" })
         appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
         appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
         appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))

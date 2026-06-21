@@ -5,6 +5,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
     func testServerSettingsDraftValidatorRejectsInvalidToggleAliases() {
         let messages = validationMessages(
             autostart: "maybe",
+            asksForPrivilegeKey: "prompt",
             logClient: "sometimes",
             weblistEnabled: "public"
         )
@@ -13,6 +14,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             messages,
             [
                 "Autostart must be enabled, disabled, true, false, 1, or 0.",
+                "Ask for privilege key must be enabled, disabled, true, false, 1, or 0.",
                 "Client log must be enabled, disabled, true, false, 1, or 0.",
                 "Server list must be listed, hidden, true, false, 1, or 0."
             ]
@@ -40,6 +42,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             XCTAssertTrue(
                 validationMessages(
                     autostart: alias,
+                    asksForPrivilegeKey: alias,
                     logClient: alias,
                     logQuery: alias,
                     logChannel: alias,
@@ -230,7 +233,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             areaFieldCounts: [
                 .general: 11,
                 .hostBranding: 9,
-                .limitsAndSecurity: 10,
+                .limitsAndSecurity: 11,
                 .defaultGroups: 3,
                 .antiFloodAndComplaints: 9,
                 .serverLogOptions: 6
@@ -243,7 +246,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             validationIssueCount: 2
         )
 
-        XCTAssertEqual(summary.trackedFieldCount, 48)
+        XCTAssertEqual(summary.trackedFieldCount, 49)
         XCTAssertEqual(summary.changedFieldCount, 6)
         XCTAssertEqual(summary.trackedAreaCount, 6)
         XCTAssertEqual(summary.totalAreaCount, 6)
@@ -253,7 +256,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "trackedFields=48 | changedFields=6 | trackedAreas=6/6 | missingTrackedAreas=0 | changedAreas=3 | validationIssues=2 | areas=general:11/2,hostBranding:9/0,limitsAndSecurity:10/1,defaultGroups:3/0,antiFloodAndComplaints:9/0,serverLogOptions:6/3 | needsAttention=true"
+            "trackedFields=49 | changedFields=6 | trackedAreas=6/6 | missingTrackedAreas=0 | changedAreas=3 | validationIssues=2 | areas=general:11/2,hostBranding:9/0,limitsAndSecurity:11/1,defaultGroups:3/0,antiFloodAndComplaints:9/0,serverLogOptions:6/3 | needsAttention=true"
         )
     }
 
@@ -585,6 +588,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         name: String = "Guild Voice",
         port: String = "9987",
         autostart: String? = nil,
+        asksForPrivilegeKey: String? = nil,
         maxClients: String = "32",
         reservedSlots: String = "2",
         temporaryChannelDeleteDelayDefaultSeconds: String = "",
@@ -629,6 +633,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             name: name,
             port: port,
             autostart: autostart,
+            asksForPrivilegeKey: asksForPrivilegeKey,
             maxClients: maxClients,
             reservedSlots: reservedSlots,
             temporaryChannelDeleteDelayDefaultSeconds: temporaryChannelDeleteDelayDefaultSeconds,

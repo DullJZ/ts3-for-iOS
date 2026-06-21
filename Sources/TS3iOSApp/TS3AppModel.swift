@@ -748,6 +748,7 @@ enum TS3ServerSettingsDraftValidator {
         name: String,
         port: String,
         autostart: String?,
+        asksForPrivilegeKey: String?,
         maxClients: String,
         reservedSlots: String,
         temporaryChannelDeleteDelayDefaultSeconds: String,
@@ -806,6 +807,9 @@ enum TS3ServerSettingsDraftValidator {
         }
         if !isOptionalBoolDraft(autostart) {
             messages.append("Autostart must be enabled, disabled, true, false, 1, or 0.")
+        }
+        if !isOptionalBoolDraft(asksForPrivilegeKey) {
+            messages.append("Ask for privilege key must be enabled, disabled, true, false, 1, or 0.")
         }
         if !isOptionalHostMessageMode(hostMessageMode) {
             messages.append("Host message mode must be none, log, modal, modal quit, or numeric.")
@@ -13806,6 +13810,7 @@ struct TS3ServerInfoSummary {
     var status: String?
     var machineId: String?
     var isAutoStartEnabled: Bool?
+    var asksForPrivilegeKey: Bool?
     var codecEncryptionMode: Int?
     var isWeblistEnabled: Bool?
     var defaultServerGroupId: Int?
@@ -13884,6 +13889,7 @@ struct TS3ServerInfoSummary {
         status: nil,
         machineId: nil,
         isAutoStartEnabled: nil,
+        asksForPrivilegeKey: nil,
         codecEncryptionMode: nil,
         isWeblistEnabled: nil,
         defaultServerGroupId: nil,
@@ -21082,6 +21088,7 @@ final class TS3AppModel: ObservableObject {
         port: Int?,
         machineId: String,
         isAutoStartEnabled: Bool?,
+        asksForPrivilegeKey: Bool?,
         welcomeMessage: String,
         maxClients: Int?,
         reservedSlots: Int?,
@@ -21132,6 +21139,7 @@ final class TS3AppModel: ObservableObject {
             port: port,
             machineId: trimmedValue(machineId),
             isAutoStartEnabled: isAutoStartEnabled,
+            asksForPrivilegeKey: asksForPrivilegeKey,
             welcomeMessage: welcomeMessage.trimmingCharacters(in: .whitespacesAndNewlines),
             maxClients: maxClients,
             reservedSlots: reservedSlots,
@@ -30351,6 +30359,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 status: info.status,
                 machineId: info.machineId,
                 isAutoStartEnabled: info.isAutoStartEnabled,
+                asksForPrivilegeKey: info.asksForPrivilegeKey,
                 codecEncryptionMode: info.codecEncryptionMode,
                 isWeblistEnabled: info.isWeblistEnabled,
                 defaultServerGroupId: info.defaultServerGroupId,
