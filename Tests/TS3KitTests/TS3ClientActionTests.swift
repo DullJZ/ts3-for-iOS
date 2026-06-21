@@ -504,6 +504,22 @@ final class TS3ClientActionTests: XCTestCase {
     }
 
     @MainActor
+    func testPrivateChatSenderCanOpenTargetedComplaints() throws {
+        let model = TS3AppModel()
+        model.clients = [
+            makeUser(id: 21, databaseId: 77, uniqueIdentifier: "chat-uid", nickname: "Chat Sender")
+        ]
+        let message = makeChatMessage(senderId: 21, senderName: "Old Chat Sender")
+
+        let sender = try XCTUnwrap(model.onlineUser(for: message))
+        model.showComplaints(for: sender)
+
+        XCTAssertTrue(model.isShowingComplaints)
+        XCTAssertEqual(model.complaintTarget?.id, 21)
+        XCTAssertEqual(model.complaintTarget?.databaseId, 77)
+    }
+
+    @MainActor
     func testPrivateChatContactActionRequiresOnlineSenderIdentity() {
         let model = TS3AppModel()
         model.contacts = []

@@ -3,6 +3,36 @@ import XCTest
 import TS3Kit
 
 final class TS3ChatTranscriptTests: XCTestCase {
+    func testChatRowActionLocalizationKeysExist() throws {
+        let keys = [
+            "chat.copyMessage",
+            "chat.copySender",
+            "chat.addSenderToContacts",
+            "chat.complainAboutSender",
+            "chat.viewSenderComplaints",
+            "chat.saveSenderBookmark",
+            "chat.copySenderBookmarkDraft",
+            "chat.copySenderBookmarkImpact",
+            "chat.copyEntry"
+        ]
+        let resourceRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("Sources/TS3iOSApp/Resources")
+        let localizationFiles = [
+            resourceRoot.appendingPathComponent("en.lproj/Localizable.strings"),
+            resourceRoot.appendingPathComponent("zh-Hans.lproj/Localizable.strings")
+        ]
+
+        for fileURL in localizationFiles {
+            let contents = try String(contentsOf: fileURL)
+            for key in keys {
+                XCTAssertTrue(
+                    contents.contains("\"\(key)\" ="),
+                    "Missing \(key) in \(fileURL.path)"
+                )
+            }
+        }
+    }
+
     @MainActor
     func testChatTranscriptIncludesMetadataConversationGroupsAndMultiLineMessages() {
         let model = TS3AppModel()

@@ -1178,6 +1178,8 @@
 "chat.copyMessage" = "复制消息";
 "chat.copySender" = "复制发送者";
 "chat.addSenderToContacts" = "将发送者添加到联系人";
+"chat.complainAboutSender" = "投诉发送者";
+"chat.viewSenderComplaints" = "查看发送者投诉";
 "chat.saveSenderBookmark" = "保存发送者书签";
 "chat.copySenderBookmarkDraft" = "复制发送者书签草稿";
 "chat.copySenderBookmarkImpact" = "复制发送者书签影响";

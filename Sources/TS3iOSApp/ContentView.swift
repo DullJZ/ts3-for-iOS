@@ -9724,8 +9724,31 @@ struct ChatMessageRow: View {
     let item: TS3ChatMessageSummary
     let replyUser: TS3UserSummary?
     @State private var replyTarget: TS3UserSummary?
+    @State private var complaintActionTarget: TS3UserSummary?
+    @State private var complaintListTarget: TS3UserSummary?
 
     var body: some View {
+        rowContent
+            .sheet(item: $replyTarget) { user in
+                ChatPrivateReplySheet(user: user)
+                    .environmentObject(model)
+            }
+            .sheet(item: $complaintActionTarget) { user in
+                UserActionSheet(mode: .complain, user: user)
+                    .environmentObject(model)
+            }
+            .sheet(item: $complaintListTarget) { _ in
+                ComplaintListSheet()
+                    .environmentObject(model)
+            }
+            .modifier(ChatSenderComplaintAccessibilityModifier(
+                replyUser: replyUser,
+                complaintActionTarget: $complaintActionTarget,
+                complaintListTarget: $complaintListTarget
+            ))
+    }
+
+    private var rowContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(item.senderName)
@@ -9762,6 +9785,13 @@ struct ChatMessageRow: View {
                 }
             }
             if let replyUser {
+                Button("chat.complainAboutSender") {
+                    complaintActionTarget = replyUser
+                }
+                Button("chat.viewSenderComplaints") {
+                    model.refreshComplaints(for: replyUser)
+                    complaintListTarget = replyUser
+                }
                 Button("chat.saveSenderBookmark") {
                     model.saveOnlineClientBookmark(for: replyUser)
                 }
@@ -9776,10 +9806,6 @@ struct ChatMessageRow: View {
             Button("chat.copyEntry") {
                 TS3PlatformSupport.copyToPasteboard(clipboardText)
             }
-        }
-        .sheet(item: $replyTarget) { user in
-            ChatPrivateReplySheet(user: user)
-                .environmentObject(model)
         }
     }
 
@@ -9958,6 +9984,33 @@ struct ChatHistorySettingsSheet: View {
         } catch {
             model.lastError = error.localizedDescription
         }
+    }
+}
+
+private struct ChatSenderComplaintAccessibilityModifier: ViewModifier {
+    @EnvironmentObject private var model: TS3AppModel
+    let replyUser: TS3UserSummary?
+    @Binding var complaintActionTarget: TS3UserSummary?
+    @Binding var complaintListTarget: TS3UserSummary?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let replyUser {
+            content
+                .accessibilityAction(named: localized("chat.complainAboutSender")) {
+                    complaintActionTarget = replyUser
+                }
+                .accessibilityAction(named: localized("chat.viewSenderComplaints")) {
+                    model.refreshComplaints(for: replyUser)
+                    complaintListTarget = replyUser
+                }
+        } else {
+            content
+        }
+    }
+
+    private func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
     }
 }
 

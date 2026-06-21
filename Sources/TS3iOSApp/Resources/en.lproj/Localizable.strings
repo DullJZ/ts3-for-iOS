@@ -1178,6 +1178,8 @@
 "chat.copyMessage" = "Copy Message";
 "chat.copySender" = "Copy Sender";
 "chat.addSenderToContacts" = "Add Sender to Contacts";
+"chat.complainAboutSender" = "Complain About Sender";
+"chat.viewSenderComplaints" = "View Sender Complaints";
 "chat.saveSenderBookmark" = "Save Sender Bookmark";
 "chat.copySenderBookmarkDraft" = "Copy Sender Bookmark Draft";
 "chat.copySenderBookmarkImpact" = "Copy Sender Bookmark Impact";
