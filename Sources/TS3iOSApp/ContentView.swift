@@ -1473,6 +1473,9 @@ struct ConnectView: View {
     @State private var isImportingClientPackage = false
     @State private var isExportingClientPackage = false
     @State private var isShowingSavedConnectionLibrary = false
+    @State private var isShowingConnectionDetails = false
+    @State private var isShowingConnectionInviteLink = false
+    @State private var isShowingConnectionProfile = false
     @State private var isShowingConnectionManagement = false
     @State private var isShowingConnectionDiagnostics = false
     @State private var deleteConfirmation: DeleteConfirmation?
@@ -1895,37 +1898,46 @@ struct ConnectView: View {
                 }
             }
 
-            Section(header: Text("connect.invitationLink")) {
-                TextField("ts3server://host?nickname=...", text: $serverURLText)
-                    .ts3URLTextField()
-                Button("connect.importLink") {
-                    model.applyServerURL(serverURLText)
-                    serverURLText = ""
-                }
-                .disabled(serverURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-
             Section(header: Text("connect.server")) {
                 TextField("connect.hostPlaceholder", text: $model.serverHost)
                     .ts3URLTextField()
                 TextField("connect.port", text: $model.serverPort)
                     .ts3NumericKeyboard()
-                SecureField("connect.serverPasswordOptional", text: $model.serverPassword)
-                TextField("connect.defaultChannelOptional", text: $model.defaultChannel)
-                    .ts3PlainTextField()
-                SecureField("connect.channelPasswordOptional", text: $model.defaultChannelPassword)
-            }
 
-            Section(header: Text("connect.profile")) {
-                TextField("connect.nickname", text: $model.nickname)
-                    .ts3PlainTextField()
-                TextField("connect.phoneticNicknameOptional", text: $model.phoneticNickname)
-                    .ts3PlainTextField()
-                TextField("connect.connectionNoteOptional", text: $model.connectionNote)
-                    .ts3PlainTextField()
-                SecureField("connect.privilegeKeyOptional", text: $model.privilegeKey)
-                Button("connect.manageIdentity") {
-                    isShowingIdentity = true
+                DisclosureGroup(isExpanded: $isShowingConnectionDetails) {
+                    SecureField("connect.serverPasswordOptional", text: $model.serverPassword)
+                    TextField("connect.defaultChannelOptional", text: $model.defaultChannel)
+                        .ts3PlainTextField()
+                    SecureField("connect.channelPasswordOptional", text: $model.defaultChannelPassword)
+
+                    DisclosureGroup(isExpanded: $isShowingConnectionInviteLink) {
+                        TextField("ts3server://host?nickname=...", text: $serverURLText)
+                            .ts3URLTextField()
+                        Button("connect.importLink") {
+                            model.applyServerURL(serverURLText)
+                            serverURLText = ""
+                        }
+                        .disabled(serverURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } label: {
+                        Label("connect.invitationLink", systemImage: "link")
+                    }
+
+                    DisclosureGroup(isExpanded: $isShowingConnectionProfile) {
+                        TextField("connect.nickname", text: $model.nickname)
+                            .ts3PlainTextField()
+                        TextField("connect.phoneticNicknameOptional", text: $model.phoneticNickname)
+                            .ts3PlainTextField()
+                        TextField("connect.connectionNoteOptional", text: $model.connectionNote)
+                            .ts3PlainTextField()
+                        SecureField("connect.privilegeKeyOptional", text: $model.privilegeKey)
+                        Button("connect.manageIdentity") {
+                            isShowingIdentity = true
+                        }
+                    } label: {
+                        Label("connect.profile", systemImage: "person.crop.circle")
+                    }
+                } label: {
+                    Label("connect.connectionDetails", systemImage: "slider.horizontal.3")
                 }
             }
 
@@ -4359,6 +4371,7 @@ struct DisconnectSheet: View {
 
 struct ServerHeaderView: View {
     @EnvironmentObject private var model: TS3AppModel
+    @State private var isShowingPresentationDetails = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -4378,46 +4391,56 @@ struct ServerHeaderView: View {
                 Spacer()
             }
 
-            if let welcomeMessage {
-                Text(welcomeMessage)
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
-            }
-
-            if let hostMessage {
-                Text(hostMessage)
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
-            }
-
-            if let bannerImageURL {
-                ServerRemoteImageLinkView(
-                    url: bannerImageURL,
-                    linkURL: bannerLinkURL,
-                    maxHeight: 90,
-                    accessibilityLabel: "Server banner"
-                )
-            }
-
-            if let hostButtonImageURL {
-                ServerRemoteImageLinkView(
-                    url: hostButtonImageURL,
-                    linkURL: hostButtonLinkURL,
-                    maxHeight: 32,
-                    accessibilityLabel: hostButtonTitle
-                )
-            }
-
-            if !linkActions.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(linkActions) { action in
-                        Button(action.title) {
-                            TS3PlatformSupport.openURL(action.url)
+            if hasPresentationDetails {
+                DisclosureGroup(isExpanded: $isShowingPresentationDetails) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let welcomeMessage {
+                            Text(welcomeMessage)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .lineLimit(3)
                         }
-                        .buttonStyle(TS3BorderedButtonStyle())
+
+                        if let hostMessage {
+                            Text(hostMessage)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .lineLimit(3)
+                        }
+
+                        if let bannerImageURL {
+                            ServerRemoteImageLinkView(
+                                url: bannerImageURL,
+                                linkURL: bannerLinkURL,
+                                maxHeight: 90,
+                                accessibilityLabel: localized("serverInfo.bannerGraphic")
+                            )
+                        }
+
+                        if let hostButtonImageURL {
+                            ServerRemoteImageLinkView(
+                                url: hostButtonImageURL,
+                                linkURL: hostButtonLinkURL,
+                                maxHeight: 32,
+                                accessibilityLabel: hostButtonTitle
+                            )
+                        }
+
+                        if !linkActions.isEmpty {
+                            HStack(spacing: 8) {
+                                ForEach(linkActions) { action in
+                                    Button(action.title) {
+                                        TS3PlatformSupport.openURL(action.url)
+                                    }
+                                    .buttonStyle(TS3BorderedButtonStyle())
+                                }
+                            }
+                        }
                     }
+                    .padding(.top, 6)
+                } label: {
+                    Label(localized("serverInfo.hostPresentation"), systemImage: "photo.on.rectangle")
+                        .font(.subheadline)
                 }
             }
         }
@@ -4478,24 +4501,36 @@ struct ServerHeaderView: View {
     }
 
     private var hostButtonTitle: String {
-        nonEmpty(model.serverInfo.hostButtonTooltip) ?? "Host button"
+        nonEmpty(model.serverInfo.hostButtonTooltip) ?? localized("serverInfo.buttonURL")
+    }
+
+    private var hasPresentationDetails: Bool {
+        welcomeMessage != nil
+            || hostMessage != nil
+            || bannerImageURL != nil
+            || hostButtonImageURL != nil
+            || !linkActions.isEmpty
     }
 
     private var linkActions: [ServerHeaderLinkAction] {
         var actions: [ServerHeaderLinkAction] = []
         if let url = parsedURL(model.serverInfo.hostBannerURL) {
-            actions.append(ServerHeaderLinkAction(title: "Banner Link", url: url))
+            actions.append(ServerHeaderLinkAction(title: localized("serverInfo.bannerURL"), url: url))
         }
         if let url = parsedURL(model.serverInfo.hostBannerGraphicsURL) {
-            actions.append(ServerHeaderLinkAction(title: "Banner Image", url: url))
+            actions.append(ServerHeaderLinkAction(title: localized("serverInfo.bannerGraphic"), url: url))
         }
         if let url = parsedURL(model.serverInfo.hostButtonURL) {
-            actions.append(ServerHeaderLinkAction(title: nonEmpty(model.serverInfo.hostButtonTooltip) ?? "Host Link", url: url))
+            actions.append(ServerHeaderLinkAction(title: nonEmpty(model.serverInfo.hostButtonTooltip) ?? localized("serverInfo.buttonURL"), url: url))
         }
         if let url = parsedURL(model.serverInfo.hostButtonGraphicsURL) {
-            actions.append(ServerHeaderLinkAction(title: "Host Image", url: url))
+            actions.append(ServerHeaderLinkAction(title: localized("serverInfo.buttonGraphic"), url: url))
         }
         return actions
+    }
+
+    private func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
     }
 
     private func nonEmpty(_ value: String?) -> String? {
@@ -12774,6 +12809,7 @@ struct ServerToolsSheet: View {
     @State private var isShowingAdministrationTools = false
     @State private var isShowingDirectoryTools = false
     @State private var isShowingModerationTools = false
+    @State private var isShowingCurrentServerBookmarkTools = false
     @State private var pendingNotificationSettingsImport: NotificationSettingsImportConfirmation?
     @State private var notificationSettingsDocument = TS3TextFileDocument()
 
@@ -12915,28 +12951,32 @@ struct ServerToolsSheet: View {
                     }
                 }
 
-                Section(header: Text(localized("serverTools.currentServerBookmark"))) {
-                    TextField(localized("connect.bookmarkName"), text: $bookmarkName)
-                        .ts3PlainTextField()
-                    TextField(localized("connect.folderOptional"), text: $bookmarkFolder)
-                        .ts3PlainTextField()
-                    Button(localized("connect.saveCurrentServer")) {
-                        model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
-                        bookmarkName = ""
-                        bookmarkFolder = ""
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingCurrentServerBookmarkTools) {
+                        TextField(localized("connect.bookmarkName"), text: $bookmarkName)
+                            .ts3PlainTextField()
+                        TextField(localized("connect.folderOptional"), text: $bookmarkFolder)
+                            .ts3PlainTextField()
+                        Button(localized("connect.saveCurrentServer")) {
+                            model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
+                            bookmarkName = ""
+                            bookmarkFolder = ""
+                        }
+                        Button(localized("connect.copyInviteLink")) {
+                            model.copyCurrentInviteLink()
+                        }
+                        Button(localized("connect.copyFullInviteLink")) {
+                            model.copyCurrentFullInviteLink()
+                        }
+                        Button(localized("connect.copyConnectionSummary")) {
+                            model.copyCurrentConnectionSummary()
+                        }
+                        Text(localized("serverTools.fullInviteWarning"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } label: {
+                        Label(localized("serverTools.currentServerBookmark"), systemImage: "bookmark")
                     }
-                    Button(localized("connect.copyInviteLink")) {
-                        model.copyCurrentInviteLink()
-                    }
-                    Button(localized("connect.copyFullInviteLink")) {
-                        model.copyCurrentFullInviteLink()
-                    }
-                    Button(localized("connect.copyConnectionSummary")) {
-                        model.copyCurrentConnectionSummary()
-                    }
-                    Text(localized("serverTools.fullInviteWarning"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
 
                 Section(header: Text(localized("connect.managerTitle"))) {

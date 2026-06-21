@@ -62,6 +62,7 @@
 "connect.serverPasswordOptional" = "服务器密码（可选）";
 "connect.defaultChannelOptional" = "默认频道（可选）";
 "connect.channelPasswordOptional" = "频道密码（可选）";
+"connect.connectionDetails" = "连接详情";
 "connect.profile" = "资料";
 "connect.nickname" = "昵称";
 "connect.phoneticNicknameOptional" = "语音昵称（可选）";

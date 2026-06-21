@@ -62,6 +62,7 @@
 "connect.serverPasswordOptional" = "Server Password (optional)";
 "connect.defaultChannelOptional" = "Default Channel (optional)";
 "connect.channelPasswordOptional" = "Channel Password (optional)";
+"connect.connectionDetails" = "Connection Details";
 "connect.profile" = "Profile";
 "connect.nickname" = "Nickname";
 "connect.phoneticNicknameOptional" = "Phonetic Nickname (optional)";
