@@ -1539,6 +1539,65 @@ struct ConnectView: View {
         )
     }
 
+    private var connectionServerSection: some View {
+        Section(header: Text("connect.server")) {
+            TextField("connect.hostPlaceholder", text: $model.serverHost)
+                .ts3URLTextField()
+            TextField("connect.port", text: $model.serverPort)
+                .ts3NumericKeyboard()
+            connectionDetailsDisclosure
+        }
+    }
+
+    private var connectionDetailsDisclosure: some View {
+        DisclosureGroup(isExpanded: $isShowingConnectionDetails) {
+            connectionDetailsFields
+            connectionInviteLinkDisclosure
+            connectionProfileDisclosure
+        } label: {
+            Label("connect.connectionDetails", systemImage: "slider.horizontal.3")
+        }
+    }
+
+    @ViewBuilder
+    private var connectionDetailsFields: some View {
+        SecureField("connect.serverPasswordOptional", text: $model.serverPassword)
+        TextField("connect.defaultChannelOptional", text: $model.defaultChannel)
+            .ts3PlainTextField()
+        SecureField("connect.channelPasswordOptional", text: $model.defaultChannelPassword)
+    }
+
+    private var connectionInviteLinkDisclosure: some View {
+        DisclosureGroup(isExpanded: $isShowingConnectionInviteLink) {
+            TextField("ts3server://host?nickname=...", text: $serverURLText)
+                .ts3URLTextField()
+            Button("connect.importLink") {
+                model.applyServerURL(serverURLText)
+                serverURLText = ""
+            }
+            .disabled(serverURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } label: {
+            Label("connect.invitationLink", systemImage: "link")
+        }
+    }
+
+    private var connectionProfileDisclosure: some View {
+        DisclosureGroup(isExpanded: $isShowingConnectionProfile) {
+            TextField("connect.nickname", text: $model.nickname)
+                .ts3PlainTextField()
+            TextField("connect.phoneticNicknameOptional", text: $model.phoneticNickname)
+                .ts3PlainTextField()
+            TextField("connect.connectionNoteOptional", text: $model.connectionNote)
+                .ts3PlainTextField()
+            SecureField("connect.privilegeKeyOptional", text: $model.privilegeKey)
+            Button("connect.manageIdentity") {
+                isShowingIdentity = true
+            }
+        } label: {
+            Label("connect.profile", systemImage: "person.crop.circle")
+        }
+    }
+
     private var displayedRecentConnections: [TS3ConnectionSnapshot] {
         let entries = model.recentConnections.filter { snapshot in
             matchesConnectionFilter(
@@ -1898,48 +1957,7 @@ struct ConnectView: View {
                 }
             }
 
-            Section(header: Text("connect.server")) {
-                TextField("connect.hostPlaceholder", text: $model.serverHost)
-                    .ts3URLTextField()
-                TextField("connect.port", text: $model.serverPort)
-                    .ts3NumericKeyboard()
-
-                DisclosureGroup(isExpanded: $isShowingConnectionDetails) {
-                    SecureField("connect.serverPasswordOptional", text: $model.serverPassword)
-                    TextField("connect.defaultChannelOptional", text: $model.defaultChannel)
-                        .ts3PlainTextField()
-                    SecureField("connect.channelPasswordOptional", text: $model.defaultChannelPassword)
-
-                    DisclosureGroup(isExpanded: $isShowingConnectionInviteLink) {
-                        TextField("ts3server://host?nickname=...", text: $serverURLText)
-                            .ts3URLTextField()
-                        Button("connect.importLink") {
-                            model.applyServerURL(serverURLText)
-                            serverURLText = ""
-                        }
-                        .disabled(serverURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    } label: {
-                        Label("connect.invitationLink", systemImage: "link")
-                    }
-
-                    DisclosureGroup(isExpanded: $isShowingConnectionProfile) {
-                        TextField("connect.nickname", text: $model.nickname)
-                            .ts3PlainTextField()
-                        TextField("connect.phoneticNicknameOptional", text: $model.phoneticNickname)
-                            .ts3PlainTextField()
-                        TextField("connect.connectionNoteOptional", text: $model.connectionNote)
-                            .ts3PlainTextField()
-                        SecureField("connect.privilegeKeyOptional", text: $model.privilegeKey)
-                        Button("connect.manageIdentity") {
-                            isShowingIdentity = true
-                        }
-                    } label: {
-                        Label("connect.profile", systemImage: "person.crop.circle")
-                    }
-                } label: {
-                    Label("connect.connectionDetails", systemImage: "slider.horizontal.3")
-                }
-            }
+            connectionServerSection
 
             if allowsConnectionActions {
                 Section {
@@ -12853,6 +12871,46 @@ struct ServerToolsSheet: View {
         return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
     }
 
+    private var currentServerBookmarkSection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $isShowingCurrentServerBookmarkTools) {
+                currentServerBookmarkFields
+                currentServerBookmarkActions
+                Text(localized("serverTools.fullInviteWarning"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } label: {
+                Label(localized("serverTools.currentServerBookmark"), systemImage: "bookmark")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var currentServerBookmarkFields: some View {
+        TextField(localized("connect.bookmarkName"), text: $bookmarkName)
+            .ts3PlainTextField()
+        TextField(localized("connect.folderOptional"), text: $bookmarkFolder)
+            .ts3PlainTextField()
+    }
+
+    @ViewBuilder
+    private var currentServerBookmarkActions: some View {
+        Button(localized("connect.saveCurrentServer")) {
+            model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
+            bookmarkName = ""
+            bookmarkFolder = ""
+        }
+        Button(localized("connect.copyInviteLink")) {
+            model.copyCurrentInviteLink()
+        }
+        Button(localized("connect.copyFullInviteLink")) {
+            model.copyCurrentFullInviteLink()
+        }
+        Button(localized("connect.copyConnectionSummary")) {
+            model.copyCurrentConnectionSummary()
+        }
+    }
+
     var body: some View {
         NavigationView {
             Form {
@@ -12951,33 +13009,7 @@ struct ServerToolsSheet: View {
                     }
                 }
 
-                Section {
-                    DisclosureGroup(isExpanded: $isShowingCurrentServerBookmarkTools) {
-                        TextField(localized("connect.bookmarkName"), text: $bookmarkName)
-                            .ts3PlainTextField()
-                        TextField(localized("connect.folderOptional"), text: $bookmarkFolder)
-                            .ts3PlainTextField()
-                        Button(localized("connect.saveCurrentServer")) {
-                            model.saveCurrentBookmark(name: bookmarkName, folder: bookmarkFolder)
-                            bookmarkName = ""
-                            bookmarkFolder = ""
-                        }
-                        Button(localized("connect.copyInviteLink")) {
-                            model.copyCurrentInviteLink()
-                        }
-                        Button(localized("connect.copyFullInviteLink")) {
-                            model.copyCurrentFullInviteLink()
-                        }
-                        Button(localized("connect.copyConnectionSummary")) {
-                            model.copyCurrentConnectionSummary()
-                        }
-                        Text(localized("serverTools.fullInviteWarning"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } label: {
-                        Label(localized("serverTools.currentServerBookmark"), systemImage: "bookmark")
-                    }
-                }
+                currentServerBookmarkSection
 
                 Section(header: Text(localized("connect.managerTitle"))) {
                     Button(localized("serverTools.openConnectionManager")) {
