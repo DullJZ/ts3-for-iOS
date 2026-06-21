@@ -220,14 +220,17 @@ final class TS3AudioEngine {
     private func configureSession(needsInput: Bool) throws {
         #if targetEnvironment(macCatalyst) || os(iOS)
         let session = AVAudioSession.sharedInstance()
-        let options: AVAudioSession.CategoryOptions
+        let routeOptions: AVAudioSession.CategoryOptions
         #if compiler(>=6.3)
-        options = [.allowBluetoothHFP, .defaultToSpeaker]
+        routeOptions = [.allowBluetoothHFP, .defaultToSpeaker]
         #else
         // Older Xcode SDKs do not expose `allowBluetoothHFP`.
-        options = [.allowBluetooth, .defaultToSpeaker]
+        routeOptions = [.allowBluetooth, .defaultToSpeaker]
         #endif
-        let categoryOptions = prefersSpeakerOutput ? options : options.subtracting(.defaultToSpeaker)
+        var categoryOptions = routeOptions.union(.mixWithOthers)
+        if !prefersSpeakerOutput {
+            categoryOptions.remove(.defaultToSpeaker)
+        }
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: categoryOptions)
         try session.setPreferredSampleRate(config.sampleRate)
         try session.setActive(true)
