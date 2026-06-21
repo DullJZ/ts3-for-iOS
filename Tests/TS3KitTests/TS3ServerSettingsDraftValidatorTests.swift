@@ -503,6 +503,61 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerTransferLimitDraftReviewSummaryCountsChangedLimitsAndInvalidDrafts() {
+        let summary = TS3ServerTransferLimitDraftReviewSummary(
+            currentDownloadQuota: 1_000_000,
+            draftDownloadQuota: "2000000",
+            currentUploadQuota: 3_000_000,
+            draftUploadQuota: "upload",
+            currentMaxDownloadTotalBandwidth: nil,
+            draftMaxDownloadTotalBandwidth: "4096",
+            currentMaxUploadTotalBandwidth: 8192,
+            draftMaxUploadTotalBandwidth: "fast"
+        )
+
+        XCTAssertEqual(summary.totalLimitCount, 4)
+        XCTAssertEqual(summary.reviewedLimitCount, 2)
+        XCTAssertEqual(summary.invalidDraftCount, 2)
+        XCTAssertEqual(summary.invalidDraftRoles, [.uploadQuota, .maxUploadTotalBandwidth])
+        XCTAssertEqual(summary.changedRoles, [.downloadQuota, .maxDownloadTotalBandwidth])
+        XCTAssertEqual(summary.changedLimitCount, 2)
+        XCTAssertEqual(summary.currentValue(for: .downloadQuota), 1_000_000)
+        XCTAssertEqual(summary.draftValue(for: .downloadQuota), 2_000_000)
+        XCTAssertEqual(summary.draftValue(for: .uploadQuota), 3_000_000)
+        XCTAssertEqual(summary.draftValue(for: .maxDownloadTotalBandwidth), 4096)
+        XCTAssertEqual(summary.draftValue(for: .maxUploadTotalBandwidth), 8192)
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "transferLimitChanges=2/4 | reviewedLimits=2/4 | invalidDrafts=2 | changed=downloadQuota,maxDownloadTotalBandwidth | invalid=uploadQuota,maxUploadTotalBandwidth | needsAttention=true"
+        )
+    }
+
+    func testServerTransferLimitDraftReviewSummaryHandlesUnchangedDraft() {
+        let summary = TS3ServerTransferLimitDraftReviewSummary(
+            currentDownloadQuota: 1_000_000,
+            draftDownloadQuota: " ",
+            currentUploadQuota: 3_000_000,
+            draftUploadQuota: "3000000",
+            currentMaxDownloadTotalBandwidth: nil,
+            draftMaxDownloadTotalBandwidth: nil,
+            currentMaxUploadTotalBandwidth: nil,
+            draftMaxUploadTotalBandwidth: ""
+        )
+
+        XCTAssertEqual(summary.reviewedLimitCount, 4)
+        XCTAssertEqual(summary.invalidDraftCount, 0)
+        XCTAssertTrue(summary.changedRoles.isEmpty)
+        XCTAssertEqual(summary.changedLimitCount, 0)
+        XCTAssertEqual(summary.draftValue(for: .downloadQuota), 1_000_000)
+        XCTAssertNil(summary.draftValue(for: .maxDownloadTotalBandwidth))
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "transferLimitChanges=0/4 | reviewedLimits=4/4 | invalidDrafts=0 | changed=none | invalid=none | needsAttention=false"
+        )
+    }
+
     func testServerSettingsOfficialImpactSummaryCountsAreasAndSensitiveChanges() {
         let summary = TS3ServerSettingsOfficialImpactSummary(
             areaChangeCounts: [

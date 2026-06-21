@@ -1406,6 +1406,16 @@
 "serverSettings.versionLimitReviewInvalidValueFormat" = "无效值：%@";
 "serverSettings.versionLimitReviewClipboardRowFormat" = "%@：当前 %@，草稿 %@";
 "serverSettings.copyVersionLimitReview" = "复制版本限制复核";
+"serverSettings.transferLimitReview" = "传输限制复核";
+"serverSettings.transferLimitReviewFormat" = "%d / %d 项变化，%d 项无效";
+"serverSettings.transferLimitReviewNoChanges" = "当前传输限制与草稿一致";
+"serverSettings.transferLimitReviewChangedFormat" = "%d 项传输限制变更";
+"serverSettings.transferLimitReviewInvalidFormat" = "%d 个无效传输限制";
+"serverSettings.transferLimitReviewCurrentFormat" = "当前：%@";
+"serverSettings.transferLimitReviewDraftFormat" = "草稿：%@";
+"serverSettings.transferLimitReviewInvalidValueFormat" = "无效值：%@";
+"serverSettings.transferLimitReviewClipboardRowFormat" = "%@：当前 %@，草稿 %@";
+"serverSettings.copyTransferLimitReview" = "复制传输限制复核";
 "serverSettings.codecEncryption" = "编解码加密";
 "serverSettings.codecEncryptionMode" = "编解码加密模式";
 "serverSettings.serverGroup" = "服务器组";

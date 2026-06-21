@@ -1406,6 +1406,16 @@
 "serverSettings.versionLimitReviewInvalidValueFormat" = "Invalid value: %@";
 "serverSettings.versionLimitReviewClipboardRowFormat" = "%@: current %@, draft %@";
 "serverSettings.copyVersionLimitReview" = "Copy Version Limit Review";
+"serverSettings.transferLimitReview" = "Transfer Limit Review";
+"serverSettings.transferLimitReviewFormat" = "%d of %d changed, %d invalid";
+"serverSettings.transferLimitReviewNoChanges" = "Current transfer limits match the draft";
+"serverSettings.transferLimitReviewChangedFormat" = "%d transfer limit changes";
+"serverSettings.transferLimitReviewInvalidFormat" = "%d invalid transfer limits";
+"serverSettings.transferLimitReviewCurrentFormat" = "Current: %@";
+"serverSettings.transferLimitReviewDraftFormat" = "Draft: %@";
+"serverSettings.transferLimitReviewInvalidValueFormat" = "Invalid value: %@";
+"serverSettings.transferLimitReviewClipboardRowFormat" = "%@: current %@, draft %@";
+"serverSettings.copyTransferLimitReview" = "Copy Transfer Limit Review";
 "serverSettings.codecEncryption" = "Codec Encryption";
 "serverSettings.codecEncryptionMode" = "Codec Encryption Mode";
 "serverSettings.serverGroup" = "Server Group";

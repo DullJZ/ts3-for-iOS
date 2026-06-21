@@ -2014,6 +2014,132 @@ struct TS3ServerVersionLimitDraftReviewSummary {
     }
 }
 
+enum TS3ServerTransferLimitRole: String, CaseIterable, Codable {
+    case downloadQuota
+    case uploadQuota
+    case maxDownloadTotalBandwidth
+    case maxUploadTotalBandwidth
+}
+
+struct TS3ServerTransferLimitDraftReviewSummary {
+    let currentDownloadQuota: Int64?
+    let currentUploadQuota: Int64?
+    let currentMaxDownloadTotalBandwidth: Int64?
+    let currentMaxUploadTotalBandwidth: Int64?
+    let draftDownloadQuota: Int64?
+    let draftUploadQuota: Int64?
+    let draftMaxDownloadTotalBandwidth: Int64?
+    let draftMaxUploadTotalBandwidth: Int64?
+    let invalidDraftRoles: [TS3ServerTransferLimitRole]
+
+    var totalLimitCount: Int {
+        TS3ServerTransferLimitRole.allCases.count
+    }
+
+    var reviewedLimitCount: Int {
+        max(0, totalLimitCount - invalidDraftRoles.count)
+    }
+
+    var invalidDraftCount: Int {
+        invalidDraftRoles.count
+    }
+
+    var changedRoles: [TS3ServerTransferLimitRole] {
+        TS3ServerTransferLimitRole.allCases.filter { currentValue(for: $0) != draftValue(for: $0) }
+    }
+
+    var changedLimitCount: Int {
+        changedRoles.count
+    }
+
+    var needsAttention: Bool {
+        changedLimitCount > 0 || invalidDraftCount > 0
+    }
+
+    var clipboardSummary: String {
+        let changed = changedRoles.map(\.rawValue).joined(separator: ",")
+        let invalid = invalidDraftRoles.map(\.rawValue).joined(separator: ",")
+        return [
+            "transferLimitChanges=\(changedLimitCount)/\(totalLimitCount)",
+            "reviewedLimits=\(reviewedLimitCount)/\(totalLimitCount)",
+            "invalidDrafts=\(invalidDraftCount)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "invalid=\(invalid.isEmpty ? "none" : invalid)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        currentDownloadQuota: Int64?,
+        draftDownloadQuota: String?,
+        currentUploadQuota: Int64?,
+        draftUploadQuota: String?,
+        currentMaxDownloadTotalBandwidth: Int64?,
+        draftMaxDownloadTotalBandwidth: String?,
+        currentMaxUploadTotalBandwidth: Int64?,
+        draftMaxUploadTotalBandwidth: String?
+    ) {
+        let downloadQuotaDraft = Self.parsedDraftLimit(draftDownloadQuota, current: currentDownloadQuota)
+        let uploadQuotaDraft = Self.parsedDraftLimit(draftUploadQuota, current: currentUploadQuota)
+        let downloadBandwidthDraft = Self.parsedDraftLimit(
+            draftMaxDownloadTotalBandwidth,
+            current: currentMaxDownloadTotalBandwidth
+        )
+        let uploadBandwidthDraft = Self.parsedDraftLimit(
+            draftMaxUploadTotalBandwidth,
+            current: currentMaxUploadTotalBandwidth
+        )
+
+        self.currentDownloadQuota = currentDownloadQuota
+        self.currentUploadQuota = currentUploadQuota
+        self.currentMaxDownloadTotalBandwidth = currentMaxDownloadTotalBandwidth
+        self.currentMaxUploadTotalBandwidth = currentMaxUploadTotalBandwidth
+        self.draftDownloadQuota = downloadQuotaDraft.effectiveValue
+        self.draftUploadQuota = uploadQuotaDraft.effectiveValue
+        self.draftMaxDownloadTotalBandwidth = downloadBandwidthDraft.effectiveValue
+        self.draftMaxUploadTotalBandwidth = uploadBandwidthDraft.effectiveValue
+        self.invalidDraftRoles = [
+            downloadQuotaDraft.isInvalid ? .downloadQuota : nil,
+            uploadQuotaDraft.isInvalid ? .uploadQuota : nil,
+            downloadBandwidthDraft.isInvalid ? .maxDownloadTotalBandwidth : nil,
+            uploadBandwidthDraft.isInvalid ? .maxUploadTotalBandwidth : nil
+        ].compactMap { $0 }
+    }
+
+    func currentValue(for role: TS3ServerTransferLimitRole) -> Int64? {
+        switch role {
+        case .downloadQuota:
+            return currentDownloadQuota
+        case .uploadQuota:
+            return currentUploadQuota
+        case .maxDownloadTotalBandwidth:
+            return currentMaxDownloadTotalBandwidth
+        case .maxUploadTotalBandwidth:
+            return currentMaxUploadTotalBandwidth
+        }
+    }
+
+    func draftValue(for role: TS3ServerTransferLimitRole) -> Int64? {
+        switch role {
+        case .downloadQuota:
+            return draftDownloadQuota
+        case .uploadQuota:
+            return draftUploadQuota
+        case .maxDownloadTotalBandwidth:
+            return draftMaxDownloadTotalBandwidth
+        case .maxUploadTotalBandwidth:
+            return draftMaxUploadTotalBandwidth
+        }
+    }
+
+    private static func parsedDraftLimit(_ value: String?, current: Int64?) -> (effectiveValue: Int64?, isInvalid: Bool) {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return (current, false) }
+        guard let limit = Int64(trimmed) else { return (current, true) }
+        return (limit, false)
+    }
+}
+
 enum TS3ServerSettingsOfficialImpactArea: String, CaseIterable, Codable {
     case availability
     case accessControl

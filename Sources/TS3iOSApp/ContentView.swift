@@ -19553,6 +19553,14 @@ struct ServerSettingsEditorSheet: View {
         let hasChange: Bool
     }
 
+    private struct TransferLimitReviewRow: Hashable {
+        let role: TS3ServerTransferLimitRole
+        let label: String
+        let currentValue: String
+        let draftValue: String
+        let hasChange: Bool
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
@@ -19882,6 +19890,33 @@ struct ServerSettingsEditorSheet: View {
                         }
                         Button(localized("serverSettings.copyVersionLimitReview")) {
                             TS3PlatformSupport.copyToPasteboard(versionLimitReviewClipboard)
+                        }
+                        ServerInfoDetailRow(
+                            label: localized("serverSettings.transferLimitReview"),
+                            value: localized(
+                                "serverSettings.transferLimitReviewFormat",
+                                transferLimitReviewSummary.changedLimitCount,
+                                transferLimitReviewSummary.totalLimitCount,
+                                transferLimitReviewSummary.invalidDraftCount
+                            )
+                        )
+                        Text(transferLimitReviewText)
+                            .font(.caption)
+                            .foregroundColor(transferLimitReviewSummary.needsAttention ? .orange : .secondary)
+                        ForEach(transferLimitReviewRows, id: \.self) { row in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(row.label)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(localized("serverSettings.transferLimitReviewCurrentFormat", row.currentValue))
+                                    .font(.caption)
+                                Text(localized("serverSettings.transferLimitReviewDraftFormat", row.draftValue))
+                                    .font(.caption)
+                                    .foregroundColor(row.hasChange ? .orange : .secondary)
+                            }
+                        }
+                        Button(localized("serverSettings.copyTransferLimitReview")) {
+                            TS3PlatformSupport.copyToPasteboard(transferLimitReviewClipboard)
                         }
                         TextField(localized("serverSettings.temporaryChannelDeleteDelayDefault"), text: $temporaryChannelDeleteDelayDefaultSeconds)
                             .ts3NumericKeyboard()
@@ -20543,6 +20578,81 @@ struct ServerSettingsEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var transferLimitReviewSummary: TS3ServerTransferLimitDraftReviewSummary {
+        TS3ServerTransferLimitDraftReviewSummary(
+            currentDownloadQuota: model.serverInfo.downloadQuota,
+            draftDownloadQuota: downloadQuota,
+            currentUploadQuota: model.serverInfo.uploadQuota,
+            draftUploadQuota: uploadQuota,
+            currentMaxDownloadTotalBandwidth: model.serverInfo.maxDownloadTotalBandwidth,
+            draftMaxDownloadTotalBandwidth: maxDownloadTotalBandwidth,
+            currentMaxUploadTotalBandwidth: model.serverInfo.maxUploadTotalBandwidth,
+            draftMaxUploadTotalBandwidth: maxUploadTotalBandwidth
+        )
+    }
+
+    private var transferLimitReviewRows: [TransferLimitReviewRow] {
+        let summary = transferLimitReviewSummary
+        return [
+            transferLimitReviewRow(
+                for: .downloadQuota,
+                draftText: downloadQuota,
+                summary: summary
+            ),
+            transferLimitReviewRow(
+                for: .uploadQuota,
+                draftText: uploadQuota,
+                summary: summary
+            ),
+            transferLimitReviewRow(
+                for: .maxDownloadTotalBandwidth,
+                draftText: maxDownloadTotalBandwidth,
+                summary: summary
+            ),
+            transferLimitReviewRow(
+                for: .maxUploadTotalBandwidth,
+                draftText: maxUploadTotalBandwidth,
+                summary: summary
+            )
+        ]
+    }
+
+    private var transferLimitReviewText: String {
+        let summary = transferLimitReviewSummary
+        guard summary.needsAttention else { return localized("serverSettings.transferLimitReviewNoChanges") }
+        var parts: [String] = []
+        if summary.changedLimitCount > 0 {
+            parts.append(localized("serverSettings.transferLimitReviewChangedFormat", summary.changedLimitCount))
+        }
+        if summary.invalidDraftCount > 0 {
+            parts.append(localized("serverSettings.transferLimitReviewInvalidFormat", summary.invalidDraftCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private var transferLimitReviewClipboard: String {
+        let summary = transferLimitReviewSummary
+        let rows = transferLimitReviewRows
+            .map { row in
+                localized(
+                    "serverSettings.transferLimitReviewClipboardRowFormat",
+                    row.label,
+                    row.currentValue,
+                    row.draftValue
+                )
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.transferLimitReview"),
+            summary.clipboardSummary,
+            rows
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private var defaultGroupReviewSummary: TS3ServerDefaultGroupDraftReviewSummary {
         TS3ServerDefaultGroupDraftReviewSummary(
             currentServerGroupId: model.serverInfo.defaultServerGroupId,
@@ -20960,6 +21070,19 @@ struct ServerSettingsEditorSheet: View {
         }
     }
 
+    private func title(for role: TS3ServerTransferLimitRole) -> String {
+        switch role {
+        case .downloadQuota:
+            return localized("serverSettings.downloadQuotaBytes")
+        case .uploadQuota:
+            return localized("serverSettings.uploadQuotaBytes")
+        case .maxDownloadTotalBandwidth:
+            return localized("serverSettings.maxDownloadBandwidthBytes")
+        case .maxUploadTotalBandwidth:
+            return localized("serverSettings.maxUploadBandwidthBytes")
+        }
+    }
+
     private func versionLimitReviewRow(
         for role: TS3ServerVersionLimitRole,
         draftText: String,
@@ -20982,6 +21105,31 @@ struct ServerSettingsEditorSheet: View {
     }
 
     private func versionLimitReviewValue(_ value: Int?) -> String {
+        value.map(String.init) ?? localized("serverSettings.emptyValue")
+    }
+
+    private func transferLimitReviewRow(
+        for role: TS3ServerTransferLimitRole,
+        draftText: String,
+        summary: TS3ServerTransferLimitDraftReviewSummary
+    ) -> TransferLimitReviewRow {
+        let isInvalid = summary.invalidDraftRoles.contains(role)
+        let draftValue = isInvalid
+            ? localized(
+                "serverSettings.transferLimitReviewInvalidValueFormat",
+                normalizedDraftValue(draftText)
+            )
+            : transferLimitReviewValue(summary.draftValue(for: role))
+        return TransferLimitReviewRow(
+            role: role,
+            label: title(for: role),
+            currentValue: transferLimitReviewValue(summary.currentValue(for: role)),
+            draftValue: draftValue,
+            hasChange: summary.changedRoles.contains(role) || isInvalid
+        )
+    }
+
+    private func transferLimitReviewValue(_ value: Int64?) -> String {
         value.map(String.init) ?? localized("serverSettings.emptyValue")
     }
 
