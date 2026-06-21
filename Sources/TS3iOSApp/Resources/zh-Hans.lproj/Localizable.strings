@@ -2818,6 +2818,8 @@
 "serverLogs.officialAuditClearFormat" = "清除：%d 条可见，%d 条隐藏";
 "serverLogs.copyOfficialAudit" = "复制官方审计";
 "serverLogs.refresh" = "刷新";
+"serverLogs.copyCachedSummary" = "复制缓存日志摘要";
+"serverLogs.copyCachedLogs" = "复制缓存日志";
 "serverLogs.copyVisibleLogs" = "复制可见日志";
 "serverLogs.exportVisibleLogs" = "导出可见日志";
 "serverLogs.copySnapshot" = "复制快照";

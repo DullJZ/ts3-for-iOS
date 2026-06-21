@@ -2818,6 +2818,8 @@
 "serverLogs.officialAuditClearFormat" = "Clear: %d visible, %d hidden";
 "serverLogs.copyOfficialAudit" = "Copy Official Audit";
 "serverLogs.refresh" = "Refresh";
+"serverLogs.copyCachedSummary" = "Copy Cached Log Summary";
+"serverLogs.copyCachedLogs" = "Copy Cached Logs";
 "serverLogs.copyVisibleLogs" = "Copy Visible Logs";
 "serverLogs.exportVisibleLogs" = "Export Visible Logs";
 "serverLogs.copySnapshot" = "Copy Snapshot";

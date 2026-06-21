@@ -11996,6 +11996,9 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "subscribe-all-channels",
         "unsubscribe-all-channels",
         "view-server-logs",
+        "refresh-server-logs",
+        "copy-server-log-summary",
+        "copy-server-log-cache",
         "view-server-info",
         "edit-server-settings",
         "manage-contacts",
@@ -15923,6 +15926,9 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
         TS3KeyboardShortcutBinding(actionId: "unsubscribe-all-channels", group: "Server", action: "Unsubscribe All Channels", defaultKeys: "Command-Option-Shift-X"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
+        TS3KeyboardShortcutBinding(actionId: "refresh-server-logs", group: "Server", action: "Refresh Server Logs", defaultKeys: "Command-Control-Option-R"),
+        TS3KeyboardShortcutBinding(actionId: "copy-server-log-summary", group: "Server", action: "Copy Cached Server Log Summary", defaultKeys: "Command-Control-Option-L"),
+        TS3KeyboardShortcutBinding(actionId: "copy-server-log-cache", group: "Server", action: "Copy Cached Server Logs", defaultKeys: "Command-Control-Option-Shift-L"),
         TS3KeyboardShortcutBinding(actionId: "view-server-info", group: "Server", action: "View Server Information", defaultKeys: "Command-Option-I"),
         TS3KeyboardShortcutBinding(actionId: "edit-server-settings", group: "Server", action: "Edit Server Settings", defaultKeys: "Command-Option-S"),
         TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),
@@ -19672,6 +19678,32 @@ final class TS3AppModel: ObservableObject {
                 self.saveServerLogResults()
             }
         }
+    }
+
+    var cachedServerLogSummary: TS3ServerLogListSummary {
+        TS3ServerLogListSummary(entries: serverLogEntries)
+    }
+
+    func copyCachedServerLogSummary() {
+        guard !serverLogEntries.isEmpty else {
+            lastError = "No cached server logs to copy."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(cachedServerLogSummary.clipboardSummary)
+        lastError = nil
+    }
+
+    func copyCachedServerLogTranscript() {
+        guard !serverLogEntries.isEmpty else {
+            lastError = "No cached server logs to copy."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(Self.serverLogTranscript(from: serverLogEntries))
+        lastError = nil
+    }
+
+    static func serverLogTranscript(from entries: [TS3ServerLogSummary]) -> String {
+        entries.map(\.clipboardSummary).joined(separator: "\n")
     }
 
     func showServerLogs() {

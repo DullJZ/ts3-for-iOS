@@ -14181,7 +14181,7 @@ struct ServerLogsSheet: View {
     }
 
     private static func transcript(from entries: [TS3ServerLogSummary]) -> String {
-        entries.map(\.clipboardSummary).joined(separator: "\n")
+        TS3AppModel.serverLogTranscript(from: entries)
     }
 }
 

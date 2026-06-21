@@ -285,6 +285,12 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("view-server-logs", in: model)
                 .disabled(model.state != .connected)
 
+                Button("serverLogs.refresh") {
+                    model.refreshServerLogs()
+                }
+                .ts3KeyboardShortcut("refresh-server-logs", in: model)
+                .disabled(model.state != .connected)
+
                 Button("catalyst.viewServerInformation") {
                     model.showServerInformation()
                 }
@@ -296,13 +302,26 @@ struct TS3iOSApp: App {
                         model.copyCurrentServerSummary()
                     }
                     .ts3KeyboardShortcut("copy-server-summary", in: model)
+                    .disabled(model.state != .connected)
 
                     Button("serverInfo.copyHealthSummary") {
                         model.copyCurrentServerHealthSummary()
                     }
                     .ts3KeyboardShortcut("copy-server-health", in: model)
+                    .disabled(model.state != .connected)
+
+                    Button("serverLogs.copyCachedSummary") {
+                        model.copyCachedServerLogSummary()
+                    }
+                    .ts3KeyboardShortcut("copy-server-log-summary", in: model)
+                    .disabled(model.serverLogEntries.isEmpty)
+
+                    Button("serverLogs.copyCachedLogs") {
+                        model.copyCachedServerLogTranscript()
+                    }
+                    .ts3KeyboardShortcut("copy-server-log-cache", in: model)
+                    .disabled(model.serverLogEntries.isEmpty)
                 }
-                .disabled(model.state != .connected)
 
                 Button("channels.talkRequests") {
                     model.showTalkRequests()
