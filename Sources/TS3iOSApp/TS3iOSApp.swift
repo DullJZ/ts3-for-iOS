@@ -240,11 +240,11 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("manage-subscription-presets", in: model)
                 .disabled(model.state != .connected)
 
-                Button("catalyst.browseChannelFiles") {
-                    model.showFileBrowser()
+                Button("channelActions.browseChannelFiles") {
+                    model.showCurrentChannelFileBrowser()
                 }
                 .ts3KeyboardShortcut("browse-files", in: model)
-                .disabled(model.state != .connected)
+                .disabled(model.state != .connected || model.currentChannel == nil)
             }
 
             CommandMenu("catalyst.menu.administration") {

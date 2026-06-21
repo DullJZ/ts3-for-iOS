@@ -15912,7 +15912,7 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "manage-contacts", group: "Server", action: "Manage Contacts", defaultKeys: "Command-Shift-C"),
         TS3KeyboardShortcutBinding(actionId: "browse-client-database", group: "Server", action: "Browse Client Database", defaultKeys: "Command-Shift-D"),
         TS3KeyboardShortcutBinding(actionId: "manage-bans", group: "Server", action: "Manage Bans", defaultKeys: "Command-Shift-B"),
-        TS3KeyboardShortcutBinding(actionId: "browse-files", group: "Server", action: "Browse Channel Files", defaultKeys: "Command-Shift-F"),
+        TS3KeyboardShortcutBinding(actionId: "browse-files", group: "Channels", action: "Browse Current Channel Files", defaultKeys: "Command-Shift-F"),
         TS3KeyboardShortcutBinding(actionId: "manage-subscription-presets", group: "Server", action: "Channel Subscription Presets", defaultKeys: "Command-Option-C"),
         TS3KeyboardShortcutBinding(actionId: "manage-permissions", group: "Server", action: "View Permissions", defaultKeys: "Command-Shift-P"),
         TS3KeyboardShortcutBinding(actionId: "manage-permission-groups", group: "Server", action: "Manage Permission Groups", defaultKeys: "Command-Option-G"),
@@ -19687,6 +19687,12 @@ final class TS3AppModel: ObservableObject {
 
     func showFileBrowser() {
         openFileBrowser()
+        isShowingFiles = true
+    }
+
+    func showCurrentChannelFileBrowser() {
+        guard let channel = currentChannel else { return }
+        openFileBrowser(channel: channel)
         isShowingFiles = true
     }
 
