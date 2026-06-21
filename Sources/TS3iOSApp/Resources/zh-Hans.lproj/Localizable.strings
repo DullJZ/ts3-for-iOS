@@ -877,6 +877,14 @@
 "channelEditor.codecProfile" = "编解码配置";
 "channelEditor.codecSummary" = "编解码摘要";
 "channelEditor.copyCodecSummary" = "复制编解码摘要";
+"channelEditor.codecDraftReview" = "编解码草稿复核";
+"channelEditor.codecDraftReviewFormat" = "%d / %d 项变化，%d 个校验问题，%d 个警告";
+"channelEditor.codecDraftReviewNoChanges" = "当前编解码设置与草稿一致";
+"channelEditor.codecDraftReviewChangedFormat" = "%d 项编解码设置变更";
+"channelEditor.codecDraftReviewCurrentFormat" = "当前：%@";
+"channelEditor.codecDraftReviewDraftFormat" = "草稿：%@";
+"channelEditor.codecDraftReviewClipboardRowFormat" = "%@：当前 %@，草稿 %@";
+"channelEditor.copyCodecDraftReview" = "复制编解码草稿复核";
 "channelEditor.codecValidation" = "编解码验证";
 "channelEditor.codecDiagnostics" = "编解码诊断";
 "channelEditor.draftValid" = "草稿有效";
@@ -911,6 +919,7 @@
 "channelEditor.qualityInlineFormat" = "质量 %d";
 "channelEditor.latencyInlineFormat" = "延迟 %d";
 "channelEditor.unencrypted" = "未加密";
+"channelEditor.encrypted" = "已加密";
 "channelEditor.codecQualityRangeError" = "编解码质量必须在 %d 到 %d 之间。";
 "channelEditor.codecLatencyRangeError" = "编解码延迟系数必须在 %d 到 %d 之间。";
 "channelEditor.legacyCodecWarning" = "已选择旧版 Speex/CELT 编解码器；服务器允许时建议使用 Opus 语音或 Opus 音乐。";

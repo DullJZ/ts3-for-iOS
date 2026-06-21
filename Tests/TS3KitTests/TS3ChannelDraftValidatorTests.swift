@@ -193,6 +193,59 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelCodecDraftReviewSummaryCountsChangesAndWarnings() {
+        let summary = TS3ChannelCodecDraftReviewSummary(
+            currentConfiguration: TS3ChannelCodecConfigurationSummary(
+                codec: TS3ChannelCodec.opusVoice.rawValue,
+                codecQuality: 6,
+                codecLatencyFactor: 2,
+                isCodecUnencrypted: false
+            ),
+            draftConfiguration: TS3ChannelCodecConfigurationSummary(
+                codec: TS3ChannelCodec.speexWideband.rawValue,
+                codecQuality: 11,
+                codecLatencyFactor: 0,
+                isCodecUnencrypted: true
+            )
+        )
+
+        XCTAssertEqual(summary.totalFieldCount, 4)
+        XCTAssertEqual(summary.changedFields, [.codec, .quality, .latencyFactor, .encryption])
+        XCTAssertEqual(summary.changedFieldCount, 4)
+        XCTAssertEqual(summary.validationIssueCount, 2)
+        XCTAssertEqual(summary.warningCount, 2)
+        XCTAssertEqual(summary.currentValue(for: .codec), "4")
+        XCTAssertEqual(summary.draftValue(for: .codec), "1")
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "codecChanges=4/4 | validationIssues=2 | warnings=2 | currentProfile=voice | draftProfile=compatibility | changed=codec,quality,latencyFactor,encryption | needsAttention=true"
+        )
+    }
+
+    func testChannelCodecDraftReviewSummaryHandlesUnchangedDraft() {
+        let current = TS3ChannelCodecConfigurationSummary(
+            codec: TS3ChannelCodec.opusMusic.rawValue,
+            codecQuality: 8,
+            codecLatencyFactor: 5,
+            isCodecUnencrypted: false
+        )
+        let summary = TS3ChannelCodecDraftReviewSummary(
+            currentConfiguration: current,
+            draftConfiguration: current
+        )
+
+        XCTAssertTrue(summary.changedFields.isEmpty)
+        XCTAssertEqual(summary.changedFieldCount, 0)
+        XCTAssertEqual(summary.validationIssueCount, 0)
+        XCTAssertEqual(summary.warningCount, 0)
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "codecChanges=0/4 | validationIssues=0 | warnings=0 | currentProfile=music | draftProfile=music | changed=none | needsAttention=false"
+        )
+    }
+
     func testChannelLimitSummaryClassifiesDirectAndFamilyLimits() {
         let summary = TS3ChannelLimitSummary(channel: makeChannel(
             totalClients: 9,

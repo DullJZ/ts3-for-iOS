@@ -877,6 +877,14 @@
 "channelEditor.codecProfile" = "Codec Profile";
 "channelEditor.codecSummary" = "Codec Summary";
 "channelEditor.copyCodecSummary" = "Copy Codec Summary";
+"channelEditor.codecDraftReview" = "Codec Draft Review";
+"channelEditor.codecDraftReviewFormat" = "%d of %d changed, %d validation issues, %d warnings";
+"channelEditor.codecDraftReviewNoChanges" = "Current codec settings match the draft";
+"channelEditor.codecDraftReviewChangedFormat" = "%d codec setting changes";
+"channelEditor.codecDraftReviewCurrentFormat" = "Current: %@";
+"channelEditor.codecDraftReviewDraftFormat" = "Draft: %@";
+"channelEditor.codecDraftReviewClipboardRowFormat" = "%@: current %@, draft %@";
+"channelEditor.copyCodecDraftReview" = "Copy Codec Draft Review";
 "channelEditor.codecValidation" = "Codec Validation";
 "channelEditor.codecDiagnostics" = "Codec Diagnostics";
 "channelEditor.draftValid" = "Draft Valid";
@@ -911,6 +919,7 @@
 "channelEditor.qualityInlineFormat" = "quality %d";
 "channelEditor.latencyInlineFormat" = "latency %d";
 "channelEditor.unencrypted" = "unencrypted";
+"channelEditor.encrypted" = "encrypted";
 "channelEditor.codecQualityRangeError" = "Codec quality must be between %d and %d.";
 "channelEditor.codecLatencyRangeError" = "Codec latency factor must be between %d and %d.";
 "channelEditor.legacyCodecWarning" = "Legacy Speex/CELT codec selected; prefer Opus Voice or Opus Music when the server allows it.";

@@ -257,6 +257,81 @@ struct TS3ChannelCodecConfigurationSummary {
     }
 }
 
+enum TS3ChannelCodecReviewField: String, CaseIterable, Codable {
+    case codec
+    case quality
+    case latencyFactor
+    case encryption
+}
+
+struct TS3ChannelCodecDraftReviewSummary {
+    let currentConfiguration: TS3ChannelCodecConfigurationSummary
+    let draftConfiguration: TS3ChannelCodecConfigurationSummary
+
+    var totalFieldCount: Int {
+        TS3ChannelCodecReviewField.allCases.count
+    }
+
+    var changedFields: [TS3ChannelCodecReviewField] {
+        TS3ChannelCodecReviewField.allCases.filter { field in
+            currentValue(for: field) != draftValue(for: field)
+        }
+    }
+
+    var changedFieldCount: Int {
+        changedFields.count
+    }
+
+    var validationIssueCount: Int {
+        [draftConfiguration.hasInvalidQuality, draftConfiguration.hasInvalidLatencyFactor].filter { $0 }.count
+    }
+
+    var warningCount: Int {
+        [draftConfiguration.usesLegacyCodec, draftConfiguration.disablesVoiceEncryption].filter { $0 }.count
+    }
+
+    var needsAttention: Bool {
+        changedFieldCount > 0 || validationIssueCount > 0 || warningCount > 0
+    }
+
+    var clipboardSummary: String {
+        let changed = changedFields.map(\.rawValue).joined(separator: ",")
+        return [
+            "codecChanges=\(changedFieldCount)/\(totalFieldCount)",
+            "validationIssues=\(validationIssueCount)",
+            "warnings=\(warningCount)",
+            "currentProfile=\(currentConfiguration.profile.rawValue)",
+            "draftProfile=\(draftConfiguration.profile.rawValue)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    func currentValue(for field: TS3ChannelCodecReviewField) -> String {
+        value(for: field, in: currentConfiguration)
+    }
+
+    func draftValue(for field: TS3ChannelCodecReviewField) -> String {
+        value(for: field, in: draftConfiguration)
+    }
+
+    private func value(
+        for field: TS3ChannelCodecReviewField,
+        in configuration: TS3ChannelCodecConfigurationSummary
+    ) -> String {
+        switch field {
+        case .codec:
+            return configuration.codec.map(String.init) ?? ""
+        case .quality:
+            return configuration.codecQuality.map(String.init) ?? ""
+        case .latencyFactor:
+            return configuration.codecLatencyFactor.map(String.init) ?? ""
+        case .encryption:
+            return configuration.isCodecUnencrypted.map { $0 ? "unencrypted" : "encrypted" } ?? ""
+        }
+    }
+}
+
 struct TS3ChannelPermissionGateSummary {
     struct Gate: Identifiable, Equatable {
         let id: String

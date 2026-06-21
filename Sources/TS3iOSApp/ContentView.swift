@@ -32748,6 +32748,14 @@ struct ChannelEditorSheet: View {
         var bannerMode: String?
     }
 
+    private struct CodecReviewRow: Hashable {
+        let field: TS3ChannelCodecReviewField
+        let label: String
+        let currentValue: String
+        let draftValue: String
+        let hasChange: Bool
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     let mode: ChannelEditorMode
@@ -33027,6 +33035,36 @@ struct ChannelEditorSheet: View {
                                 .foregroundColor(.secondary)
                         }
                         ServerInfoDetailRow(label: localized("channelEditor.codecProfile"), value: codecConfigurationProfileText)
+                        if let codecDraftReviewSummary {
+                            ServerInfoDetailRow(
+                                label: localized("channelEditor.codecDraftReview"),
+                                value: localized(
+                                    "channelEditor.codecDraftReviewFormat",
+                                    codecDraftReviewSummary.changedFieldCount,
+                                    codecDraftReviewSummary.totalFieldCount,
+                                    codecDraftReviewSummary.validationIssueCount,
+                                    codecDraftReviewSummary.warningCount
+                                )
+                            )
+                            Text(codecDraftReviewText(for: codecDraftReviewSummary))
+                                .font(.caption)
+                                .foregroundColor(codecDraftReviewSummary.needsAttention ? .orange : .secondary)
+                            ForEach(codecDraftReviewRows(for: codecDraftReviewSummary), id: \.self) { row in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(row.label)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(localized("channelEditor.codecDraftReviewCurrentFormat", row.currentValue))
+                                        .font(.caption)
+                                    Text(localized("channelEditor.codecDraftReviewDraftFormat", row.draftValue))
+                                        .font(.caption)
+                                        .foregroundColor(row.hasChange ? .orange : .secondary)
+                                }
+                            }
+                            Button(localized("channelEditor.copyCodecDraftReview")) {
+                                TS3PlatformSupport.copyToPasteboard(codecDraftReviewClipboard(for: codecDraftReviewSummary))
+                            }
+                        }
                         Picker(localized("channelEditor.codec"), selection: $codec) {
                             Text(localized("channelEditor.unchanged")).tag(Int?.none)
                             ForEach(TS3ChannelCodec.allCases) { codec in
@@ -34433,6 +34471,99 @@ struct ChannelEditorSheet: View {
             return localized("channelEditor.codecProfile.lowLatency")
         case .custom:
             return localized("channelEditor.codecProfile.custom")
+        }
+    }
+
+    private var codecDraftReviewSummary: TS3ChannelCodecDraftReviewSummary? {
+        guard case let .edit(channel) = mode else { return nil }
+        let current = TS3ChannelCodecConfigurationSummary(
+            codec: channel.codec,
+            codecQuality: channel.codecQuality,
+            codecLatencyFactor: channel.codecLatencyFactor,
+            isCodecUnencrypted: channel.isCodecUnencrypted ?? false
+        )
+        return TS3ChannelCodecDraftReviewSummary(
+            currentConfiguration: current,
+            draftConfiguration: codecConfiguration
+        )
+    }
+
+    private func codecDraftReviewText(for summary: TS3ChannelCodecDraftReviewSummary) -> String {
+        guard summary.needsAttention else { return localized("channelEditor.codecDraftReviewNoChanges") }
+        var parts: [String] = []
+        if summary.changedFieldCount > 0 {
+            parts.append(localized("channelEditor.codecDraftReviewChangedFormat", summary.changedFieldCount))
+        }
+        if summary.validationIssueCount > 0 {
+            parts.append(localized("channelEditor.validationIssueCountFormat", summary.validationIssueCount))
+        }
+        if summary.warningCount > 0 {
+            parts.append(localized("channelEditor.codecWarningCountFormat", summary.warningCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func codecDraftReviewRows(for summary: TS3ChannelCodecDraftReviewSummary) -> [CodecReviewRow] {
+        TS3ChannelCodecReviewField.allCases.map { field in
+            CodecReviewRow(
+                field: field,
+                label: title(for: field),
+                currentValue: codecReviewDisplayValue(summary.currentValue(for: field), field: field),
+                draftValue: codecReviewDisplayValue(summary.draftValue(for: field), field: field),
+                hasChange: summary.changedFields.contains(field)
+            )
+        }
+    }
+
+    private func codecDraftReviewClipboard(for summary: TS3ChannelCodecDraftReviewSummary) -> String {
+        let rows = codecDraftReviewRows(for: summary)
+            .map { row in
+                localized(
+                    "channelEditor.codecDraftReviewClipboardRowFormat",
+                    row.label,
+                    row.currentValue,
+                    row.draftValue
+                )
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("channelEditor.codecDraftReview"),
+            summary.clipboardSummary,
+            rows
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
+    private func title(for field: TS3ChannelCodecReviewField) -> String {
+        switch field {
+        case .codec:
+            return localized("channelEditor.codec")
+        case .quality:
+            return localized("channelEditor.codecQuality")
+        case .latencyFactor:
+            return localized("channelEditor.codecLatencyFactor")
+        case .encryption:
+            return localized("channelEditor.voiceEncryption")
+        }
+    }
+
+    private func codecReviewDisplayValue(_ rawValue: String, field: TS3ChannelCodecReviewField) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return localized("channelEditor.emptyValue") }
+        switch field {
+        case .codec:
+            return codecTitle(for: trimmed)
+        case .quality:
+            return codecQualityTitle(for: trimmed)
+        case .latencyFactor:
+            return trimmed
+        case .encryption:
+            return trimmed == "unencrypted"
+                ? localized("channelEditor.unencrypted")
+                : localized("channelEditor.encrypted")
         }
     }
 
