@@ -160,6 +160,18 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("edit-current-channel", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
+                Button("channelActions.editChannelPermissions") {
+                    model.showCurrentChannelPermissions()
+                }
+                .ts3KeyboardShortcut("edit-current-channel-permissions", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.moveChannel") {
+                    model.showCurrentChannelMove()
+                }
+                .ts3KeyboardShortcut("move-current-channel", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
                 Button("serverTools.subscribeAllChannels") {
                     model.setAllChannelsSubscribed(true)
                 }

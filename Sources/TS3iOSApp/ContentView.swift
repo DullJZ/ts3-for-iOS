@@ -119,6 +119,12 @@ struct ContentView: View {
                         .environmentObject(model)
                 }
             }
+            .sheet(isPresented: $model.isShowingCurrentChannelMove) {
+                if let channel = model.currentChannel {
+                    MoveChannelSheet(channel: channel)
+                        .environmentObject(model)
+                }
+            }
             .sheet(isPresented: $model.isShowingGroupManagement) {
                 GroupManagementSheet()
                     .environmentObject(model)
