@@ -2867,9 +2867,10 @@ struct TS3PokeOfficialCoverageAuditSummary {
     let hasPokeBackActions: Bool
     let hasOfflineReplyActions: Bool
     let hasContactActions: Bool
+    let hasBookmarkActions: Bool
 
     var officialAreaTotal: Int {
-        10
+        11
     }
 
     var coveredOfficialAreaCount: Int {
@@ -2883,7 +2884,8 @@ struct TS3PokeOfficialCoverageAuditSummary {
             canSendPoke,
             hasPokeBackActions,
             hasOfflineReplyReadinessCoverage,
-            hasContactActions
+            hasContactActions,
+            hasBookmarkActions
         ].filter { $0 }.count
     }
 
@@ -2892,7 +2894,7 @@ struct TS3PokeOfficialCoverageAuditSummary {
     }
 
     var officialActionCount: Int {
-        20
+        23
     }
 
     var needsAttention: Bool {
@@ -2927,6 +2929,7 @@ struct TS3PokeOfficialCoverageAuditSummary {
             "offlineReply=\(hasOfflineReplyActions ? "true" : "false")",
             "offlineReplyReadinessCoverage=\(hasOfflineReplyReadinessCoverage ? "true" : "false")",
             "contactActions=\(hasContactActions ? "true" : "false")",
+            "bookmarkActions=\(hasBookmarkActions ? "true" : "false")",
             "needsAttention=\(needsAttention ? "true" : "false")"
         ].joined(separator: " | ")
     }
@@ -13350,6 +13353,46 @@ struct TS3ComplaintSourceBookmarkDraftSummary {
     }
 }
 
+struct TS3PokeSenderBookmarkDraftSummary {
+    let poke: TS3PokeSummary
+    let contactStatus: TS3ContactStatus
+    let isOnline: Bool
+    let hasUniqueIdentifier: Bool
+    let hasContactNote: Bool
+    let channelPath: String?
+    let bookmark: TS3BookmarkSummary?
+
+    var canSave: Bool {
+        bookmark != nil
+    }
+
+    var hasChannelPath: Bool {
+        channelPath?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "sender=\(poke.senderName)",
+            "direction=\(poke.isOwnPoke ? "out" : "in")",
+            "senderId=\(poke.senderId.map(String.init) ?? "none")",
+            "senderUid=\(hasUniqueIdentifier ? "true" : "false")",
+            "online=\(isOnline ? "true" : "false")",
+            "status=\(contactStatus.title)",
+            "channelPath=\(hasChannelPath ? "true" : "false")",
+            "canSave=\(canSave ? "true" : "false")"
+        ]
+        if hasContactNote {
+            parts.append("contactNote=true")
+        }
+        if let bookmark {
+            parts.append(contentsOf: bookmark.connectionSummaryParts(name: bookmark.name))
+        } else {
+            parts.append("server=missing")
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3BookmarkSaveImpactSummary {
     let source: String
     let targetName: String
@@ -17740,6 +17783,40 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    func pokeSenderBookmarkSummary(for poke: TS3PokeSummary) -> String {
+        pokeSenderBookmarkDraftSummary(for: poke).clipboardSummary
+    }
+
+    func pokeSenderBookmarkDraftSummary(for poke: TS3PokeSummary) -> TS3PokeSenderBookmarkDraftSummary {
+        let onlineSender = onlineUser(for: poke)
+        let channel = onlineSender.flatMap { sender in
+            channels.first { $0.id == sender.channelId }
+        }
+        return TS3PokeSenderBookmarkDraftSummary(
+            poke: poke,
+            contactStatus: pokeSenderContactStatus(for: poke, onlineSender: onlineSender),
+            isOnline: onlineSender != nil,
+            hasUniqueIdentifier: pokeSenderUniqueIdentifier(for: poke, onlineSender: onlineSender) != nil,
+            hasContactNote: pokeSenderContactNote(for: poke, onlineSender: onlineSender)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty == false,
+            channelPath: channel.map(channelPath(for:)),
+            bookmark: pokeSenderBookmark(for: poke)
+        )
+    }
+
+    func pokeSenderBookmarkSaveImpactSummary(for poke: TS3PokeSummary) -> TS3BookmarkSaveImpactSummary {
+        let bookmark = pokeSenderBookmark(for: poke)
+        return TS3BookmarkSaveImpactSummary(
+            source: "pokeSender",
+            targetName: poke.senderName,
+            targetIdentifier: pokeSenderBookmarkIdentifier(for: poke),
+            bookmark: bookmark,
+            replacementCount: bookmark.map { pokeSenderBookmarkReplacementCount(for: poke, bookmark: $0) } ?? 0,
+            hasContactNote: pokeSenderContactNote(for: poke)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        )
+    }
+
     func saveDatabaseClientBookmark(for record: TS3DatabaseClientSummary) {
         guard let bookmark = databaseClientBookmark(for: record) else {
             lastError = "Connect to or enter a server before saving a database-client bookmark."
@@ -17779,6 +17856,17 @@ final class TS3AppModel: ObservableObject {
             return
         }
         removeComplaintSourceBookmarks(for: entry, matching: bookmark)
+        bookmarks.insert(bookmark, at: 0)
+        saveBookmarks()
+        lastError = nil
+    }
+
+    func savePokeSenderBookmark(for poke: TS3PokeSummary) {
+        guard let bookmark = pokeSenderBookmark(for: poke) else {
+            lastError = "Connect to or enter a server before saving a poke-sender bookmark."
+            return
+        }
+        removePokeSenderBookmarks(for: poke, matching: bookmark)
         bookmarks.insert(bookmark, at: 0)
         saveBookmarks()
         lastError = nil
@@ -17826,6 +17914,10 @@ final class TS3AppModel: ObservableObject {
         bookmarks.filter { isComplaintSourceBookmark($0, for: entry, matching: bookmark) }.count
     }
 
+    private func pokeSenderBookmarkReplacementCount(for poke: TS3PokeSummary, bookmark: TS3BookmarkSummary) -> Int {
+        bookmarks.filter { isPokeSenderBookmark($0, for: poke, matching: bookmark) }.count
+    }
+
     private func removeContactBookmarks(for contact: TS3ContactEntry, matching bookmark: TS3BookmarkSummary) {
         bookmarks.removeAll { isContactBookmark($0, for: contact, matching: bookmark) }
     }
@@ -17840,6 +17932,10 @@ final class TS3AppModel: ObservableObject {
 
     private func removeComplaintSourceBookmarks(for entry: TS3ComplaintSummary, matching bookmark: TS3BookmarkSummary) {
         bookmarks.removeAll { isComplaintSourceBookmark($0, for: entry, matching: bookmark) }
+    }
+
+    private func removePokeSenderBookmarks(for poke: TS3PokeSummary, matching bookmark: TS3BookmarkSummary) {
+        bookmarks.removeAll { isPokeSenderBookmark($0, for: poke, matching: bookmark) }
     }
 
     private func isContactBookmark(
@@ -17893,6 +17989,27 @@ final class TS3AppModel: ObservableObject {
             && existing.port == bookmark.port
             && existing.note.contains("source=complaintSource")
             && existing.note.contains("sourceDb=\(entry.sourceClientDatabaseId)")
+    }
+
+    private func isPokeSenderBookmark(
+        _ existing: TS3BookmarkSummary,
+        for poke: TS3PokeSummary,
+        matching bookmark: TS3BookmarkSummary
+    ) -> Bool {
+        guard existing.host.caseInsensitiveCompare(bookmark.host) == .orderedSame,
+              existing.port == bookmark.port,
+              existing.note.contains("source=pokeSender") else {
+            return false
+        }
+        if let uniqueIdentifier = pokeSenderUniqueIdentifier(for: poke),
+           existing.note.contains("senderUid=\(uniqueIdentifier)") {
+            return true
+        }
+        if let senderId = poke.senderId,
+           existing.note.contains("senderId=\(senderId)") {
+            return true
+        }
+        return existing.note.contains("senderName=\(pokeSenderDisplayName(for: poke))")
     }
 
     private func databaseClientBookmark(for record: TS3DatabaseClientSummary) -> TS3BookmarkSummary? {
@@ -18028,6 +18145,108 @@ final class TS3AppModel: ObservableObject {
 
     private func complaintSourceBookmarkIdentifier(for entry: TS3ComplaintSummary) -> String {
         complaintSourceUniqueIdentifier(for: entry) ?? "\(entry.sourceClientDatabaseId)"
+    }
+
+    private func pokeSenderBookmark(for poke: TS3PokeSummary) -> TS3BookmarkSummary? {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else { return nil }
+        let onlineSender = onlineUser(for: poke)
+        let channel = onlineSender.flatMap { sender in
+            channels.first { $0.id == sender.channelId }
+        }
+        let resolvedChannelPath = channel.map(channelPath(for:))?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? defaultChannel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let senderName = pokeSenderDisplayName(for: poke, onlineSender: onlineSender)
+        var noteParts = [
+            "source=pokeSender",
+            "pokeDirection=\(poke.isOwnPoke ? "out" : "in")",
+            "senderName=\(senderName)",
+            "online=\(onlineSender == nil ? "false" : "true")",
+            "contactStatus=\(pokeSenderContactStatus(for: poke, onlineSender: onlineSender).title)"
+        ]
+        if let senderId = poke.senderId {
+            noteParts.append("senderId=\(senderId)")
+        }
+        if let uniqueIdentifier = pokeSenderUniqueIdentifier(for: poke, onlineSender: onlineSender) {
+            noteParts.append("senderUid=\(uniqueIdentifier)")
+        }
+        if let onlineSender {
+            noteParts.append("channelId=\(onlineSender.channelId)")
+        }
+        if !resolvedChannelPath.isEmpty {
+            noteParts.append("channelPath=\(resolvedChannelPath)")
+        }
+        if let note = pokeSenderContactNote(for: poke, onlineSender: onlineSender)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !note.isEmpty {
+            noteParts.append("contactNote=\(note)")
+        }
+        let channelPassword = channel.flatMap(savedChannelPassword(for:)) ?? defaultChannelPassword
+        return TS3BookmarkSummary(
+            name: "\(senderName) @ \(host)",
+            folder: "Poke Senders",
+            note: noteParts.joined(separator: " | "),
+            host: host,
+            port: serverPort.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "9987" : serverPort.trimmingCharacters(in: .whitespacesAndNewlines),
+            nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneticNickname: phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            serverPassword: serverPassword,
+            defaultChannel: resolvedChannelPath,
+            defaultChannelPassword: channelPassword,
+            privilegeKey: privilegeKey
+        )
+    }
+
+    private func pokeSenderDisplayName(for poke: TS3PokeSummary, onlineSender: TS3UserSummary? = nil) -> String {
+        if let nickname = onlineSender?.nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+           !nickname.isEmpty {
+            return nickname
+        }
+        let senderName = poke.senderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !senderName.isEmpty {
+            return senderName
+        }
+        if let uniqueIdentifier = pokeSenderUniqueIdentifier(for: poke, onlineSender: onlineSender) {
+            return uniqueIdentifier
+        }
+        return "Poke Sender"
+    }
+
+    private func pokeSenderUniqueIdentifier(for poke: TS3PokeSummary, onlineSender: TS3UserSummary? = nil) -> String? {
+        if let uniqueIdentifier = onlineSender?.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !uniqueIdentifier.isEmpty {
+            return uniqueIdentifier
+        }
+        guard let uniqueIdentifier = poke.senderUniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !uniqueIdentifier.isEmpty else {
+            return nil
+        }
+        return uniqueIdentifier
+    }
+
+    private func pokeSenderContact(for poke: TS3PokeSummary, onlineSender: TS3UserSummary? = nil) -> TS3ContactEntry? {
+        if let onlineSender, let contact = contact(for: onlineSender) {
+            return contact
+        }
+        guard let uniqueIdentifier = pokeSenderUniqueIdentifier(for: poke, onlineSender: onlineSender) else {
+            return nil
+        }
+        return contacts.first { $0.uniqueIdentifier == uniqueIdentifier }
+    }
+
+    private func pokeSenderContactStatus(for poke: TS3PokeSummary, onlineSender: TS3UserSummary? = nil) -> TS3ContactStatus {
+        pokeSenderContact(for: poke, onlineSender: onlineSender)?.status ?? .neutral
+    }
+
+    private func pokeSenderContactNote(for poke: TS3PokeSummary, onlineSender: TS3UserSummary? = nil) -> String? {
+        guard let note = pokeSenderContact(for: poke, onlineSender: onlineSender)?.note, !note.isEmpty else {
+            return nil
+        }
+        return note
+    }
+
+    private func pokeSenderBookmarkIdentifier(for poke: TS3PokeSummary) -> String {
+        pokeSenderUniqueIdentifier(for: poke) ?? poke.senderId.map(String.init) ?? pokeSenderDisplayName(for: poke)
     }
 
     private func onlineClientBookmarkIdentifier(for user: TS3UserSummary) -> String {

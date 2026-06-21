@@ -457,6 +457,10 @@
 "events.pokeRow.pokeBack" = "回戳";
 "events.pokeRow.offlineReply" = "离线回复";
 "events.pokeRow.addContact" = "添加联系人";
+"events.pokeRow.senderBookmark" = "发送者书签";
+"events.pokeRow.saveSenderBookmark" = "保存发送者书签";
+"events.pokeRow.copySenderBookmarkDraft" = "复制发送者书签草稿";
+"events.pokeRow.copySenderBookmarkImpact" = "复制发送者书签影响";
 "events.pokeRow.copyPoke" = "复制戳一戳";
 "events.pokeRow.copyMessage" = "复制消息";
 "events.pokeRow.copyUser" = "复制用户";

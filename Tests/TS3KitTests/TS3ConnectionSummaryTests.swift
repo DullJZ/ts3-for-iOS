@@ -379,6 +379,113 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         XCTAssertEqual(model.complaintSourceBookmarkSaveImpactSummary(for: complaint).replacementCount, 1)
     }
 
+    @MainActor
+    func testSavingPokeSenderBookmarkUsesOnlineSenderChannelWhenAvailable() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = ""
+        model.nickname = "Avery"
+        model.serverPassword = "server-secret"
+        model.channels = [
+            makeChannel(id: 10, parentId: nil, name: "Ops"),
+            makeChannel(id: 12, parentId: 10, name: "Lobby")
+        ]
+        let user = makeOnlineUser(
+            id: 7,
+            channelId: 12,
+            databaseId: 42,
+            uniqueIdentifier: "uid-online",
+            nickname: "Riley"
+        )
+        model.clients = [user]
+        model.setContactStatus(.friend, for: user)
+        model.setContactNote("raid lead", for: user)
+        let poke = TS3PokeSummary(
+            senderId: 7,
+            senderName: "Old Poke Sender",
+            senderUniqueIdentifier: "fallback-uid",
+            message: "Ping",
+            isOwnPoke: false
+        )
+
+        model.savePokeSenderBookmark(for: poke)
+
+        let bookmark = try XCTUnwrap(model.bookmarks.first)
+        XCTAssertEqual(bookmark.name, "Riley @ voice.example.test")
+        XCTAssertEqual(bookmark.folder, "Poke Senders")
+        XCTAssertEqual(bookmark.host, "voice.example.test")
+        XCTAssertEqual(bookmark.port, "9987")
+        XCTAssertEqual(bookmark.nickname, "Avery")
+        XCTAssertEqual(bookmark.defaultChannel, "Ops/Lobby")
+        XCTAssertEqual(bookmark.serverPassword, "server-secret")
+        XCTAssertEqual(
+            bookmark.note,
+            "source=pokeSender | pokeDirection=in | senderName=Riley | online=true | contactStatus=Friend | senderId=7 | senderUid=uid-online | channelId=12 | channelPath=Ops/Lobby | contactNote=raid lead"
+        )
+        XCTAssertEqual(
+            model.pokeSenderBookmarkSummary(for: poke),
+            "sender=Old Poke Sender | direction=in | senderId=7 | senderUid=true | online=true | status=Friend | channelPath=true | canSave=true | contactNote=true | name=Riley @ voice.example.test | folder=Poke Senders | server=voice.example.test:9987 | nickname=Avery | note=source=pokeSender | pokeDirection=in | senderName=Riley | online=true | contactStatus=Friend | senderId=7 | senderUid=uid-online | channelId=12 | channelPath=Ops/Lobby | contactNote=raid lead | defaultChannel=Ops/Lobby | serverPassword=Configured | channelPassword=No | privilegeKey=No"
+        )
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testPokeSenderBookmarkDraftSummaryReportsMissingServer() {
+        let model = TS3AppModel()
+        model.serverHost = " "
+        let poke = TS3PokeSummary(
+            senderId: nil,
+            senderName: "Offline Sender",
+            senderUniqueIdentifier: nil,
+            message: "Ping",
+            isOwnPoke: false
+        )
+
+        let summary = model.pokeSenderBookmarkDraftSummary(for: poke)
+
+        XCTAssertFalse(summary.canSave)
+        XCTAssertFalse(summary.hasUniqueIdentifier)
+        XCTAssertFalse(summary.isOnline)
+        XCTAssertFalse(summary.hasContactNote)
+        XCTAssertFalse(summary.hasChannelPath)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "sender=Offline Sender | direction=in | senderId=none | senderUid=false | online=false | status=Neutral | channelPath=false | canSave=false | server=missing"
+        )
+    }
+
+    @MainActor
+    func testPokeSenderBookmarkReplacementDoesNotRemoveOnlineClientBookmark() {
+        let model = TS3AppModel()
+        model.bookmarks = []
+        model.serverHost = "voice.example.test"
+        model.serverPort = "9988"
+        let user = makeOnlineUser(
+            id: 7,
+            channelId: 12,
+            databaseId: 42,
+            uniqueIdentifier: "uid-online",
+            nickname: "Riley"
+        )
+        model.clients = [user]
+        let poke = TS3PokeSummary(
+            senderId: 7,
+            senderName: "Riley",
+            senderUniqueIdentifier: "uid-online",
+            message: "Ping",
+            isOwnPoke: false
+        )
+
+        model.saveOnlineClientBookmark(for: user)
+        model.savePokeSenderBookmark(for: poke)
+        model.savePokeSenderBookmark(for: poke)
+
+        XCTAssertEqual(model.bookmarks.count, 2)
+        XCTAssertEqual(model.bookmarks.filter { $0.folder == "Online Clients" }.count, 1)
+        XCTAssertEqual(model.bookmarks.filter { $0.folder == "Poke Senders" }.count, 1)
+        XCTAssertEqual(model.pokeSenderBookmarkSaveImpactSummary(for: poke).replacementCount, 1)
+    }
+
     func testConnectionFilterPresetSummaryAndAccessibilityText() {
         let preset = makeConnectionFilterPreset(
             id: UUID(),

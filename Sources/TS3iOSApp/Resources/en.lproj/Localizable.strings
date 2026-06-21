@@ -457,6 +457,10 @@
 "events.pokeRow.pokeBack" = "Poke Back";
 "events.pokeRow.offlineReply" = "Offline Reply";
 "events.pokeRow.addContact" = "Add Contact";
+"events.pokeRow.senderBookmark" = "Sender Bookmark";
+"events.pokeRow.saveSenderBookmark" = "Save Sender Bookmark";
+"events.pokeRow.copySenderBookmarkDraft" = "Copy Sender Bookmark Draft";
+"events.pokeRow.copySenderBookmarkImpact" = "Copy Sender Bookmark Impact";
 "events.pokeRow.copyPoke" = "Copy Poke";
 "events.pokeRow.copyMessage" = "Copy Message";
 "events.pokeRow.copyUser" = "Copy User";

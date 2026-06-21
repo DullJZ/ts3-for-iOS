@@ -10305,7 +10305,8 @@ struct EventsSheet: View {
             canSendPoke: model.state == .connected,
             hasPokeBackActions: visiblePokeEvents.contains { !$0.isOwnPoke && model.onlineUser(for: $0) != nil },
             hasOfflineReplyActions: visiblePokeSummary.withUniqueIdCount > 0,
-            hasContactActions: visiblePokeSummary.withUniqueIdCount > 0
+            hasContactActions: visiblePokeSummary.withUniqueIdCount > 0,
+            hasBookmarkActions: !visiblePokeEvents.isEmpty
         )
     }
 
@@ -11202,6 +11203,18 @@ struct PokeEventRow: View {
                     model.addContact(from: poke)
                 }
             }
+            Menu(localized("events.pokeRow.senderBookmark")) {
+                Button(localized("events.pokeRow.saveSenderBookmark")) {
+                    model.savePokeSenderBookmark(for: poke)
+                }
+                .disabled(!senderBookmarkDraftSummary.canSave)
+                Button(localized("events.pokeRow.copySenderBookmarkDraft")) {
+                    TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSummary(for: poke))
+                }
+                Button(localized("events.pokeRow.copySenderBookmarkImpact")) {
+                    TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSaveImpactSummary(for: poke).clipboardSummary)
+                }
+            }
             Button(localized("events.pokeRow.copyPoke")) {
                 TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
             }
@@ -11239,6 +11252,16 @@ struct PokeEventRow: View {
             guard poke.senderUniqueIdentifier?.isEmpty == false else { return }
             model.addContact(from: poke)
         }
+        .accessibilityAction(named: localized("events.pokeRow.saveSenderBookmark")) {
+            guard senderBookmarkDraftSummary.canSave else { return }
+            model.savePokeSenderBookmark(for: poke)
+        }
+        .accessibilityAction(named: localized("events.pokeRow.copySenderBookmarkDraft")) {
+            TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSummary(for: poke))
+        }
+        .accessibilityAction(named: localized("events.pokeRow.copySenderBookmarkImpact")) {
+            TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSaveImpactSummary(for: poke).clipboardSummary)
+        }
         .sheet(item: $replyTarget) { user in
             ChatPrivateReplySheet(user: user)
                 .environmentObject(model)
@@ -11251,6 +11274,10 @@ struct PokeEventRow: View {
 
     private var onlineSender: TS3UserSummary? {
         model.onlineUser(for: poke)
+    }
+
+    private var senderBookmarkDraftSummary: TS3PokeSenderBookmarkDraftSummary {
+        model.pokeSenderBookmarkDraftSummary(for: poke)
     }
 
     private static func dateText(_ date: Date) -> String {

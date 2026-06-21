@@ -10,6 +10,10 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             "events.pokeRow.pokeBack",
             "events.pokeRow.offlineReply",
             "events.pokeRow.addContact",
+            "events.pokeRow.senderBookmark",
+            "events.pokeRow.saveSenderBookmark",
+            "events.pokeRow.copySenderBookmarkDraft",
+            "events.pokeRow.copySenderBookmarkImpact",
             "events.pokeRow.copyPoke",
             "events.pokeRow.copyMessage",
             "events.pokeRow.copyUser",
@@ -485,17 +489,18 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             canSendPoke: true,
             hasPokeBackActions: true,
             hasOfflineReplyActions: true,
-            hasContactActions: true
+            hasContactActions: true,
+            hasBookmarkActions: true
         )
 
-        XCTAssertEqual(summary.officialAreaTotal, 10)
-        XCTAssertEqual(summary.coveredOfficialAreaCount, 10)
+        XCTAssertEqual(summary.officialAreaTotal, 11)
+        XCTAssertEqual(summary.coveredOfficialAreaCount, 11)
         XCTAssertEqual(summary.missingOfficialAreaCount, 0)
-        XCTAssertEqual(summary.officialActionCount, 20)
+        XCTAssertEqual(summary.officialActionCount, 23)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=10/10 | missingOfficialAreas=0 | officialActions=20 | draftTargets=2 | customDraftMessage=true | offlineReplyReadiness=7/7 | offlineReplyMissing=0 | visiblePokes=2 | incoming=1 | outgoing=1 | withUid=2 | customMessages=1 | clearVisible=2 | localFilters=true | filterPresets=true | archiveCoverage=true | sendPoke=true | pokeBack=true | offlineReply=true | offlineReplyReadinessCoverage=true | contactActions=true | needsAttention=true"
+            "officialAreas=11/11 | missingOfficialAreas=0 | officialActions=23 | draftTargets=2 | customDraftMessage=true | offlineReplyReadiness=7/7 | offlineReplyMissing=0 | visiblePokes=2 | incoming=1 | outgoing=1 | withUid=2 | customMessages=1 | clearVisible=2 | localFilters=true | filterPresets=true | archiveCoverage=true | sendPoke=true | pokeBack=true | offlineReply=true | offlineReplyReadinessCoverage=true | contactActions=true | bookmarkActions=true | needsAttention=true"
         )
     }
 
@@ -514,15 +519,16 @@ final class TS3EventHistoryArchiveTests: XCTestCase {
             canSendPoke: false,
             hasPokeBackActions: false,
             hasOfflineReplyActions: false,
-            hasContactActions: false
+            hasContactActions: false,
+            hasBookmarkActions: false
         )
 
         XCTAssertEqual(summary.coveredOfficialAreaCount, 0)
-        XCTAssertEqual(summary.missingOfficialAreaCount, 10)
+        XCTAssertEqual(summary.missingOfficialAreaCount, 11)
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "officialAreas=0/10 | missingOfficialAreas=10 | officialActions=20 | draftTargets=0 | customDraftMessage=false | offlineReplyReadiness=none | offlineReplyMissing=0 | visiblePokes=0 | incoming=0 | outgoing=0 | withUid=0 | customMessages=0 | clearVisible=0 | localFilters=false | filterPresets=false | archiveCoverage=false | sendPoke=false | pokeBack=false | offlineReply=false | offlineReplyReadinessCoverage=false | contactActions=false | needsAttention=true"
+            "officialAreas=0/11 | missingOfficialAreas=11 | officialActions=23 | draftTargets=0 | customDraftMessage=false | offlineReplyReadiness=none | offlineReplyMissing=0 | visiblePokes=0 | incoming=0 | outgoing=0 | withUid=0 | customMessages=0 | clearVisible=0 | localFilters=false | filterPresets=false | archiveCoverage=false | sendPoke=false | pokeBack=false | offlineReply=false | offlineReplyReadinessCoverage=false | contactActions=false | bookmarkActions=false | needsAttention=true"
         )
     }
 
