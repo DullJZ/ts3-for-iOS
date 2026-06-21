@@ -13271,6 +13271,52 @@ struct TS3DatabaseClientBookmarkDraftSummary {
     }
 }
 
+struct TS3OnlineClientBookmarkDraftSummary {
+    let user: TS3UserSummary
+    let contactStatus: TS3ContactStatus
+    let hasContactNote: Bool
+    let channelPath: String?
+    let bookmark: TS3BookmarkSummary?
+
+    var canSave: Bool {
+        bookmark != nil
+    }
+
+    var hasUniqueIdentifier: Bool {
+        user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var hasDatabaseId: Bool {
+        user.databaseId != nil
+    }
+
+    var hasChannelPath: Bool {
+        channelPath?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var clipboardSummary: String {
+        var parts = [
+            "client=\(user.id)",
+            "nickname=\(user.nickname)",
+            "db=\(user.databaseId.map(String.init) ?? "none")",
+            "uid=\(hasUniqueIdentifier ? "true" : "false")",
+            "status=\(contactStatus.title)",
+            "channelId=\(user.channelId)",
+            "channelPath=\(hasChannelPath ? "true" : "false")",
+            "canSave=\(canSave ? "true" : "false")"
+        ]
+        if hasContactNote {
+            parts.append("contactNote=true")
+        }
+        if let bookmark {
+            parts.append(contentsOf: bookmark.connectionSummaryParts(name: bookmark.name))
+        } else {
+            parts.append("server=missing")
+        }
+        return parts.joined(separator: " | ")
+    }
+}
+
 struct TS3BookmarkSaveImpactSummary {
     let source: String
     let targetName: String
@@ -17603,6 +17649,33 @@ final class TS3AppModel: ObservableObject {
         )
     }
 
+    func onlineClientBookmarkSummary(for user: TS3UserSummary) -> String {
+        onlineClientBookmarkDraftSummary(for: user).clipboardSummary
+    }
+
+    func onlineClientBookmarkDraftSummary(for user: TS3UserSummary) -> TS3OnlineClientBookmarkDraftSummary {
+        let channel = channels.first { $0.id == user.channelId }
+        return TS3OnlineClientBookmarkDraftSummary(
+            user: user,
+            contactStatus: contactStatus(for: user),
+            hasContactNote: contactNote(for: user) != nil,
+            channelPath: channel.map(channelPath(for:)),
+            bookmark: onlineClientBookmark(for: user)
+        )
+    }
+
+    func onlineClientBookmarkSaveImpactSummary(for user: TS3UserSummary) -> TS3BookmarkSaveImpactSummary {
+        let bookmark = onlineClientBookmark(for: user)
+        return TS3BookmarkSaveImpactSummary(
+            source: "onlineClient",
+            targetName: user.nickname,
+            targetIdentifier: onlineClientBookmarkIdentifier(for: user),
+            bookmark: bookmark,
+            replacementCount: bookmark.map { onlineClientBookmarkReplacementCount(for: user, bookmark: $0) } ?? 0,
+            hasContactNote: contactNote(for: user)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        )
+    }
+
     func saveDatabaseClientBookmark(for record: TS3DatabaseClientSummary) {
         guard let bookmark = databaseClientBookmark(for: record) else {
             lastError = "Connect to or enter a server before saving a database-client bookmark."
@@ -17620,6 +17693,17 @@ final class TS3AppModel: ObservableObject {
             return
         }
         removeContactBookmarks(for: contact, matching: bookmark)
+        bookmarks.insert(bookmark, at: 0)
+        saveBookmarks()
+        lastError = nil
+    }
+
+    func saveOnlineClientBookmark(for user: TS3UserSummary) {
+        guard let bookmark = onlineClientBookmark(for: user) else {
+            lastError = "Connect to or enter a server before saving an online-client bookmark."
+            return
+        }
+        removeOnlineClientBookmarks(for: user, matching: bookmark)
         bookmarks.insert(bookmark, at: 0)
         saveBookmarks()
         lastError = nil
@@ -17659,12 +17743,20 @@ final class TS3AppModel: ObservableObject {
         bookmarks.filter { isDatabaseClientBookmark($0, for: record, matching: bookmark) }.count
     }
 
+    private func onlineClientBookmarkReplacementCount(for user: TS3UserSummary, bookmark: TS3BookmarkSummary) -> Int {
+        bookmarks.filter { isOnlineClientBookmark($0, for: user, matching: bookmark) }.count
+    }
+
     private func removeContactBookmarks(for contact: TS3ContactEntry, matching bookmark: TS3BookmarkSummary) {
         bookmarks.removeAll { isContactBookmark($0, for: contact, matching: bookmark) }
     }
 
     private func removeDatabaseClientBookmarks(for record: TS3DatabaseClientSummary, matching bookmark: TS3BookmarkSummary) {
         bookmarks.removeAll { isDatabaseClientBookmark($0, for: record, matching: bookmark) }
+    }
+
+    private func removeOnlineClientBookmarks(for user: TS3UserSummary, matching bookmark: TS3BookmarkSummary) {
+        bookmarks.removeAll { isOnlineClientBookmark($0, for: user, matching: bookmark) }
     }
 
     private func isContactBookmark(
@@ -17685,6 +17777,28 @@ final class TS3AppModel: ObservableObject {
         existing.host.caseInsensitiveCompare(bookmark.host) == .orderedSame
             && existing.port == bookmark.port
             && existing.note.contains("clientDb=\(record.id)")
+    }
+
+    private func isOnlineClientBookmark(
+        _ existing: TS3BookmarkSummary,
+        for user: TS3UserSummary,
+        matching bookmark: TS3BookmarkSummary
+    ) -> Bool {
+        guard existing.host.caseInsensitiveCompare(bookmark.host) == .orderedSame,
+              existing.port == bookmark.port,
+              existing.note.contains("source=onlineClient") else {
+            return false
+        }
+        if let uniqueIdentifier = user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !uniqueIdentifier.isEmpty,
+           existing.note.contains("clientUid=\(uniqueIdentifier)") {
+            return true
+        }
+        if let databaseId = user.databaseId,
+           existing.note.contains("clientDb=\(databaseId)") {
+            return true
+        }
+        return existing.note.contains("onlineClient=\(user.id)")
     }
 
     private func databaseClientBookmark(for record: TS3DatabaseClientSummary) -> TS3BookmarkSummary? {
@@ -17715,6 +17829,58 @@ final class TS3AppModel: ObservableObject {
             defaultChannelPassword: defaultChannelPassword,
             privilegeKey: privilegeKey
         )
+    }
+
+    private func onlineClientBookmark(for user: TS3UserSummary) -> TS3BookmarkSummary? {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !host.isEmpty else { return nil }
+        let channel = channels.first { $0.id == user.channelId }
+        let resolvedChannelPath = channel.map(channelPath(for:))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        var noteParts = [
+            "source=onlineClient",
+            "onlineClient=\(user.id)",
+            "contactStatus=\(contactStatus(for: user).title)",
+            "channelId=\(user.channelId)"
+        ]
+        if let databaseId = user.databaseId {
+            noteParts.append("clientDb=\(databaseId)")
+        }
+        if let uniqueIdentifier = user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !uniqueIdentifier.isEmpty {
+            noteParts.append("clientUid=\(uniqueIdentifier)")
+        }
+        if !resolvedChannelPath.isEmpty {
+            noteParts.append("channelPath=\(resolvedChannelPath)")
+        }
+        if let note = contactNote(for: user)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !note.isEmpty {
+            noteParts.append("contactNote=\(note)")
+        }
+        let channelPassword = channel.flatMap(savedChannelPassword(for:)) ?? ""
+        return TS3BookmarkSummary(
+            name: "\(user.nickname) @ \(host)",
+            folder: "Online Clients",
+            note: noteParts.joined(separator: " | "),
+            host: host,
+            port: serverPort.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "9987" : serverPort.trimmingCharacters(in: .whitespacesAndNewlines),
+            nickname: nickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneticNickname: phoneticNickname.trimmingCharacters(in: .whitespacesAndNewlines),
+            serverPassword: serverPassword,
+            defaultChannel: resolvedChannelPath,
+            defaultChannelPassword: channelPassword,
+            privilegeKey: privilegeKey
+        )
+    }
+
+    private func onlineClientBookmarkIdentifier(for user: TS3UserSummary) -> String {
+        if let uniqueIdentifier = user.uniqueIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !uniqueIdentifier.isEmpty {
+            return uniqueIdentifier
+        }
+        if let databaseId = user.databaseId {
+            return "\(databaseId)"
+        }
+        return "\(user.id)"
     }
 
     func saveBookmarks(from snapshots: [TS3ConnectionSnapshot], folder: String = "") {

@@ -1658,6 +1658,9 @@
 "clientActions.noteFormat" = "备注：%@";
 "clientActions.you" = "你";
 "clientActions.copyClientSummary" = "复制客户端摘要";
+"clientActions.saveOnlineClientBookmark" = "保存在线用户书签";
+"clientActions.copyOnlineClientBookmarkDraft" = "复制在线用户书签草稿";
+"clientActions.copyOnlineClientBookmarkImpact" = "复制在线用户书签影响";
 "clientActions.copyIpAddress" = "复制 IP 地址";
 "clientActions.sendOfflineMessage" = "发送离线消息";
 "clientActions.complain" = "投诉";
@@ -1729,6 +1732,10 @@
 "clientActions.onlineActionAuditReady" = "所有在线用户动作区域均可用。";
 "clientActions.onlineActionAuditBlockedFormat" = "受阻：%@";
 "clientActions.copyOnlineActionAudit" = "复制官方动作审计";
+"clientActions.onlineClientBookmark" = "在线用户书签";
+"clientActions.onlineClientBookmarkCanSave" = "可保存";
+"clientActions.onlineClientBookmarkDefaultChannel" = "默认频道";
+"clientActions.onlineClientBookmarkReplacements" = "现有匹配";
 "clientActions.onlineActionArea.identity" = "身份";
 "clientActions.onlineActionArea.contact" = "联系人";
 "clientActions.onlineActionArea.messaging" = "消息";

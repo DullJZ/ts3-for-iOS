@@ -6051,6 +6051,16 @@ struct ChannelMemberRow: View {
                 Button(localized("clientActions.copyOnlineActionAudit")) {
                     TS3PlatformSupport.copyToPasteboard(onlineActionAuditSummary.clipboardSummary)
                 }
+                Button(localized("clientActions.saveOnlineClientBookmark")) {
+                    model.saveOnlineClientBookmark(for: member)
+                }
+                .disabled(!canSaveOnlineClientBookmark)
+                Button(localized("clientActions.copyOnlineClientBookmarkDraft")) {
+                    TS3PlatformSupport.copyToPasteboard(model.onlineClientBookmarkSummary(for: member))
+                }
+                Button(localized("clientActions.copyOnlineClientBookmarkImpact")) {
+                    TS3PlatformSupport.copyToPasteboard(model.onlineClientBookmarkSaveImpactSummary(for: member).clipboardSummary)
+                }
                 Button(localized("contacts.row.copyNickname")) {
                     TS3PlatformSupport.copyToPasteboard(member.nickname)
                 }
@@ -6269,6 +6279,17 @@ struct ChannelMemberRow: View {
             MoveUserSheet(user: member, channel: channel, password: $movePassword)
                 .environmentObject(model)
         }
+        .accessibilityAction(named: localized("clientActions.saveOnlineClientBookmark")) {
+            if canSaveOnlineClientBookmark {
+                model.saveOnlineClientBookmark(for: member)
+            }
+        }
+        .accessibilityAction(named: localized("clientActions.copyOnlineClientBookmarkDraft")) {
+            TS3PlatformSupport.copyToPasteboard(model.onlineClientBookmarkSummary(for: member))
+        }
+        .accessibilityAction(named: localized("clientActions.copyOnlineClientBookmarkImpact")) {
+            TS3PlatformSupport.copyToPasteboard(model.onlineClientBookmarkSaveImpactSummary(for: member).clipboardSummary)
+        }
     }
 
     private var assignedServerGroups: [TS3GroupSummary] {
@@ -6311,6 +6332,10 @@ struct ChannelMemberRow: View {
         return member.channelId != currentChannel.id
     }
 
+    private var canSaveOnlineClientBookmark: Bool {
+        model.onlineClientBookmarkDraftSummary(for: member).canSave
+    }
+
     private var onlineActionAuditSummary: TS3OnlineClientActionAuditSummary {
         TS3OnlineClientActionAuditSummary(
             user: member,
@@ -6339,6 +6364,10 @@ struct UserActionSheet: View {
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
         let format = NSLocalizedString(key, comment: "")
         return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        localized(value ? "common.yes" : "common.no")
     }
 
     var title: String {
@@ -6414,6 +6443,31 @@ struct UserActionSheet: View {
                             .foregroundColor(onlineActionAuditSummary.needsAttention ? .orange : .secondary)
                         Button(localized("clientActions.copyOnlineActionAudit")) {
                             TS3PlatformSupport.copyToPasteboard(onlineActionAuditSummary.clipboardSummary)
+                        }
+                    }
+
+                    Section(header: Text(localized("clientActions.onlineClientBookmark"))) {
+                        ServerInfoDetailRow(
+                            label: localized("clientActions.onlineClientBookmarkCanSave"),
+                            value: yesNo(onlineClientBookmarkDraftSummary.canSave)
+                        )
+                        ServerInfoDetailRow(
+                            label: localized("clientActions.onlineClientBookmarkDefaultChannel"),
+                            value: onlineClientBookmarkDraftSummary.bookmark?.defaultChannel
+                        )
+                        ServerInfoDetailRow(
+                            label: localized("clientActions.onlineClientBookmarkReplacements"),
+                            value: String(onlineClientBookmarkImpactSummary.replacementCount)
+                        )
+                        Button(localized("clientActions.saveOnlineClientBookmark")) {
+                            model.saveOnlineClientBookmark(for: currentUser)
+                        }
+                        .disabled(!onlineClientBookmarkDraftSummary.canSave)
+                        Button(localized("clientActions.copyOnlineClientBookmarkDraft")) {
+                            TS3PlatformSupport.copyToPasteboard(onlineClientBookmarkDraftSummary.clipboardSummary)
+                        }
+                        Button(localized("clientActions.copyOnlineClientBookmarkImpact")) {
+                            TS3PlatformSupport.copyToPasteboard(onlineClientBookmarkImpactSummary.clipboardSummary)
                         }
                     }
 
@@ -6874,6 +6928,14 @@ struct UserActionSheet: View {
             movableChannelCount: model.channels.filter { $0.id != currentUser.channelId }.count,
             currentChannelKnown: model.channels.contains { $0.id == currentUser.channelId }
         )
+    }
+
+    private var onlineClientBookmarkDraftSummary: TS3OnlineClientBookmarkDraftSummary {
+        model.onlineClientBookmarkDraftSummary(for: currentUser)
+    }
+
+    private var onlineClientBookmarkImpactSummary: TS3BookmarkSaveImpactSummary {
+        model.onlineClientBookmarkSaveImpactSummary(for: currentUser)
     }
 
     private func onlineActionAuditText(_ summary: TS3OnlineClientActionAuditSummary) -> String {

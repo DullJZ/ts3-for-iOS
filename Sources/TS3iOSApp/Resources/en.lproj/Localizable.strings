@@ -1658,6 +1658,9 @@
 "clientActions.noteFormat" = "Note: %@";
 "clientActions.you" = "You";
 "clientActions.copyClientSummary" = "Copy Client Summary";
+"clientActions.saveOnlineClientBookmark" = "Save Online Client Bookmark";
+"clientActions.copyOnlineClientBookmarkDraft" = "Copy Online Client Bookmark Draft";
+"clientActions.copyOnlineClientBookmarkImpact" = "Copy Online Client Bookmark Impact";
 "clientActions.copyIpAddress" = "Copy IP Address";
 "clientActions.sendOfflineMessage" = "Send Offline Message";
 "clientActions.complain" = "Complain";
@@ -1729,6 +1732,10 @@
 "clientActions.onlineActionAuditReady" = "All online client action areas are available.";
 "clientActions.onlineActionAuditBlockedFormat" = "Blocked: %@";
 "clientActions.copyOnlineActionAudit" = "Copy Official Action Audit";
+"clientActions.onlineClientBookmark" = "Online Client Bookmark";
+"clientActions.onlineClientBookmarkCanSave" = "Can Save";
+"clientActions.onlineClientBookmarkDefaultChannel" = "Default Channel";
+"clientActions.onlineClientBookmarkReplacements" = "Existing Matches";
 "clientActions.onlineActionArea.identity" = "Identity";
 "clientActions.onlineActionArea.contact" = "Contact";
 "clientActions.onlineActionArea.messaging" = "Messaging";

@@ -166,6 +166,106 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testSavingOnlineClientBookmarkUsesCurrentServerAndUserChannel() throws {
+        let model = TS3AppModel()
+        model.serverHost = "voice.example.test"
+        model.serverPort = ""
+        model.nickname = "Avery"
+        model.serverPassword = "server-secret"
+        model.channels = [
+            makeChannel(id: 10, parentId: nil, name: "Ops"),
+            makeChannel(id: 12, parentId: 10, name: "Lobby")
+        ]
+        let user = makeOnlineUser(
+            id: 7,
+            channelId: 12,
+            databaseId: 42,
+            uniqueIdentifier: "uid-online",
+            nickname: "Riley"
+        )
+        model.setContactStatus(.friend, for: user)
+        model.setContactNote("raid lead", for: user)
+
+        model.saveOnlineClientBookmark(for: user)
+
+        let bookmark = try XCTUnwrap(model.bookmarks.first)
+        XCTAssertEqual(bookmark.name, "Riley @ voice.example.test")
+        XCTAssertEqual(bookmark.folder, "Online Clients")
+        XCTAssertEqual(bookmark.host, "voice.example.test")
+        XCTAssertEqual(bookmark.port, "9987")
+        XCTAssertEqual(bookmark.nickname, "Avery")
+        XCTAssertEqual(bookmark.defaultChannel, "Ops/Lobby")
+        XCTAssertEqual(bookmark.serverPassword, "server-secret")
+        XCTAssertEqual(
+            bookmark.note,
+            "source=onlineClient | onlineClient=7 | contactStatus=Friend | channelId=12 | clientDb=42 | clientUid=uid-online | channelPath=Ops/Lobby | contactNote=raid lead"
+        )
+        XCTAssertEqual(
+            model.onlineClientBookmarkSummary(for: user),
+            "client=7 | nickname=Riley | db=42 | uid=true | status=Friend | channelId=12 | channelPath=true | canSave=true | contactNote=true | name=Riley @ voice.example.test | folder=Online Clients | server=voice.example.test:9987 | nickname=Avery | note=source=onlineClient | onlineClient=7 | contactStatus=Friend | channelId=12 | clientDb=42 | clientUid=uid-online | channelPath=Ops/Lobby | contactNote=raid lead | defaultChannel=Ops/Lobby | serverPassword=Configured | channelPassword=No | privilegeKey=No"
+        )
+        XCTAssertNil(model.lastError)
+    }
+
+    @MainActor
+    func testOnlineClientBookmarkDraftSummaryReportsMissingServer() {
+        let model = TS3AppModel()
+        model.serverHost = " "
+        let user = makeOnlineUser(
+            id: 7,
+            channelId: 12,
+            databaseId: nil,
+            uniqueIdentifier: nil,
+            nickname: "Riley"
+        )
+
+        let summary = model.onlineClientBookmarkDraftSummary(for: user)
+
+        XCTAssertFalse(summary.canSave)
+        XCTAssertFalse(summary.hasUniqueIdentifier)
+        XCTAssertFalse(summary.hasDatabaseId)
+        XCTAssertFalse(summary.hasContactNote)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "client=7 | nickname=Riley | db=none | uid=false | status=Neutral | channelId=12 | channelPath=false | canSave=false | server=missing"
+        )
+    }
+
+    @MainActor
+    func testOnlineClientBookmarkReplacementDoesNotRemoveDatabaseBookmark() throws {
+        let model = TS3AppModel()
+        model.bookmarks = []
+        model.serverHost = "voice.example.test"
+        model.serverPort = "9988"
+        let user = makeOnlineUser(
+            id: 7,
+            channelId: 12,
+            databaseId: 42,
+            uniqueIdentifier: "uid-online",
+            nickname: "Riley"
+        )
+        let record = TS3DatabaseClientSummary(
+            id: 42,
+            uniqueIdentifier: "uid-online",
+            nickname: "Riley",
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            description: nil,
+            lastIP: nil
+        )
+
+        model.saveDatabaseClientBookmark(for: record)
+        model.saveOnlineClientBookmark(for: user)
+        model.saveOnlineClientBookmark(for: user)
+
+        XCTAssertEqual(model.bookmarks.count, 2)
+        XCTAssertEqual(model.bookmarks.filter { $0.folder == "Database Clients" }.count, 1)
+        XCTAssertEqual(model.bookmarks.filter { $0.folder == "Online Clients" }.count, 1)
+        XCTAssertEqual(model.onlineClientBookmarkSaveImpactSummary(for: user).replacementCount, 1)
+    }
+
     func testConnectionFilterPresetSummaryAndAccessibilityText() {
         let preset = makeConnectionFilterPreset(
             id: UUID(),
@@ -318,6 +418,61 @@ final class TS3ConnectionSummaryTests: XCTestCase {
         XCTAssertEqual(selected.searchText, "ops")
         XCTAssertFalse(model.connectionFilterPresets.contains { $0.id == unselectedId || $0.name == unselectedName })
         XCTAssertEqual(model.lastError, nil)
+    }
+
+    private func makeOnlineUser(
+        id: Int,
+        channelId: Int,
+        databaseId: Int?,
+        uniqueIdentifier: String?,
+        nickname: String
+    ) -> TS3UserSummary {
+        TS3UserSummary(
+            id: id,
+            channelId: channelId,
+            databaseId: databaseId,
+            uniqueIdentifier: uniqueIdentifier,
+            nickname: nickname,
+            isCurrentUser: false,
+            isInputMuted: false,
+            isOutputMuted: false,
+            isAway: false,
+            awayMessage: nil,
+            isChannelCommander: false,
+            isPrioritySpeaker: false,
+            isTalker: false,
+            isRequestingTalkPower: false,
+            talkRequestMessage: nil,
+            talkPower: nil,
+            channelGroupId: nil,
+            serverGroups: [],
+            description: nil,
+            avatarHash: nil,
+            avatarURL: nil,
+            iconId: nil,
+            iconURL: nil,
+            version: nil,
+            platform: nil,
+            country: nil,
+            ipAddress: nil,
+            createdAt: nil,
+            lastConnectedAt: nil,
+            totalConnections: nil,
+            idleTimeSeconds: nil,
+            connectedSeconds: nil
+        )
+    }
+
+    private func makeChannel(id: Int, parentId: Int?, name: String) -> TS3ChannelSummary {
+        TS3ChannelSummary(
+            id: id,
+            parentId: parentId,
+            name: name,
+            isDefault: false,
+            isPasswordProtected: false,
+            isPermanent: true,
+            isCurrent: false
+        )
     }
 
     private func encodedConnectionFilterPresets(_ presets: [TS3ConnectionFilterPreset]) throws -> Data {
