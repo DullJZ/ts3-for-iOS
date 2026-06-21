@@ -113,6 +113,28 @@ struct TS3iOSApp: App {
                 .disabled(model.state != .connected)
             }
 
+            CommandMenu("catalyst.menu.profile") {
+                Button(model.isAway
+                       ? NSLocalizedString("selfStatus.clearAway", comment: "")
+                       : NSLocalizedString("selfStatus.setAway", comment: "")) {
+                    model.toggleAway()
+                }
+                .ts3KeyboardShortcut("toggle-away", in: model)
+                .disabled(model.state != .connected)
+
+                Button("serverTools.applyNickname") {
+                    model.updateNickname(to: model.nickname)
+                }
+                .ts3KeyboardShortcut("apply-nickname", in: model)
+                .disabled(model.state != .connected)
+
+                Button("catalyst.selfStatus") {
+                    model.isShowingSelfStatus = true
+                }
+                .ts3KeyboardShortcut("self-status", in: model)
+                .disabled(model.state != .connected)
+            }
+
             CommandMenu("catalyst.menu.administration") {
                 Button("catalyst.viewServerLogs") {
                     model.showServerLogs()
@@ -248,12 +270,6 @@ struct TS3iOSApp: App {
                     model.toggleOutputMuted()
                 }
                 .ts3KeyboardShortcut("toggle-output-muted", in: model)
-                .disabled(model.state != .connected)
-
-                Button("catalyst.selfStatus") {
-                    model.isShowingSelfStatus = true
-                }
-                .ts3KeyboardShortcut("self-status", in: model)
                 .disabled(model.state != .connected)
 
                 Button("catalyst.audioSettings") {

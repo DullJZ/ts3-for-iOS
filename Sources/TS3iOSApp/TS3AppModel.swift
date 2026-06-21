@@ -17992,7 +17992,7 @@ final class TS3AppModel: ObservableObject {
         TS3PlatformAccessibilityCoverageAuditSummary(
             localizedSurfaceCount: 18,
             voiceOverRowActionSurfaceCount: 24,
-            catalystMenuGroupCount: 5,
+            catalystMenuGroupCount: 6,
             dynamicTypeResponsiveSurfaceCount: 9,
             denseAdministrationDynamicTypeAuditSummary: TS3DenseAdministrationDynamicTypeAuditSummary(
                 totalSurfaceCount: 14,
