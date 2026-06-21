@@ -10174,7 +10174,7 @@ struct EventsSheet: View {
                     || containsSearch(event.invokerName)
                     || containsSearch(event.channelName)
                     || containsSearch(event.reasonMessage)
-                    || containsSearch(ActivityEventRow.snapshotMessage(for: event, in: model))
+                    || containsSearch(model.activitySnapshotMessage(for: event))
             )
         }
         return sortedActivityEvents(events)
@@ -10236,45 +10236,25 @@ struct EventsSheet: View {
     }
 
     private var visibleEventsSnapshot: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-
-        func dateText(_ date: Date) -> String {
-            formatter.string(from: date)
-        }
-
-        var lines: [String] = []
+        var metadataLines: [String] = []
         if eventFilter != .all {
-            lines.append("Type Filter: \(eventFilter.title)")
+            metadataLines.append(localized("events.snapshot.typeFilterFormat", eventFilter.title))
         }
         if sourceFilter != .all {
-            lines.append("Source Filter: \(sourceFilter.title)")
+            metadataLines.append(localized("events.snapshot.sourceFilterFormat", sourceFilter.title))
         }
-        lines.append("Sort: \(newestFirst ? "Newest First" : "Oldest First")")
+        metadataLines.append(localized(
+            "events.snapshot.sortFormat",
+            localized(newestFirst ? "events.newestFirst" : "events.oldestFirst")
+        ))
         if isSearching {
-            lines.append("Search: \(searchText.trimmingCharacters(in: .whitespacesAndNewlines))")
+            metadataLines.append(localized("events.snapshot.searchFormat", searchText.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
-        if !lines.isEmpty {
-            lines.append("")
-        }
-        if !visibleActivityEvents.isEmpty {
-            lines.append("Activity")
-            for event in visibleActivityEvents {
-                lines.append("[\(dateText(event.timestamp))] \(event.clientName): \(ActivityEventRow.snapshotMessage(for: event, in: model))")
-                if let reason = event.reasonMessage, !reason.isEmpty {
-                    lines.append("  Reason: \(reason)")
-                }
-            }
-        }
-        if !visiblePokeEvents.isEmpty {
-            if !lines.isEmpty { lines.append("") }
-            lines.append("Pokes")
-            for poke in visiblePokeEvents {
-                lines.append("[\(dateText(poke.timestamp))] \(poke.isOwnPoke ? "Sent to" : "Received from") \(poke.senderName): \(poke.message.isEmpty ? "Poke" : poke.message)")
-            }
-        }
-        return lines.joined(separator: "\n")
+        return model.eventSnapshot(
+            activityEvents: visibleActivityEvents,
+            pokes: visiblePokeEvents,
+            metadataLines: metadataLines
+        )
     }
 
     var body: some View {
@@ -11038,7 +11018,7 @@ struct ActivityEventRow: View {
     }
 
     private var messageText: String {
-        Self.snapshotMessage(for: event, in: model)
+        model.activitySnapshotMessage(for: event)
     }
 
     private var titleText: String {
@@ -11046,7 +11026,7 @@ struct ActivityEventRow: View {
         case .clientEntered, .clientLeft, .clientMoved:
             return event.clientName
         case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
-            return event.invokerName?.isEmpty == false ? event.invokerName! : "Server"
+            return event.invokerName?.isEmpty == false ? event.invokerName! : localized("events.activity.server")
         }
     }
 
@@ -11055,7 +11035,7 @@ struct ActivityEventRow: View {
             return reason
         }
         if let invoker = event.invokerName, !invoker.isEmpty, isClientEvent {
-            return "by \(invoker)"
+            return localized("events.activity.byInvokerFormat", invoker)
         }
         return nil
     }
@@ -11075,40 +11055,6 @@ struct ActivityEventRow: View {
             return true
         case .channelCreated, .channelEdited, .channelDeleted, .channelMoved, .channelPasswordChanged, .channelDescriptionChanged:
             return false
-        }
-    }
-
-    private var affectedChannelText: String {
-        if let name = event.channelName, !name.isEmpty {
-            return name
-        }
-        return channelText(event.channelId)
-    }
-
-    private func channelText(_ channelId: Int?) -> String {
-        model.channelName(for: channelId) ?? "the server"
-    }
-
-    static func snapshotMessage(for event: TS3ActivitySummary, in model: TS3AppModel) -> String {
-        switch event.kind {
-        case .clientEntered:
-            return "joined \(model.channelName(for: event.toChannelId) ?? "the server")"
-        case .clientLeft:
-            return "left \(model.channelName(for: event.fromChannelId) ?? "the server")"
-        case .clientMoved:
-            return "moved from \(model.channelName(for: event.fromChannelId) ?? "the server") to \(model.channelName(for: event.toChannelId) ?? "the server")"
-        case .channelCreated:
-            return "created \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
-        case .channelEdited:
-            return "edited \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
-        case .channelDeleted:
-            return "deleted \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
-        case .channelMoved:
-            return "moved \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel") to \(model.channelName(for: event.toChannelId) ?? "the server")"
-        case .channelPasswordChanged:
-            return "changed the password for \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
-        case .channelDescriptionChanged:
-            return "changed the description for \(event.channelName ?? model.channelName(for: event.channelId) ?? "a channel")"
         }
     }
 

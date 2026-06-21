@@ -118,13 +118,26 @@ struct TS3iOSApp: App {
                     }
                     .ts3KeyboardShortcut("copy-offline-message-cache", in: model)
                     .disabled(model.offlineMessages.isEmpty)
+
+                    Divider()
+
+                    Button("events.copyCachedSnapshot") {
+                        model.copyCachedEventSnapshot()
+                    }
+                    .ts3KeyboardShortcut("copy-event-snapshot", in: model)
+                    .disabled(model.activityEvents.isEmpty && model.pokeEvents.isEmpty)
+
+                    Button("events.copyCachedPokeSummary") {
+                        model.copyCachedPokeSummary()
+                    }
+                    .ts3KeyboardShortcut("copy-poke-summary", in: model)
+                    .disabled(model.pokeEvents.isEmpty)
                 }
 
                 Button("catalyst.openEvents") {
                     model.showEvents()
                 }
                 .ts3KeyboardShortcut("open-events", in: model)
-                .disabled(model.state != .connected)
 
                 Button("catalyst.openWhisper") {
                     model.showWhisper()

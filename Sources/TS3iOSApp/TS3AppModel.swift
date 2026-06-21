@@ -11963,6 +11963,8 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "copy-offline-message-summary",
         "copy-offline-message-cache",
         "open-events",
+        "copy-event-snapshot",
+        "copy-poke-summary",
         "open-whisper",
         "open-talk-requests",
         "toggle-whisper-activation",
@@ -15896,6 +15898,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "copy-offline-message-summary", group: "Messaging", action: "Copy Cached Inbox Summary", defaultKeys: "Command-Control-Option-J"),
         TS3KeyboardShortcutBinding(actionId: "copy-offline-message-cache", group: "Messaging", action: "Copy Cached Inbox Snapshot", defaultKeys: "Command-Control-Option-Shift-J"),
         TS3KeyboardShortcutBinding(actionId: "open-events", group: "Messaging", action: "Open Events", defaultKeys: "Command-Shift-E"),
+        TS3KeyboardShortcutBinding(actionId: "copy-event-snapshot", group: "Messaging", action: "Copy Cached Event Snapshot", defaultKeys: "Command-Control-Option-Shift-E"),
+        TS3KeyboardShortcutBinding(actionId: "copy-poke-summary", group: "Messaging", action: "Copy Cached Poke Summary", defaultKeys: "Command-Control-Option-Shift-P"),
         TS3KeyboardShortcutBinding(actionId: "open-whisper", group: "Messaging", action: "Open Whisper", defaultKeys: "Command-Shift-W"),
         TS3KeyboardShortcutBinding(actionId: "open-talk-requests", group: "Server", action: "Talk Requests", defaultKeys: "Command-Option-Shift-T"),
         TS3KeyboardShortcutBinding(actionId: "toggle-whisper-activation", group: "Voice", action: "Start / Stop Temporary Whisper", defaultKeys: "Command-Option-W"),
@@ -19851,6 +19855,122 @@ final class TS3AppModel: ObservableObject {
     func showEvents() {
         markEventsRead()
         isShowingEvents = true
+    }
+
+    var cachedPokeSummary: TS3PokeListSummary {
+        TS3PokeListSummary(pokes: pokeEvents)
+    }
+
+    func copyCachedEventSnapshot() {
+        guard !activityEvents.isEmpty || !pokeEvents.isEmpty else {
+            lastError = "No cached events to copy."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(eventSnapshot(activityEvents: activityEvents, pokes: pokeEvents))
+        lastError = nil
+    }
+
+    func copyCachedPokeSummary() {
+        guard !pokeEvents.isEmpty else {
+            lastError = "No cached pokes to copy."
+            return
+        }
+        TS3PlatformSupport.copyToPasteboard(cachedPokeSummary.clipboardSummary)
+        lastError = nil
+    }
+
+    func eventSnapshot(
+        activityEvents: [TS3ActivitySummary],
+        pokes: [TS3PokeSummary],
+        metadataLines: [String] = []
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+
+        func dateText(_ date: Date) -> String {
+            formatter.string(from: date)
+        }
+
+        var lines = metadataLines
+        if !lines.isEmpty && (!activityEvents.isEmpty || !pokes.isEmpty) {
+            lines.append("")
+        }
+
+        if !activityEvents.isEmpty {
+            lines.append(Self.localized("events.snapshot.activity"))
+            for event in activityEvents {
+                lines.append(Self.localized(
+                    "events.snapshot.activityLineFormat",
+                    dateText(event.timestamp),
+                    event.clientName,
+                    activitySnapshotMessage(for: event)
+                ))
+                if let reason = event.reasonMessage, !reason.isEmpty {
+                    lines.append(Self.localized("events.snapshot.reasonFormat", reason))
+                }
+            }
+        }
+
+        if !pokes.isEmpty {
+            if !lines.isEmpty && lines.last?.isEmpty == false {
+                lines.append("")
+            }
+            lines.append(Self.localized("events.snapshot.pokes"))
+            for poke in pokes {
+                let direction = Self.localized(poke.isOwnPoke ? "events.snapshot.sentTo" : "events.snapshot.receivedFrom")
+                let message = poke.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? Self.localized("events.snapshot.defaultPoke")
+                    : poke.message
+                lines.append(Self.localized(
+                    "events.snapshot.pokeLineFormat",
+                    dateText(poke.timestamp),
+                    direction,
+                    poke.senderName,
+                    message
+                ))
+            }
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    func activitySnapshotMessage(for event: TS3ActivitySummary) -> String {
+        switch event.kind {
+        case .clientEntered:
+            return Self.localized("events.activityMessage.clientEnteredFormat", eventChannelText(id: event.toChannelId, fallbackKey: "events.snapshot.server"))
+        case .clientLeft:
+            return Self.localized("events.activityMessage.clientLeftFormat", eventChannelText(id: event.fromChannelId, fallbackKey: "events.snapshot.server"))
+        case .clientMoved:
+            return Self.localized(
+                "events.activityMessage.clientMovedFormat",
+                eventChannelText(id: event.fromChannelId, fallbackKey: "events.snapshot.server"),
+                eventChannelText(id: event.toChannelId, fallbackKey: "events.snapshot.server")
+            )
+        case .channelCreated:
+            return Self.localized("events.activityMessage.channelCreatedFormat", eventChannelText(name: event.channelName, id: event.channelId, fallbackKey: "events.snapshot.channel"))
+        case .channelEdited:
+            return Self.localized("events.activityMessage.channelEditedFormat", eventChannelText(name: event.channelName, id: event.channelId, fallbackKey: "events.snapshot.channel"))
+        case .channelDeleted:
+            return Self.localized("events.activityMessage.channelDeletedFormat", eventChannelText(name: event.channelName, id: event.channelId, fallbackKey: "events.snapshot.channel"))
+        case .channelMoved:
+            return Self.localized(
+                "events.activityMessage.channelMovedFormat",
+                eventChannelText(name: event.channelName, id: event.channelId, fallbackKey: "events.snapshot.channel"),
+                eventChannelText(id: event.toChannelId, fallbackKey: "events.snapshot.server")
+            )
+        case .channelPasswordChanged:
+            return Self.localized("events.activityMessage.channelPasswordChangedFormat", eventChannelText(name: event.channelName, id: event.channelId, fallbackKey: "events.snapshot.channel"))
+        case .channelDescriptionChanged:
+            return Self.localized("events.activityMessage.channelDescriptionChangedFormat", eventChannelText(name: event.channelName, id: event.channelId, fallbackKey: "events.snapshot.channel"))
+        }
+    }
+
+    private func eventChannelText(name: String? = nil, id: Int?, fallbackKey: String) -> String {
+        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        return channelName(for: id) ?? Self.localized(fallbackKey)
     }
 
     func showWhisper() {
