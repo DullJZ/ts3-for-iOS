@@ -11254,88 +11254,251 @@ struct PokeEventRow: View {
     @State private var isShowingOfflineReply = false
 
     var body: some View {
+        PokeEventRowBody(
+            poke: poke,
+            onlineSender: onlineSender,
+            senderBookmarkDraftSummary: senderBookmarkDraftSummary,
+            replyTarget: $replyTarget,
+            isShowingOfflineReply: $isShowingOfflineReply
+        )
+        .environmentObject(model)
+        .sheet(item: $replyTarget) { user in
+            ChatPrivateReplySheet(user: user)
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $isShowingOfflineReply) {
+            PokeOfflineReplySheet(poke: poke)
+                .environmentObject(model)
+        }
+    }
+
+    private var onlineSender: TS3UserSummary? {
+        model.onlineUser(for: poke)
+    }
+
+    private var senderBookmarkDraftSummary: TS3PokeSenderBookmarkDraftSummary {
+        model.pokeSenderBookmarkDraftSummary(for: poke)
+    }
+}
+
+private struct PokeEventRowBody: View {
+    let poke: TS3PokeSummary
+    let onlineSender: TS3UserSummary?
+    let senderBookmarkDraftSummary: TS3PokeSenderBookmarkDraftSummary
+    @Binding var replyTarget: TS3UserSummary?
+    @Binding var isShowingOfflineReply: Bool
+
+    var body: some View {
+        PokeEventRowContent(
+            poke: poke,
+            onlineSender: onlineSender,
+            replyTarget: $replyTarget,
+            isShowingOfflineReply: $isShowingOfflineReply
+        )
+        .contextMenu {
+            PokeEventContextMenu(
+                poke: poke,
+                onlineSender: onlineSender,
+                senderBookmarkDraftSummary: senderBookmarkDraftSummary,
+                replyTarget: $replyTarget,
+                isShowingOfflineReply: $isShowingOfflineReply
+            )
+        }
+        .modifier(
+            PokeEventAccessibilityModifier(
+                poke: poke,
+                onlineSender: onlineSender,
+                senderBookmarkDraftSummary: senderBookmarkDraftSummary,
+                replyTarget: $replyTarget,
+                isShowingOfflineReply: $isShowingOfflineReply
+            )
+        )
+    }
+}
+
+private struct PokeEventRowContent: View {
+    let poke: TS3PokeSummary
+    let onlineSender: TS3UserSummary?
+    @Binding var replyTarget: TS3UserSummary?
+    @Binding var isShowingOfflineReply: Bool
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(poke.displayTitle)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text(Self.dateText(poke.timestamp))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            header
             Text(poke.messageText)
                 .font(.body)
-            if onlineSender != nil || poke.senderUniqueIdentifier?.isEmpty == false {
-                HStack(spacing: 12) {
-                    if let onlineSender {
-                        Button(localized("events.pokeRow.privateMessage")) {
-                            replyTarget = onlineSender
-                        }
-                        .buttonStyle(.borderless)
-                        Button(localized("events.pokeRow.pokeBack")) {
-                            model.pokeUser(onlineSender, message: "Poke")
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                    if poke.senderUniqueIdentifier?.isEmpty == false {
-                        Button(localized("events.pokeRow.offlineReply")) {
-                            isShowingOfflineReply = true
-                        }
-                        .buttonStyle(.borderless)
-                        Button(localized("events.pokeRow.addContact")) {
-                            model.addContact(from: poke)
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
-                .font(.caption)
-            }
+            PokeEventInlineActions(
+                poke: poke,
+                onlineSender: onlineSender,
+                replyTarget: $replyTarget,
+                isShowingOfflineReply: $isShowingOfflineReply
+            )
         }
         .padding(.vertical, 4)
-        .contextMenu {
-            if let onlineSender {
-                Button(localized("events.pokeRow.privateMessage")) {
-                    replyTarget = onlineSender
+    }
+
+    private var header: some View {
+        HStack {
+            Text(poke.displayTitle)
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Text(Self.dateText(poke.timestamp))
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
+    }
+}
+
+private struct PokeEventInlineActions: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let poke: TS3PokeSummary
+    let onlineSender: TS3UserSummary?
+    @Binding var replyTarget: TS3UserSummary?
+    @Binding var isShowingOfflineReply: Bool
+
+    var body: some View {
+        if hasActions {
+            HStack(spacing: 12) {
+                if let onlineSender {
+                    Button(localized("events.pokeRow.privateMessage")) {
+                        replyTarget = onlineSender
+                    }
+                    .buttonStyle(.borderless)
+
+                    Button(localized("events.pokeRow.pokeBack")) {
+                        model.pokeUser(onlineSender, message: "Poke")
+                    }
+                    .buttonStyle(.borderless)
                 }
-                Button(localized("events.pokeRow.pokeBack")) {
-                    model.pokeUser(onlineSender, message: "Poke")
+
+                if canReplyOffline {
+                    Button(localized("events.pokeRow.offlineReply")) {
+                        isShowingOfflineReply = true
+                    }
+                    .buttonStyle(.borderless)
+
+                    Button(localized("events.pokeRow.addContact")) {
+                        model.addContact(from: poke)
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
-            if poke.senderUniqueIdentifier?.isEmpty == false {
-                Button(localized("events.pokeRow.offlineReply")) {
-                    isShowingOfflineReply = true
-                }
-                Button(localized("events.pokeRow.addContact")) {
-                    model.addContact(from: poke)
-                }
+            .font(.caption)
+        }
+    }
+
+    private var hasActions: Bool {
+        onlineSender != nil || canReplyOffline
+    }
+
+    private var canReplyOffline: Bool {
+        poke.senderUniqueIdentifier?.isEmpty == false
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+}
+
+private struct PokeEventContextMenu: View {
+    @EnvironmentObject private var model: TS3AppModel
+    let poke: TS3PokeSummary
+    let onlineSender: TS3UserSummary?
+    let senderBookmarkDraftSummary: TS3PokeSenderBookmarkDraftSummary
+    @Binding var replyTarget: TS3UserSummary?
+    @Binding var isShowingOfflineReply: Bool
+
+    var body: some View {
+        onlineActions
+        offlineActions
+        senderBookmarkMenu
+        copyActions
+    }
+
+    @ViewBuilder
+    private var onlineActions: some View {
+        if let onlineSender {
+            Button(localized("events.pokeRow.privateMessage")) {
+                replyTarget = onlineSender
             }
-            Menu(localized("events.pokeRow.senderBookmark")) {
-                Button(localized("events.pokeRow.saveSenderBookmark")) {
-                    model.savePokeSenderBookmark(for: poke)
-                }
-                .disabled(!senderBookmarkDraftSummary.canSave)
-                Button(localized("events.pokeRow.copySenderBookmarkDraft")) {
-                    TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSummary(for: poke))
-                }
-                Button(localized("events.pokeRow.copySenderBookmarkImpact")) {
-                    TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSaveImpactSummary(for: poke).clipboardSummary)
-                }
-            }
-            Button(localized("events.pokeRow.copyPoke")) {
-                TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
-            }
-            Button(localized("events.pokeRow.copyMessage")) {
-                TS3PlatformSupport.copyToPasteboard(poke.messageText)
-            }
-            Button(localized("events.pokeRow.copyUser")) {
-                TS3PlatformSupport.copyToPasteboard(poke.senderName)
-            }
-            if let uniqueIdentifier = poke.senderUniqueIdentifier, !uniqueIdentifier.isEmpty {
-                Button(localized("events.pokeRow.copyUniqueId")) {
-                    TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
-                }
+            Button(localized("events.pokeRow.pokeBack")) {
+                model.pokeUser(onlineSender, message: "Poke")
             }
         }
+    }
+
+    @ViewBuilder
+    private var offlineActions: some View {
+        if poke.senderUniqueIdentifier?.isEmpty == false {
+            Button(localized("events.pokeRow.offlineReply")) {
+                isShowingOfflineReply = true
+            }
+            Button(localized("events.pokeRow.addContact")) {
+                model.addContact(from: poke)
+            }
+        }
+    }
+
+    private var senderBookmarkMenu: some View {
+        Menu(localized("events.pokeRow.senderBookmark")) {
+            Button(localized("events.pokeRow.saveSenderBookmark")) {
+                model.savePokeSenderBookmark(for: poke)
+            }
+            .disabled(!senderBookmarkDraftSummary.canSave)
+
+            Button(localized("events.pokeRow.copySenderBookmarkDraft")) {
+                TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSummary(for: poke))
+            }
+
+            Button(localized("events.pokeRow.copySenderBookmarkImpact")) {
+                let summary = model.pokeSenderBookmarkSaveImpactSummary(for: poke)
+                TS3PlatformSupport.copyToPasteboard(summary.clipboardSummary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var copyActions: some View {
+        Button(localized("events.pokeRow.copyPoke")) {
+            TS3PlatformSupport.copyToPasteboard(poke.clipboardSummary)
+        }
+        Button(localized("events.pokeRow.copyMessage")) {
+            TS3PlatformSupport.copyToPasteboard(poke.messageText)
+        }
+        Button(localized("events.pokeRow.copyUser")) {
+            TS3PlatformSupport.copyToPasteboard(poke.senderName)
+        }
+        if let uniqueIdentifier = poke.senderUniqueIdentifier, !uniqueIdentifier.isEmpty {
+            Button(localized("events.pokeRow.copyUniqueId")) {
+                TS3PlatformSupport.copyToPasteboard(uniqueIdentifier)
+            }
+        }
+    }
+
+    private func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = NSLocalizedString(key, comment: "")
+        return arguments.isEmpty ? format : String(format: format, arguments: arguments)
+    }
+}
+
+private struct PokeEventAccessibilityModifier: ViewModifier {
+    @EnvironmentObject private var model: TS3AppModel
+    let poke: TS3PokeSummary
+    let onlineSender: TS3UserSummary?
+    let senderBookmarkDraftSummary: TS3PokeSenderBookmarkDraftSummary
+    @Binding var replyTarget: TS3UserSummary?
+    @Binding var isShowingOfflineReply: Bool
+
+    func body(content: Content) -> some View {
+        content
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(poke.displayTitle)
         .accessibilityValue(poke.accessibilityValue)
@@ -11368,29 +11531,6 @@ struct PokeEventRow: View {
         .accessibilityAction(named: localized("events.pokeRow.copySenderBookmarkImpact")) {
             TS3PlatformSupport.copyToPasteboard(model.pokeSenderBookmarkSaveImpactSummary(for: poke).clipboardSummary)
         }
-        .sheet(item: $replyTarget) { user in
-            ChatPrivateReplySheet(user: user)
-                .environmentObject(model)
-        }
-        .sheet(isPresented: $isShowingOfflineReply) {
-            PokeOfflineReplySheet(poke: poke)
-                .environmentObject(model)
-        }
-    }
-
-    private var onlineSender: TS3UserSummary? {
-        model.onlineUser(for: poke)
-    }
-
-    private var senderBookmarkDraftSummary: TS3PokeSenderBookmarkDraftSummary {
-        model.pokeSenderBookmarkDraftSummary(for: poke)
-    }
-
-    private static func dateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .medium
-        return formatter.string(from: date)
     }
 
     private func localized(_ key: String, _ arguments: CVarArg...) -> String {
