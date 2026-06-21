@@ -94,6 +94,10 @@ struct ContentView: View {
                 ServerSettingsEditorSheet()
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.isShowingCreateChannel) {
+                ChannelEditorSheet(mode: .create(parent: model.currentChannel))
+                    .environmentObject(model)
+            }
             .sheet(isPresented: $model.isShowingGroupManagement) {
                 GroupManagementSheet()
                     .environmentObject(model)

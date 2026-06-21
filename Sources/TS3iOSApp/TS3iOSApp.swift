@@ -138,6 +138,12 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("edit-server-settings", in: model)
                 .disabled(model.state != .connected)
 
+                Button("channels.newChannel") {
+                    model.showCreateChannel()
+                }
+                .ts3KeyboardShortcut("create-channel", in: model)
+                .disabled(model.state != .connected)
+
                 Button("catalyst.manageContacts") {
                     model.showContacts()
                 }

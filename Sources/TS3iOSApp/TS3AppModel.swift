@@ -11960,6 +11960,7 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "save-bookmark",
         "copy-invite",
         "copy-full-invite",
+        "create-channel",
         "view-server-logs",
         "view-server-info",
         "edit-server-settings",
@@ -15863,6 +15864,7 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "save-bookmark", group: "Server", action: "Save Current Server as Bookmark", defaultKeys: "Command-Option-B"),
         TS3KeyboardShortcutBinding(actionId: "copy-invite", group: "Server", action: "Copy Invite Link", defaultKeys: "Command-Option-U"),
         TS3KeyboardShortcutBinding(actionId: "copy-full-invite", group: "Server", action: "Copy Full Invite Link", defaultKeys: "Command-Option-Shift-U"),
+        TS3KeyboardShortcutBinding(actionId: "create-channel", group: "Server", action: "Create Channel", defaultKeys: "Command-Option-Shift-N"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
         TS3KeyboardShortcutBinding(actionId: "view-server-info", group: "Server", action: "View Server Information", defaultKeys: "Command-Option-I"),
         TS3KeyboardShortcutBinding(actionId: "edit-server-settings", group: "Server", action: "Edit Server Settings", defaultKeys: "Command-Option-S"),
@@ -15892,6 +15894,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingServerLogs = false
     @Published var isShowingServerInfo = false
     @Published var isShowingServerEditor = false
+    @Published var isShowingCreateChannel = false
     @Published var isShowingGroupManagement = false
     @Published var isShowingSubscriptionPresets = false
     @Published var isShowingContacts = false
@@ -19496,6 +19499,10 @@ final class TS3AppModel: ObservableObject {
     func showServerSettings() {
         refreshServerInfo()
         isShowingServerEditor = true
+    }
+
+    func showCreateChannel() {
+        isShowingCreateChannel = true
     }
 
     func showTemporaryServerPasswords() {
