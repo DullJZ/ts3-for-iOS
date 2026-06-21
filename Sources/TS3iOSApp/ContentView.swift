@@ -19561,6 +19561,14 @@ struct ServerSettingsEditorSheet: View {
         let hasChange: Bool
     }
 
+    private struct HostBrandingReviewRow: Hashable {
+        let role: TS3ServerHostBrandingRole
+        let label: String
+        let currentValue: String
+        let draftValue: String
+        let hasChange: Bool
+    }
+
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var model: TS3AppModel
     @State private var name = ""
@@ -19823,6 +19831,33 @@ struct ServerSettingsEditorSheet: View {
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingHostSettings) {
+                        ServerInfoDetailRow(
+                            label: localized("serverSettings.hostBrandingReview"),
+                            value: localized(
+                                "serverSettings.hostBrandingReviewFormat",
+                                hostBrandingReviewSummary.changedFieldCount,
+                                hostBrandingReviewSummary.totalFieldCount,
+                                hostBrandingReviewSummary.invalidDraftCount
+                            )
+                        )
+                        Text(hostBrandingReviewText)
+                            .font(.caption)
+                            .foregroundColor(hostBrandingReviewSummary.needsAttention ? .orange : .secondary)
+                        ForEach(hostBrandingReviewRows, id: \.self) { row in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(row.label)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(localized("serverSettings.hostBrandingReviewCurrentFormat", row.currentValue))
+                                    .font(.caption)
+                                Text(localized("serverSettings.hostBrandingReviewDraftFormat", row.draftValue))
+                                    .font(.caption)
+                                    .foregroundColor(row.hasChange ? .orange : .secondary)
+                            }
+                        }
+                        Button(localized("serverSettings.copyHostBrandingReview")) {
+                            TS3PlatformSupport.copyToPasteboard(hostBrandingReviewClipboard)
+                        }
                         Picker(localized("serverSettings.hostMessageMode"), selection: $hostMessageMode) {
                             ForEach(TS3HostMessageMode.allCases) { mode in
                                 Text(hostMessageModeTitle(mode.rawValue)).tag(String(mode.rawValue))
@@ -20503,6 +20538,76 @@ struct ServerSettingsEditorSheet: View {
             .joined(separator: "\n")
     }
 
+    private var hostBrandingReviewSummary: TS3ServerHostBrandingDraftReviewSummary {
+        TS3ServerHostBrandingDraftReviewSummary(
+            currentHostMessageMode: model.serverInfo.hostMessageMode,
+            draftHostMessageMode: hostMessageMode,
+            currentHostMessage: model.serverInfo.hostMessage,
+            draftHostMessage: hostMessage,
+            currentHostBannerURL: model.serverInfo.hostBannerURL,
+            draftHostBannerURL: hostBannerURL,
+            currentHostBannerGraphicsURL: model.serverInfo.hostBannerGraphicsURL,
+            draftHostBannerGraphicsURL: hostBannerGraphicsURL,
+            currentHostBannerMode: model.serverInfo.hostBannerMode,
+            draftHostBannerMode: hostBannerMode.map(String.init),
+            currentHostBannerGraphicsInterval: model.serverInfo.hostBannerGraphicsInterval,
+            draftHostBannerGraphicsInterval: hostBannerGraphicsInterval,
+            currentHostButtonTooltip: model.serverInfo.hostButtonTooltip,
+            draftHostButtonTooltip: hostButtonTooltip,
+            currentHostButtonURL: model.serverInfo.hostButtonURL,
+            draftHostButtonURL: hostButtonURL,
+            currentHostButtonGraphicsURL: model.serverInfo.hostButtonGraphicsURL,
+            draftHostButtonGraphicsURL: hostButtonGraphicsURL
+        )
+    }
+
+    private var hostBrandingReviewRows: [HostBrandingReviewRow] {
+        let summary = hostBrandingReviewSummary
+        return TS3ServerHostBrandingRole.allCases.map { role in
+            hostBrandingReviewRow(
+                for: role,
+                draftText: hostBrandingDraftText(for: role),
+                summary: summary
+            )
+        }
+    }
+
+    private var hostBrandingReviewText: String {
+        let summary = hostBrandingReviewSummary
+        guard summary.needsAttention else { return localized("serverSettings.hostBrandingReviewNoChanges") }
+        var parts: [String] = []
+        if summary.changedFieldCount > 0 {
+            parts.append(localized("serverSettings.hostBrandingReviewChangedFormat", summary.changedFieldCount))
+        }
+        if summary.invalidDraftCount > 0 {
+            parts.append(localized("serverSettings.hostBrandingReviewInvalidFormat", summary.invalidDraftCount))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private var hostBrandingReviewClipboard: String {
+        let summary = hostBrandingReviewSummary
+        let rows = hostBrandingReviewRows
+            .map { row in
+                localized(
+                    "serverSettings.hostBrandingReviewClipboardRowFormat",
+                    row.label,
+                    row.currentValue,
+                    row.draftValue
+                )
+            }
+            .joined(separator: "\n")
+        let lines = [
+            localized("serverSettings.hostBrandingReview"),
+            summary.clipboardSummary,
+            rows
+        ]
+        return lines
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
     private var versionLimitReviewSummary: TS3ServerVersionLimitDraftReviewSummary {
         TS3ServerVersionLimitDraftReviewSummary(
             currentNeededIdentitySecurityLevel: model.serverInfo.neededIdentitySecurityLevel,
@@ -21070,6 +21175,29 @@ struct ServerSettingsEditorSheet: View {
         }
     }
 
+    private func title(for role: TS3ServerHostBrandingRole) -> String {
+        switch role {
+        case .hostMessageMode:
+            return localized("serverSettings.hostMessageMode")
+        case .hostMessage:
+            return localized("serverSettings.hostMessage")
+        case .hostBannerURL:
+            return localized("serverSettings.bannerLinkURL")
+        case .hostBannerGraphicsURL:
+            return localized("serverSettings.bannerImageURL")
+        case .hostBannerMode:
+            return localized("serverSettings.bannerMode")
+        case .hostBannerGraphicsInterval:
+            return localized("serverSettings.bannerRefreshSeconds")
+        case .hostButtonTooltip:
+            return localized("serverSettings.buttonTooltip")
+        case .hostButtonURL:
+            return localized("serverSettings.buttonLinkURL")
+        case .hostButtonGraphicsURL:
+            return localized("serverSettings.buttonImageURL")
+        }
+    }
+
     private func title(for role: TS3ServerTransferLimitRole) -> String {
         switch role {
         case .downloadQuota:
@@ -21080,6 +21208,63 @@ struct ServerSettingsEditorSheet: View {
             return localized("serverSettings.maxDownloadBandwidthBytes")
         case .maxUploadTotalBandwidth:
             return localized("serverSettings.maxUploadBandwidthBytes")
+        }
+    }
+
+    private func hostBrandingReviewRow(
+        for role: TS3ServerHostBrandingRole,
+        draftText: String,
+        summary: TS3ServerHostBrandingDraftReviewSummary
+    ) -> HostBrandingReviewRow {
+        let isInvalid = summary.invalidDraftRoles.contains(role)
+        let draftValue = isInvalid
+            ? localized(
+                "serverSettings.hostBrandingReviewInvalidValueFormat",
+                normalizedDraftValue(draftText)
+            )
+            : hostBrandingReviewValue(summary.draftValue(for: role), role: role)
+        return HostBrandingReviewRow(
+            role: role,
+            label: title(for: role),
+            currentValue: hostBrandingReviewValue(summary.currentValue(for: role), role: role),
+            draftValue: draftValue,
+            hasChange: summary.changedRoles.contains(role) || isInvalid
+        )
+    }
+
+    private func hostBrandingDraftText(for role: TS3ServerHostBrandingRole) -> String {
+        switch role {
+        case .hostMessageMode:
+            return hostMessageMode
+        case .hostMessage:
+            return hostMessage
+        case .hostBannerURL:
+            return hostBannerURL
+        case .hostBannerGraphicsURL:
+            return hostBannerGraphicsURL
+        case .hostBannerMode:
+            return hostBannerMode.map(String.init) ?? ""
+        case .hostBannerGraphicsInterval:
+            return hostBannerGraphicsInterval
+        case .hostButtonTooltip:
+            return hostButtonTooltip
+        case .hostButtonURL:
+            return hostButtonURL
+        case .hostButtonGraphicsURL:
+            return hostButtonGraphicsURL
+        }
+    }
+
+    private func hostBrandingReviewValue(_ value: String?, role: TS3ServerHostBrandingRole) -> String {
+        let normalized = normalizedDraftValue(value)
+        guard !normalized.isEmpty else { return localized("serverSettings.emptyValue") }
+        switch role {
+        case .hostMessageMode:
+            return hostMessageModeTitle(normalized)
+        case .hostBannerMode:
+            return hostBannerModeTitle(normalized)
+        default:
+            return normalized
         }
     }
 

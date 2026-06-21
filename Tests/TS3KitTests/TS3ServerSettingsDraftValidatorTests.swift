@@ -503,6 +503,94 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testServerHostBrandingDraftReviewSummaryCountsChangedAndInvalidFields() {
+        let summary = TS3ServerHostBrandingDraftReviewSummary(
+            currentHostMessageMode: 1,
+            draftHostMessageMode: "modal",
+            currentHostMessage: "Welcome",
+            draftHostMessage: "Welcome",
+            currentHostBannerURL: "https://old.example/banner",
+            draftHostBannerURL: "banner",
+            currentHostBannerGraphicsURL: nil,
+            draftHostBannerGraphicsURL: "https://example.com/banner.png",
+            currentHostBannerMode: 2,
+            draftHostBannerMode: "stretch",
+            currentHostBannerGraphicsInterval: 60,
+            draftHostBannerGraphicsInterval: "often",
+            currentHostButtonTooltip: "Visit",
+            draftHostButtonTooltip: "",
+            currentHostButtonURL: "",
+            draftHostButtonURL: "ts3server://voice.example.com?port=9987",
+            currentHostButtonGraphicsURL: "https://old.example/button.png",
+            draftHostButtonGraphicsURL: "button.png"
+        )
+
+        XCTAssertEqual(summary.totalFieldCount, 9)
+        XCTAssertEqual(summary.reviewedFieldCount, 6)
+        XCTAssertEqual(summary.invalidDraftCount, 3)
+        XCTAssertEqual(summary.invalidDraftRoles, [
+            .hostBannerURL,
+            .hostBannerGraphicsInterval,
+            .hostButtonGraphicsURL
+        ])
+        XCTAssertEqual(summary.changedRoles, [
+            .hostMessageMode,
+            .hostBannerGraphicsURL,
+            .hostBannerMode,
+            .hostButtonTooltip,
+            .hostButtonURL
+        ])
+        XCTAssertEqual(summary.changedFieldCount, 5)
+        XCTAssertEqual(summary.currentValue(for: .hostMessageMode), "1")
+        XCTAssertEqual(summary.draftValue(for: .hostMessageMode), "2")
+        XCTAssertEqual(summary.draftValue(for: .hostBannerURL), "https://old.example/banner")
+        XCTAssertEqual(summary.draftValue(for: .hostBannerMode), "1")
+        XCTAssertEqual(summary.draftValue(for: .hostBannerGraphicsInterval), "60")
+        XCTAssertEqual(summary.draftValue(for: .hostButtonGraphicsURL), "https://old.example/button.png")
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "hostBrandingChanges=5/9 | reviewedFields=6/9 | invalidDrafts=3 | changed=hostMessageMode,hostBannerGraphicsURL,hostBannerMode,hostButtonTooltip,hostButtonURL | invalid=hostBannerURL,hostBannerGraphicsInterval,hostButtonGraphicsURL | needsAttention=true"
+        )
+    }
+
+    func testServerHostBrandingDraftReviewSummaryHandlesUnchangedDraft() {
+        let summary = TS3ServerHostBrandingDraftReviewSummary(
+            currentHostMessageMode: nil,
+            draftHostMessageMode: "",
+            currentHostMessage: nil,
+            draftHostMessage: " ",
+            currentHostBannerURL: nil,
+            draftHostBannerURL: "",
+            currentHostBannerGraphicsURL: nil,
+            draftHostBannerGraphicsURL: nil,
+            currentHostBannerMode: 2,
+            draftHostBannerMode: "keep aspect ratio",
+            currentHostBannerGraphicsInterval: nil,
+            draftHostBannerGraphicsInterval: nil,
+            currentHostButtonTooltip: "Ops",
+            draftHostButtonTooltip: " Ops ",
+            currentHostButtonURL: "https://example.com",
+            draftHostButtonURL: " https://example.com ",
+            currentHostButtonGraphicsURL: nil,
+            draftHostButtonGraphicsURL: ""
+        )
+
+        XCTAssertEqual(summary.reviewedFieldCount, 9)
+        XCTAssertEqual(summary.invalidDraftCount, 0)
+        XCTAssertTrue(summary.changedRoles.isEmpty)
+        XCTAssertEqual(summary.changedFieldCount, 0)
+        XCTAssertNil(summary.draftValue(for: .hostMessageMode))
+        XCTAssertEqual(summary.draftValue(for: .hostMessage), "")
+        XCTAssertEqual(summary.draftValue(for: .hostBannerMode), "2")
+        XCTAssertEqual(summary.draftValue(for: .hostButtonTooltip), "Ops")
+        XCTAssertFalse(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "hostBrandingChanges=0/9 | reviewedFields=9/9 | invalidDrafts=0 | changed=none | invalid=none | needsAttention=false"
+        )
+    }
+
     func testServerTransferLimitDraftReviewSummaryCountsChangedLimitsAndInvalidDrafts() {
         let summary = TS3ServerTransferLimitDraftReviewSummary(
             currentDownloadQuota: 1_000_000,

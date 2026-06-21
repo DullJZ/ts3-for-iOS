@@ -1388,6 +1388,16 @@
 "serverSettings.hostButtonTooltip" = "Host Button Tooltip";
 "serverSettings.hostButtonURL" = "Host Button URL";
 "serverSettings.hostButtonImageURL" = "Host Button Image URL";
+"serverSettings.hostBrandingReview" = "Host Branding Review";
+"serverSettings.hostBrandingReviewFormat" = "%d of %d changed, %d invalid";
+"serverSettings.hostBrandingReviewNoChanges" = "Current host branding matches the draft";
+"serverSettings.hostBrandingReviewChangedFormat" = "%d host branding changes";
+"serverSettings.hostBrandingReviewInvalidFormat" = "%d invalid host branding fields";
+"serverSettings.hostBrandingReviewCurrentFormat" = "Current: %@";
+"serverSettings.hostBrandingReviewDraftFormat" = "Draft: %@";
+"serverSettings.hostBrandingReviewInvalidValueFormat" = "Invalid value: %@";
+"serverSettings.hostBrandingReviewClipboardRowFormat" = "%@: current %@, draft %@";
+"serverSettings.copyHostBrandingReview" = "Copy Host Branding Review";
 "serverSettings.downloadQuotaBytes" = "Download Quota Bytes";
 "serverSettings.uploadQuotaBytes" = "Upload Quota Bytes";
 "serverSettings.maxDownloadBandwidthBytes" = "Max Download Bandwidth Bytes/s";

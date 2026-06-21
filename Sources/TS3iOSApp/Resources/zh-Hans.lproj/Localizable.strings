@@ -1388,6 +1388,16 @@
 "serverSettings.hostButtonTooltip" = "主机按钮提示";
 "serverSettings.hostButtonURL" = "主机按钮 URL";
 "serverSettings.hostButtonImageURL" = "主机按钮图片 URL";
+"serverSettings.hostBrandingReview" = "主机品牌复核";
+"serverSettings.hostBrandingReviewFormat" = "%d / %d 项变化，%d 项无效";
+"serverSettings.hostBrandingReviewNoChanges" = "当前主机品牌设置与草稿一致";
+"serverSettings.hostBrandingReviewChangedFormat" = "%d 项主机品牌变更";
+"serverSettings.hostBrandingReviewInvalidFormat" = "%d 个无效主机品牌字段";
+"serverSettings.hostBrandingReviewCurrentFormat" = "当前：%@";
+"serverSettings.hostBrandingReviewDraftFormat" = "草稿：%@";
+"serverSettings.hostBrandingReviewInvalidValueFormat" = "无效值：%@";
+"serverSettings.hostBrandingReviewClipboardRowFormat" = "%@：当前 %@，草稿 %@";
+"serverSettings.copyHostBrandingReview" = "复制主机品牌复核";
 "serverSettings.downloadQuotaBytes" = "下载配额字节数";
 "serverSettings.uploadQuotaBytes" = "上传配额字节数";
 "serverSettings.maxDownloadBandwidthBytes" = "最大下载带宽字节/秒";

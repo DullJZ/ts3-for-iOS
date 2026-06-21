@@ -2140,6 +2140,240 @@ struct TS3ServerTransferLimitDraftReviewSummary {
     }
 }
 
+enum TS3ServerHostBrandingRole: String, CaseIterable, Codable {
+    case hostMessageMode
+    case hostMessage
+    case hostBannerURL
+    case hostBannerGraphicsURL
+    case hostBannerMode
+    case hostBannerGraphicsInterval
+    case hostButtonTooltip
+    case hostButtonURL
+    case hostButtonGraphicsURL
+}
+
+struct TS3ServerHostBrandingDraftReviewSummary {
+    let currentHostMessageMode: String?
+    let currentHostMessage: String
+    let currentHostBannerURL: String
+    let currentHostBannerGraphicsURL: String
+    let currentHostBannerMode: String?
+    let currentHostBannerGraphicsInterval: String?
+    let currentHostButtonTooltip: String
+    let currentHostButtonURL: String
+    let currentHostButtonGraphicsURL: String
+    let draftHostMessageMode: String?
+    let draftHostMessage: String
+    let draftHostBannerURL: String
+    let draftHostBannerGraphicsURL: String
+    let draftHostBannerMode: String?
+    let draftHostBannerGraphicsInterval: String?
+    let draftHostButtonTooltip: String
+    let draftHostButtonURL: String
+    let draftHostButtonGraphicsURL: String
+    let invalidDraftRoles: [TS3ServerHostBrandingRole]
+
+    var totalFieldCount: Int {
+        TS3ServerHostBrandingRole.allCases.count
+    }
+
+    var reviewedFieldCount: Int {
+        max(0, totalFieldCount - invalidDraftRoles.count)
+    }
+
+    var invalidDraftCount: Int {
+        invalidDraftRoles.count
+    }
+
+    var changedRoles: [TS3ServerHostBrandingRole] {
+        TS3ServerHostBrandingRole.allCases.filter {
+            Self.normalized(currentValue(for: $0)) != Self.normalized(draftValue(for: $0))
+        }
+    }
+
+    var changedFieldCount: Int {
+        changedRoles.count
+    }
+
+    var needsAttention: Bool {
+        changedFieldCount > 0 || invalidDraftCount > 0
+    }
+
+    var clipboardSummary: String {
+        let changed = changedRoles.map(\.rawValue).joined(separator: ",")
+        let invalid = invalidDraftRoles.map(\.rawValue).joined(separator: ",")
+        return [
+            "hostBrandingChanges=\(changedFieldCount)/\(totalFieldCount)",
+            "reviewedFields=\(reviewedFieldCount)/\(totalFieldCount)",
+            "invalidDrafts=\(invalidDraftCount)",
+            "changed=\(changed.isEmpty ? "none" : changed)",
+            "invalid=\(invalid.isEmpty ? "none" : invalid)",
+            "needsAttention=\(needsAttention ? "true" : "false")"
+        ].joined(separator: " | ")
+    }
+
+    init(
+        currentHostMessageMode: Int?,
+        draftHostMessageMode: String?,
+        currentHostMessage: String?,
+        draftHostMessage: String?,
+        currentHostBannerURL: String?,
+        draftHostBannerURL: String?,
+        currentHostBannerGraphicsURL: String?,
+        draftHostBannerGraphicsURL: String?,
+        currentHostBannerMode: Int?,
+        draftHostBannerMode: String?,
+        currentHostBannerGraphicsInterval: Int?,
+        draftHostBannerGraphicsInterval: String?,
+        currentHostButtonTooltip: String?,
+        draftHostButtonTooltip: String?,
+        currentHostButtonURL: String?,
+        draftHostButtonURL: String?,
+        currentHostButtonGraphicsURL: String?,
+        draftHostButtonGraphicsURL: String?
+    ) {
+        let messageModeDraft = Self.parsedDraftMode(
+            draftHostMessageMode,
+            current: currentHostMessageMode,
+            parser: TS3HostMessageMode.value(forDraft:)
+        )
+        let bannerURLDraft = Self.parsedDraftURL(draftHostBannerURL, current: currentHostBannerURL)
+        let bannerGraphicsURLDraft = Self.parsedDraftURL(
+            draftHostBannerGraphicsURL,
+            current: currentHostBannerGraphicsURL
+        )
+        let bannerModeDraft = Self.parsedDraftMode(
+            draftHostBannerMode,
+            current: currentHostBannerMode,
+            parser: TS3HostBannerMode.value(forDraft:)
+        )
+        let bannerIntervalDraft = Self.parsedDraftInt(
+            draftHostBannerGraphicsInterval,
+            current: currentHostBannerGraphicsInterval
+        )
+        let buttonURLDraft = Self.parsedDraftURL(draftHostButtonURL, current: currentHostButtonURL)
+        let buttonGraphicsURLDraft = Self.parsedDraftURL(
+            draftHostButtonGraphicsURL,
+            current: currentHostButtonGraphicsURL
+        )
+
+        self.currentHostMessageMode = currentHostMessageMode.map(String.init)
+        self.currentHostMessage = Self.normalized(currentHostMessage)
+        self.currentHostBannerURL = Self.normalized(currentHostBannerURL)
+        self.currentHostBannerGraphicsURL = Self.normalized(currentHostBannerGraphicsURL)
+        self.currentHostBannerMode = currentHostBannerMode.map(String.init)
+        self.currentHostBannerGraphicsInterval = currentHostBannerGraphicsInterval.map(String.init)
+        self.currentHostButtonTooltip = Self.normalized(currentHostButtonTooltip)
+        self.currentHostButtonURL = Self.normalized(currentHostButtonURL)
+        self.currentHostButtonGraphicsURL = Self.normalized(currentHostButtonGraphicsURL)
+        self.draftHostMessageMode = messageModeDraft.effectiveValue.map(String.init)
+        self.draftHostMessage = Self.normalized(draftHostMessage)
+        self.draftHostBannerURL = bannerURLDraft.effectiveValue
+        self.draftHostBannerGraphicsURL = bannerGraphicsURLDraft.effectiveValue
+        self.draftHostBannerMode = bannerModeDraft.effectiveValue.map(String.init)
+        self.draftHostBannerGraphicsInterval = bannerIntervalDraft.effectiveValue.map(String.init)
+        self.draftHostButtonTooltip = Self.normalized(draftHostButtonTooltip)
+        self.draftHostButtonURL = buttonURLDraft.effectiveValue
+        self.draftHostButtonGraphicsURL = buttonGraphicsURLDraft.effectiveValue
+        self.invalidDraftRoles = [
+            messageModeDraft.isInvalid ? .hostMessageMode : nil,
+            bannerURLDraft.isInvalid ? .hostBannerURL : nil,
+            bannerGraphicsURLDraft.isInvalid ? .hostBannerGraphicsURL : nil,
+            bannerModeDraft.isInvalid ? .hostBannerMode : nil,
+            bannerIntervalDraft.isInvalid ? .hostBannerGraphicsInterval : nil,
+            buttonURLDraft.isInvalid ? .hostButtonURL : nil,
+            buttonGraphicsURLDraft.isInvalid ? .hostButtonGraphicsURL : nil
+        ].compactMap { $0 }
+    }
+
+    func currentValue(for role: TS3ServerHostBrandingRole) -> String? {
+        switch role {
+        case .hostMessageMode:
+            return currentHostMessageMode
+        case .hostMessage:
+            return currentHostMessage
+        case .hostBannerURL:
+            return currentHostBannerURL
+        case .hostBannerGraphicsURL:
+            return currentHostBannerGraphicsURL
+        case .hostBannerMode:
+            return currentHostBannerMode
+        case .hostBannerGraphicsInterval:
+            return currentHostBannerGraphicsInterval
+        case .hostButtonTooltip:
+            return currentHostButtonTooltip
+        case .hostButtonURL:
+            return currentHostButtonURL
+        case .hostButtonGraphicsURL:
+            return currentHostButtonGraphicsURL
+        }
+    }
+
+    func draftValue(for role: TS3ServerHostBrandingRole) -> String? {
+        switch role {
+        case .hostMessageMode:
+            return draftHostMessageMode
+        case .hostMessage:
+            return draftHostMessage
+        case .hostBannerURL:
+            return draftHostBannerURL
+        case .hostBannerGraphicsURL:
+            return draftHostBannerGraphicsURL
+        case .hostBannerMode:
+            return draftHostBannerMode
+        case .hostBannerGraphicsInterval:
+            return draftHostBannerGraphicsInterval
+        case .hostButtonTooltip:
+            return draftHostButtonTooltip
+        case .hostButtonURL:
+            return draftHostButtonURL
+        case .hostButtonGraphicsURL:
+            return draftHostButtonGraphicsURL
+        }
+    }
+
+    private static func parsedDraftMode(
+        _ value: String?,
+        current: Int?,
+        parser: (String) -> Int?
+    ) -> (effectiveValue: Int?, isInvalid: Bool) {
+        let trimmed = normalized(value)
+        guard !trimmed.isEmpty else { return (current, false) }
+        guard let mode = parser(trimmed) else { return (current, true) }
+        return (mode, false)
+    }
+
+    private static func parsedDraftInt(_ value: String?, current: Int?) -> (effectiveValue: Int?, isInvalid: Bool) {
+        let trimmed = normalized(value)
+        guard !trimmed.isEmpty else { return (current, false) }
+        guard let intValue = Int(trimmed) else { return (current, true) }
+        return (intValue, false)
+    }
+
+    private static func parsedDraftURL(_ value: String?, current: String?) -> (effectiveValue: String, isInvalid: Bool) {
+        let trimmed = normalized(value)
+        guard trimmed.isEmpty || isAbsoluteURL(trimmed) else {
+            return (normalized(current), true)
+        }
+        return (trimmed, false)
+    }
+
+    private static func isAbsoluteURL(_ value: String) -> Bool {
+        guard let components = URLComponents(string: value),
+              components.scheme?.isEmpty == false else {
+            return false
+        }
+        if ["http", "https"].contains(components.scheme?.lowercased() ?? "") {
+            return components.host?.isEmpty == false
+        }
+        return URL(string: value) != nil
+    }
+
+    private static func normalized(_ value: String?) -> String {
+        value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+}
+
 enum TS3ServerSettingsOfficialImpactArea: String, CaseIterable, Codable {
     case availability
     case accessControl
