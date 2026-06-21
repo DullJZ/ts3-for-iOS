@@ -11971,6 +11971,8 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "save-bookmark",
         "copy-invite",
         "copy-full-invite",
+        "copy-server-summary",
+        "copy-server-health",
         "create-channel",
         "view-current-channel-info",
         "message-current-channel",
@@ -15896,6 +15898,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "save-bookmark", group: "Server", action: "Save Current Server as Bookmark", defaultKeys: "Command-Option-B"),
         TS3KeyboardShortcutBinding(actionId: "copy-invite", group: "Server", action: "Copy Invite Link", defaultKeys: "Command-Option-U"),
         TS3KeyboardShortcutBinding(actionId: "copy-full-invite", group: "Server", action: "Copy Full Invite Link", defaultKeys: "Command-Option-Shift-U"),
+        TS3KeyboardShortcutBinding(actionId: "copy-server-summary", group: "Server", action: "Copy Server Information", defaultKeys: "Command-Control-Option-E"),
+        TS3KeyboardShortcutBinding(actionId: "copy-server-health", group: "Server", action: "Copy Server Health Summary", defaultKeys: "Command-Control-Option-H"),
         TS3KeyboardShortcutBinding(actionId: "create-channel", group: "Server", action: "Create Channel", defaultKeys: "Command-Option-Shift-N"),
         TS3KeyboardShortcutBinding(actionId: "view-current-channel-info", group: "Channels", action: "Current Channel Info", defaultKeys: "Command-Option-Shift-I"),
         TS3KeyboardShortcutBinding(actionId: "message-current-channel", group: "Channels", action: "Message Current Channel", defaultKeys: "Command-Option-Shift-M"),
@@ -17196,6 +17200,68 @@ final class TS3AppModel: ObservableObject {
         }
         TS3PlatformSupport.copyToPasteboard(link)
         lastError = nil
+    }
+
+    var currentServerHealthSummary: TS3ServerHealthSummary {
+        TS3ServerHealthSummary(serverInfo: serverInfo, connectionInfo: connectionInfo)
+    }
+
+    func copyCurrentServerSummary() {
+        TS3PlatformSupport.copyToPasteboard(currentServerSummaryClipboard)
+        lastError = nil
+    }
+
+    func copyCurrentServerHealthSummary() {
+        TS3PlatformSupport.copyToPasteboard(currentServerHealthSummary.clipboardSummary)
+        lastError = nil
+    }
+
+    private var currentServerSummaryClipboard: String {
+        let host = serverHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let configuredPort = serverPort.trimmingCharacters(in: .whitespacesAndNewlines)
+        let port = configuredPort.isEmpty ? serverInfo.port.map(String.init) ?? "9987" : configuredPort
+        let address = host.isEmpty ? "unknown" : "\(host):\(port)"
+        let name = serverInfo.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? (host.isEmpty ? "unknown" : host)
+            : serverInfo.name
+        let clients: String
+        if let clientsOnline = serverInfo.clientsOnline, let maxClients = serverInfo.maxClients {
+            clients = "\(clientsOnline)/\(maxClients)"
+        } else if let clientsOnline = serverInfo.clientsOnline {
+            clients = "\(clientsOnline)"
+        } else {
+            clients = "unknown"
+        }
+        let password = serverInfo.passwordProtected ? "protected" : "notProtected"
+        let serverList = serverInfo.isWeblistEnabled.map { $0 ? "listed" : "hidden" } ?? "unknown"
+        return [
+            "server=\(name)",
+            "address=\(address)",
+            "serverId=\(currentServerValue(serverInfo.serverId))",
+            "uniqueId=\(currentServerValue(serverInfo.uniqueIdentifier))",
+            "status=\(currentServerValue(serverInfo.status))",
+            "platform=\(currentServerValue(serverInfo.platform))",
+            "version=\(currentServerValue(serverInfo.version))",
+            "clients=\(clients)",
+            "queryClients=\(currentServerValue(serverInfo.clientsInQuery))",
+            "channels=\(currentServerValue(serverInfo.channelsOnline))",
+            "uptimeSeconds=\(currentServerValue(serverInfo.uptimeSeconds))",
+            "password=\(password)",
+            "serverList=\(serverList)",
+            "codecEncryption=\(serverInfo.codecEncryptionMode.map(TS3CodecEncryptionMode.title(for:)) ?? "unknown")",
+            "health=\(currentServerHealthSummary.overallState.rawValue)"
+        ].joined(separator: " | ")
+    }
+
+    private func currentServerValue(_ value: String?) -> String {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return "unknown"
+        }
+        return value
+    }
+
+    private func currentServerValue<T>(_ value: T?) -> String {
+        value.map { "\($0)" } ?? "unknown"
     }
 
     func saveCurrentConnectionPrivilegeKey(_ key: String) {

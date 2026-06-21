@@ -291,6 +291,19 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("view-server-info", in: model)
                 .disabled(model.state != .connected)
 
+                Menu("common.copy") {
+                    Button("serverInfo.copy") {
+                        model.copyCurrentServerSummary()
+                    }
+                    .ts3KeyboardShortcut("copy-server-summary", in: model)
+
+                    Button("serverInfo.copyHealthSummary") {
+                        model.copyCurrentServerHealthSummary()
+                    }
+                    .ts3KeyboardShortcut("copy-server-health", in: model)
+                }
+                .disabled(model.state != .connected)
+
                 Button("channels.talkRequests") {
                     model.showTalkRequests()
                 }
