@@ -11981,6 +11981,10 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "toggle-current-channel-subscription",
         "set-current-channel-default",
         "whisper-current-channel",
+        "copy-current-channel-summary",
+        "copy-current-channel-name",
+        "copy-current-channel-path",
+        "copy-current-channel-id",
         "copy-current-channel-invite",
         "copy-current-channel-full-invite",
         "delete-current-channel",
@@ -15900,6 +15904,10 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "toggle-current-channel-subscription", group: "Channels", action: "Subscribe / Unsubscribe Current Channel", defaultKeys: "Command-Option-Shift-S"),
         TS3KeyboardShortcutBinding(actionId: "set-current-channel-default", group: "Channels", action: "Set Current Channel as Default", defaultKeys: "Command-Option-Shift-B"),
         TS3KeyboardShortcutBinding(actionId: "whisper-current-channel", group: "Channels", action: "Whisper to Current Channel", defaultKeys: "Command-Option-Shift-W"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-summary", group: "Channels", action: "Copy Current Channel Summary", defaultKeys: "Command-Control-Option-S"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-name", group: "Channels", action: "Copy Current Channel Name", defaultKeys: "Command-Control-Option-N"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-path", group: "Channels", action: "Copy Current Channel Path", defaultKeys: "Command-Control-Option-P"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-id", group: "Channels", action: "Copy Current Channel ID", defaultKeys: "Command-Control-Option-I"),
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-invite", group: "Channels", action: "Copy Current Channel Invite Link", defaultKeys: "Command-Option-Shift-C"),
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-full-invite", group: "Channels", action: "Copy Current Channel Full Invite Link", defaultKeys: "Command-Option-Shift-L"),
         TS3KeyboardShortcutBinding(actionId: "delete-current-channel", group: "Channels", action: "Delete Current Channel", defaultKeys: "Command-Option-Shift-Delete"),
@@ -17240,6 +17248,45 @@ final class TS3AppModel: ObservableObject {
             "Privilege Key: \(snapshot.privilegeKey.isEmpty ? "No" : "Configured")"
         ]
         TS3PlatformSupport.copyToPasteboard(rows.joined(separator: "\n"))
+        lastError = nil
+    }
+
+    func channelClipboardSummary(for channel: TS3ChannelSummary) -> String {
+        var parts = [
+            "channelId=\(channel.id)",
+            "name=\(channel.name)",
+            "path=\(channelPath(for: channel))"
+        ]
+        if let topic = channel.topic, !topic.isEmpty {
+            parts.append("topic=\(topic)")
+        }
+        if let description = channel.description, !description.isEmpty {
+            parts.append("description=\(description)")
+        }
+        if let iconId = channel.iconId, iconId != 0 {
+            parts.append("iconId=\(iconId)")
+        }
+        parts.append("members=\(members(in: channel.id).count)")
+        return parts.joined(separator: " | ")
+    }
+
+    func copyChannelSummary(for channel: TS3ChannelSummary) {
+        TS3PlatformSupport.copyToPasteboard(channelClipboardSummary(for: channel))
+        lastError = nil
+    }
+
+    func copyChannelName(for channel: TS3ChannelSummary) {
+        TS3PlatformSupport.copyToPasteboard(channel.name)
+        lastError = nil
+    }
+
+    func copyChannelPath(for channel: TS3ChannelSummary) {
+        TS3PlatformSupport.copyToPasteboard(channelPath(for: channel))
+        lastError = nil
+    }
+
+    func copyChannelId(for channel: TS3ChannelSummary) {
+        TS3PlatformSupport.copyToPasteboard("\(channel.id)")
         lastError = nil
     }
 
@@ -19602,6 +19649,26 @@ final class TS3AppModel: ObservableObject {
         } else {
             setDefaultChannel(channel)
         }
+    }
+
+    func copyCurrentChannelSummary() {
+        guard let channel = currentChannel else { return }
+        copyChannelSummary(for: channel)
+    }
+
+    func copyCurrentChannelName() {
+        guard let channel = currentChannel else { return }
+        copyChannelName(for: channel)
+    }
+
+    func copyCurrentChannelPath() {
+        guard let channel = currentChannel else { return }
+        copyChannelPath(for: channel)
+    }
+
+    func copyCurrentChannelId() {
+        guard let channel = currentChannel else { return }
+        copyChannelId(for: channel)
     }
 
     func copyCurrentChannelInviteLink() {

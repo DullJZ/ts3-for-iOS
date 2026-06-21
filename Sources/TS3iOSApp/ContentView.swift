@@ -5037,25 +5037,6 @@ struct ChannelRow: View {
         return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
     }
 
-    private var channelClipboardSummary: String {
-        var parts = [
-            "channelId=\(channel.id)",
-            "name=\(channel.name)",
-            "path=\(channelPath)"
-        ]
-        if let topic = channel.topic, !topic.isEmpty {
-            parts.append("topic=\(topic)")
-        }
-        if let description = channel.description, !description.isEmpty {
-            parts.append("description=\(description)")
-        }
-        if let iconId = channel.iconId, iconId != 0 {
-            parts.append("iconId=\(iconId)")
-        }
-        parts.append("members=\(members.count)")
-        return parts.joined(separator: " | ")
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
@@ -5143,13 +5124,13 @@ struct ChannelRow: View {
                         isShowingInfo = true
                     }
                     Button(localized("channelActions.copyChannelSummary")) {
-                        TS3PlatformSupport.copyToPasteboard(channelClipboardSummary)
+                        model.copyChannelSummary(for: channel)
                     }
                     Button(localized("channelActions.copyChannelName")) {
-                        TS3PlatformSupport.copyToPasteboard(channel.name)
+                        model.copyChannelName(for: channel)
                     }
                     Button(localized("channelActions.copyChannelPath")) {
-                        TS3PlatformSupport.copyToPasteboard(channelPath)
+                        model.copyChannelPath(for: channel)
                     }
                     Button(localized("channelActions.copyChannelInviteLink")) {
                         model.copyInviteLink(for: channel)
@@ -5163,7 +5144,7 @@ struct ChannelRow: View {
                         }
                     }
                     Button(localized("channelActions.copyChannelId")) {
-                        TS3PlatformSupport.copyToPasteboard("\(channel.id)")
+                        model.copyChannelId(for: channel)
                     }
                     Button(localized("channelActions.sendChannelMessage")) {
                         isShowingChannelMessage = true

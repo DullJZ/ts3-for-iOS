@@ -212,6 +212,7 @@
 "common.apply" = "Apply";
 "common.connect" = "Connect";
 "common.save" = "Save";
+"common.copy" = "Copy";
 "common.copySummary" = "Copy Summary";
 "common.copyValue" = "Copy Value";
 "common.copyRow" = "Copy Row";

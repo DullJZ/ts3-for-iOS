@@ -212,6 +212,7 @@
 "common.apply" = "应用";
 "common.connect" = "连接";
 "common.save" = "保存";
+"common.copy" = "复制";
 "common.copySummary" = "复制摘要";
 "common.copyValue" = "复制值";
 "common.copyRow" = "复制行";

@@ -198,16 +198,37 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("whisper-current-channel", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
-                Button("channelActions.copyChannelInviteLink") {
-                    model.copyCurrentChannelInviteLink()
-                }
-                .ts3KeyboardShortcut("copy-current-channel-invite", in: model)
-                .disabled(model.state != .connected || model.currentChannel == nil)
+                Menu("common.copy") {
+                    Button("channelActions.copyChannelSummary") {
+                        model.copyCurrentChannelSummary()
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-summary", in: model)
 
-                Button("channelActions.copyFullChannelInviteLink") {
-                    model.copyCurrentChannelFullInviteLink()
+                    Button("channelActions.copyChannelName") {
+                        model.copyCurrentChannelName()
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-name", in: model)
+
+                    Button("channelActions.copyChannelPath") {
+                        model.copyCurrentChannelPath()
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-path", in: model)
+
+                    Button("channelActions.copyChannelId") {
+                        model.copyCurrentChannelId()
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-id", in: model)
+
+                    Button("channelActions.copyChannelInviteLink") {
+                        model.copyCurrentChannelInviteLink()
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-invite", in: model)
+
+                    Button("channelActions.copyFullChannelInviteLink") {
+                        model.copyCurrentChannelFullInviteLink()
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-full-invite", in: model)
                 }
-                .ts3KeyboardShortcut("copy-current-channel-full-invite", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
                 Button("channelActions.deleteChannel") {
