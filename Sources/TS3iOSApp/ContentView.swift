@@ -32930,12 +32930,20 @@ struct ChannelEditorSheet: View {
                             .ts3NumericKeyboard()
                         if !permissionGateSummaryRows.isEmpty {
                             ServerInfoDetailRow(
-                                label: localized("channelEditor.permissionGateSummary"),
-                                value: localized(
-                                    "channelEditor.permissionGateSummaryFormat",
-                                    permissionGateSummary.configuredCount,
-                                    permissionGateSummary.inheritedCount
-                                )
+                                label: permissionGateSummary.includesCurrentValues
+                                    ? localized("channelEditor.permissionGateReviewSummary")
+                                    : localized("channelEditor.permissionGateSummary"),
+                                value: permissionGateSummary.includesCurrentValues
+                                    ? localized(
+                                        "channelEditor.permissionGateReviewSummaryFormat",
+                                        permissionGateSummary.changedCount,
+                                        permissionGateSummary.inheritedCount
+                                    )
+                                    : localized(
+                                        "channelEditor.permissionGateSummaryFormat",
+                                        permissionGateSummary.configuredCount,
+                                        permissionGateSummary.inheritedCount
+                                    )
                             )
                             if let highestGate = permissionGateSummary.highestGate {
                                 ServerInfoDetailRow(
@@ -33463,17 +33471,47 @@ struct ChannelEditorSheet: View {
     }
 
     private var permissionGateSummary: TS3ChannelPermissionGateSummary {
-        TS3ChannelPermissionGateSummary(
+        let editedChannel: TS3ChannelSummary?
+        if case let .edit(channel) = mode {
+            editedChannel = channel
+        } else {
+            editedChannel = nil
+        }
+        return TS3ChannelPermissionGateSummary(
             neededTalkPower: parsedOptionalInt(neededTalkPower),
             neededJoinPower: parsedOptionalInt(neededJoinPower),
             neededSubscribePower: parsedOptionalInt(neededSubscribePower),
             neededModifyPower: parsedOptionalInt(neededModifyPower),
             neededDeletePower: parsedOptionalInt(neededDeletePower),
-            neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower)
+            neededDescriptionViewPower: parsedOptionalInt(neededDescriptionViewPower),
+            currentNeededTalkPower: editedChannel?.neededTalkPower,
+            currentNeededJoinPower: editedChannel?.neededJoinPower,
+            currentNeededSubscribePower: editedChannel?.neededSubscribePower,
+            currentNeededModifyPower: editedChannel?.neededModifyPower,
+            currentNeededDeletePower: editedChannel?.neededDeletePower,
+            currentNeededDescriptionViewPower: editedChannel?.neededDescriptionViewPower,
+            includesCurrentValues: editedChannel != nil
         )
     }
 
     private var permissionGateSummaryRows: [String] {
+        if permissionGateSummary.includesCurrentValues {
+            return permissionGateSummary.gates.map { gate in
+                if gate.currentValue == gate.value {
+                    return localized(
+                        "channelEditor.permissionGateUnchangedFormat",
+                        permissionGateTitle(gate),
+                        permissionGateValueTitle(gate.value)
+                    )
+                }
+                return localized(
+                    "channelEditor.permissionGateChangedFormat",
+                    permissionGateTitle(gate),
+                    permissionGateValueTitle(gate.currentValue),
+                    permissionGateValueTitle(gate.value)
+                )
+            }
+        }
         let configuredRows = permissionGateSummary.configuredGates.map { gate in
             localized(
                 "channelEditor.permissionGateConfiguredFormat",
@@ -33485,6 +33523,10 @@ struct ChannelEditorSheet: View {
             localized("channelEditor.permissionGateInheritedFormat", permissionGateTitle(gate))
         }
         return configuredRows + inheritedRows
+    }
+
+    private func permissionGateValueTitle(_ value: Int?) -> String {
+        value.map(String.init) ?? localized("channelEditor.inherited")
     }
 
     private func permissionGateTitle(_ gate: TS3ChannelPermissionGateSummary.Gate) -> String {

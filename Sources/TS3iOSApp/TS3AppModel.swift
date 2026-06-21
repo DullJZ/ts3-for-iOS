@@ -262,9 +262,11 @@ struct TS3ChannelPermissionGateSummary {
         let id: String
         let title: String
         let value: Int?
+        let currentValue: Int?
     }
 
     let gates: [Gate]
+    let includesCurrentValues: Bool
 
     var configuredGates: [Gate] {
         gates.filter { $0.value != nil }
@@ -278,6 +280,11 @@ struct TS3ChannelPermissionGateSummary {
         configuredGates.max { ($0.value ?? Int.min) < ($1.value ?? Int.min) }
     }
 
+    var changedGates: [Gate] {
+        guard includesCurrentValues else { return [] }
+        return gates.filter { $0.currentValue != $0.value }
+    }
+
     var configuredCount: Int {
         configuredGates.count
     }
@@ -286,19 +293,30 @@ struct TS3ChannelPermissionGateSummary {
         inheritedGates.count
     }
 
+    var changedCount: Int {
+        changedGates.count
+    }
+
     var needsAttention: Bool {
-        inheritedCount > 0
+        inheritedCount > 0 || changedCount > 0
     }
 
     var clipboardSummary: String {
         let configured = configuredGates.map { "\($0.id)=\($0.value ?? 0)" }.joined(separator: ",")
         let inherited = inheritedGates.map(\.id).joined(separator: ",")
-        return [
+        var parts = [
             "configured=\(configured.isEmpty ? "none" : configured)",
             "inherited=\(inherited.isEmpty ? "none" : inherited)",
             "highest=\(highestGate.map { "\($0.id)=\($0.value ?? 0)" } ?? "none")",
             "needsAttention=\(needsAttention ? "true" : "false")"
-        ].joined(separator: " | ")
+        ]
+        if includesCurrentValues {
+            let changed = changedGates.map { "\($0.id):\(valueDescription($0.currentValue))->\(valueDescription($0.value))" }
+                .joined(separator: ",")
+            parts.append("changed=\(changedCount)")
+            parts.append("changedGates=\(changed.isEmpty ? "none" : changed)")
+        }
+        return parts.joined(separator: " | ")
     }
 
     init(
@@ -307,16 +325,28 @@ struct TS3ChannelPermissionGateSummary {
         neededSubscribePower: Int?,
         neededModifyPower: Int?,
         neededDeletePower: Int?,
-        neededDescriptionViewPower: Int?
+        neededDescriptionViewPower: Int?,
+        currentNeededTalkPower: Int? = nil,
+        currentNeededJoinPower: Int? = nil,
+        currentNeededSubscribePower: Int? = nil,
+        currentNeededModifyPower: Int? = nil,
+        currentNeededDeletePower: Int? = nil,
+        currentNeededDescriptionViewPower: Int? = nil,
+        includesCurrentValues: Bool = false
     ) {
+        self.includesCurrentValues = includesCurrentValues
         gates = [
-            Gate(id: "i_channel_needed_talk_power", title: "Needed Talk Power", value: neededTalkPower),
-            Gate(id: "i_channel_needed_join_power", title: "Needed Join Power", value: neededJoinPower),
-            Gate(id: "i_channel_needed_subscribe_power", title: "Needed Subscribe Power", value: neededSubscribePower),
-            Gate(id: "i_channel_needed_modify_power", title: "Needed Modify Power", value: neededModifyPower),
-            Gate(id: "i_channel_needed_delete_power", title: "Needed Delete Power", value: neededDeletePower),
-            Gate(id: "i_channel_needed_description_view_power", title: "Needed Description View Power", value: neededDescriptionViewPower)
+            Gate(id: "i_channel_needed_talk_power", title: "Needed Talk Power", value: neededTalkPower, currentValue: currentNeededTalkPower),
+            Gate(id: "i_channel_needed_join_power", title: "Needed Join Power", value: neededJoinPower, currentValue: currentNeededJoinPower),
+            Gate(id: "i_channel_needed_subscribe_power", title: "Needed Subscribe Power", value: neededSubscribePower, currentValue: currentNeededSubscribePower),
+            Gate(id: "i_channel_needed_modify_power", title: "Needed Modify Power", value: neededModifyPower, currentValue: currentNeededModifyPower),
+            Gate(id: "i_channel_needed_delete_power", title: "Needed Delete Power", value: neededDeletePower, currentValue: currentNeededDeletePower),
+            Gate(id: "i_channel_needed_description_view_power", title: "Needed Description View Power", value: neededDescriptionViewPower, currentValue: currentNeededDescriptionViewPower)
         ]
+    }
+
+    private func valueDescription(_ value: Int?) -> String {
+        value.map(String.init) ?? "inherited"
     }
 }
 

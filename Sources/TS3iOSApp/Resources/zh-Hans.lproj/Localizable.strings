@@ -785,10 +785,14 @@
 "channelEditor.permissionGates" = "权限门槛";
 "channelEditor.permissionGateSummary" = "权限门槛摘要";
 "channelEditor.permissionGateSummaryFormat" = "已设置 %d 项，继承 %d 项";
+"channelEditor.permissionGateReviewSummary" = "权限门槛复核";
+"channelEditor.permissionGateReviewSummaryFormat" = "%d 项变化，%d 项继承";
 "channelEditor.highestPermissionGate" = "最高权限门槛";
 "channelEditor.permissionGateValueFormat" = "%@：%d";
 "channelEditor.permissionGateConfiguredFormat" = "%@ 已设置为 %d。";
 "channelEditor.permissionGateInheritedFormat" = "%@ 未在此草稿中设置；仍由服务器或继承后的有效值控制。";
+"channelEditor.permissionGateChangedFormat" = "%@：%@ -> %@";
+"channelEditor.permissionGateUnchangedFormat" = "%@：%@";
 "channelEditor.copyPermissionGateSummary" = "复制权限门槛摘要";
 "channelEditor.deleteDelaySeconds" = "删除延迟秒数";
 "channelEditor.limits" = "限制";

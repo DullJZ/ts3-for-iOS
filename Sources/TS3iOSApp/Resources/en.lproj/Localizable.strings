@@ -785,10 +785,14 @@
 "channelEditor.permissionGates" = "Permission Gates";
 "channelEditor.permissionGateSummary" = "Permission Gate Summary";
 "channelEditor.permissionGateSummaryFormat" = "%d set, %d inherited";
+"channelEditor.permissionGateReviewSummary" = "Permission Gate Review";
+"channelEditor.permissionGateReviewSummaryFormat" = "%d changed, %d inherited";
 "channelEditor.highestPermissionGate" = "Highest Permission Gate";
 "channelEditor.permissionGateValueFormat" = "%@: %d";
 "channelEditor.permissionGateConfiguredFormat" = "%@ is set to %d.";
 "channelEditor.permissionGateInheritedFormat" = "%@ is not set in this draft; the server or inherited effective value remains in control.";
+"channelEditor.permissionGateChangedFormat" = "%@: %@ -> %@";
+"channelEditor.permissionGateUnchangedFormat" = "%@: %@";
 "channelEditor.copyPermissionGateSummary" = "Copy Permission Gate Summary";
 "channelEditor.deleteDelaySeconds" = "Delete Delay Seconds";
 "channelEditor.limits" = "Limits";

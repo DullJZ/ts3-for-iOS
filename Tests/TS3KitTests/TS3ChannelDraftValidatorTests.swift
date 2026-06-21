@@ -345,6 +345,41 @@ final class TS3ChannelDraftValidatorTests: XCTestCase {
         )
     }
 
+    func testChannelPermissionGateSummaryTracksCurrentValueChanges() {
+        let summary = TS3ChannelPermissionGateSummary(
+            neededTalkPower: 25,
+            neededJoinPower: nil,
+            neededSubscribePower: 5,
+            neededModifyPower: nil,
+            neededDeletePower: 40,
+            neededDescriptionViewPower: nil,
+            currentNeededTalkPower: 20,
+            currentNeededJoinPower: nil,
+            currentNeededSubscribePower: 5,
+            currentNeededModifyPower: 45,
+            currentNeededDeletePower: nil,
+            currentNeededDescriptionViewPower: nil,
+            includesCurrentValues: true
+        )
+
+        XCTAssertEqual(summary.configuredCount, 3)
+        XCTAssertEqual(summary.inheritedCount, 3)
+        XCTAssertEqual(summary.changedCount, 3)
+        XCTAssertEqual(
+            summary.changedGates.map(\.id),
+            [
+                "i_channel_needed_talk_power",
+                "i_channel_needed_modify_power",
+                "i_channel_needed_delete_power"
+            ]
+        )
+        XCTAssertTrue(summary.needsAttention)
+        XCTAssertEqual(
+            summary.clipboardSummary,
+            "configured=i_channel_needed_talk_power=25,i_channel_needed_subscribe_power=5,i_channel_needed_delete_power=40 | inherited=i_channel_needed_join_power,i_channel_needed_modify_power,i_channel_needed_description_view_power | highest=i_channel_needed_delete_power=40 | needsAttention=true | changed=3 | changedGates=i_channel_needed_talk_power:20->25,i_channel_needed_modify_power:45->inherited,i_channel_needed_delete_power:inherited->40"
+        )
+    }
+
     func testChannelEditorImpactSummaryCountsAreasValidationAndCodecWarnings() {
         let summary = TS3ChannelEditorImpactSummary(
             areaChangeCounts: [
