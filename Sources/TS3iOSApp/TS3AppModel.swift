@@ -612,6 +612,17 @@ struct TS3ChannelDeleteImpactSummary {
     }
 }
 
+enum TS3CurrentChannelDeleteConfirmation: String, Identifiable {
+    case delete
+    case forceDelete
+
+    var id: String { rawValue }
+
+    var force: Bool {
+        self == .forceDelete
+    }
+}
+
 enum TS3ChannelDraftValidator {
     static func validationMessages(
         name: String,
@@ -11971,6 +11982,8 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "whisper-current-channel",
         "copy-current-channel-invite",
         "copy-current-channel-full-invite",
+        "delete-current-channel",
+        "force-delete-current-channel",
         "subscribe-all-channels",
         "unsubscribe-all-channels",
         "view-server-logs",
@@ -15887,6 +15900,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "whisper-current-channel", group: "Channels", action: "Whisper to Current Channel", defaultKeys: "Command-Option-Shift-W"),
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-invite", group: "Channels", action: "Copy Current Channel Invite Link", defaultKeys: "Command-Option-Shift-C"),
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-full-invite", group: "Channels", action: "Copy Current Channel Full Invite Link", defaultKeys: "Command-Option-Shift-L"),
+        TS3KeyboardShortcutBinding(actionId: "delete-current-channel", group: "Channels", action: "Delete Current Channel", defaultKeys: "Command-Option-Shift-Delete"),
+        TS3KeyboardShortcutBinding(actionId: "force-delete-current-channel", group: "Channels", action: "Force Delete Current Channel", defaultKeys: "Command-Control-Option-Shift-Delete"),
         TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
         TS3KeyboardShortcutBinding(actionId: "unsubscribe-all-channels", group: "Server", action: "Unsubscribe All Channels", defaultKeys: "Command-Option-Shift-X"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
@@ -15925,6 +15940,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingCurrentChannelMove = false
     @Published var isShowingCurrentChannelDefaultPassword = false
     @Published var isShowingCurrentChannelFullInvitePassword = false
+    @Published var currentChannelDeleteConfirmation: TS3CurrentChannelDeleteConfirmation?
     @Published var isShowingGroupManagement = false
     @Published var isShowingSubscriptionPresets = false
     @Published var isShowingContacts = false
@@ -16353,6 +16369,10 @@ final class TS3AppModel: ObservableObject {
                 if $0.isCurrentUser != $1.isCurrentUser { return $0.isCurrentUser && !$1.isCurrentUser }
                 return $0.nickname.localizedCaseInsensitiveCompare($1.nickname) == .orderedAscending
             }
+    }
+
+    func directChildChannelCount(for channel: TS3ChannelSummary) -> Int {
+        channels.filter { $0.parentId == channel.id }.count
     }
 
     func channelPath(for channel: TS3ChannelSummary) -> String {
@@ -19587,6 +19607,16 @@ final class TS3AppModel: ObservableObject {
         } else {
             copyFullInviteLink(for: channel)
         }
+    }
+
+    func confirmCurrentChannelDelete(force: Bool) {
+        guard currentChannel != nil else { return }
+        currentChannelDeleteConfirmation = force ? .forceDelete : .delete
+    }
+
+    func deleteCurrentChannel(force: Bool) {
+        guard let channel = currentChannel else { return }
+        deleteChannel(channel, force: force)
     }
 
     func showTemporaryServerPasswords() {

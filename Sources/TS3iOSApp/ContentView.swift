@@ -204,8 +204,40 @@ struct ContentView: View {
                     .environmentObject(model)
             }
         }
+        .alert(item: $model.currentChannelDeleteConfirmation) { confirmation in
+            currentChannelDeleteAlert(confirmation)
+        }
         .background(TS3WhisperShortcutCaptureView(model: model))
         .ts3InlineNavigationTitle()
+    }
+
+    private func currentChannelDeleteAlert(_ confirmation: TS3CurrentChannelDeleteConfirmation) -> Alert {
+        let titleKey = confirmation.force ? "channelActions.forceDeleteChannel" : "channelActions.deleteChannel"
+        guard let channel = model.currentChannel else {
+            return Alert(
+                title: Text(NSLocalizedString(titleKey, comment: "")),
+                dismissButton: .default(Text(NSLocalizedString("common.done", comment: "")))
+            )
+        }
+
+        let summary = TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: model.members(in: channel.id).count,
+            childChannelCount: model.directChildChannelCount(for: channel),
+            force: confirmation.force
+        )
+        let destructiveTitle = confirmation.force
+            ? NSLocalizedString("channelActions.forceDelete", comment: "")
+            : NSLocalizedString("common.delete", comment: "")
+
+        return Alert(
+            title: Text(NSLocalizedString(titleKey, comment: "")),
+            message: Text(channelDeleteImpactText(channel: channel, summary: summary)),
+            primaryButton: .destructive(Text(destructiveTitle)) {
+                model.deleteCurrentChannel(force: confirmation.force)
+            },
+            secondaryButton: .cancel()
+        )
     }
 }
 
@@ -499,6 +531,53 @@ extension View {
             self
         }
     }
+}
+
+private func localizedString(_ key: String, _ arguments: CVarArg...) -> String {
+    let format = NSLocalizedString(key, comment: "")
+    return arguments.isEmpty ? format : String(format: format, locale: Locale.current, arguments: arguments)
+}
+
+private func channelDeleteImpactText(
+    channel: TS3ChannelSummary,
+    summary: TS3ChannelDeleteImpactSummary
+) -> String {
+    var lines = [
+        channel.name,
+        localizedString(
+            "channelActions.deleteImpactFormat",
+            summary.affectedChannelCount,
+            summary.reportedFamilyClientCount
+        )
+    ]
+    if summary.force {
+        lines.append(localizedString("channelActions.deleteImpactForce"))
+    }
+    if summary.childChannelCount > 0 {
+        lines.append(localizedString("channelActions.deleteImpactChildChannelsFormat", summary.childChannelCount))
+    }
+    if channel.isCurrent {
+        lines.append(localizedString("channelActions.deleteImpactCurrent"))
+    }
+    if channel.isDefault {
+        lines.append(localizedString("channelActions.deleteImpactDefault"))
+    }
+    if channel.isPermanent {
+        lines.append(localizedString("channelActions.deleteImpactPermanent"))
+    }
+    if channel.isPasswordProtected {
+        lines.append(localizedString("channelActions.deleteImpactPassword"))
+    }
+    if summary.hasFileRepository {
+        lines.append(localizedString("channelActions.deleteImpactFiles"))
+    }
+    if let deleteDelaySeconds = channel.deleteDelaySeconds {
+        lines.append(localizedString("channelActions.deleteImpactDelayFormat", deleteDelaySeconds))
+    }
+    if let neededDeletePower = channel.neededDeletePower {
+        lines.append(localizedString("channelActions.deleteImpactPermissionFormat", neededDeletePower))
+    }
+    return lines.joined(separator: "\n")
 }
 
 struct KeyboardShortcutsSheet: View {
@@ -5195,7 +5274,7 @@ struct ChannelRow: View {
         .alert(isPresented: $isConfirmingDelete) {
             Alert(
                 title: Text(localized("channelActions.deleteChannel")),
-                message: Text(channelDeleteImpactText(channelDeleteImpactSummary)),
+                message: Text(channelDeleteImpactText(channel: channel, summary: channelDeleteImpactSummary)),
                 primaryButton: .destructive(Text(NSLocalizedString("common.delete", comment: ""))) {
                     model.deleteChannel(channel, force: false)
                 },
@@ -5206,7 +5285,7 @@ struct ChannelRow: View {
             EmptyView().alert(isPresented: $isConfirmingForcedDelete) {
                 Alert(
                     title: Text(localized("channelActions.forceDeleteChannel")),
-                    message: Text(channelDeleteImpactText(forcedChannelDeleteImpactSummary)),
+                    message: Text(channelDeleteImpactText(channel: channel, summary: forcedChannelDeleteImpactSummary)),
                     primaryButton: .destructive(Text(localized("channelActions.forceDelete"))) {
                         model.deleteChannel(channel, force: true)
                     },
@@ -5232,45 +5311,6 @@ struct ChannelRow: View {
             childChannelCount: childChannelCount,
             force: true
         )
-    }
-
-    private func channelDeleteImpactText(_ summary: TS3ChannelDeleteImpactSummary) -> String {
-        var lines = [
-            channel.name,
-            localized(
-                "channelActions.deleteImpactFormat",
-                summary.affectedChannelCount,
-                summary.reportedFamilyClientCount
-            )
-        ]
-        if summary.force {
-            lines.append(localized("channelActions.deleteImpactForce"))
-        }
-        if summary.childChannelCount > 0 {
-            lines.append(localized("channelActions.deleteImpactChildChannelsFormat", summary.childChannelCount))
-        }
-        if channel.isCurrent {
-            lines.append(localized("channelActions.deleteImpactCurrent"))
-        }
-        if channel.isDefault {
-            lines.append(localized("channelActions.deleteImpactDefault"))
-        }
-        if channel.isPermanent {
-            lines.append(localized("channelActions.deleteImpactPermanent"))
-        }
-        if channel.isPasswordProtected {
-            lines.append(localized("channelActions.deleteImpactPassword"))
-        }
-        if summary.hasFileRepository {
-            lines.append(localized("channelActions.deleteImpactFiles"))
-        }
-        if let deleteDelaySeconds = channel.deleteDelaySeconds {
-            lines.append(localized("channelActions.deleteImpactDelayFormat", deleteDelaySeconds))
-        }
-        if let neededDeletePower = channel.neededDeletePower {
-            lines.append(localized("channelActions.deleteImpactPermissionFormat", neededDeletePower))
-        }
-        return lines.joined(separator: "\n")
     }
 
     private var channelLimitText: String? {

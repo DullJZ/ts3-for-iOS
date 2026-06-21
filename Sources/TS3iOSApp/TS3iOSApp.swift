@@ -204,6 +204,18 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("copy-current-channel-full-invite", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
+                Button("channelActions.deleteChannel") {
+                    model.confirmCurrentChannelDelete(force: false)
+                }
+                .ts3KeyboardShortcut("delete-current-channel", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.forceDeleteChannel") {
+                    model.confirmCurrentChannelDelete(force: true)
+                }
+                .ts3KeyboardShortcut("force-delete-current-channel", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
                 Button("serverTools.subscribeAllChannels") {
                     model.setAllChannelsSubscribed(true)
                 }
