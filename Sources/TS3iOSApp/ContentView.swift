@@ -5192,13 +5192,13 @@ struct ChannelRow: View {
                         isConfirmingDelete = true
                     }
                     Button(localized("channelActions.copyDeleteImpact")) {
-                        TS3PlatformSupport.copyToPasteboard(channelDeleteImpactSummary.clipboardSummary)
+                        model.copyChannelDeleteImpact(for: channel, force: false)
                     }
                     Button(localized("channelActions.forceDeleteChannel")) {
                         isConfirmingForcedDelete = true
                     }
                     Button(localized("channelActions.copyForceDeleteImpact")) {
-                        TS3PlatformSupport.copyToPasteboard(forcedChannelDeleteImpactSummary.clipboardSummary)
+                        model.copyChannelDeleteImpact(for: channel, force: true)
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")

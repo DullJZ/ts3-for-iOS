@@ -11987,6 +11987,8 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "copy-current-channel-id",
         "copy-current-channel-invite",
         "copy-current-channel-full-invite",
+        "copy-current-channel-delete-impact",
+        "copy-current-channel-force-delete-impact",
         "delete-current-channel",
         "force-delete-current-channel",
         "subscribe-all-channels",
@@ -15910,6 +15912,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-id", group: "Channels", action: "Copy Current Channel ID", defaultKeys: "Command-Control-Option-I"),
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-invite", group: "Channels", action: "Copy Current Channel Invite Link", defaultKeys: "Command-Option-Shift-C"),
         TS3KeyboardShortcutBinding(actionId: "copy-current-channel-full-invite", group: "Channels", action: "Copy Current Channel Full Invite Link", defaultKeys: "Command-Option-Shift-L"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-delete-impact", group: "Channels", action: "Copy Current Channel Delete Impact", defaultKeys: "Command-Control-Option-D"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-force-delete-impact", group: "Channels", action: "Copy Current Channel Force Delete Impact", defaultKeys: "Command-Control-Option-Shift-D"),
         TS3KeyboardShortcutBinding(actionId: "delete-current-channel", group: "Channels", action: "Delete Current Channel", defaultKeys: "Command-Option-Shift-Delete"),
         TS3KeyboardShortcutBinding(actionId: "force-delete-current-channel", group: "Channels", action: "Force Delete Current Channel", defaultKeys: "Command-Control-Option-Shift-Delete"),
         TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
@@ -17287,6 +17291,25 @@ final class TS3AppModel: ObservableObject {
 
     func copyChannelId(for channel: TS3ChannelSummary) {
         TS3PlatformSupport.copyToPasteboard("\(channel.id)")
+        lastError = nil
+    }
+
+    func channelDeleteImpactSummary(
+        for channel: TS3ChannelSummary,
+        force: Bool
+    ) -> TS3ChannelDeleteImpactSummary {
+        TS3ChannelDeleteImpactSummary(
+            channel: channel,
+            memberCount: members(in: channel.id).count,
+            childChannelCount: directChildChannelCount(for: channel),
+            force: force
+        )
+    }
+
+    func copyChannelDeleteImpact(for channel: TS3ChannelSummary, force: Bool) {
+        TS3PlatformSupport.copyToPasteboard(
+            channelDeleteImpactSummary(for: channel, force: force).clipboardSummary
+        )
         lastError = nil
     }
 
@@ -19669,6 +19692,11 @@ final class TS3AppModel: ObservableObject {
     func copyCurrentChannelId() {
         guard let channel = currentChannel else { return }
         copyChannelId(for: channel)
+    }
+
+    func copyCurrentChannelDeleteImpact(force: Bool) {
+        guard let channel = currentChannel else { return }
+        copyChannelDeleteImpact(for: channel, force: force)
     }
 
     func copyCurrentChannelInviteLink() {

@@ -228,6 +228,16 @@ struct TS3iOSApp: App {
                         model.copyCurrentChannelFullInviteLink()
                     }
                     .ts3KeyboardShortcut("copy-current-channel-full-invite", in: model)
+
+                    Button("channelActions.copyDeleteImpact") {
+                        model.copyCurrentChannelDeleteImpact(force: false)
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-delete-impact", in: model)
+
+                    Button("channelActions.copyForceDeleteImpact") {
+                        model.copyCurrentChannelDeleteImpact(force: true)
+                    }
+                    .ts3KeyboardShortcut("copy-current-channel-force-delete-impact", in: model)
                 }
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
