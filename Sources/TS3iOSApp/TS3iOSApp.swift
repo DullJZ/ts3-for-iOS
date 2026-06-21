@@ -192,6 +192,18 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("whisper-current-channel", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
+                Button("channelActions.copyChannelInviteLink") {
+                    model.copyCurrentChannelInviteLink()
+                }
+                .ts3KeyboardShortcut("copy-current-channel-invite", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
+                Button("channelActions.copyFullChannelInviteLink") {
+                    model.copyCurrentChannelFullInviteLink()
+                }
+                .ts3KeyboardShortcut("copy-current-channel-full-invite", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil)
+
                 Button("serverTools.subscribeAllChannels") {
                     model.setAllChannelsSubscribed(true)
                 }

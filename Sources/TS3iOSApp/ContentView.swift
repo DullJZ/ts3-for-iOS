@@ -13,6 +13,7 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject private var model: TS3AppModel
     @State private var currentChannelDefaultPassword = ""
+    @State private var currentChannelFullInvitePassword = ""
 
     var body: some View {
         NavigationView {
@@ -136,6 +137,20 @@ struct ContentView: View {
                     DefaultChannelPasswordSheet(
                         channel: channel,
                         password: $currentChannelDefaultPassword
+                    )
+                    .environmentObject(model)
+                }
+            }
+            .sheet(
+                isPresented: $model.isShowingCurrentChannelFullInvitePassword,
+                onDismiss: {
+                    currentChannelFullInvitePassword = ""
+                }
+            ) {
+                if let channel = model.currentChannel {
+                    FullChannelInvitePasswordSheet(
+                        channel: channel,
+                        password: $currentChannelFullInvitePassword
                     )
                     .environmentObject(model)
                 }

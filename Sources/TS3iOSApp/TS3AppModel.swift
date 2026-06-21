@@ -11969,6 +11969,8 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "toggle-current-channel-subscription",
         "set-current-channel-default",
         "whisper-current-channel",
+        "copy-current-channel-invite",
+        "copy-current-channel-full-invite",
         "subscribe-all-channels",
         "unsubscribe-all-channels",
         "view-server-logs",
@@ -15883,6 +15885,8 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "toggle-current-channel-subscription", group: "Channels", action: "Subscribe / Unsubscribe Current Channel", defaultKeys: "Command-Option-Shift-S"),
         TS3KeyboardShortcutBinding(actionId: "set-current-channel-default", group: "Channels", action: "Set Current Channel as Default", defaultKeys: "Command-Option-Shift-B"),
         TS3KeyboardShortcutBinding(actionId: "whisper-current-channel", group: "Channels", action: "Whisper to Current Channel", defaultKeys: "Command-Option-Shift-W"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-invite", group: "Channels", action: "Copy Current Channel Invite Link", defaultKeys: "Command-Option-Shift-C"),
+        TS3KeyboardShortcutBinding(actionId: "copy-current-channel-full-invite", group: "Channels", action: "Copy Current Channel Full Invite Link", defaultKeys: "Command-Option-Shift-L"),
         TS3KeyboardShortcutBinding(actionId: "subscribe-all-channels", group: "Server", action: "Subscribe All Channels", defaultKeys: "Command-Option-Shift-A"),
         TS3KeyboardShortcutBinding(actionId: "unsubscribe-all-channels", group: "Server", action: "Unsubscribe All Channels", defaultKeys: "Command-Option-Shift-X"),
         TS3KeyboardShortcutBinding(actionId: "view-server-logs", group: "Server", action: "View Server Logs", defaultKeys: "Command-Shift-G"),
@@ -15920,6 +15924,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingCurrentChannelEditor = false
     @Published var isShowingCurrentChannelMove = false
     @Published var isShowingCurrentChannelDefaultPassword = false
+    @Published var isShowingCurrentChannelFullInvitePassword = false
     @Published var isShowingGroupManagement = false
     @Published var isShowingSubscriptionPresets = false
     @Published var isShowingContacts = false
@@ -19567,6 +19572,20 @@ final class TS3AppModel: ObservableObject {
             isShowingCurrentChannelDefaultPassword = true
         } else {
             setDefaultChannel(channel)
+        }
+    }
+
+    func copyCurrentChannelInviteLink() {
+        guard let channel = currentChannel else { return }
+        copyInviteLink(for: channel)
+    }
+
+    func copyCurrentChannelFullInviteLink() {
+        guard let channel = currentChannel else { return }
+        if channel.isPasswordProtected {
+            isShowingCurrentChannelFullInvitePassword = true
+        } else {
+            copyFullInviteLink(for: channel)
         }
     }
 
