@@ -1353,6 +1353,7 @@
 "serverSettings.welcomeMessage" = "欢迎消息";
 "serverSettings.maxClients" = "最大用户数";
 "serverSettings.reservedSlots" = "保留槽位";
+"serverSettings.temporaryChannelDeleteDelayDefault" = "临时频道默认删除延迟";
 "serverSettings.password" = "密码";
 "serverSettings.clearPassword" = "清除服务器密码";
 "serverSettings.newPassword" = "新服务器密码";

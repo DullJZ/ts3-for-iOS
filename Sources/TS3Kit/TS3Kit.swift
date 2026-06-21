@@ -73,6 +73,8 @@ public struct TS3ServerInfo {
     /// The number of connected ServerQuery clients.
     public let clientsInQuery: Int?
     public let reservedSlots: Int?
+    /// The default delete delay for newly created temporary channels, in seconds.
+    public let temporaryChannelDeleteDelayDefaultSeconds: Int?
     public let channelsOnline: Int?
     public let uptimeSeconds: Int?
     public let welcomeMessage: String?
@@ -202,6 +204,7 @@ public struct TS3ServerInfo {
         port: Int? = nil,
         clientsInQuery: Int? = nil,
         reservedSlots: Int?,
+        temporaryChannelDeleteDelayDefaultSeconds: Int? = nil,
         channelsOnline: Int?,
         uptimeSeconds: Int?,
         welcomeMessage: String?,
@@ -277,6 +280,7 @@ public struct TS3ServerInfo {
         self.port = port
         self.clientsInQuery = clientsInQuery
         self.reservedSlots = reservedSlots
+        self.temporaryChannelDeleteDelayDefaultSeconds = temporaryChannelDeleteDelayDefaultSeconds
         self.channelsOnline = channelsOnline
         self.uptimeSeconds = uptimeSeconds
         self.welcomeMessage = welcomeMessage
@@ -432,6 +436,7 @@ public struct TS3ServerEdit {
     public var welcomeMessage: String?
     public var maxClients: Int?
     public var reservedSlots: Int?
+    public var temporaryChannelDeleteDelayDefaultSeconds: Int?
     public var password: String?
     public var hostMessage: String?
     public var hostMessageMode: Int?
@@ -482,6 +487,7 @@ public struct TS3ServerEdit {
         welcomeMessage: String? = nil,
         maxClients: Int? = nil,
         reservedSlots: Int? = nil,
+        temporaryChannelDeleteDelayDefaultSeconds: Int? = nil,
         password: String? = nil,
         hostMessage: String? = nil,
         hostMessageMode: Int? = nil,
@@ -530,6 +536,7 @@ public struct TS3ServerEdit {
         self.welcomeMessage = welcomeMessage
         self.maxClients = maxClients
         self.reservedSlots = reservedSlots
+        self.temporaryChannelDeleteDelayDefaultSeconds = temporaryChannelDeleteDelayDefaultSeconds
         self.password = password
         self.hostMessage = hostMessage
         self.hostMessageMode = hostMessageMode

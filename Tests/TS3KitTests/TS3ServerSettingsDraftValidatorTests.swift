@@ -54,9 +54,18 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
     }
 
     func testServerSettingsDraftValidatorKeepsNumericDraftValidation() {
-        let messages = validationMessages(port: "voice")
+        let messages = validationMessages(
+            port: "voice",
+            temporaryChannelDeleteDelayDefaultSeconds: "soon"
+        )
 
-        XCTAssertEqual(messages, ["Server port must be numeric."])
+        XCTAssertEqual(
+            messages,
+            [
+                "Server port must be numeric.",
+                "Temporary channel delete delay default must be numeric."
+            ]
+        )
     }
 
     func testServerSettingsDraftValidatorRejectsInvalidPluginBlock() {
@@ -221,7 +230,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             areaFieldCounts: [
                 .general: 11,
                 .hostBranding: 9,
-                .limitsAndSecurity: 9,
+                .limitsAndSecurity: 10,
                 .defaultGroups: 3,
                 .antiFloodAndComplaints: 9,
                 .serverLogOptions: 6
@@ -234,7 +243,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             validationIssueCount: 2
         )
 
-        XCTAssertEqual(summary.trackedFieldCount, 47)
+        XCTAssertEqual(summary.trackedFieldCount, 48)
         XCTAssertEqual(summary.changedFieldCount, 6)
         XCTAssertEqual(summary.trackedAreaCount, 6)
         XCTAssertEqual(summary.totalAreaCount, 6)
@@ -244,7 +253,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         XCTAssertTrue(summary.needsAttention)
         XCTAssertEqual(
             summary.clipboardSummary,
-            "trackedFields=47 | changedFields=6 | trackedAreas=6/6 | missingTrackedAreas=0 | changedAreas=3 | validationIssues=2 | areas=general:11/2,hostBranding:9/0,limitsAndSecurity:9/1,defaultGroups:3/0,antiFloodAndComplaints:9/0,serverLogOptions:6/3 | needsAttention=true"
+            "trackedFields=48 | changedFields=6 | trackedAreas=6/6 | missingTrackedAreas=0 | changedAreas=3 | validationIssues=2 | areas=general:11/2,hostBranding:9/0,limitsAndSecurity:10/1,defaultGroups:3/0,antiFloodAndComplaints:9/0,serverLogOptions:6/3 | needsAttention=true"
         )
     }
 
@@ -578,6 +587,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
         autostart: String? = nil,
         maxClients: String = "32",
         reservedSlots: String = "2",
+        temporaryChannelDeleteDelayDefaultSeconds: String = "",
         hostMessageMode: String = "0",
         hostBannerURL: String = "",
         hostBannerGraphicsURL: String = "",
@@ -621,6 +631,7 @@ final class TS3ServerSettingsDraftValidatorTests: XCTestCase {
             autostart: autostart,
             maxClients: maxClients,
             reservedSlots: reservedSlots,
+            temporaryChannelDeleteDelayDefaultSeconds: temporaryChannelDeleteDelayDefaultSeconds,
             hostMessageMode: hostMessageMode,
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,

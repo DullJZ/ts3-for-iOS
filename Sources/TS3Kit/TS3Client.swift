@@ -2586,6 +2586,7 @@ extension TS3Client {
             port: intValue("virtualserver_port"),
             clientsInQuery: intValue("virtualserver_queryclientsonline"),
             reservedSlots: intValue("virtualserver_reserved_slots"),
+            temporaryChannelDeleteDelayDefaultSeconds: intValue("virtualserver_channel_temp_delete_delay_default"),
             channelsOnline: intValue("virtualserver_channelsonline"),
             uptimeSeconds: intValue("virtualserver_uptime"),
             welcomeMessage: command.get("virtualserver_welcomemessage")?.value,
@@ -3840,6 +3841,7 @@ extension TS3Client {
         appendParameter(&params, name: "virtualserver_welcomemessage", value: edit.welcomeMessage)
         appendParameter(&params, name: "virtualserver_maxclients", value: edit.maxClients.map(String.init))
         appendParameter(&params, name: "virtualserver_reserved_slots", value: edit.reservedSlots.map(String.init))
+        appendParameter(&params, name: "virtualserver_channel_temp_delete_delay_default", value: edit.temporaryChannelDeleteDelayDefaultSeconds.map(String.init))
         appendParameter(&params, name: "virtualserver_password", value: edit.password)
         appendParameter(&params, name: "virtualserver_hostmessage", value: edit.hostMessage)
         appendParameter(&params, name: "virtualserver_hostmessage_mode", value: edit.hostMessageMode.map(String.init))

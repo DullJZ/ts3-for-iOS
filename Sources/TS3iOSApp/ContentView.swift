@@ -19493,6 +19493,7 @@ struct ServerSettingsEditorSheet: View {
         var welcomeMessage: String
         var maxClients: String
         var reservedSlots: String
+        var temporaryChannelDeleteDelayDefaultSeconds: String?
         var clearPassword: Bool
         var password: String
         var hostMessage: String
@@ -19545,6 +19546,7 @@ struct ServerSettingsEditorSheet: View {
     @State private var welcomeMessage = ""
     @State private var maxClients = ""
     @State private var reservedSlots = ""
+    @State private var temporaryChannelDeleteDelayDefaultSeconds = ""
     @State private var password = ""
     @State private var clearPassword = false
     @State private var hostMessage = ""
@@ -19836,6 +19838,9 @@ struct ServerSettingsEditorSheet: View {
 
                 Section {
                     DisclosureGroup(isExpanded: $isShowingLimitSettings) {
+                        TextField(localized("serverSettings.temporaryChannelDeleteDelayDefault"), text: $temporaryChannelDeleteDelayDefaultSeconds)
+                            .ts3NumericKeyboard()
+                            .ts3PlainTextField()
                         TextField(localized("serverSettings.downloadQuotaBytes"), text: $downloadQuota)
                             .ts3NumericKeyboard()
                             .ts3PlainTextField()
@@ -20153,6 +20158,7 @@ struct ServerSettingsEditorSheet: View {
             welcomeMessage: welcomeMessage,
             maxClients: maxClients,
             reservedSlots: reservedSlots,
+            temporaryChannelDeleteDelayDefaultSeconds: temporaryChannelDeleteDelayDefaultSeconds,
             clearPassword: clearPassword,
             password: password,
             hostMessage: hostMessage,
@@ -20437,7 +20443,7 @@ struct ServerSettingsEditorSheet: View {
         [
             .general: 11,
             .hostBranding: 9,
-            .limitsAndSecurity: 9,
+            .limitsAndSecurity: 10,
             .defaultGroups: 3,
             .antiFloodAndComplaints: 9,
             .serverLogOptions: 6
@@ -20476,6 +20482,7 @@ struct ServerSettingsEditorSheet: View {
             changeRow(label: localized("serverSettings.autostart"), current: model.serverInfo.isAutoStartEnabled, draft: Self.boolDraftValue(draft.autostart)),
             optionalChangeRow(label: localized("serverSettings.maxClients"), current: model.serverInfo.maxClients, draft: draft.maxClients),
             optionalChangeRow(label: localized("serverSettings.reservedSlots"), current: model.serverInfo.reservedSlots, draft: draft.reservedSlots),
+            optionalChangeRow(label: localized("serverSettings.temporaryChannelDeleteDelayDefault"), current: model.serverInfo.temporaryChannelDeleteDelayDefaultSeconds, draft: draft.temporaryChannelDeleteDelayDefaultSeconds ?? ""),
             optionalChangeRow(label: localized("serverSettings.downloadQuotaBytes"), current: model.serverInfo.downloadQuota, draft: draft.downloadQuota),
             optionalChangeRow(label: localized("serverSettings.uploadQuotaBytes"), current: model.serverInfo.uploadQuota, draft: draft.uploadQuota),
             optionalChangeRow(label: localized("serverSettings.maxDownloadBandwidthBytes"), current: model.serverInfo.maxDownloadTotalBandwidth, draft: draft.maxDownloadTotalBandwidth ?? ""),
@@ -20529,6 +20536,7 @@ struct ServerSettingsEditorSheet: View {
             optionalChangeRow(label: localized("serverSettings.minimumClientVersion"), current: model.serverInfo.minClientVersion, draft: draft.minClientVersion ?? ""),
             optionalChangeRow(label: localized("serverSettings.minimumAndroidVersion"), current: model.serverInfo.minAndroidVersion, draft: draft.minAndroidVersion ?? ""),
             optionalChangeRow(label: localized("serverSettings.minimumIOSVersion"), current: model.serverInfo.minIOSVersion, draft: draft.minIOSVersion ?? ""),
+            optionalChangeRow(label: localized("serverSettings.temporaryChannelDeleteDelayDefault"), current: model.serverInfo.temporaryChannelDeleteDelayDefaultSeconds, draft: draft.temporaryChannelDeleteDelayDefaultSeconds ?? ""),
             changeRow(label: localized("serverSettings.codecEncryptionMode"), current: model.serverInfo.codecEncryptionMode, draft: TS3CodecEncryptionMode.value(forDraft: draft.codecEncryptionMode)),
             optionalChangeRow(label: localized("serverSettings.defaultServerGroup"), current: model.serverInfo.defaultServerGroupId, draft: draft.defaultServerGroupId ?? ""),
             optionalChangeRow(label: localized("serverSettings.defaultChannelGroup"), current: model.serverInfo.defaultChannelGroupId, draft: draft.defaultChannelGroupId ?? ""),
@@ -20737,6 +20745,7 @@ struct ServerSettingsEditorSheet: View {
             optionalChangeRow(label: localized("serverSettings.uploadQuotaBytes"), current: model.serverInfo.uploadQuota, draft: draft.uploadQuota),
             optionalChangeRow(label: localized("serverSettings.maxDownloadBandwidthBytes"), current: model.serverInfo.maxDownloadTotalBandwidth, draft: draft.maxDownloadTotalBandwidth ?? ""),
             optionalChangeRow(label: localized("serverSettings.maxUploadBandwidthBytes"), current: model.serverInfo.maxUploadTotalBandwidth, draft: draft.maxUploadTotalBandwidth ?? ""),
+            optionalChangeRow(label: localized("serverSettings.temporaryChannelDeleteDelayDefault"), current: model.serverInfo.temporaryChannelDeleteDelayDefaultSeconds, draft: draft.temporaryChannelDeleteDelayDefaultSeconds ?? ""),
             optionalChangeRow(label: localized("serverSettings.neededIdentitySecurityLevel"), current: model.serverInfo.neededIdentitySecurityLevel, draft: draft.neededIdentitySecurityLevel ?? ""),
             optionalChangeRow(label: localized("serverSettings.minimumClientVersion"), current: model.serverInfo.minClientVersion, draft: draft.minClientVersion ?? ""),
             optionalChangeRow(label: localized("serverSettings.minimumAndroidVersion"), current: model.serverInfo.minAndroidVersion, draft: draft.minAndroidVersion ?? ""),
@@ -20813,6 +20822,7 @@ struct ServerSettingsEditorSheet: View {
             (localized("serverSettings.uploadQuotaBytes"), draft.uploadQuota),
             (localized("serverSettings.maxDownloadBandwidthBytes"), draft.maxDownloadTotalBandwidth ?? ""),
             (localized("serverSettings.maxUploadBandwidthBytes"), draft.maxUploadTotalBandwidth ?? ""),
+            (localized("serverSettings.temporaryChannelDeleteDelayDefault"), draft.temporaryChannelDeleteDelayDefaultSeconds ?? ""),
             (localized("serverSettings.neededIdentitySecurityLevel"), draft.neededIdentitySecurityLevel ?? ""),
             (localized("serverSettings.minimumClientVersion"), draft.minClientVersion ?? ""),
             (localized("serverSettings.minimumAndroidVersion"), draft.minAndroidVersion ?? ""),
@@ -20974,6 +20984,7 @@ struct ServerSettingsEditorSheet: View {
         welcomeMessage = model.serverInfo.welcomeMessage ?? ""
         maxClients = model.serverInfo.maxClients.map(String.init) ?? ""
         reservedSlots = model.serverInfo.reservedSlots.map(String.init) ?? ""
+        temporaryChannelDeleteDelayDefaultSeconds = model.serverInfo.temporaryChannelDeleteDelayDefaultSeconds.map(String.init) ?? ""
         password = ""
         clearPassword = false
         hostMessage = model.serverInfo.hostMessage ?? ""
@@ -21027,6 +21038,7 @@ struct ServerSettingsEditorSheet: View {
             autostart: boolDraftText(autostart),
             maxClients: maxClients,
             reservedSlots: reservedSlots,
+            temporaryChannelDeleteDelayDefaultSeconds: temporaryChannelDeleteDelayDefaultSeconds,
             hostMessageMode: hostMessageMode,
             hostBannerURL: hostBannerURL,
             hostBannerGraphicsURL: hostBannerGraphicsURL,
@@ -21076,6 +21088,7 @@ struct ServerSettingsEditorSheet: View {
             welcomeMessage: welcomeMessage,
             maxClients: Int(maxClients.trimmingCharacters(in: .whitespacesAndNewlines)),
             reservedSlots: Int(reservedSlots.trimmingCharacters(in: .whitespacesAndNewlines)),
+            temporaryChannelDeleteDelayDefaultSeconds: Int(temporaryChannelDeleteDelayDefaultSeconds.trimmingCharacters(in: .whitespacesAndNewlines)),
             password: clearPassword ? "" : (password.isEmpty ? nil : password),
             hostMessage: hostMessage,
             hostMessageMode: TS3HostMessageMode.value(forDraft: hostMessageMode),
@@ -21167,6 +21180,7 @@ struct ServerSettingsEditorSheet: View {
             autostart: draft.autostart,
             maxClients: draft.maxClients,
             reservedSlots: draft.reservedSlots,
+            temporaryChannelDeleteDelayDefaultSeconds: draft.temporaryChannelDeleteDelayDefaultSeconds ?? "",
             hostMessageMode: draft.hostMessageMode,
             hostBannerURL: draft.hostBannerURL,
             hostBannerGraphicsURL: draft.hostBannerGraphicsURL,
@@ -21215,6 +21229,7 @@ struct ServerSettingsEditorSheet: View {
         welcomeMessage = draft.welcomeMessage
         maxClients = draft.maxClients
         reservedSlots = draft.reservedSlots
+        temporaryChannelDeleteDelayDefaultSeconds = draft.temporaryChannelDeleteDelayDefaultSeconds ?? ""
         clearPassword = draft.clearPassword
         password = draft.password
         hostMessage = draft.hostMessage

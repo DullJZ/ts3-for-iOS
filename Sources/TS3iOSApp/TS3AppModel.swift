@@ -750,6 +750,7 @@ enum TS3ServerSettingsDraftValidator {
         autostart: String?,
         maxClients: String,
         reservedSlots: String,
+        temporaryChannelDeleteDelayDefaultSeconds: String,
         hostMessageMode: String,
         hostBannerURL: String,
         hostBannerGraphicsURL: String,
@@ -799,6 +800,9 @@ enum TS3ServerSettingsDraftValidator {
         }
         if !isOptionalInt(reservedSlots) {
             messages.append("Reserved slots must be numeric.")
+        }
+        if !isOptionalInt(temporaryChannelDeleteDelayDefaultSeconds) {
+            messages.append("Temporary channel delete delay default must be numeric.")
         }
         if !isOptionalBoolDraft(autostart) {
             messages.append("Autostart must be enabled, disabled, true, false, 1, or 0.")
@@ -13793,6 +13797,7 @@ struct TS3ServerInfoSummary {
     var port: Int?
     var clientsInQuery: Int?
     var reservedSlots: Int?
+    var temporaryChannelDeleteDelayDefaultSeconds: Int?
     var channelsOnline: Int?
     var uptimeSeconds: Int?
     var welcomeMessage: String?
@@ -13870,6 +13875,7 @@ struct TS3ServerInfoSummary {
         port: nil,
         clientsInQuery: nil,
         reservedSlots: nil,
+        temporaryChannelDeleteDelayDefaultSeconds: nil,
         channelsOnline: nil,
         uptimeSeconds: nil,
         welcomeMessage: nil,
@@ -21079,6 +21085,7 @@ final class TS3AppModel: ObservableObject {
         welcomeMessage: String,
         maxClients: Int?,
         reservedSlots: Int?,
+        temporaryChannelDeleteDelayDefaultSeconds: Int?,
         password: String?,
         hostMessage: String,
         hostMessageMode: Int?,
@@ -21128,6 +21135,7 @@ final class TS3AppModel: ObservableObject {
             welcomeMessage: welcomeMessage.trimmingCharacters(in: .whitespacesAndNewlines),
             maxClients: maxClients,
             reservedSlots: reservedSlots,
+            temporaryChannelDeleteDelayDefaultSeconds: temporaryChannelDeleteDelayDefaultSeconds,
             password: password,
             hostMessage: hostMessage.trimmingCharacters(in: .whitespacesAndNewlines),
             hostMessageMode: hostMessageMode,
@@ -30334,6 +30342,7 @@ extension TS3AppModel: TS3ClientDelegate {
                 port: info.port,
                 clientsInQuery: info.clientsInQuery,
                 reservedSlots: info.reservedSlots,
+                temporaryChannelDeleteDelayDefaultSeconds: info.temporaryChannelDeleteDelayDefaultSeconds,
                 channelsOnline: info.channelsOnline,
                 uptimeSeconds: info.uptimeSeconds,
                 welcomeMessage: info.welcomeMessage,

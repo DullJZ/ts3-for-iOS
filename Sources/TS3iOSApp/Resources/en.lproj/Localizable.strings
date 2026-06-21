@@ -1353,6 +1353,7 @@
 "serverSettings.welcomeMessage" = "Welcome Message";
 "serverSettings.maxClients" = "Max Clients";
 "serverSettings.reservedSlots" = "Reserved Slots";
+"serverSettings.temporaryChannelDeleteDelayDefault" = "Temporary Channel Delete Delay Default";
 "serverSettings.password" = "Password";
 "serverSettings.clearPassword" = "Clear Server Password";
 "serverSettings.newPassword" = "New Server Password";
