@@ -166,6 +166,12 @@ struct TS3iOSApp: App {
                 .ts3KeyboardShortcut("edit-current-channel-permissions", in: model)
                 .disabled(model.state != .connected || model.currentChannel == nil)
 
+                Button("channelActions.createChannelPrivilegeKey") {
+                    model.showCurrentChannelPrivilegeKey()
+                }
+                .ts3KeyboardShortcut("create-current-channel-privilege-key", in: model)
+                .disabled(model.state != .connected || model.currentChannel == nil || model.channelGroups.isEmpty)
+
                 Button("channelActions.moveChannel") {
                     model.showCurrentChannelMove()
                 }

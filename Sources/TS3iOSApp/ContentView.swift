@@ -127,6 +127,16 @@ struct ContentView: View {
                         .environmentObject(model)
                 }
             }
+            .sheet(isPresented: $model.isShowingCurrentChannelPrivilegeKey) {
+                if let channel = model.currentChannel {
+                    PrivilegeKeysSheet(
+                        initialTargetType: .channelGroup,
+                        initialChannelGroupId: model.channelGroups.first?.id,
+                        initialChannelId: channel.id
+                    )
+                    .environmentObject(model)
+                }
+            }
             .sheet(
                 isPresented: $model.isShowingCurrentChannelDefaultPassword,
                 onDismiss: {

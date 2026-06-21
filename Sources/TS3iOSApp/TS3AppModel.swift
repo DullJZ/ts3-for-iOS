@@ -11976,6 +11976,7 @@ struct TS3KeyboardShortcutCapabilitySummary {
         "message-current-channel",
         "edit-current-channel",
         "edit-current-channel-permissions",
+        "create-current-channel-privilege-key",
         "move-current-channel",
         "toggle-current-channel-subscription",
         "set-current-channel-default",
@@ -15894,6 +15895,7 @@ final class TS3AppModel: ObservableObject {
         TS3KeyboardShortcutBinding(actionId: "message-current-channel", group: "Channels", action: "Message Current Channel", defaultKeys: "Command-Option-Shift-M"),
         TS3KeyboardShortcutBinding(actionId: "edit-current-channel", group: "Channels", action: "Edit Current Channel", defaultKeys: "Command-Option-Shift-E"),
         TS3KeyboardShortcutBinding(actionId: "edit-current-channel-permissions", group: "Channels", action: "Edit Current Channel Permissions", defaultKeys: "Command-Option-Shift-P"),
+        TS3KeyboardShortcutBinding(actionId: "create-current-channel-privilege-key", group: "Channels", action: "Create Current Channel Privilege Key", defaultKeys: "Command-Control-Option-K"),
         TS3KeyboardShortcutBinding(actionId: "move-current-channel", group: "Channels", action: "Move Current Channel", defaultKeys: "Command-Option-Shift-V"),
         TS3KeyboardShortcutBinding(actionId: "toggle-current-channel-subscription", group: "Channels", action: "Subscribe / Unsubscribe Current Channel", defaultKeys: "Command-Option-Shift-S"),
         TS3KeyboardShortcutBinding(actionId: "set-current-channel-default", group: "Channels", action: "Set Current Channel as Default", defaultKeys: "Command-Option-Shift-B"),
@@ -15940,6 +15942,7 @@ final class TS3AppModel: ObservableObject {
     @Published var isShowingCurrentChannelMove = false
     @Published var isShowingCurrentChannelDefaultPassword = false
     @Published var isShowingCurrentChannelFullInvitePassword = false
+    @Published var isShowingCurrentChannelPrivilegeKey = false
     @Published var currentChannelDeleteConfirmation: TS3CurrentChannelDeleteConfirmation?
     @Published var isShowingGroupManagement = false
     @Published var isShowingSubscriptionPresets = false
@@ -19574,6 +19577,12 @@ final class TS3AppModel: ObservableObject {
         guard let channel = currentChannel else { return }
         selectChannelPermissions(channel)
         isShowingPermissions = true
+    }
+
+    func showCurrentChannelPrivilegeKey() {
+        guard currentChannel != nil else { return }
+        refreshPrivilegeKeys()
+        isShowingCurrentChannelPrivilegeKey = true
     }
 
     func showCurrentChannelMove() {
